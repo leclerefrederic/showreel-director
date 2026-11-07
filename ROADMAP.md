@@ -7,7 +7,8 @@
 - Reduced-motion mode (`ctx.reduced`, player toggle, harness and export flags).
 - Visual scene cards (`scripts/build_scene_cards.py`).
 - GIF download per effect in the effects lab (`engine/gif.js`).
+- Evals run with and without the skill (first round, `evals/RESULTS.md`).
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
 
 ## On hold
-- Evals with and without the skill: run the 7 cases in `showreel-director/evals/` twice (skill on, skill off) and keep the scores in the repo.
+- Next eval round: several runs per case, multi-turn cases (brief writing, scene review loop, build and release gate), and a test of triggering from the skill description in a fresh conversation. First results: `showreel-director/evals/RESULTS.md`.

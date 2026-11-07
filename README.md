@@ -19,7 +19,7 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - Shared drawing helpers (`engine/kit.js`, style-neutral) so projects do not rewrite text, ring, shake, flash and confetti code.
 
 ## Layout
-- `showreel-director/` the skill: `SKILL.md`, `references/`, `engine/`, `scripts/`, `evals/` (7 cases, English)
+- `showreel-director/` the skill: `SKILL.md`, `references/`, `engine/`, `scripts/`, `evals/` (7 cases, English; first results in `evals/RESULTS.md`)
 - `tools/` repo tooling (`package.py`, `check.py`), `.github/workflows/check.yml`
 - `demo/` demo reel (HTML) and its notes, kept outside the packaged skill
 - `ROADMAP.md` ideas on hold
