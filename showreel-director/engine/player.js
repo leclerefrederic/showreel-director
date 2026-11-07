@@ -10,8 +10,10 @@
   const nav = (navigator.language || 'en').slice(0, 2);
   if (S.languages.some(l => l.id === nav)) state.lang = nav;
   if (S.formats.m && matchMedia('(orientation:portrait)').matches) state.mode = 'm';
-  const UI_DEFAULT = { reduced: 'Reduced motion', reducedOn: 'Reduced motion: on', note: 'Note', noteAt: 'Note at', noteHint: 'What should change here?', noteAdd: 'Add note', noteCopy: 'Copy notes', noteCopied: 'Copied', noteClose: 'Close', noteHeader: 'Review notes (draft, please confirm in chat):', noScene: 'no scene' };
+  const UI_DEFAULT = { reduced: 'Reduced motion', reducedOn: 'Reduced motion: on', note: 'Note', noteAt: 'Note at', noteHint: 'What should change here?', noteAdd: 'Add note', noteCopy: 'Copy notes', noteCopied: 'Copied', noteClose: 'Close', noteHeader: 'Review notes (draft, please confirm in chat):', noScene: 'no scene', cutIn: 'cut in' };
   const UI = k => ((S.ui || {})[state.lang] || (S.ui || {}).en || {})[k] || UI_DEFAULT[k] || k;
+  // the review pad (review builds only) speaks the reviewer's language: S.reviewLang (for example 'fr') picks its labels from S.ui, whatever the reel language is
+  const UIR = k => ((S.ui || {})[S.reviewLang || state.lang] || (S.ui || {}).en || {})[k] || UI_DEFAULT[k] || k;
   const notes = []; let padEl = null; // review pad state (declared early: pause() and seek refresh the pad stamp)
   const cv = $('cv'), g = cv.getContext('2d');
   let playing = false, pos = 0, ac = null, buf = null, src = null, gain = null, silent = true, muted = false, vol = .9, loop = !!C.loop, t0 = 0, startedAt = 0, ended = false;
@@ -114,7 +116,7 @@
   // Review pad (only when the brief or the review build asks for it: controls.notes = true). Notes live in memory only;
   // "Copy notes" puts them on the clipboard so the viewer can paste them into the conversation.
   const nm = sc => sc.id || sc.name || ('#' + (sc.i + 1));
-  function sceneLabel(t) { const a = SR.sceneAt(t); if (!a) return ''; const sc = a.scene, nx = a.scene.e - t < .6 && sc.e < DUR - .01 ? SR.sceneAt(sc.e + .001) : null; return nx && nx.scene !== sc ? nm(sc) + '/' + nm(nx.scene) + ' (cut in ' + (sc.e - t).toFixed(1) + 's)' : nm(sc); }
+  function sceneLabel(t) { const a = SR.sceneAt(t); if (!a) return ''; const sc = a.scene, nx = a.scene.e - t < .6 && sc.e < DUR - .01 ? SR.sceneAt(sc.e + .001) : null; return nx && nx.scene !== sc ? nm(sc) + '/' + nm(nx.scene) + ' (' + UIR('cutIn') + ' ' + (sc.e - t).toFixed(1) + 's)' : nm(sc); }
   function stamp(t) { return Math.floor(t / 60) + ':' + (t % 60).toFixed(1).padStart(4, '0'); }
   function openNotes() {
     if (!C.notes) return;
@@ -123,18 +125,18 @@
     const at = clock();
     padEl = document.createElement('div'); padEl.id = 'pad';
     padEl.style.cssText = 'position:fixed;right:12px;bottom:60px;width:min(340px,92vw);max-height:60vh;overflow:auto;background:var(--bar-bg,#111);color:var(--bar-fg,#eee);border:1px solid #ffffff44;border-radius:8px;padding:10px;font:13px var(--font-ui,system-ui,sans-serif);z-index:5';
-    padEl.innerHTML = '<div id="padhd" style="font-weight:700;margin-bottom:6px"></div><textarea id="padtx" rows="3" style="width:100%;box-sizing:border-box;font:inherit;border-radius:6px;padding:6px" placeholder="' + UI('noteHint') + '"></textarea>' +
-      '<div style="display:flex;gap:8px;margin:6px 0"><button id="padadd">' + UI('noteAdd') + '</button><button id="padcp">' + UI('noteCopy') + '</button><button id="padx">' + UI('noteClose') + '</button></div><ol id="padls" style="margin:0;padding-left:18px"></ol>';
+    padEl.innerHTML = '<div id="padhd" style="font-weight:700;margin-bottom:6px"></div><textarea id="padtx" rows="3" style="width:100%;box-sizing:border-box;font:inherit;border-radius:6px;padding:6px" placeholder="' + UIR('noteHint') + '"></textarea>' +
+      '<div style="display:flex;gap:8px;margin:6px 0"><button id="padadd">' + UIR('noteAdd') + '</button><button id="padcp">' + UIR('noteCopy') + '</button><button id="padx">' + UIR('noteClose') + '</button></div><ol id="padls" style="margin:0;padding-left:18px"></ol>';
     document.body.appendChild(padEl);
     padEl.querySelectorAll('button').forEach(b => { b.style.cssText = 'border:0;border-radius:6px;padding:6px 10px;font:600 12px var(--font-ui,system-ui,sans-serif);cursor:pointer;background:var(--btn-bg,#ddd);color:var(--btn-fg,#111)'; });
-    const head = () => { padEl.querySelector('#padhd').textContent = UI('noteAt') + ' ' + stamp(padEl._t) + ' · ' + (sceneLabel(padEl._t) || UI('noScene')) + ' · ' + state.mode + '/' + state.lang; };
+    const head = () => { padEl.querySelector('#padhd').textContent = UIR('noteAt') + ' ' + stamp(padEl._t) + ' · ' + (sceneLabel(padEl._t) || UIR('noScene')) + ' · ' + state.mode + '/' + state.lang; };
     padEl._head = head; padEl._t = at; head();
     const draw = () => { padEl.querySelector('#padls').innerHTML = notes.map(n => '<li>' + n.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</li>').join(''); };
-    padEl.querySelector('#padadd').onclick = () => { const tx = padEl.querySelector('#padtx'); if (!tx.value.trim()) return; notes.push('[' + stamp(padEl._t) + ' · ' + (sceneLabel(padEl._t) || UI('noScene')) + ' · ' + state.mode + '/' + state.lang + '] ' + tx.value.trim().replace(/\n/g, ' ')); tx.value = ''; padEl._t = clock(); head(); draw(); };
-    padEl.querySelector('#padcp').onclick = () => { const t = UI('noteHeader') + '\n' + notes.join('\n'); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).catch(() => { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove(); }); padEl.querySelector('#padcp').textContent = UI('noteCopied'); setTimeout(() => { padEl.querySelector('#padcp').textContent = UI('noteCopy'); }, 1500); };
+    padEl.querySelector('#padadd').onclick = () => { const tx = padEl.querySelector('#padtx'); if (!tx.value.trim()) return; notes.push('[' + stamp(padEl._t) + ' · ' + (sceneLabel(padEl._t) || UIR('noScene')) + ' · ' + state.mode + '/' + state.lang + '] ' + tx.value.trim().replace(/\n/g, ' ')); tx.value = ''; padEl._t = clock(); head(); draw(); };
+    padEl.querySelector('#padcp').onclick = () => { const t = UIR('noteHeader') + '\n' + notes.join('\n'); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).catch(() => { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove(); }); padEl.querySelector('#padcp').textContent = UIR('noteCopied'); setTimeout(() => { padEl.querySelector('#padcp').textContent = UIR('noteCopy'); }, 1500); };
     padEl.querySelector('#padx').onclick = () => { padEl.style.display = 'none'; };
     padEl.querySelector('#padtx').focus();
   }
-  if (C.notes) { const b = document.createElement('button'); b.id = 'nt'; b.textContent = UI('note') + ' (N)'; b.onclick = openNotes; $('bar').appendChild(b); }
+  if (C.notes) { const b = document.createElement('button'); b.id = 'nt'; b.textContent = UIR('note') + ' (N)'; b.onclick = openNotes; $('bar').appendChild(b); }
   applyState(); refreshOv(); requestAnimationFrame(frame);
 })();

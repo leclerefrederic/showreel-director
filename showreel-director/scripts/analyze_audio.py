@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Analyse a music track for a beat-synced reel (numpy + ffmpeg only).
 
-Usage: python3 analyze_audio.py TRACK [--out DIR] [--bpm-hint N]
+Usage: python3 analyze_audio.py TRACK [--out DIR] [--bpm-hint N] [--bpm N] [--first-beat SECONDS]
 Writes DIR/beats.json (bpm, beats, bars, bar energy, drops, breakdowns, returns) and DIR/env.json
 (50 fps kick/hat/energy envelopes, 0-255). Prints a bar table to review with the user.
 Always cross-check the printed bar times by ear/waveform: tempo drift or tempo changes
 need manual correction. Never count beats by hand: use beats.json.
+If the printed tempo is wrong (a half or double tempo, hi-hats mistaken for the beat), rerun with --bpm N (the real tempo) and, if the
+beats are still off, --first-beat S (time of a real kick, in seconds). The run prints other plausible tempi to choose from.
 """
 import argparse, json, os, subprocess, sys
 import numpy as np
@@ -32,25 +34,37 @@ def norm(v):
     v = v - v.min()
     return v / (v.max() + 1e-9)
 
-def onset_env(mag):
+def onset_env(mag, lo=None, hi=None):
+    if lo is not None:
+        f = np.fft.rfftfreq(NFFT, 1 / SR); mag = mag[:, (f >= lo) & (f < hi)]
     m = np.log1p(mag * 10)
     flux = np.maximum(0, np.diff(m, axis=0, prepend=m[:1])).sum(axis=1)
     return norm(flux)
 
-def estimate_tempo(env, fr, hint=None):
+def tempo_scores(env, fr, hint=None):
     e = env - env.mean()
     ac = np.correlate(e, e, "full")[len(e) - 1:]
     lo, hi = int(fr * 60 / 200), int(fr * 60 / 60)
     lags = np.arange(lo, hi)
     bpms = 60 * fr / lags
     w = np.exp(-0.5 * (np.log2(bpms / (hint or 120)) / 0.9) ** 2)
-    best = lags[np.argmax(ac[lags] * w)]
-    return 60 * fr / best
+    return bpms, ac[lags] * w, ac[lags]
 
-def refine(env, fr, bpm):
+def estimate_tempo(env, fr, hint=None):
+    bpms, sc, _ = tempo_scores(env, fr, hint)
+    return float(bpms[np.argmax(sc)])
+
+def candidates(env, fr, hint=None, k=4):
+    bpms, sc, raw = tempo_scores(env, fr, hint); out = []
+    for i in np.argsort(-sc):
+        if all(abs(bpms[i] / b - 1) > 0.04 for b, _ in out): out.append((float(bpms[i]), float(sc[i] / (sc.max() + 1e-9))))
+        if len(out) >= k: break
+    return out
+
+def refine(env, fr, bpm, span=3.0):
     best = (-1, bpm, 0)
     n = len(env)
-    for b in np.arange(bpm - 3, bpm + 3, 0.05):
+    for b in (np.arange(bpm - span, bpm + span, 0.05) if span else [bpm]):
         period = fr * 60 / b
         for ph in np.arange(0, period, 0.5):
             pos = np.arange(ph, n - 1, period)
@@ -60,13 +74,21 @@ def refine(env, fr, bpm):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("track"); ap.add_argument("--out", default="."); ap.add_argument("--bpm-hint", type=float)
+    ap.add_argument("track"); ap.add_argument("--out", default="."); ap.add_argument("--bpm-hint", type=float); ap.add_argument("--bpm", type=float); ap.add_argument("--first-beat", type=float)
     a = ap.parse_args()
     x = decode(a.track); dur = len(x) / SR
     mag = stft_mag(x); fr = SR / HOP
     env = onset_env(mag)
     low = band(mag, 30, 150); high = band(mag, 6000, 11000); full = mag.sum(axis=1)
-    bpm, phase = refine(env, fr, estimate_tempo(env, fr, a.bpm_hint))
+    # the kick (low band) carries the beat; hi-hats on the off-beat fool a full-band envelope, so the tempo is read on the kick
+    kenv = onset_env(mag, 30, 150)
+    base = kenv if kenv.std() > 0.02 else env
+    cands = candidates(base, fr, a.bpm_hint)
+    if a.bpm:
+        bpm, phase = refine(base, fr, a.bpm, 0 if a.first_beat is not None else 0.3)
+        if a.first_beat is not None: phase = a.first_beat - OFF
+    else:
+        bpm, phase = refine(base, fr, estimate_tempo(base, fr, a.bpm_hint))
     phase += OFF
     spb = 60 / bpm
     first = phase - np.floor((phase + 0.1) / spb) * spb  # allow a beat just before 0
@@ -117,6 +139,7 @@ def main():
                "bars": [round(float(b), 3) for b in bars], "drops_bar_index": drops, "drops_bar_number": [d + 1 for d in drops],
                "bar_energy": [round(v, 2) for v in be], "breakdowns": breakdowns, "returns": returns}, open(os.path.join(a.out, "beats.json"), "w"))
     json.dump({"fps": 50, "kick": at50(low), "hat": at50(high), "energy": at50(full)}, open(os.path.join(a.out, "env.json"), "w"))
+    print("other plausible tempi (score relative to the best): " + ", ".join(f"{b:.1f} BPM ({sc:.2f})" for b, sc in cands) + "  -> if the tempo above is wrong, rerun with --bpm N [--first-beat S]")
     print(f"duration {dur:.2f}s  tempo {bpm:.2f} BPM  bar {4*spb:.3f}s  first beat {beats[0]:.3f}s  downbeat offset {down}")
     print("bar  start(s)  energy  note")
     for i, (b, e) in enumerate(zip(bars, be)):

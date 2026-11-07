@@ -9,7 +9,7 @@
 - GIF download per effect in the effects lab (`engine/gif.js`).
 - Process hardening: gates table, decision sheets, look test, notes pad, waiver and existing-project routes, untrusted-content rule (second eval run in `evals/RESULTS.md`).
 - Asset layout and naming convention, manifest, organiser and build guard (`references/assets.md`).
-- End-to-end simulation with a scripted user (31 issues found, fixed; see `evals/RESULTS.md`).
+- Two end-to-end simulations with a scripted user (31 and 21 issues found, fixed; see `evals/RESULTS.md`), cut-downs with their own build, audio analysis overrides.
 - Evals run with and without the skill (first round, `evals/RESULTS.md`).
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
 

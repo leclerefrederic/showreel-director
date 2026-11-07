@@ -15,7 +15,7 @@ Spec (JSON):
                             {"label": "Change", "needs_note": true},        needs_note: the note field must be filled
                             {"label": "Waive and accept the risk", "needs_note": true} ] } ] }
 Page language: all page texts come from a UI table (English by default). Pass --ui FILE.json with the same keys translated into the
-conversation language (keys: accept, copy, rec, several, noteReq, noteOpt, status, open, copied, header, missing, htmlLang) and --lang CODE for the page's lang attribute.
+conversation language (keys: accept, copy, rec, several, noteReq, noteOpt, status, open, copied, header, missing) and --lang CODE for the page's lang attribute.
 Guardrails built in: nothing is pre-selected (the recommended option is only highlighted); "Accept all recommended" is a
 separate explicit button; "Copy decisions" refuses (and outlines the open cards) until every item is decided and every needs_note note is filled;
 the copied text is a draft that the skill still confirms in the conversation. Text is never interpreted as HTML.
@@ -38,7 +38,7 @@ def check(spec):
         if not it.get("title"): errs.append(f"{iid}: missing title")
         opts = it.get("options")
         if not isinstance(opts, list) or len(opts) < 2: errs.append(f"{iid}: needs at least 2 options")
-        elif len(opts) > 4: errs.append(f"{iid}: at most 4 options (keep choices scannable)")
+        elif len(opts) > (8 if it.get("multi") else 4): errs.append(f"{iid}: at most {8 if it.get('multi') else 4} options (4 for a single choice, 8 for a multi-select checklist)")
         else:
             if sum(1 for o in opts if o.get("recommended")) > 1 and not it.get("multi"): errs.append(f"{iid}: more than one recommended option")
             for o in opts:

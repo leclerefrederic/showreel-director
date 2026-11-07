@@ -17,7 +17,7 @@ Language: build every page with `--ui` (translated page texts; keys in the scrip
 If the session cannot present files, use the question tool for the same decisions (split into rounds of 4) and say what is different (see `portability.md`).
 
 ## Decision sheet: spec and guardrails
-A JSON file with `title`, `intro` and up to 30 `items`. Each item has `id`, `title`, a short `body` (600 characters at most; longer content goes in a file), 2 to 4 `options`, and optionally `swatches` (hex colours), `sample` (`{text, css}` type specimen), `multi`, `note`. Options can carry `recommended` and `needs_note`.
+A JSON file with `title`, `intro` and up to 30 `items`. Each item has `id`, `title`, a short `body` (600 characters at most; longer content goes in a file), 2 to 4 `options` (up to 8 for a `multi` checklist such as the player controls), and optionally `swatches` (hex colours), `sample` (`{text, css}` type specimen), `multi`, `note`. Options can carry `recommended` and `needs_note`.
 
 ```json
 { "title": "Style sheet", "intro": "Pick one option per line.",

@@ -45,6 +45,10 @@ def main():
             if sz > 3e6 and ext not in ("mp3", "wav"): flags.append(f"heavy {sz/1e6:.1f} MB")
             if ext in ("txt", "md", "csv", "json", "html") and PII.search(open(p, errors="ignore").read()[:20000]):
                 flags.append("possible personal/secret data: confirm before using, never copy into the brief")
+            if ext == "svg":
+                sv = open(p, errors="ignore").read(20000)
+                if re.search(r"<text[ >]", sv): flags.append("SVG draws text with a live font: as an image it falls back to a system font; convert the text to paths")
+                if re.search(r"<rect[^>]*(width=.100%.|x=.0.[^>]*y=.0.)[^>]*fill=", sv) or re.search(r"<rect[^>]*fill=[^>]*(width=.100%.)", sv): flags.append("SVG has a full-size background rectangle: check it suits the film's base colour (light or dark variant)")
             if ext in ("png", "jpg", "jpeg") and re.search(r"client|customer|personal|data|real", f, re.I): flags.append("filename suggests real data")
             note = note_for(r, f)
             if ext in ("ttf", "otf", "woff", "woff2"):

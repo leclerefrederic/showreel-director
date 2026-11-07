@@ -34,6 +34,7 @@ Show the attribute through what happens on screen; a word like "simple" written 
 | Reassuring | slow, steady, generous holds | soft fades, gentle rise, consistent layout, calm morphs | calm palette, regular type, no flashes, soft music |
 | Convincing | structured, one claim at a time, proof at calm pace | before/after bars, slot roll, counters, source footnotes | restrained palette, clear hierarchy, real product evidence |
 | Inspiring | slow build, wide shots, open ending | slow push-in, curtain open, spotlight, build and snap | light or open space, music swell, final image left to breathe |
+| Amused | light, playful timing, a pause before the punchline | pop, late arrival, strike and replace, stamp, a small deadpan hold | warm friendly colour, humour in small type, a light sound hit on the gag |
 | Intriguing | withholding, partial reveals, delayed payoff | mask wipe, scramble decode, silence before reveal | dark base with a single accent |
 | Urgent | fast rhythm, tight cuts | whip pan, shake cut, countdown, speed ramp | high-contrast warm colour; avoid if the brand is built on trust |
 

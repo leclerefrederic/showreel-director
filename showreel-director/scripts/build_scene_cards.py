@@ -59,7 +59,9 @@ def main():
     cimg = find(head, "image", "motion", "visuel", "mouvement", "imagen", "bild")
     cfeel = find(head, "feeling", "tension", "ressenti", "emotion", "gefuhl")
     cgag = find(head, "gag", "handoff", "jeu", "passage", "transition")
-    used = {cid, ctime, ctext, cimg, cfeel, cgag}; extra = [h for h in head if h not in used]
+    tkeys = ("time", "temps", "duree", "duration", "tiempo", "zeit")
+    tcols = [h for h in head if h != ctime and any(k in norm(h) for k in tkeys)]  # more time columns = one per cut (for example "Time (short)")
+    used = {cid, ctime, ctext, cimg, cfeel, cgag, *tcols}; extra = [h for h in head if h not in used]
     scenes = []
     for k, r in enumerate(rows):
         sid = clean(r.get(cid, "")).strip() or str(k + 1)
@@ -67,6 +69,7 @@ def main():
         scenes.append({"id": sid, "time": clean(r.get(ctime, "")) if ctime else "", "dur": seconds(r.get(ctime, "")) if ctime else None,
                        "text": clean(r.get(ctext, "")) if ctext else "", "image": clean(r.get(cimg, "")) if cimg else "",
                        "feel": clean(r.get(cfeel, "")) if cfeel else "", "gag": clean(r.get(cgag, "")) if cgag else "",
+                       "cuts": [(h, clean(r.get(h, "")), seconds(r.get(h, ""))) for h in tcols if r.get(h, "").strip() and r.get(h, "").strip() not in ("-", "")],
                        "extra": [(h, clean(r.get(h, ""))) for h in extra if r.get(h, "").strip()]})
     face = ""
     if a.font:
@@ -113,6 +116,7 @@ function draw(){m.innerHTML='';D.scenes.forEach(s=>{const c=document.createEleme
 let h='<div class="top"><span class="id">'+esc(s.id)+'</span><span class="tm">'+esc(s.time)+'</span></div>';
 if(s.text)h+='<div class="txt">'+esc(s.text)+'</div>';
 const rd=s.dur&&s.text?s.text.length/s.dur:0;if(rd>17)h+='<div class="warn">'+esc(U.reading.replace('{cps}',rd.toFixed(0)))+'</div>';
+(s.cuts||[]).forEach(c=>{h+='<div class="tm">'+esc(c[0])+': '+esc(c[1])+'</div>';const r2=c[2]&&s.text?s.text.length/c[2]:0;if(r2>17)h+='<div class="warn">'+esc(c[0])+' - '+esc(U.reading.replace('{cps}',r2.toFixed(0)))+'</div>'});
 const L=(k,v)=>v?'<div><span class="l">'+k+'</span><br>'+esc(v)+'</div>':'';
 h+=L(U.image,s.image)+L(U.feel,s.feel)+L(U.gag,s.gag)+s.extra.map(e=>L(e[0],e[1])).join('');
 h+='<div class="row">'+['OK','MODIFY','DITCH'].map(k=>'<button data-s="'+s.id+'" data-k="'+k+'" class="'+(st[s.id]===k?'on':'')+'">'+k+'</button>').join('')+'</div>';
@@ -125,10 +129,10 @@ const n=k=>D.scenes.filter(s=>st[s.id]===k).length,left=D.total-D.scenes.filter(
 document.getElementById('tot').textContent=U.status.replace('{n}',D.scenes.length).replace('{ok}',n('OK')).replace('{mod}',n('MODIFY')).replace('{dit}',n('DITCH')).replace('{und}',D.scenes.length-n('OK')-n('MODIFY')-n('DITCH'))+(D.total?U.left.replace('{left}',left.toFixed(1)).replace('{total}',D.total):'')}
 document.getElementById('allok').textContent=U.allok;document.getElementById('copy').textContent=U.copy;
 document.getElementById('allok').onclick=()=>{D.scenes.forEach(s=>{if(!st[s.id])st[s.id]='OK'});draw()};
-document.getElementById('copy').onclick=()=>{const bad=D.scenes.filter(s=>st[s.id]==='MODIFY'&&!(note[s.id]||'').trim());if(bad.length){const o=document.getElementById('out');o.textContent=U.needNote.replace('{ids}',bad.map(s=>s.id).join(', '));o.style.display='block';setTimeout(()=>{o.style.display='none';o.textContent=U.copied},3500);return}
+document.getElementById('copy').onclick=()=>{const o=document.getElementById('out'),bad=D.scenes.filter(s=>st[s.id]==='MODIFY'&&!(note[s.id]||'').trim());if(bad.length){o.textContent=U.needNote.replace('{ids}',bad.map(s=>s.id).join(', '));o.style.display='block';setTimeout(()=>{o.style.display='none'},3500);return}
 const t=U.header+'\n'+D.scenes.map(s=>s.id+': '+(st[s.id]||U.undecided)+(st[s.id]==='MODIFY'&&note[s.id]?' - '+note[s.id].replace(/\n/g,' '):'')).join('\n');
 (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove()});
-const o=document.getElementById('out');o.style.display='block';setTimeout(()=>o.style.display='none',2500)};
+o.textContent=U.copied;o.style.display='block';setTimeout(()=>o.style.display='none',2500)};
 draw();
 </script></body></html>
 """

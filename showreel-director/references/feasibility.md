@@ -2,6 +2,9 @@
 
 Purpose: be a critical director, not an order taker. When the requested duration, number of scenes (shots), amount of text, languages or formats cannot work together, say so with numbers, explain which standard or finding backs the limit, and propose workable options. Never silently comply, and never silently shrink the request either.
 
+## Cut-downs and the music
+A shorter cut that starts at the beginning of the track may never reach its drop or breakdown return. For each cut, check where the strongest moment of the track falls; if it is outside, start the cut on another bar (`track_start_bar` in `project.json`, see `build-guide.md`), and run the feasibility script again with that cut's duration.
+
 ## When to run it
 1. **After round 1** (duration, purpose, message known) and again **after round 2b** (arc known): propose a structure (sections, seconds, scene count) and check any count the user volunteered.
 2. **After the storyboard** (`storyboard-review.md` check 1 uses these numbers).

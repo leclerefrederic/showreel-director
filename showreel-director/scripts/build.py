@@ -32,7 +32,7 @@ def font_css(fonts, root):
         report.append((f["path"], len(data)))
     return "\n".join(css), report
 
-def guard_assets(cfg, root):
+def guard_assets(cfg, root, allow_unlisted=False):
     """Build only from prepared/ or generated/ assets that the manifest lists and the user did not exclude."""
     import csv
     paths = [cfg.get("track")] + [f.get("path") for f in cfg.get("fonts", [])] + list((cfg.get("images") or {}).values())
@@ -45,7 +45,8 @@ def guard_assets(cfg, root):
         elif not (rel.startswith("prepared/") or rel.startswith("generated/")): print(f"warning: {p} is outside assets/prepared and assets/generated (run scripts/organize_assets.py)")
         elif rows:
             r = next((x for x in rows if x["file"] == rel), None)
-            if not r: print(f"warning: {rel} is not listed in assets/MANIFEST.csv")
+            if not r and allow_unlisted: print(f"warning: {rel} is not listed in assets/MANIFEST.csv (allowed for scratch work)")
+            elif not r: errs.append(f"{rel}: not listed in assets/MANIFEST.csv; register it (organize_assets.py) or pass --allow-unlisted for scratch work")
             elif r["status"] in ("excluded", "hold"): errs.append(f"{rel}: status is {r['status']} in the manifest, it must not be embedded")
             elif r["status"] == "proposed": print(f"warning: {rel} is still 'proposed' in the manifest (not approved yet)")
     if errs: sys.exit("asset guard:\n  " + "\n  ".join(errs))
@@ -56,33 +57,50 @@ def main():
     ap.add_argument("--qa-step", type=float, help="contact sheet every N seconds")
     ap.add_argument("--qa-tile", type=int, default=420, help="tile width in px")
     ap.add_argument("--qa-langs"); ap.add_argument("--qa-modes")
+    ap.add_argument("--cut", help="build the named cut declared under \"cuts\" in project.json (own duration, optional track_start_bar)")
+    ap.add_argument("--allow-unlisted", action="store_true", help="scratch work: embed files that are not in assets/MANIFEST.csv")
     a = ap.parse_args(); root = a.project
     cfg = json.load(open(os.path.join(root, "project.json")))
-    guard_assets(cfg, root)
+    cut = a.cut
+    if cut:
+        if cut not in (cfg.get("cuts") or {}): sys.exit(f"unknown cut {cut!r}; declared cuts: {', '.join((cfg.get('cuts') or {}).keys()) or 'none'}")
+        cfg = dict(cfg); cfg.update(cfg["cuts"][cut])
+    guard_assets(cfg, root, a.allow_unlisted)
     report = []
     data = {"beats": [], "dur": 60, "env": None, "downbeat_offset": 0}
     track_tag = ""
     if cfg.get("track"):
         tp = os.path.join(root, cfg["track"]); raw = open(tp, "rb").read()
         ad0 = os.path.join(root, cfg.get("analysis_dir", "analysis")); tdur = json.load(open(os.path.join(ad0, "beats.json")))["duration"]
-        want = cfg.get("duration")
-        if want and want > tdur + .01: print(f"warning: duration {want}s is longer than the track ({tdur:.1f}s)")
-        if want and tdur > want + 2:
+        want = cfg.get("duration"); sbar = cfg.get("track_start_bar"); tstart = 0.0
+        bt0 = json.load(open(os.path.join(ad0, "beats.json")))
+        if sbar:
+            if sbar < 1 or sbar > len(bt0["bars"]): sys.exit(f"track_start_bar {sbar} is outside the track (it has {len(bt0['bars'])} bars)")
+            tstart = float(bt0["bars"][sbar - 1])
+        if want and want > tdur - tstart + .01: print(f"warning: duration {want}s is longer than the track from the start point ({tdur - tstart:.1f}s)")
+        if tstart > 0 or (want and tdur > want + 2):
             import shutil, subprocess, tempfile
             if shutil.which("ffmpeg"):
                 tmpf = os.path.join(tempfile.mkdtemp(), "trim.mp3")
-                r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", tp, "-t", str(want + 1), "-c:a", "libmp3lame", "-q:a", "2", tmpf], capture_output=True)
-                if r.returncode == 0: raw = open(tmpf, "rb").read(); print(f"track trimmed to {want + 1:.0f}s for embedding (the reel is {want}s; the beat map is unchanged)")
+                cmd = ["ffmpeg", "-y", "-v", "error", "-ss", str(tstart), "-i", tp] + (["-t", str(want + 1)] if want else []) + ["-c:a", "libmp3lame", "-q:a", "2", tmpf]
+                r = subprocess.run(cmd, capture_output=True)
+                if r.returncode == 0: raw = open(tmpf, "rb").read(); print(f"track cut from {tstart:.2f}s" + (f" to {tstart + want + 1:.0f}s" if want else "") + " for embedding (the beat map and bars are shifted to match; bar 1 of this cut is track bar " + str(sbar or 1) + ")")
+                elif tstart > 0: sys.exit("ffmpeg failed to cut the track: " + r.stderr.decode()[-200:])
+            elif tstart > 0: sys.exit("track_start_bar needs ffmpeg to cut the track")
             else: print(f"warning: the track ({tdur:.0f}s) is much longer than the reel ({want}s) and ffmpeg is missing to trim it: the whole track will be embedded")
         elif not want and tdur: print(f"note: no \"duration\" in project.json, the reel lasts as long as the track ({tdur:.1f}s)")
-        track_tag = '<script type="text/plain" id="trackdata">data:audio/mpeg;base64,%s</script>' % base64.b64encode(raw).decode()
         report.append((cfg["track"], len(raw) * 4 // 3))
         ad = os.path.join(root, cfg.get("analysis_dir", "analysis"))
         bt = json.load(open(os.path.join(ad, "beats.json"))); ev = json.load(open(os.path.join(ad, "env.json")))
         n = len(ev["kick"]); buf = bytearray()
         for i in range(n): buf += bytes([ev["kick"][i], ev["hat"][i], ev["energy"][i]])
-        data = {"beats": bt["beats"], "dur": cfg.get("duration", bt["duration"]), "downbeat_offset": bt["downbeat_offset"],
+        beats_l, down_l = bt["beats"], bt["downbeat_offset"]
+        if tstart > 0:  # the cut starts on a bar: drop the earlier beats and envelope samples, bar 1 of the cut is the first beat
+            keep = [b for b in beats_l if b >= tstart - 0.001]; beats_l = [round(b - tstart, 3) for b in keep]; down_l = 0
+            buf = bytearray(bytes(buf)[3 * int(round(tstart * 50)):])
+        data = {"beats": beats_l, "dur": cfg.get("duration", bt["duration"] - tstart), "downbeat_offset": down_l,
                 "env": {"fps": 50, "b64": base64.b64encode(bytes(buf)).decode()}}
+        if tstart > 0: data["track_start"] = round(tstart, 3)
     elif cfg.get("duration"): data["dur"] = cfg["duration"]
     imgs = {}
     for key, rel in (cfg.get("images") or {}).items():
@@ -91,6 +109,7 @@ def main():
         if not mime: sys.exit(f"images.{key}: unsupported type .{ext}")
         raw_i = open(ip, "rb").read(); imgs[key] = "data:%s;base64,%s" % (mime, base64.b64encode(raw_i).decode()); report.append((f"image {key}", len(raw_i) * 4 // 3))
     if imgs: data["images"] = imgs
+    if cut: data["cut"] = cut
     fcss, frep = font_css(cfg.get("fonts", []), root); report += frep
     tokens = ";".join("%s:%s" % kv for kv in cfg.get("tokens", {}).items())
     rd = lambda p: open(p, encoding="utf-8").read()
@@ -107,7 +126,7 @@ def main():
                  ("__CORE__", rd(os.path.join(ENGINE, "core.js")) + "\n" + rd(os.path.join(ENGINE, "kit.js"))), ("__MAIN__", rd(os.path.join(root, cfg["main"]))),
                  ("__PLAYER__", rd(os.path.join(ENGINE, "player.js")))]:
         html = html.replace(k, v)
-    out = a.out or (os.path.join(root, "..", "qa", "contact-sheet.html") if qa else os.path.join(root, "dist", "index.html")); os.makedirs(os.path.dirname(out), exist_ok=True)
+    out = a.out or (os.path.join(root, "..", "qa", "contact-" + os.path.basename(os.path.normpath(root)) + ("-" + cut if cut else "") + ".html") if qa else os.path.join(root, "dist", "index" + ("-" + cut if cut else "") + ".html")); os.makedirs(os.path.dirname(out), exist_ok=True)
     open(out, "w", encoding="utf-8").write(html)
     total = len(html.encode()) / 1e6
     print("Weight report:")

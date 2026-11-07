@@ -16,6 +16,7 @@
   const TXT = { en: { intro: 'Placeholder title', outro: 'Placeholder closing' } };
   window.SHOWREEL = {
     title: { en: 'Showreel' },
+    // reviewLang: 'en', // language of the review pad labels (key into ui), when it differs from the reel language
     slug: 'showreel', // short name used in export file names: <slug>_<vN>_<mode>_<lang>.mp4
     footnote: { en: '' },
     languages: [{ id: 'en', label: 'EN' }],

@@ -5,7 +5,7 @@
 
    Usage: NODE_PATH=<dir with node_modules/@napi-rs/canvas> node export_mp4.js BUILT_HTML [--out FILE]   (default FILE: <slug>_<vN>_<mode>_<lang>.mp4 next to BUILT_HTML)
             [--mode d] [--lang en] [--fps 30] [--start 0] [--end SECONDS] [--crf 18] [--scale 1] [--no-audio] [--reduced]
-   --stills t1,t2,... [--cols 3 --tile 480 --out grid.png] writes one PNG with frames at those times and exits (no ffmpeg needed).
+   --stills t1,t2,... [--cols 3 --tile 480 --out grid.png --stills-report] writes one PNG with frames at those times and exits (no ffmpeg needed).
    Setup (once, in a scratch folder): npm install @napi-rs/canvas      Needs ffmpeg (libx264, aac) on the PATH.
    --start/--end export a segment (handy to test a scene: --start 78 --end 82).
    Output size = the stage size of the chosen mode times --scale (even numbers are enforced for H.264).
@@ -40,8 +40,8 @@ const fps = parseFloat(opt('--fps', '30')), start = parseFloat(opt('--start', '0
 const crf = opt('--crf', '18'), scale = parseFloat(opt('--scale', '1'));
 // default name: <slug>_<vN>_<mode>_<lang>.mp4 next to the built page (slug from the reel title, vN from the version folder)
 const slug = String(S.slug || ((S.title && (S.title[lang] || S.title.en)) || 'reel')).normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40).replace(/-$/, '') || 'reel';
-const ver = (path.resolve(file).split(path.sep).slice(-3, -2)[0] || 'v1');
-const out = opt('--out', path.join(path.dirname(path.resolve(file)), `${slug}_${ver}_${mode}_${lang}.mp4`));
+const ver = (path.resolve(file).split(path.sep).slice(-3, -2)[0] || 'v1') + (SR.data.cut ? '-' + SR.data.cut : '');
+const out = opt('--out', path.join(path.dirname(path.resolve(file)), `${slug}_${ver}_${mode}_${lang}${(args.includes('--start') || args.includes('--end')) ? '_' + start + '-' + end + 's' : ''}.mp4`));
 const [SW, SH] = S.formats[mode], W = Math.round(SW * scale / 2) * 2, H = Math.round(SH * scale / 2) * 2;
 const frames = Math.round((end - start) * fps);
 
@@ -63,6 +63,12 @@ if (opt('--stills', null)) { (async () => {
     const x = (i % cols) * tw, y = Math.floor(i / cols) * (th + lab); sg.drawImage(c, x, y);
     const a = SR.sceneAt(t); sg.fillStyle = '#ccc'; sg.font = '13px sans-serif'; sg.fillText(`${mode}/${lang} t=${t.toFixed(1)} ${a && a.scene ? (a.scene.id || a.scene.name || '') : ''}`, x + 4, y + th + 15);
   });
+  if (args.includes('--stills-report')) {  // objective numbers for each tile, for sessions that cannot look at the PNG
+    times.forEach(t => { const c = createCanvas(tw, th), g2 = c.getContext('2d'); SR.drawFrame(g2, tw, th, t, { mode, lang, reduced: args.includes('--reduced') });
+      const d = g2.getImageData(0, 0, tw, th).data, bg = [d[0], d[1], d[2]]; let ink = 0, x0 = tw, y0 = th, x1 = -1, y1 = -1, edge = 0;
+      for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) { const i = (y * tw + x) * 4; if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 40) { ink++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (x < 2 || y < 2 || x >= tw - 2 || y >= th - 2) edge++; } }
+      const a = SR.sceneAt(t); console.log(`t=${t.toFixed(1)} ${a && a.scene ? (a.scene.id || a.scene.name || '') : ''}: content ${(100 * ink / (tw * th)).toFixed(1)}% of the frame, box x ${(x1 < 0 ? '-' : (x0 / tw).toFixed(2) + '..' + (x1 / tw).toFixed(2))} y ${(y1 < 0 ? '-' : (y0 / th).toFixed(2) + '..' + (y1 / th).toFixed(2))}${x1 < 0 ? ' EMPTY FRAME' : ''}${edge > 0 ? ' content touches the frame edge (' + edge + ' px)' : ''}`); });
+  }
   const outp = opt('--out', path.join(path.dirname(path.resolve(file)), 'stills.png')); fs.writeFileSync(outp, sheet.toBuffer('image/png')); console.log('wrote ' + outp + ' (' + times.length + ' stills)'); process.exit(0);
   })(); return;
 }

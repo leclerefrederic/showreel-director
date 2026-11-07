@@ -44,3 +44,17 @@ Fixed after the run (and covered by `tools/check.py` self-tests where possible):
 - Documentation contradictions (the go message, summary in chat, look test folder, first reply language, approval of assets, reading speed) resolved.
 
 Left as is: the manifest table from `--md` has fewer columns than the brief template; decision sheets embed one font file; the harness still cannot see text that overflows a panel inside the stage (use stills).
+
+## End-to-end simulation, run 2 (2026-11-08)
+
+Same method, different paths: depth "I propose, you correct", a full cut (30 s) and a short cut (15 s), the user asking to skip the look test, then the existing-project route with a new track (a synthetic 120 BPM track B). The agent delivered both cuts and a v4 on the new track, and reported 21 issues, one blocker: the audio analysis read the new track as 80 BPM with the first beat on the off-beat, with no way to override it.
+
+Fixed after the run:
+- Audio analysis reads the tempo and phase on the kick band (both test tracks now come out right: 124 and 120 BPM), prints other plausible tempi, and accepts `--bpm` and `--first-beat`.
+- Cut-downs now have a mechanism: `cuts` in `project.json`, `build.py --cut`, `SR.data.cut` for `main.js`, `track_start_bar` (audio, beat map and bars shift so a short cut can reach the drop), per-cut export and contact-sheet names, a segment export no longer overwrites the full export, scene cards show extra time columns per cut with their own reading warning.
+- `build.py` refuses a file that is not listed in the manifest (unless `--allow-unlisted`), so a renamed copy of an excluded file cannot slip in.
+- Waiver rule: recommended option is keeping the gate, the draft mark is defined, and it is lifted when the first full build is validated as the look test.
+- Regressions from the first round fixed: the scene cards' "Copied" message, the notes pad language (a separate `reviewLang`, translatable "cut in").
+- Documented what re-runs on a new version, how the depth question relates to express and what "I propose, you correct" means (a kept proposal is a decision), a multi-select card may hold 8 options (controls checklist), `--md` matches the brief template, an "amused" row in the feelings table, SVG logos with live text or a background rectangle are flagged by the audit, `--stills-report` gives objective numbers when the PNG cannot be viewed.
+
+Left as is: the lab's category tabs, effect counter and GIF tooltip are not translatable; `check_env.py --node-path` takes a colon-separated list (documented); the organiser keeps the sub-folders of the supplied folder (so `source/source/...` can appear).

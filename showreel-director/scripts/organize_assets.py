@@ -110,7 +110,7 @@ def plan(root, extra):
         if t: counters[t] = max(counters.get(t, 0), n)
     items = []
     for path, rel, loose in sorted(scan(root, assets, extra), key=lambda x: x[1]):
-        if rel in known: continue
+        if rel in known or (not loose and os.path.exists(os.path.join(assets, "source", rel))): continue  # already organised
         typ = classify(rel); status = "proposed"; reason = ""
         if typ in EMBED:
             notes = note_text(os.path.dirname(path), os.path.basename(path)); txt = " ".join(t for _, t in notes)
@@ -205,8 +205,10 @@ def cmd_register(a):
 
 def cmd_md(a):
     rows = load(os.path.join(a.project, "assets", "MANIFEST.csv"))
-    print("| id | file | original | origin | status | licence note | scene |\n|---|---|---|---|---|---|---|")
-    for r in rows: print(f"| {r['id']} | {r['file'] or '-'} | {r['original']} | {r['origin']} | {r['status']} | {r['licence_note'] or '-'} | {r['scene'] or '-'} |")
+    print("| file | role | scene | status | licence note (file) | weight | notes |\n|---|---|---|---|---|---|---|")
+    for r in rows:
+        fp = os.path.join(a.project, "assets", r["file"] or ("source/" + r["original"])); kb = f"{os.path.getsize(fp) / 1024:.0f} KB" if os.path.isfile(fp) else "-"
+        print(f"| {r['file'] or '(not embedded) ' + r['original']} | {r['type']} | {r['scene'] or '-'} | {r['status']} | {r['licence_note'] or '-'} | {kb} | {r['notes'] or '-'} |")
     return 0
 
 def cmd_check(a):
