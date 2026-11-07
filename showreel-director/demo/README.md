@@ -4,5 +4,5 @@
 
 - Open in a browser, click "Start with sound". Controls: pause, seek, mute/volume, replay, format switch.
 - It is an example of what the skill can produce, not a template: never reuse its look unless the user picks it.
-- Release gate: the music licence for Deep-Space Funk is not confirmed (internal use only); fonts are Liberation Sans Narrow Bold and Liberation Mono Bold. Do not publish the demo outside the organisation without confirming both.
+- Music: Deep-Space Funk, generated with Suno, used here for non-commercial purposes only (Suno's terms apply; the user states this project is non-commercial). Do not reuse the track commercially, and check Suno's terms again before any commercial use of a reel. Fonts are Liberation Sans Narrow Bold and Liberation Mono Bold. Confirm the font licence before publishing.
 - The track is embedded, so the file weighs about 3 MB.

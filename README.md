@@ -30,7 +30,7 @@ Ask the skill what it can do, then pick the demo reel or the effects lab.
 Python 3 with numpy and ffmpeg (audio analysis), Node 16+ (tests). Optional: fontTools, brotli, jsdom, a headless browser. `showreel-director/scripts/check_env.py` lists what is missing.
 
 ## Licence notes
-- `showreel-director/demo/` embeds the track "Deep-Space Funk", whose licence is not confirmed: internal use only. Remove it, or replace the track, before making the repository public.
+- `showreel-director/demo/` embeds the track "Deep-Space Funk", generated with Suno. This project is non-commercial and the track is provided for non-commercial use only, under Suno's terms. Do not reuse the track commercially.
 - Demo fonts: Liberation Sans Narrow Bold and Liberation Mono Bold.
 - `evals/` contains synthetic test fixtures (fictional brand "Ploma", placeholder fonts, photo, audio, video; about 8 MB).
-- No code licence chosen yet: add a `LICENSE` file.
+- Code: MIT, see `LICENSE`. The MIT licence covers the code and documentation only, not the Suno-generated demo track (non-commercial, Suno's terms) nor the fonts, which keep their own licences.
