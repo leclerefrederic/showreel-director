@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: capability-question
+expected_outcome: |
+  The skill answers the question about itself without starting the interview. It describes what it can do, how it works and how to work with it, states its limits,
+  and ends by offering the demo reel and the effects lab, asking which one the user wants.

@@ -1,28 +1,28 @@
-# Brief produit — Ploma (marque et produit FICTIFS, pour test de skill)
+# Product brief - Ploma (FICTIONAL brand and product, for skill testing)
 
-**Ploma** est une application mobile de carnet de terrain pour les équipes de chantier et de maintenance.
-Elle remplace les notes papier et les photos éparpillées par un carnet unique, utilisable **hors ligne**, avec dictée vocale transcrite par IA et synchronisation automatique au retour du réseau.
+**Ploma** is a mobile field-notebook app for construction-site and maintenance teams.
+It replaces paper notes and scattered photos with a single notebook that works **offline**, with AI-transcribed voice dictation and automatic sync when the network comes back.
 
-## Problème
-- Les équipes perdent des informations entre le chantier et le bureau (notes papier, photos dans des messageries personnelles).
-- Les remontées arrivent en fin de journée, parfois en fin de semaine.
-- Zones sans réseau : les outils classiques ne fonctionnent plus.
+## Problem
+- Teams lose information between the site and the office (paper notes, photos in personal messaging apps).
+- Reports arrive at the end of the day, sometimes at the end of the week.
+- Zones without network: ordinary tools stop working.
 
 ## Solution
-1. Capturer : note vocale, photo annotée, checklist, en 10 secondes.
-2. Fonctionner sans réseau.
-3. Synchroniser seul dès que le réseau revient.
-4. L'IA transcrit, classe et crée les tâches.
+1. Capture: voice note, annotated photo, checklist, in 10 seconds.
+2. Work without a network.
+3. Sync by itself as soon as the network returns.
+4. AI transcribes, sorts and creates tasks.
 
-## Cible
-Responsables de chantier, chefs d'équipe maintenance, bureaux d'études (PME et ETI, 20 à 500 personnes terrain).
+## Target
+Site managers, maintenance team leads, engineering offices (SMEs and mid-market, 20 to 500 field staff).
 
-## Contexte du showreel
-- Usage : ouverture de la réunion commerciale annuelle (salle, grand écran, son) + envoi par mail aux prospects (ordinateur, souvent sans son, parfois mobile).
-- Durée visée : environ 60 s.
-- Message à retenir : « Le terrain n'attend plus le bureau ».
-- Ton souhaité par le marketing : confiant et un peu pince-sans-rire ; pas de jargon IA.
-- Ce brief ne précise PAS : langues, formats, palette définitive, musique, WOW, contrôles de lecture, hébergement.
+## Showreel context
+- Use: opening of the annual sales meeting (room, big screen, sound) + emailed to prospects (computer, often muted, sometimes mobile).
+- Target duration: about 60 s.
+- Key takeaway: "The field no longer waits for the office".
+- Tone wanted by marketing: confident and a little deadpan; no AI jargon.
+- This brief does NOT specify: languages, formats, final palette, music, WOW moment, playback controls, hosting.
 
-## Offre (à NE PAS afficher telle quelle)
-Tarification et modèle de financement en cours de discussion : « un mois offert, puis par utilisateur actif » est une hypothèse non validée.
+## Offer (do NOT show as is)
+Pricing and funding model are under discussion: "first month free, then per active user" is an unvalidated hypothesis.

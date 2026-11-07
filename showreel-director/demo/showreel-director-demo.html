@@ -285,7 +285,7 @@ html,body{margin:0;height:100%;background:var(--page,#000);font-family:var(--fon
     const W = c.SW, H = c.SH, M = c.mode === 'm';
     const v = Math.round(248 * io3(clamp(bt / 6))), big = M ? 330 : 300, done = bt >= 6;
     const pulse = done ? 1 + Math.pow(1 - c.beat.bf, 3) * .06 : 1;
-    T(g, String(v), W * (M ? .5 : .27), H * (M ? .12 : .2), big, done ? Y : W_, { s: pulse, f: FT });
+    T(g, String(v), W * (M ? .5 : .27), H * (M ? .14 : .2), big, done ? Y : W_, { s: pulse, f: FT });
     T(g, 'EFFECTS.', W * (M ? .5 : .66), H * (M ? .12 : .2) + (M ? 190 : 20), M ? 150 : 150, W_, { s: pulse });
     if (M) { /* portrait: counter left, label right */ }
     if (bt >= 6) T(g, 'SEE THEM. DON’T DESCRIBE THEM.', W / 2, H * (M ? .295 : .35), M ? 36 : 44, G, { f: FM, a: clamp((bt - 6) * 3) });

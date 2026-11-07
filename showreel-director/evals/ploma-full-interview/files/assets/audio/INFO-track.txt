@@ -1,0 +1,5 @@
+Title: Ploma Drive (test track, synthetic, CC0)
+Rights: royalty-free, may be used in a distributed file.
+Tempo: 124 BPM, 4/4. Duration: 61.9 s (32 bars).
+Structure (bars, 1 bar = 1.94 s): 1-4 calm intro / 5-8 build (riser bar 8) / 9 short break / 10-17 DROP A / 18-21 break / 22-29 DROP B / 30-32 outro.
+Strongest moment, meant to coincide with the WOW: start of DROP A (bar 10, ~17.4 s).

@@ -5,6 +5,6 @@ timeout_seconds: 600
 allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]
 ---
 
-Le brief et le storyboard de Ploma sont validés, on peut passer à la suite.
+Ploma's brief and storyboard are approved, let's move on.
 
 Input files: brief.md, storyboard.md

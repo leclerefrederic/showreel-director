@@ -9,7 +9,7 @@ Read only; never modifies files. Treat flags as questions for the user, not verd
 import argparse, json, os, re, subprocess, sys
 
 PII = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+|(?<!\d)(?:\+\d{1,3}[ .-]?)?(?:\d[ .-]?){9,}\d(?!\d)|\b[A-Z]{2}\d{2}[ ]?(?:\d{4}[ ]?){3,}|\b(?:iban|passport|ssn|password|secret|api[_-]?key)\b", re.I)
-NOTE = re.compile(r"(licen[cs]e|consent|droit|copyright|usage)", re.I)
+NOTE = re.compile(r"(licen[cs]e|consent|rights|permission|copyright|usage)", re.I)
 
 def probe(path):
     try:
@@ -27,7 +27,7 @@ def main():
     notes = {}  # dir -> list of (filename, text)
     for r, _, fs in os.walk(a.dir):
         for f in fs:
-            if re.search(r"licen|consent|info|readme|droit", f, re.I) and f.lower().endswith((".txt", ".md")):
+            if re.search(r"licen|consent|info|readme|rights|notice", f, re.I) and f.lower().endswith((".txt", ".md")):
                 notes.setdefault(r, []).append((f, open(os.path.join(r, f), errors="ignore").read()[:600]))
     def note_for(r, fname):
         """Licence text for a file: a note whose name shares a token with the file, else all notes of the folder."""
@@ -45,13 +45,13 @@ def main():
             if sz > 3e6 and ext not in ("mp3", "wav"): flags.append(f"heavy {sz/1e6:.1f} MB")
             if ext in ("txt", "md", "csv", "json", "html") and PII.search(open(p, errors="ignore").read()[:20000]):
                 flags.append("possible personal/secret data: confirm before using, never copy into the brief")
-            if ext in ("png", "jpg", "jpeg") and re.search(r"client|customer|donnees|data|real|reel", f, re.I): flags.append("filename suggests real data")
+            if ext in ("png", "jpg", "jpeg") and re.search(r"client|customer|personal|data|real", f, re.I): flags.append("filename suggests real data")
             note = note_for(r, f)
             if ext in ("ttf", "otf", "woff", "woff2"):
                 if not note: flags.append("font without licence note")
-                elif re.search(r"propri|interdit|forbidden|not allowed|desktop only|poste de travail", note, re.I): flags.append("font licence forbids embedding")
+                elif re.search(r"proprietary|forbidden|not allowed|desktop only|workstation", note, re.I): flags.append("font licence forbids embedding")
             if ext in ("jpg", "jpeg", "png", "mp3", "wav", "mp4") and not note: flags.append("no licence/consent note next to it")
-            if re.search(r"non confirm|not confirmed|unknown|inconnu", note, re.I) and ext in ("jpg", "jpeg", "png", "mp4"): flags.append("rights/consent not confirmed")
+            if re.search(r"not confirmed|unconfirmed|unknown", note, re.I) and ext in ("jpg", "jpeg", "png", "mp4"): flags.append("rights/consent not confirmed")
             rows.append((os.path.relpath(p, a.dir), ext, sz, f"{w}x{h}" if w else "", f"{dur:.1f}s" if dur else "", flags))
     print(f"{'file':52s}{'KB':>8s}  {'px':>10s} {'len':>7s}  flags")
     for n, e, s, px, d, fl in rows: print(f"{n:52s}{s/1024:8.0f}  {px:>10s} {d:>7s}  {'; '.join(fl)}")

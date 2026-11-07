@@ -1,0 +1,46 @@
+# Build guide (Steps 3 to 5)
+
+Detail for building, extra formats and languages, and verification. `SKILL.md` holds the rules that never bend; this file holds the craft. Read it when the user has given the go (end of Step 2b).
+
+## Step 3 — Build
+
+Starts only after the go from Step 2b. Research first (fetch source, extract facts), then write the animation. Build only from the asset manifest: embed what is listed (base64, within the weight budget), draw the rest procedurally, and never pull in an unlisted image, font or sound. If a scene needs an asset the brief lacks, ask for it or flag a placeholder rather than improvising.
+
+**Architecture.** Start from the style-neutral plumbing in `engine/` and `scripts/` (see `references/engine.md`): stage, pure render loop, audio clock, controls, build, tests. It imposes no look. The creative layer, `main.js`, is written fresh from the brief: `render(g, t, ctx)` is a pure function of timeline time, language and format, so seek, pause, loop and mode switches are exact. Each new version is copied from the last into a new `vN/` folder so earlier states stay untouched. Keep the script text in its own block per language (and per format when portrait text differs) so a rewrite of the wording is a one-file swap.
+
+**Emotion drives the craft.** Every choice below serves the intended feeling and the tension shape from the brief: pace, easing, holds, silence, scale contrast, colour temperature, type weight, what is withheld and when it is revealed. Use the "Feelings and tendencies" table in `references/effects-catalogue.md` as a starting point, not a rule. Build tension on purpose (withhold, slow down, shrink, go quiet) and release it on purpose (drop, reveal, scale, laughter), and give the film one memorable moment that carries its soul: a specific detail or image only this brand could own.
+
+**Visual devices (options, use only what the brief picked).** Kinetic type, geometric shapes, UI-led scenes with real screenshots, procedural illustrations, charts and counters, maps, photo-led scenes, or a mix. Techniques that help whichever device is chosen:
+- *Persistent characters:* if recurring figures are wanted, reserve fixed identities (same shape index and colour in every scene) so viewers can follow them from the first scene to the last.
+- *Pool of shapes with layouts:* one way to build abstract scenes is a fixed pool of shapes plus a schedule of layouts `[beat, name, duration]`; each layout returns a target per shape (position, size, colour, glyph, alpha) and a switch interpolates from the previous state with per-layout delay. Hidden shapes get alpha 0 so auto-centring ignores them.
+- *Procedural props:* draw small props (panels, connection lines, icons) in `render` rather than as shapes.
+- *Continuity:* don't change the background between two shots that must feel continuous; dim elements by alpha instead.
+
+**Text.** Implement the effects the user picked from the catalogue (named in `brief.md`); if one is missing from your helpers, add it as a new style rather than substituting silently. Start from `SRK` in `engine/kit.js` (text, letters, slam, scramble, rings, shake, flash, confetti) and add project-specific styles on top. A single text helper should support entrance and exit style and timing, max width with auto-fit, and optional emphasis (pulse, split, stamp, per-letter exit). A shared layout helper places title and subtitle blocks consistently; reuse it everywhere. Align text with the visual it accompanies; keep left edges consistent across scenes.
+
+**Writing the script.** Whatever the voice: the text gives the cue, the image answers, and a short line may punctuate; never display an explanation while the animation already demonstrates it. Build rhythm by contrast (small and precise for small ideas, large for words that earn it). One function per aside. Keep claims conditional when they are proposals. Cut explanatory sentences first when a sequence overflows; move practical information to the accompanying message.
+
+**Readability budget.** Each essential line ≥ ~3 s stable display (a line that carries a gag 2+ s, a long legal line 4+ s), one idea per scene, no repeated sentence, no clipped or overlapping text. Test long words and hero numbers at intended width ("too big" is the commonest complaint). Transitions on downbeats when there is music. For a persistent title, slide up and shrink instead of erasing. Count beats when several labels appear in sequence: three labels plus a pause need about 8 beats before the next switch.
+
+**Motion quality.** Mechanical effects look cheap: add phase offsets, easing, ramp-in, a slight size or rotation response. Avoid two successive animations saying the same thing. Accent key words on the beat. For the finale, order the reveals deliberately and keep any celebration effect to one moment.
+
+**Music.** Run `scripts/analyze_audio.py` (tempo, beats, bars, probable drops, envelopes), then check the bar table by ear: tempo drift, breaks, ending. Place scene starts on real beats (beat indices from the beat map, not seconds: compute `K_(k)` or `barT(b)`). Put the strongest moment on the strongest drop, or on a **return** (the bar where the bass comes back after a breakdown, listed by the analysis) when the track has no loud/quiet jump; tension before, release after. Flashes under 3 per second. The player already embeds the track, uses audio as master clock (minus output latency), fades out the last 0.6 s and falls back to a wall clock without audio.
+
+**Accessibility.** The reel must stay understandable without sound when it will be watched muted, keep text contrast high, avoid flashing above 3 per second, and offer a reduced-motion or plain version when the audience may need it. Record the choices in the brief.
+
+## Step 4 — Extra formats and languages
+
+**Portrait 9:16.** Decide the treatment per scene: a dedicated composition (title top, visual bottom) or a mapping of the desktop layout (translate and scale per layout, auto-centre on visible elements, centre text). Full-canvas layouts and landscape screenshots need a stated treatment (crop, device frame, redraw). Choose the format on the start screen (preselect by orientation) and allow switching live.
+
+**MP4 export.** Only promise it if a way to capture frames and mux the audio exists in the session (headless browser or equivalent plus ffmpeg). Check early and tell the user in round 4; if it is not possible, offer the HTML and instructions for screen capture instead.
+
+**Languages.** Don't translate literally: adapt idioms and humour. The master text is the language chosen in round 0; keep a master→target dictionary applied inside the text helpers, and give split lines (desktop vs portrait) their own entries. Effects tied to specific letters or layouts (word grids, slot rolls) must be language-dependent. Preselect the browser language when it is one of the reel's languages, otherwise the master; localise UI, title, footnotes and legal line. Check that embedded fonts cover every language's glyphs.
+
+## Step 5 — Verify and publish
+
+- `scripts/harness.js`: renders the whole timeline in every format and language with a canvas stub; reports exceptions, non-finite values, text drawn outside the stage, and the strings drawn per scene (to find untranslated text). `scripts/smoke_player.js` checks the player UI. Fix every issue before showing anything.
+- Contact sheets: `scripts/build.py <vN> --qa-step 4` writes a tiled page of frames; open it with the screenshot tool or ask the user to look. Check frames around every scene change and in the second half. Mid-animation frames can look wrong (clipped slams): check the neighbours before fixing.
+- **Release gate before any publication or sharing.** Re-read the release gate in `brief.md`. Publishing (hosted page, shared link) is allowed only for what is not blocked by it (placeholders, unvalidated figures, pending authorisations, confidential data); otherwise keep the file local or private and say why.
+- When publishing as a persistent artifact is appropriate, update it after every change (users judge the artifact, not contact sheets). If screenshots say the artifact isn't open, create one temporary id and reuse it; each creation can prompt the user. Delete temporary QA artifacts at the end.
+- Report in plain terms what was and wasn't verified (audible sync, live playback, real phones, motion between still frames, anything from the storyboard not implemented), and offer to delete temporary QA files.
+- **Delivery summary** at the end: files delivered (name and purpose), state of the release gate (what remains), how to share, what to re-validate, and the next version number.

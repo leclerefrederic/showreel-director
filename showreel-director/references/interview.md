@@ -87,3 +87,11 @@ Check orientation and format against the chosen aspect ratios. Run `scripts/audi
 ## Release gate (must be resolved before the reel leaves our hands): placeholders, unvalidated figures, pending authorisations, legal line
 ## Open items (owner, due date)
 ```
+
+## Consistency review
+
+Before writing the brief. Re-read all answers once and fix contradictions yourself or ask one short question. Check at least: playback (one-shot + replay vs loop), controls list complete (start screen, pause, seek, mute/volume, replay or loop, language and format switches), formats vs assets (a landscape screenshot in a 9:16 reel needs a stated treatment), claims vs sources (every figure on screen has source, date, label; the legal line covers every source and date used), timing (`bar = 4×60/BPM` seconds; use the beat map from `analyze_audio.py`, never count by hand), weight budget vs embedded assets, fonts vs languages (glyph coverage), requested outputs vs what the tools can produce, message and attributes vs choices (feasible counts and text budgets per the feasibility check, a "simple" film with dense screens, a "robust" one with jittery motion), emotion vs choices (a reassuring film with fast cuts and flashes, an impactful one with no contrast moment, a tension peak with no music drop to land on).
+
+## Environment check (detail)
+
+Run `python3 scripts/check_env.py` (add `--json` to parse it) to see which tools the session has: Python with numpy and ffmpeg (audio analysis), Node (automatic tests), optional fontTools, brotli, jsdom and a headless browser. Tell the user in plain words what is missing and what it changes (for example "no Node: I can't run the automatic tests, so verification relies on contact sheets and your eyes"; "no headless browser: no MP4 export"). Never install anything without asking; if the user agrees, use the install hint the script prints. A missing required tool means falling back to the manual method it lists, and saying so in the brief (for example "beat map entered by hand, to be checked by ear"). Use the result to answer honestly in round 4 about MP4 export and about what will be verified.

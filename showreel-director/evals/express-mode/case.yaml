@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: express-mode
+expected_outcome: |
+  Given a detailed brief, the skill still asks round 0 first, then runs one confirmation round that restates what it understood, marks assumptions and asks only the missing decisions.
+  It does not skip the asset audit and does not build before approval.

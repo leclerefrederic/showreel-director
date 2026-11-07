@@ -5,4 +5,4 @@ timeout_seconds: 600
 allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]
 ---
 
-Fais-moi un showreel de 10 secondes avec 30 plans séquences pour présenter notre application mobile, avec environ 100 mots de texte explicatif, en 3 langues.
+Make me a 10-second showreel with 30 one-take scenes to present our mobile app, with about 100 words of explanatory text, in 3 languages.

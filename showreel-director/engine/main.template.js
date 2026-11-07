@@ -6,6 +6,7 @@
    - ctx = {SW, SH, mode, lang, env:{kick,hat,energy}, beat:{i,bf}, scene, lt (time in scene), u (0..1 progress)}.
    - render draws in the virtual stage 0..SW x 0..SH (already letterboxed and clipped). Never read the clock inside.
    - Scenes start on beats/bars: setScenes([{name, bar:10}, {name, k:48}, {name, t:12.5}]).
+   - window.SRK (engine/kit.js) offers neutral helpers: SRK.init({title, mono}); SRK.text, slam, letters, ring, shake, flash, confetti... (see its header).
    - Keep the script text in one block (TXT per language, TXTM for portrait) so a rewrite is a one-file swap. */
 (function () {
   const { setScenes, ease, clamp } = window.SR;

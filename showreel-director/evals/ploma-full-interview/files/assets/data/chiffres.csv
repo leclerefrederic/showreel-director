@@ -1,7 +1,0 @@
-indicateur,valeur,unite,source,date,statut
-Notes par utilisateur et par semaine (moyenne),38,notes,Etude pilote interne,2026-09-30,interne - a revalider
-Temps de remontee terrain->bureau avant Ploma,2.5,jours,Entretiens clients pilotes (n=6),2026-06-15,interne - a revalider
-Temps de remontee terrain->bureau avec Ploma,12,minutes,Mesure pilote,2026-09-30,interne - a revalider
-Equipes pilotes,14,equipes,CRM interne,2026-10-12,interne - confidentiel
-Taux de notes envoyees sans erreur apres coupure reseau,99.2,pourcent,Test interne,2026-08-20,a confirmer
-Annee de fondation,2023,annee,Site web,2026-01-01,public

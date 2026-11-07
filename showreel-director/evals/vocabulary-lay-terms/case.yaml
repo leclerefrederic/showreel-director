@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: vocabulary-lay-terms
+expected_outcome: |
+  The skill understands everyday words without making the user feel corrected. It asks the round 0 language question first, interprets "slides" as scenes, flags the one-take ambiguity once and briefly,
+  and uses precise terms with the user's word in brackets in what it writes.

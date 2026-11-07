@@ -10,10 +10,13 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - 248 previewable effects in an effects lab, with search and "copy my picks".
 - Built-in glossary so people outside video and editing are understood and the right terms land in the brief.
 - Style-neutral engine: no look is imposed, the brief decides.
-- Checks before release: harness (NaN, clipped text), player test, release gate.
+- Checks before release: harness (NaN, clipped or colliding text), player test, release gate.
+- Audio analysis finds tempo, bars, drops, and breakdowns with the bar to hit on when the bass returns.
+- Shared drawing helpers (`engine/kit.js`, style-neutral) so projects do not rewrite text, ring, shake, flash and confetti code.
 
 ## Layout
-- `showreel-director/` the skill: `SKILL.md`, `references/`, `engine/`, `scripts/`, `demo/`, `evals/`
+- `showreel-director/` the skill: `SKILL.md`, `references/`, `engine/`, `scripts/`, `demo/`, `evals/` (7 cases, English)
+- `ROADMAP.md` ideas on hold
 - `showreel-director.skill` packaged skill (zip of the folder, `evals/` excluded)
 - `showreel-director/engine/effects-lab-sample.html` neutral effects lab, open it in a browser
 

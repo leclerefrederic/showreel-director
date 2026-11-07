@@ -2,7 +2,7 @@
 """Analyse a music track for a beat-synced reel (numpy + ffmpeg only).
 
 Usage: python3 analyze_audio.py TRACK [--out DIR] [--bpm-hint N]
-Writes DIR/beats.json (bpm, beats, bars, sections, drops) and DIR/env.json
+Writes DIR/beats.json (bpm, beats, bars, bar energy, drops, breakdowns, returns) and DIR/env.json
 (50 fps kick/hat/energy envelopes, 0-255). Prints a bar table to review with the user.
 Always cross-check the printed bar times by ear/waveform: tempo drift or tempo changes
 need manual correction. Never count beats by hand: use beats.json.
@@ -82,6 +82,31 @@ def main():
     drops = [i for i in range(1, len(be)) if be[i] - be[i - 1] > 0.35 * mx]
     # merge consecutive
     drops = [d for j, d in enumerate(drops) if j == 0 or d - drops[j - 1] > 2]
+    # breakdowns = runs of 4+ beats where the bass nearly disappears; returns = the beat where the bass comes back.
+    # Works on tracks with no loud/quiet jump (where the energy-based drop test above finds nothing).
+    def beat_mean(v, b0, b1):
+        i0, i1 = int((b0 - OFF) * fr), int((b1 - OFF) * fr)
+        return float(np.mean(v[max(0, i0):max(1, i1) + 1])) if b1 < dur and i1 > 0 else 0.0
+    bb = [beat_mean(lowb, beats[k], beats[k + 1]) if k + 1 < len(beats) else 0.0 for k in range(len(beats))]
+    med = float(np.median([v for v in bb if v > 0]) or 1.0)
+    low_flags = [v < 0.4 * med for v in bb[:-1]]
+    breakdowns, returns, k = [], [], 0
+    while k < len(low_flags):
+        if low_flags[k]:
+            j = k
+            while j + 1 < len(low_flags) and low_flags[j + 1]: j += 1
+            if j - k + 1 >= 4:
+                tr = float(beats[j + 1]); bd = {"start": round(float(beats[k]), 3), "end": round(tr, 3), "beats": j - k + 1}
+                if tr >= dur - 2 * spb:
+                    bd["ends_track"] = True  # the bass fades at the end of the track: an outro, not a return
+                else:
+                    nb = next((q for q in range(len(bars)) if bars[q] >= tr - 0.25 * spb), len(bars) - 1)
+                    rt = {"t": round(tr, 3), "beat": j + 1, "next_bar": nb + 1, "next_bar_t": round(float(bars[nb]), 3)}
+                    bd["return"] = rt; returns.append(rt)
+                breakdowns.append(bd)
+            k = j + 1
+        else:
+            k += 1
     # 50 fps envelopes
     t50 = np.arange(0, dur, 1 / 50)
     def at50(v): return np.clip(np.interp((t50 - OFF) * fr, np.arange(len(v)), norm(v)) * 255, 0, 255).astype(int).tolist()
@@ -89,12 +114,20 @@ def main():
     json.dump({"duration": round(dur, 3), "bpm": round(bpm, 2), "first_beat": round(float(beats[0]), 3),
                "beats": [round(float(b), 3) for b in beats], "downbeat_offset": down,
                "bars": [round(float(b), 3) for b in bars], "drops_bar_index": drops,
-               "bar_energy": [round(v, 2) for v in be]}, open(os.path.join(a.out, "beats.json"), "w"))
+               "bar_energy": [round(v, 2) for v in be], "breakdowns": breakdowns, "returns": returns}, open(os.path.join(a.out, "beats.json"), "w"))
     json.dump({"fps": 50, "kick": at50(low), "hat": at50(high), "energy": at50(full)}, open(os.path.join(a.out, "env.json"), "w"))
     print(f"duration {dur:.2f}s  tempo {bpm:.2f} BPM  bar {4*spb:.3f}s  first beat {beats[0]:.3f}s  downbeat offset {down}")
     print("bar  start(s)  energy  note")
     for i, (b, e) in enumerate(zip(bars, be)):
         print(f"{i+1:3d}  {b:8.2f}  {e:6.2f}  {'<- probable drop' if i in drops else ''}")
+    if breakdowns:
+        print("\nbreakdowns (bass out, 4+ beats) and returns (bass back = best place for a hit):")
+        for b in breakdowns:
+            r = b.get("return")
+            if r: print(f"  {b['start']:.2f}s -> {b['end']:.2f}s ({b['beats']} beats)  bass back at {r['t']:.2f}s (beat {r['beat']}); hit on bar {r['next_bar']} at {r['next_bar_t']:.2f}s")
+            else: print(f"  {b['start']:.2f}s -> end of track ({b['beats']} beats)  outro: the bass fades out, no return")
+    else:
+        print("\nno breakdown found (bass never drops out for 4+ beats): choose emphasis moments from the bar energy table or by ear.")
     print("\nCheck by ear: tempo changes, a late first beat or an ending that rings out need manual fixes.")
 
 if __name__ == "__main__":

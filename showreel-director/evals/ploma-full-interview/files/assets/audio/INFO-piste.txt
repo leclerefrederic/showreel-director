@@ -1,5 +1,0 @@
-Titre: Ploma Drive (piste de test, synthetique, CC0)
-Droits: libre de droits, utilisable dans un fichier distribue.
-Tempo: 124 BPM, 4/4. Duree: 61.9 s (32 mesures).
-Structure (mesures, 1 mesure = 1.94 s): 1-4 intro calme / 5-8 montee (riser mesure 8) / 9 break court / 10-17 DROP A / 18-21 break / 22-29 DROP B / 30-32 outro.
-Moment fort a faire coincider avec le WOW: debut du DROP A (mesure 10, ~17.4 s).

@@ -5,6 +5,6 @@ timeout_seconds: 1200
 allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]
 ---
 
-Fais-moi un showreel pour Ploma. Le brief est dans assets/source/brief-ploma.md et les assets sont dans le dossier assets.
+Make me a showreel for Ploma. The brief is in assets/source/brief-ploma.md and the assets are in the assets folder.
 
 Input files: assets

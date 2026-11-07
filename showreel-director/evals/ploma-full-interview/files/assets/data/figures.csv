@@ -1,0 +1,7 @@
+indicator,value,unit,source,date,status
+Notes per user per week (average),38,notes,Internal pilot study,2026-09-30,internal - to revalidate
+Field-to-office reporting time before Ploma,2.5,days,Pilot client interviews (n=6),2026-06-15,internal - to revalidate
+Field-to-office reporting time with Ploma,12,minutes,Pilot measurement,2026-09-30,internal - to revalidate
+Pilot teams,14,teams,Internal CRM,2026-10-12,internal - confidential
+Notes sent without error after a network cut,99.2,percent,Internal test,2026-08-20,to be confirmed
+Founding year,2023,year,Website,2026-01-01,public
