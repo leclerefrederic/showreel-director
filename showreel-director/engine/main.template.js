@@ -19,7 +19,7 @@
     languages: [{ id: 'en', label: 'EN' }],
     formats: { d: [1600, 900] },              // add m: [900, 1600] when 9:16 is in the brief
     formatLabels: { d: 'Desktop 16:9', m: 'Mobile 9:16' },
-    controls: { pause: true, seek: true, mute: true, volume: true, loop: false, replay: true, lang: true, format: true },
+    controls: { pause: true, seek: true, mute: true, volume: true, loop: false, replay: true, lang: true, format: true, notes: false /* true in review builds only: timestamped notes, key N */ },
     ui: { en: { play: 'Play', pause: 'Pause', muted: 'Sound off', sound: 'Sound on', rp: 'Replay', lp: 'Loop', fm: 'Format', lg: 'Language', startSound: 'Start with sound', startSilent: 'Start without sound' } },
     pageColor: '#000',
     setup(state) { /* rebuild layouts/text when language or format changes */ },

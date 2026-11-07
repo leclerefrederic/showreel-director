@@ -11,6 +11,8 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - Built-in glossary so people outside video and editing are understood and the right terms land in the brief.
 - Style-neutral engine: no look is imposed, the brief decides.
 - Visual scene cards (`scripts/build_scene_cards.py`) for the OK / MODIFY / DITCH review.
+- Decision sheets (`scripts/build_decision_sheet.py`): the brief, the style sheet, structure options and the release gate are validated by clicking, never by approving a block of text.
+- Gates between steps, a look test before the full build, and a review build with a timestamped notes pad for feedback.
 - Reduced-motion mode in the player (`ctx.reduced`, from the viewer's setting or a toggle).
 - Works with fewer tools: `references/portability.md` maps each step to a fallback.
 - MP4 export without a browser (`scripts/export_mp4.js`, Node canvas + ffmpeg), about 100 frames per second.

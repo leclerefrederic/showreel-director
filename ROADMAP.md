@@ -7,6 +7,7 @@
 - Reduced-motion mode (`ctx.reduced`, player toggle, harness and export flags).
 - Visual scene cards (`scripts/build_scene_cards.py`).
 - GIF download per effect in the effects lab (`engine/gif.js`).
+- Process hardening: gates table, decision sheets, look test, notes pad, waiver and existing-project routes, untrusted-content rule (second eval run in `evals/RESULTS.md`).
 - Evals run with and without the skill (first round, `evals/RESULTS.md`).
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
 

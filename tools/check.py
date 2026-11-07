@@ -25,12 +25,48 @@ def main():
     # frontmatter
     s = open(os.path.join(SK, "SKILL.md"), encoding="utf-8").read()
     m = re.match(r"---\nname: \"?([\w-]+)\"?\ndescription: \"(.+)\"\n---\n", s, re.S)
-    if m and m.group(1) == package.SKILL and len(m.group(2)) > 100: ok("SKILL.md frontmatter")
-    else: bad("SKILL.md frontmatter (name must be showreel-director, description present)")
+    if m and m.group(1) == package.SKILL and 100 < len(m.group(2)) <= 1024: ok("SKILL.md frontmatter (description %d of 1024 characters)" % len(m.group(2)))
+    else: bad("SKILL.md frontmatter (name must be showreel-director, description present and at most 1024 characters)")
     # files named in SKILL.md
     names = set(re.findall(r"`((?:references|engine|scripts|demo)/[\w./-]+)`", s))
     missing = sorted(n for n in names if not os.path.exists(os.path.join(SK, n)) and "<" not in n and "*" not in n and not n.startswith("demo/"))  # demo/ is optional, outside the package
     ok(f"{len(names)} files named in SKILL.md exist") if not missing else bad("named in SKILL.md but missing: " + ", ".join(missing))
+    # cross-references between SKILL.md, references and scripts
+    refs = os.path.join(SK, "references"); texts = {f: open(os.path.join(refs, f), encoding="utf-8").read() for f in sorted(os.listdir(refs)) if f.endswith(".md")}
+    texts["SKILL.md"] = s; allnamed = set(); broken = []
+    for f, t in texts.items():
+        for n in re.findall(r"`((?:references|engine|scripts)/[\w./-]+)`", t):
+            allnamed.add(n)
+            if "<" in n or "*" in n or n.endswith("/"): continue
+            if not os.path.exists(os.path.join(SK, n)): broken.append(f + " -> " + n)
+    ok("every file named in the references exists") if not broken else bad("broken references: " + "; ".join(broken[:6]))
+    orphan = [f for f in texts if f != "SKILL.md" and "references/" + f not in s]
+    ok("every reference file is linked from SKILL.md") if not orphan else bad("reference not linked from SKILL.md: " + ", ".join(orphan))
+    docs = s + texts.get("engine.md", "")
+    unused = [f for f in sorted(os.listdir(os.path.join(SK, "scripts"))) if f.endswith((".py", ".js")) and "scripts/" + f not in docs]
+    ok("every script is documented in SKILL.md or engine.md") if not unused else bad("script not documented: " + ", ".join(unused))
+    rules = []
+    if "Gates (guardrails)" not in s: rules.append("gates table missing in SKILL.md")
+    for h in ("Step 0", "Step 1", "Step 2", "Step 2b", "Step 3", "Step 4", "Step 5", "Step 6"):
+        if "## " + h + " " not in s: rules.append("heading missing: " + h)
+    if "never skipped" not in s: rules.append("express mode must state what is never skipped")
+    if "replace rounds 1" in texts.get("interview.md", ""): rules.append("interview.md redefines express mode (single definition lives in SKILL.md)")
+    if "Not for PowerPoint" not in s.split("---")[1]: rules.append("description should say it is not for PowerPoint decks")
+    if "Untrusted content" not in s: rules.append("untrusted-content rule missing")
+    if len(s) > 32000: rules.append("SKILL.md over 32 KB: move detail to references")
+    ok("process rules present (gates, steps, express, untrusted content, description)") if not rules else bad("; ".join(rules))
+    # tools self-test: decision sheet builder accepts a good spec and refuses a bad one; scene cards build
+    import tempfile, json as _json
+    td = tempfile.mkdtemp(); good = os.path.join(td, "g.json"); badf = os.path.join(td, "b.json")
+    _json.dump({"title": "T", "items": [{"id": "a", "title": "A", "options": [{"label": "x", "recommended": True}, {"label": "y"}]}]}, open(good, "w"))
+    _json.dump({"title": "T", "items": [{"id": "a", "title": "A", "options": [{"label": "x"}]}]}, open(badf, "w"))
+    r1 = run([sys.executable, os.path.join(SK, "scripts", "build_decision_sheet.py"), good, "--out", os.path.join(td, "o.html")])
+    r2 = run([sys.executable, os.path.join(SK, "scripts", "build_decision_sheet.py"), badf, "--out", os.path.join(td, "o2.html")])
+    ok("decision sheet builder: good spec builds, bad spec refused") if r1.returncode == 0 and r2.returncode != 0 else bad("decision sheet builder self-test failed")
+    sb = os.path.join(SK, "evals", "scene-by-scene-review", "files", "storyboard.md")
+    if os.path.exists(sb):
+        r3 = run([sys.executable, os.path.join(SK, "scripts", "build_scene_cards.py"), sb, "--out", os.path.join(td, "c.html")])
+        ok("scene cards build from the eval storyboard") if r3.returncode == 0 else bad("scene cards failed on the eval storyboard: " + r3.stderr[-200:])
     # syntax
     for f in package.skill_files():
         if f.endswith(".py"):

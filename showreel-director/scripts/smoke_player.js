@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Smoke test of the player UI in jsdom (needs: npm i jsdom in a scratch dir, run with NODE_PATH).
    Usage: NODE_PATH=/path/to/node_modules node smoke_player.js BUILT_HTML
+   Add --release to fail when the review notes pad is still in the build.
    Checks: overlay buttons, start silent, clock advances, pause/seek/replay/lang/format controls, no console errors. */
 const { JSDOM, VirtualConsole } = require('jsdom'); const fs = require('fs');
 const errors = []; const vc = new VirtualConsole(); vc.on('jsdomError', e => errors.push(e.message)); vc.on('error', e => errors.push(String(e)));
@@ -30,6 +31,14 @@ const w = dom.window, $ = id => w.document.getElementById(id); const sleep = ms 
     ok('reduced-motion toggle changes the label', $('rm').textContent !== before);
     ok('ctx.reduced reaches render()', seen === true);
     $('rm').click(); await sleep(120); w.SHOWREEL.render = r0;
+  }
+  if (process.argv.includes('--release')) ok('release build has no notes pad', !$('nt'));
+  if ($('nt')) {
+    $('nt').click(); await sleep(80);
+    ok('notes pad opens and pauses', !!$('pad') && $('pad').style.display !== 'none');
+    $('padtx').value = 'test note'; $('padadd').click();
+    ok('note is recorded with time, scene and format', /\[\d+:\d\d\.\d · .+ · \w+\/\w+\] test note/.test($('padls').textContent));
+    $('padx').click();
   }
   if ($('lg').style.display !== 'none') { $('lg').click(); ok('language switch does not throw', true); }
   if ($('fm').style.display !== 'none') { $('fm').click(); ok('format switch does not throw', true); }

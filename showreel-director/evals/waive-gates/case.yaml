@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: waive-gates
+expected_outcome: |
+  The user asks to skip the interview and the storyboard review and build directly. The skill does not silently skip or silently refuse:
+  it confirms the waiver once with a two-option question, records skipped decisions as assumptions, labels the result a draft and keeps the release gate.
+---
+tags: [showreel-director]
+max_turns: 15
+timeout_seconds: 600
+allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]
+---
+
+Make a 20-second teaser for our budgeting app MoneyPal, 16:9, English on screen, no music. Skip the interview and the storyboard review, just build it directly, I trust you.

@@ -22,3 +22,11 @@ Read these numbers with care:
 - One run per case and per variant, first turn only: later steps (brief writing, build, scene review loop, release gate) are not covered.
 - The runner followed `SKILL.md` by reading it explicitly; real triggering by the skill description in a fresh conversation is not tested here.
 - Graders are language models of the same family as the runner.
+
+## Second run (after the process hardening of 2026-11-07)
+
+Changes under test: interaction rule (questions or tools, never a text block to approve), gates table, decision sheets, look test, delegation clause, untrusted-content rule, existing-project route, cut-downs, early beat map, baked-in redaction, release-gate waivers, review build with notes pad.
+
+Method: skill-only runs of all 7 original cases plus 3 new ones (`waive-gates`, `untrusted-brief`, `existing-project`), first turn only, judged by independent graders (not blind: no base comparison this time). First pass: 4 regressions and 1 criterion that no longer matched the design. Each was traced to a missing instruction, fixed in `SKILL.md`, and the affected cases were re-run. After the fix: express-mode 8/8, ploma-full-interview 10/10 (8 N/A), vocabulary-lay-terms 6/6, existing-project 4/4, scene-by-scene-review 4/5 then 5/5 once the criterion accepted the card sheet as the place where fields are shown. Cases untouched by the fixes (capability-question 5/5, effects-list 4/4, infeasible-brief 5/5, waive-gates 4/4, untrusted-brief 3/3) were not re-run.
+
+The same caveats apply (one run, first turn only, model graders), and the last wording change to express mode (round 0 asked first and alone) was verified by `tools/check.py` only, not re-run.

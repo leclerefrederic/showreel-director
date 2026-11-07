@@ -84,15 +84,18 @@ main{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:
 .top{display:flex;justify-content:space-between;align-items:baseline}.id{font-weight:800;font-size:22px;color:var(--acc)}.tm{color:var(--mute);font-size:13px}
 .txt{font-size:19px;font-weight:700}.l{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
 .row{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}textarea{width:100%;min-height:54px;background:#ffffff0d;color:var(--fg);border:1px solid #ffffff33;border-radius:6px;padding:8px;font:inherit}
-#out{position:fixed;bottom:12px;right:12px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;padding:8px 12px;display:none}
+#tl{display:flex;gap:2px;padding:10px 20px 0;height:34px}#tl div{background:#ffffff22;border-radius:4px;min-width:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;overflow:hidden;color:var(--fg)}
+#tl div.OK{background:var(--acc);color:var(--bg)}#tl div.MODIFY{background:#ffb020;color:#111}#tl div.DITCH{background:#ffffff11;text-decoration:line-through}
+.warn{font-size:12px;color:#ffb020}#out{position:fixed;bottom:12px;right:12px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;padding:8px 12px;display:none}
 </style></head><body><header><h1>__TITLE__</h1><span id="tot"></span><button id="allok">OK for all remaining</button><button class="p" id="copy">Copy decisions</button></header>
-<main id="m"></main><div id="out">Copied. Paste it in the chat.</div>
+<div id="tl"></div><main id="m"></main><div id="out">Copied. Paste it in the chat.</div>
 <script>
 const D=__DATA__,st={},note={};const m=document.getElementById('m');
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function draw(){m.innerHTML='';D.scenes.forEach(s=>{const c=document.createElement('div');c.className='card '+(st[s.id]||'');
 let h='<div class="top"><span class="id">'+esc(s.id)+'</span><span class="tm">'+esc(s.time)+'</span></div>';
 if(s.text)h+='<div class="txt">'+esc(s.text)+'</div>';
+const rd=s.dur&&s.text?s.text.length/s.dur:0;if(rd>17)h+='<div class="warn">Reading: '+rd.toFixed(0)+' characters per second on screen (comfortable is about 15 to 17). Shorten the text or give the scene more time.</div>';
 const L=(k,v)=>v?'<div><span class="l">'+k+'</span><br>'+esc(v)+'</div>':'';
 h+=L('Image and motion',s.image)+L('Feeling and tension',s.feel)+L('Gag / handoff',s.gag)+s.extra.map(e=>L(e[0],e[1])).join('');
 h+='<div class="row">'+['OK','MODIFY','DITCH'].map(k=>'<button data-s="'+s.id+'" data-k="'+k+'" class="'+(st[s.id]===k?'on':'')+'">'+k+'</button>').join('')+'</div>';
@@ -100,10 +103,12 @@ if(st[s.id]==='MODIFY')h+='<textarea data-n="'+s.id+'" placeholder="What should 
 c.innerHTML=h;m.appendChild(c)});
 c=document.querySelectorAll('button[data-k]');c.forEach(b=>b.onclick=()=>{st[b.dataset.s]=st[b.dataset.s]===b.dataset.k?'':b.dataset.k;draw()});
 document.querySelectorAll('textarea').forEach(t=>t.oninput=()=>{note[t.dataset.n]=t.value});
+const tl=document.getElementById('tl');tl.innerHTML='';const tot=D.scenes.reduce((a,s)=>a+(s.dur||1),0);D.scenes.forEach((s,i)=>{const d=document.createElement('div');d.className=st[s.id]||'';d.style.flex=String((s.dur||1)/tot*1000);d.textContent=s.id;d.title=s.id+(s.time?' '+s.time:'');d.onclick=()=>document.querySelectorAll('.card')[i].scrollIntoView({behavior:'smooth',block:'center'});tl.appendChild(d)});
 const n=k=>D.scenes.filter(s=>st[s.id]===k).length,left=D.total-D.scenes.filter(s=>st[s.id]==='DITCH').reduce((a,s)=>a+(s.dur||0),0);
 document.getElementById('tot').textContent=D.scenes.length+' scenes: '+n('OK')+' OK, '+n('MODIFY')+' to modify, '+n('DITCH')+' ditched, '+(D.scenes.length-n('OK')-n('MODIFY')-n('DITCH'))+' undecided'+(D.total?' - '+left.toFixed(1)+' s of '+D.total+' s left':'')}
 document.getElementById('allok').onclick=()=>{D.scenes.forEach(s=>{if(!st[s.id])st[s.id]='OK'});draw()};
-document.getElementById('copy').onclick=()=>{const t='Scene decisions (draft, please confirm in chat):\n'+D.scenes.map(s=>s.id+': '+(st[s.id]||'undecided')+(st[s.id]==='MODIFY'&&note[s.id]?' - '+note[s.id].replace(/\n/g,' '):'')).join('\n');
+document.getElementById('copy').onclick=()=>{const bad=D.scenes.filter(s=>st[s.id]==='MODIFY'&&!(note[s.id]||'').trim());if(bad.length){const o=document.getElementById('out');o.textContent='Say what to change for: '+bad.map(s=>s.id).join(', ');o.style.display='block';setTimeout(()=>{o.style.display='none';o.textContent='Copied. Paste it in the chat.'},3500);return}
+const t='Scene decisions (draft, please confirm in chat):\n'+D.scenes.map(s=>s.id+': '+(st[s.id]||'undecided')+(st[s.id]==='MODIFY'&&note[s.id]?' - '+note[s.id].replace(/\n/g,' '):'')).join('\n');
 (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove()});
 const o=document.getElementById('out');o.style.display='block';setTimeout(()=>o.style.display='none',2500)};
 draw();

@@ -1,6 +1,6 @@
 # Interview question bank
 
-Use as a menu, not a script. **Express mode** (detailed brief supplied, or the user wants speed): replace rounds 1–4 (including 2b) with one confirmation round that restates what you understood, marks assumptions and asks only the missing decisions; round 0 and the round 5 asset audit always run. Otherwise: skip answered items, merge related ones, keep each round to 4 questions max (question tool). Put the recommended option first. Free-text items go in one plain question at the end of the round.
+Use as a menu, not a script. **Depth and express mode** are defined once, in `SKILL.md` (Step 1: full interview / I propose, you correct / express, and the list of gates that are never skipped). Otherwise, in a full interview: skip answered items, merge related ones, keep each round to 4 questions max (question tool). Put the recommended option first. Free-text items go in one plain question at the end of the round.
 
 ## Round 0 — Languages (always first)
 Ask both in one round so the difference is visible.
@@ -57,7 +57,7 @@ Ask per class; for each answer record *provided / to fetch / procedural / not ne
 | Logos | SVG or transparent PNG, light and dark versions, clear-space rule, may it be animated | Placement in intro/outro, colour on dark base |
 | Brand rules | Guidelines PDF, palette, do/don't | Style sheet |
 | Fonts | Files (woff2/ttf/otf) and licence for embedding | Base64 inline; else closest free substitute, said aloud |
-| Product visuals | Screenshots, UI recordings, mockups, diagrams, resolution, any with real customer data | Scenes built on real UI; blur or replace sensitive data |
+| Product visuals | Screenshots, UI recordings, mockups, diagrams, resolution, any with real customer data | Scenes built on real UI; sensitive data is painted over or replaced in the pixels of the copy in `assets/` before embedding (a render-time blur leaves the original inside the file), then check the result |
 | Footage / animation | Video clips, Lottie, GIF | Canvas cannot seek video exactly: prefer frame sequences or stills, keep short and light |
 | Photos / illustrations | People, places, icons, licence and consent | Size budget; no recognisable third-party people without rights |
 | Data & proof | Figures, quotes, customer names, logos of partners, source and date | Claims policy, footnotes |
@@ -79,8 +79,8 @@ Check orientation and format against the chosen aspect ratios. Run `scripts/audi
 ## Story: arc · conversation language · reel languages (master first, default English) · voice/persona · claims allowed / labelled / forbidden · closing
 ## Look & motion: references (take / avoid) · style · palette (hex) · type · devices · energy curve · key moment · effects pack and per-category choices · forbidden effects
 ## Sound, accessibility & delivery: track (title, licence, key moments) · sound design · narration (source, consent) · accessibility choices · formats · controls · exports possible · sharing · deadline
-## Feasibility: duration (and cut-downs) · structure table (section · seconds · scenes · words · feeling/tension) · checks run and decisions taken on anything not feasible
-## Assets manifest
+## Feasibility: duration (and cut-downs, each with its own duration and scene list) · structure table (section · seconds · scenes · words · feeling/tension) · checks run and decisions taken on anything not feasible
+## Assets manifest (the scene column is completed in Step 2b)
 | file | role | scene | status (provided/fetch/procedural) | licence | weight | notes |
 ## Assumptions (things the user delegated)
 ## Decisions log (approved wording, rejected ideas)
@@ -90,7 +90,7 @@ Check orientation and format against the chosen aspect ratios. Run `scripts/audi
 
 ## Consistency review
 
-Before writing the brief. Re-read all answers once and fix contradictions yourself or ask one short question. Check at least: playback (one-shot + replay vs loop), controls list complete (start screen, pause, seek, mute/volume, replay or loop, language and format switches), formats vs assets (a landscape screenshot in a 9:16 reel needs a stated treatment), claims vs sources (every figure on screen has source, date, label; the legal line covers every source and date used), timing (`bar = 4×60/BPM` seconds; use the beat map from `analyze_audio.py`, never count by hand), weight budget vs embedded assets, fonts vs languages (glyph coverage), requested outputs vs what the tools can produce, message and attributes vs choices (feasible counts and text budgets per the feasibility check, a "simple" film with dense screens, a "robust" one with jittery motion), emotion vs choices (a reassuring film with fast cuts and flashes, an impactful one with no contrast moment, a tension peak with no music drop to land on).
+Before writing the brief. Re-read all answers once and fix contradictions yourself or ask one short question. Check at least: **brief completeness** (no section empty: each is answered, confirmed or recorded as an assumption), cut-downs (each with a duration and scene list), playback (one-shot + replay vs loop), controls list complete (start screen, pause, seek, mute/volume, replay or loop, language and format switches), formats vs assets (a landscape screenshot in a 9:16 reel needs a stated treatment), claims vs sources (every figure on screen has source, date, label; the legal line covers every source and date used), timing (`bar = 4×60/BPM` seconds; use the beat map from `analyze_audio.py`, never count by hand), weight budget vs embedded assets, fonts vs languages (glyph coverage), requested outputs vs what the tools can produce, message and attributes vs choices (feasible counts and text budgets per the feasibility check, a "simple" film with dense screens, a "robust" one with jittery motion), emotion vs choices (a reassuring film with fast cuts and flashes, an impactful one with no contrast moment, a tension peak with no music drop to land on).
 
 ## Environment check (detail)
 
