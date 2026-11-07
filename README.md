@@ -12,6 +12,7 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - Style-neutral engine: no look is imposed, the brief decides.
 - Visual scene cards (`scripts/build_scene_cards.py`) for the OK / MODIFY / DITCH review.
 - Decision sheets (`scripts/build_decision_sheet.py`): the brief, the style sheet, structure options and the release gate are validated by clicking, never by approving a block of text.
+- One home for every file: `assets/source` (originals), `assets/prepared` and `assets/generated` (typed names such as `logo-01-ploma-clair.svg`), a `MANIFEST.csv`, and an organiser that holds sensitive or unlicensed files until decided (`scripts/organize_assets.py`, `references/assets.md`).
 - Gates between steps, a look test before the full build, and a review build with a timestamped notes pad for feedback.
 - Reduced-motion mode in the player (`ctx.reduced`, from the viewer's setting or a toggle).
 - Works with fewer tools: `references/portability.md` maps each step to a fallback.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turn storyboard.md into a visual sheet of scene cards for the scene-by-scene review.
 
-Usage: python3 build_scene_cards.py STORYBOARD.md --out qa/scene-cards.html [--title "Reel name"]
+Usage: python3 build_scene_cards.py STORYBOARD.md --out qa/cards-scenes.html [--title "Reel name"]
          [--bg #111 --fg #f4f4f0 --accent #e6ff00 --accent2 #888 --font path/to/font.ttf --family "Name"]
 Reads the first Markdown table of the storyboard (one row per scene). Columns are matched by name: an ID column
 ("#", "ID", "Scene"), a time column ("Time"), a text column ("text"), "image"/"motion", "feeling"/"tension",
@@ -41,7 +41,7 @@ def seconds(s):
     return (float(m.group(2)) - float(m.group(1))) if m else None
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("storyboard"); ap.add_argument("--out", default="scene-cards.html"); ap.add_argument("--title", default="Storyboard")
+    ap = argparse.ArgumentParser(); ap.add_argument("storyboard"); ap.add_argument("--out", default="qa/cards-scenes.html"); ap.add_argument("--title", default="Storyboard")
     ap.add_argument("--bg", default="#111111"); ap.add_argument("--fg", default="#f4f4f0"); ap.add_argument("--accent", default="#e6ff00"); ap.add_argument("--accent2", default="#8a8a84")
     ap.add_argument("--font"); ap.add_argument("--family", default="Reel Font")
     a = ap.parse_args()

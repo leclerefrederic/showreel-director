@@ -32,6 +32,24 @@ def font_css(fonts, root):
         report.append((f["path"], len(data)))
     return "\n".join(css), report
 
+def guard_assets(cfg, root):
+    """Build only from prepared/ or generated/ assets that the manifest lists and the user did not exclude."""
+    import csv
+    paths = [cfg.get("track")] + [f.get("path") for f in cfg.get("fonts", [])]
+    assets = os.path.normpath(os.path.join(root, "..", "assets")); man = os.path.join(assets, "MANIFEST.csv")
+    rows = list(csv.DictReader(open(man, newline="", encoding="utf-8"))) if os.path.exists(man) else []
+    errs = []
+    for p in filter(None, paths):
+        full = os.path.normpath(os.path.join(root, p)); rel = os.path.relpath(full, assets).replace(os.sep, "/")
+        if rel.startswith("source/"): errs.append(f"{p}: points into assets/source (originals are never embedded); use the prepared copy")
+        elif not (rel.startswith("prepared/") or rel.startswith("generated/")): print(f"warning: {p} is outside assets/prepared and assets/generated (run scripts/organize_assets.py)")
+        elif rows:
+            r = next((x for x in rows if x["file"] == rel), None)
+            if not r: print(f"warning: {rel} is not listed in assets/MANIFEST.csv")
+            elif r["status"] in ("excluded", "hold"): errs.append(f"{rel}: status is {r['status']} in the manifest, it must not be embedded")
+            elif r["status"] == "proposed": print(f"warning: {rel} is still 'proposed' in the manifest (not approved yet)")
+    if errs: sys.exit("asset guard:\n  " + "\n  ".join(errs))
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("project"); ap.add_argument("--out")
     ap.add_argument("--qa", help="comma-separated times (s): write a contact-sheet page instead of the player")
@@ -40,6 +58,7 @@ def main():
     ap.add_argument("--qa-langs"); ap.add_argument("--qa-modes")
     a = ap.parse_args(); root = a.project
     cfg = json.load(open(os.path.join(root, "project.json")))
+    guard_assets(cfg, root)
     report = []
     data = {"beats": [], "dur": 60, "env": None, "downbeat_offset": 0}
     track_tag = ""
@@ -70,7 +89,7 @@ def main():
                  ("__CORE__", rd(os.path.join(ENGINE, "core.js")) + "\n" + rd(os.path.join(ENGINE, "kit.js"))), ("__MAIN__", rd(os.path.join(root, cfg["main"]))),
                  ("__PLAYER__", rd(os.path.join(ENGINE, "player.js")))]:
         html = html.replace(k, v)
-    out = a.out or (os.path.join(root, "..", "qa", "sheet.html") if qa else os.path.join(root, "dist", "index.html")); os.makedirs(os.path.dirname(out), exist_ok=True)
+    out = a.out or (os.path.join(root, "..", "qa", "contact-sheet.html") if qa else os.path.join(root, "dist", "index.html")); os.makedirs(os.path.dirname(out), exist_ok=True)
     open(out, "w", encoding="utf-8").write(html)
     total = len(html.encode()) / 1e6
     print("Weight report:")

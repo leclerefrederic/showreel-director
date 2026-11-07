@@ -3,7 +3,7 @@
    Every frame is a pure function of time, so frames are drawn one by one with a Node canvas and piped to ffmpeg;
    the embedded track is muxed as AAC with the same 0.6 s fade-out the player applies.
 
-   Usage: NODE_PATH=<dir with node_modules/@napi-rs/canvas> node export_mp4.js BUILT_HTML --out reel.mp4
+   Usage: NODE_PATH=<dir with node_modules/@napi-rs/canvas> node export_mp4.js BUILT_HTML [--out FILE]   (default FILE: <slug>_<vN>_<mode>_<lang>.mp4 next to BUILT_HTML)
             [--mode d] [--lang en] [--fps 30] [--start 0] [--end SECONDS] [--crf 18] [--scale 1] [--no-audio] [--reduced]
    Setup (once, in a scratch folder): npm install @napi-rs/canvas      Needs ffmpeg (libx264, aac) on the PATH.
    --start/--end export a segment (handy to test a scene: --start 78 --end 82).
@@ -13,7 +13,7 @@
 const fs = require('fs'), os = require('os'), path = require('path'), vm = require('vm'), { spawn, spawnSync } = require('child_process');
 const args = process.argv.slice(2), file = args[0];
 const opt = (n, d) => { const i = args.indexOf(n); return i > -1 ? args[i + 1] : d; };
-if (!file || file.startsWith('--')) { console.error('usage: export_mp4.js BUILT_HTML --out reel.mp4 [--mode d] [--lang en] [--fps 30] [--start 0] [--end S] [--crf 18] [--scale 1] [--no-audio] [--reduced]'); process.exit(2); }
+if (!file || file.startsWith('--')) { console.error('usage: export_mp4.js BUILT_HTML [--out FILE] [--mode d] [--lang en] [--fps 30] [--start 0] [--end S] [--crf 18] [--scale 1] [--no-audio] [--reduced]'); process.exit(2); }
 let canvasLib;
 try { canvasLib = require('@napi-rs/canvas'); } catch (e) { console.error('Missing @napi-rs/canvas. In a scratch folder run: npm install @napi-rs/canvas, then set NODE_PATH to its node_modules.'); process.exit(2); }
 const { createCanvas, GlobalFonts } = canvasLib;
@@ -31,7 +31,11 @@ const S = sandbox.SHOWREEL, SR = sandbox.SR, DUR = SR.data.dur;
 const mode = opt('--mode', Object.keys(S.formats)[0]), lang = opt('--lang', S.languages[0].id);
 if (!S.formats[mode]) { console.error('unknown mode ' + mode + '; available: ' + Object.keys(S.formats)); process.exit(2); }
 const fps = parseFloat(opt('--fps', '30')), start = parseFloat(opt('--start', '0')), end = Math.min(DUR, parseFloat(opt('--end', String(DUR))));
-const crf = opt('--crf', '18'), scale = parseFloat(opt('--scale', '1')), out = opt('--out', 'reel.mp4');
+const crf = opt('--crf', '18'), scale = parseFloat(opt('--scale', '1'));
+// default name: <slug>_<vN>_<mode>_<lang>.mp4 next to the built page (slug from the reel title, vN from the version folder)
+const slug = String(((S.title && (S.title[lang] || S.title.en)) || 'reel')).normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'reel';
+const ver = (path.resolve(file).split(path.sep).slice(-3, -2)[0] || 'v1');
+const out = opt('--out', path.join(path.dirname(path.resolve(file)), `${slug}_${ver}_${mode}_${lang}.mp4`));
 const [SW, SH] = S.formats[mode], W = Math.round(SW * scale / 2) * 2, H = Math.round(SH * scale / 2) * 2;
 const frames = Math.round((end - start) * fps);
 

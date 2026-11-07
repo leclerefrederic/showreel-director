@@ -57,7 +57,7 @@ def main():
     browsers = [b for b in ("chromium", "chromium-browser", "google-chrome", "chrome") if shutil.which(b)]
     pw = have_py("playwright")
     add("headless browser", browsers or pw, False, "taking screenshots of contact sheets",
-        "use the artifact screenshot tool if the session has one, or ask the user to open qa/sheet.html", "install Chromium or `pip install playwright`", ", ".join(browsers) + (" playwright" if pw else ""))
+        "use the artifact screenshot tool if the session has one, or ask the user to open qa/contact-sheet.html", "install Chromium or `pip install playwright`", ", ".join(browsers) + (" playwright" if pw else ""))
     if "--json" in sys.argv:
         print(json.dumps(res, indent=2)); sys.exit(1 if any(r["required"] and not r["ok"] for r in res) else 0)
     for r in res:

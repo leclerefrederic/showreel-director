@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build a self-contained effects lab page: every effect of the catalogue animated, in the user's palette and font.
 
-Usage: python3 build_effects_lab.py --out PROJECT/qa/effects-lab.html
+Usage: python3 build_effects_lab.py --out PROJECT/qa/lab-effects.html
          [--bg #151515 --fg #f2f2f2 --accent #ffd166 --accent2 #6c8cff] [--font path/to/font.ttf --family "Brand Sans"]
 Neutral palette by default. Present the file to the user, who clicks the hearts on the effects they like and pastes
 "Copy my picks" back in the chat; each card also has a GIF button that saves that effect as a looping GIF. Effects are drawn with plain canvas code: they show the idea, not your final render.

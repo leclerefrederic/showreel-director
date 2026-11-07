@@ -1,10 +1,10 @@
 {
   "title": "Showreel",
   "main": "main.js",
-  "track": "../assets/audio/track.mp3",
+  "track": "../assets/prepared/audio-01-track.mp3",
   "analysis_dir": "../analysis",
   "fonts": [
-    {"family": "Example Sans", "weight": 700, "path": "../assets/fonts/Example-Bold.ttf"}
+    {"family": "Example Sans", "weight": 700, "path": "../assets/prepared/font-01-example-bold.ttf"}
   ],
   "tokens": {
     "--page": "#000000", "--bar-bg": "#111111", "--bar-fg": "#eeeeee",

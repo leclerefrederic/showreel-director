@@ -2,7 +2,7 @@
 """Build a one-file HTML decision sheet from a JSON spec: the user picks an option per item instead of reading a text
 block and answering "OK?". Used for the brief review, the style sheet, structure options, cut-downs and the release gate.
 
-Usage: python3 build_decision_sheet.py SPEC.json --out qa/brief-review.html
+Usage: python3 build_decision_sheet.py SPEC.json --out qa/decision-brief.html
          [--bg #111 --fg #f4f4f0 --accent #e6ff00 --accent2 #888 --font path/to/font.ttf --family "Name"]
 
 Spec (JSON):
@@ -48,7 +48,7 @@ def check(spec):
     return errs
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("spec"); ap.add_argument("--out", default="decision-sheet.html")
+    ap = argparse.ArgumentParser(); ap.add_argument("spec"); ap.add_argument("--out", default="qa/decision-sheet.html")
     ap.add_argument("--bg", default="#111111"); ap.add_argument("--fg", default="#f4f4f0"); ap.add_argument("--accent", default="#e6ff00"); ap.add_argument("--accent2", default="#8a8a84")
     ap.add_argument("--font"); ap.add_argument("--family", default="Reel Font")
     a = ap.parse_args()

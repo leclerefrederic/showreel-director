@@ -63,6 +63,15 @@ def main():
     r1 = run([sys.executable, os.path.join(SK, "scripts", "build_decision_sheet.py"), good, "--out", os.path.join(td, "o.html")])
     r2 = run([sys.executable, os.path.join(SK, "scripts", "build_decision_sheet.py"), badf, "--out", os.path.join(td, "o2.html")])
     ok("decision sheet builder: good spec builds, bad spec refused") if r1.returncode == 0 and r2.returncode != 0 else bad("decision sheet builder self-test failed")
+    # organiser self-test on the eval assets: plan, apply, held files, check
+    import shutil as _sh
+    pj = os.path.join(td, "proj"); fx = os.path.join(SK, "evals", "ploma-full-interview", "files", "assets")
+    if os.path.isdir(fx):
+        _sh.copytree(fx, os.path.join(pj, "assets")); org = [sys.executable, os.path.join(SK, "scripts", "organize_assets.py"), pj]
+        r1 = run(org + ["--apply"]); r2 = run(org + ["--check"]); man = open(os.path.join(pj, "assets", "MANIFEST.csv")).read()
+        held = man.count(",hold,"); r3 = run(org + ["--set", "shot-04=approved"])
+        good = r1.returncode == 0 and r2.returncode == 0 and held >= 3 and r3.returncode != 0 and not os.path.exists(os.path.join(pj, "assets", "prepared", "shot-04-screen-customers.png"))
+        ok("asset organiser: typed names, held files stay held, check passes") if good else bad("asset organiser self-test failed: " + (r1.stdout + r1.stderr + r2.stdout)[-300:])
     sb = os.path.join(SK, "evals", "scene-by-scene-review", "files", "storyboard.md")
     if os.path.exists(sb):
         r3 = run([sys.executable, os.path.join(SK, "scripts", "build_scene_cards.py"), sb, "--out", os.path.join(td, "c.html")])
