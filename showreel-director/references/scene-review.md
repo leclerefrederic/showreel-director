@@ -19,7 +19,10 @@ Keep it short and scannable, in the conversation language:
 - **Neighbours:** one line on what comes before and after.
 A picture helps: when the session can render, add a still of the scene's key frame (see `engine.md`, contact sheets); otherwise describe the frame in one sentence.
 
-## The decision (question tool, one scene per question)
+## Optional visual sheet
+`python3 scripts/build_scene_cards.py storyboard.md --out qa/scene-cards.html --title "<reel name>" --bg <hex> --fg <hex> --accent <hex> [--font <file> --family "<name>"]` turns the storyboard table into one card per scene (ID, time, text, image and motion, feeling and tension, gag or handoff, any other column) with OK / MODIFY / DITCH buttons, a note field for MODIFY, "OK for all remaining", running totals and a "Copy decisions" button. Present it before the review so the user can look at the whole film at once and paste back a first pass. Treat the pasted list as a draft: still confirm every MODIFY and DITCH in the conversation, scene by scene, as below. Pass the brand colours; the sheet imposes no look.
+
+## The decision (one scene per question)
 Options, in this order: **OK** (lock it), **MODIFY** (say what to change), **DITCH** (remove it), **OK for this scene and all the remaining ones** (to avoid fatigue on long films). The built-in free-text answer covers anything else (move, merge, split, add a scene, change the duration, "come back to this one later").
 - **MODIFY:** ask what to change in one follow-up with quick suggestions (text, image or motion, duration, effect, feeling, asset), apply it, show the updated card, and ask again. Repeat until the user says OK or DITCH. Never move to the next scene while a scene is unresolved, unless the user asks to postpone it (then mark it OPEN and return to it before the global pass).
 - **DITCH:** show the consequence before confirming: the gap in time and tension, and propose how to close it (stretch a neighbour, add a breath of silence, merge with a neighbour, replace with a lighter scene). Re-snap the timeline to bars.

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Headless test: renders the whole timeline in every format and language with a Proxy canvas stub.
-   Usage: node harness.js BUILT_HTML [--step 0.25] [--modes d,m] [--langs en,fr]
+   Usage: node harness.js BUILT_HTML [--step 0.25] [--modes d,m] [--langs en,fr] [--reduced]
+   --reduced renders with ctx.reduced = true (reduced-motion mode) to check that path too.
    Reports: exceptions, non-finite values in drawing calls, text drawn outside the stage (tracks translate/scale/save/restore,
    skips rotated text), text collisions (two texts overlapping for 3+ consecutive samples; widths are estimated, so treat as leads),
    strings drawn per scene (spot untranslated text), near-empty frames.
@@ -71,7 +72,7 @@ for (const mode of modes) for (const lang of langs) {
   for (let t = 0; t <= DUR; t += step) {
     const sc = SR.sceneAt(t); cur = `${sc ? sc.scene.name : '-'}|${lang}/${mode} t=${t.toFixed(2)}`;
     const before = g.__ops;
-    try { SR.drawFrame(g, W, H, t, { mode, lang }); } catch (e) { issues.push(`${cur}: EXCEPTION ${e.message}`); }
+    try { SR.drawFrame(g, W, H, t, { mode, lang, reduced: args.includes('--reduced') }); } catch (e) { issues.push(`${cur}: EXCEPTION ${e.message}`); }
     frames++; if (g.__ops - before < 4) empty++;
     const T = g.__texts, hit = new Set();
     for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) {

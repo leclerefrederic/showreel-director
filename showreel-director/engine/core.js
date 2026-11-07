@@ -73,7 +73,7 @@
     g.fillStyle = S.pageColor || '#000'; g.fillRect(0, 0, W, H);
     stage(g, W, H, SW, SH);
     const s = sceneAt(t);
-    S.render(g, t, { SW, SH, mode: state.mode, lang: state.lang, env: envAt(t), beat: beatInfo(t), scene: s && s.scene, lt: s ? s.lt : t, u: s ? s.u : 0 });
+    S.render(g, t, { SW, SH, mode: state.mode, lang: state.lang, env: envAt(t), beat: beatInfo(t), scene: s && s.scene, lt: s ? s.lt : t, u: s ? s.u : 0, reduced: !!state.reduced });
     g.restore();
   }
   G.SR = { clamp, lerp, ease, K_, barT, beatInfo, envAt, setScenes, sceneAt, drawFrame, stage, data: D };

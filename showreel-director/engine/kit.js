@@ -11,8 +11,10 @@
    SRK.ring(g, x, y, p, maxR, color, lineWidth)            expanding ring, p 0..1
    SRK.rect(g, x, y, w, h, color, alpha)  SRK.stroke(g, x, y, w, h, color, lineWidth, alpha)
    SRK.tick(g, x, y, size, p, color, lineWidth)            check mark drawn progressively
-   SRK.shake(list, bt) -> [dx, dy]                         list of [beat, amplitude] hits; apply with g.translate
-   SRK.flash(list, bt) -> alpha 0..1                       list of [beat, strength]; draw a full-frame rect with it
+   SRK.shake(list, bt, reduced) -> [dx, dy]                list of [beat, amplitude] hits; apply with g.translate; [0, 0] when reduced
+   SRK.flash(list, bt, reduced) -> alpha 0..1              list of [beat, strength]; draw a full-frame rect with it; 0 when reduced
+   Reduced motion: pass ctx.reduced (set by the player from prefers-reduced-motion or its toggle) to shake and flash, give slam o.reduced so it
+   fades in without the oversize scale, and skip or soften other strong motion (strobing, big scale jumps, particles) in your own scenes.
    SRK.scramble(str, p, seed, glyphs)                      text resolving from random glyphs, p 0..1
    SRK.confetti(g, W, H, seconds, palette, o)              two corner cannons, then a rain; palette = array of colours;
                                                            o: {count, life, wave2At, cannons: false to skip, mobile}
@@ -52,7 +54,7 @@
 
   function slam(g, s, x, y, size, col, bt, b, o = {}) {
     if (bt < b) return; const p = prog(bt, b, o.len || .45);
-    text(g, s, x, y, size, col, Object.assign({ s: lerp(o.from || 2.6, 1, ex(p)), a: clamp(p * 6) }, o.o || {}));
+    text(g, s, x, y, size, col, Object.assign({ s: o.reduced ? 1 : lerp(o.from || 2.6, 1, ex(p)), a: clamp(p * (o.reduced ? 3 : 6)) }, o.o || {}));
   }
 
   function ring(g, x, y, p, maxR, col, lw) {
@@ -72,13 +74,15 @@
     g.stroke(); g.restore();
   }
 
-  function shake(list, bt) {
+  function shake(list, bt, reduced) {
+    if (reduced) return [0, 0];
     let dx = 0, dy = 0; (list || []).forEach(([b, a]) => {
       const d = bt - b; if (d < 0 || d > 2) return; const k = Math.exp(-d * 5) * a, q = Math.floor(d * 40);
       dx += (hash(q, b) - .5) * 2 * k; dy += (hash(q, b + 9) - .5) * 2 * k;
     }); return [dx, dy];
   }
-  function flash(list, bt) {
+  function flash(list, bt, reduced) {
+    if (reduced) return 0;
     let m = 0; (list || []).forEach(([b, a]) => { const d = bt - b; if (d >= 0 && d < .5) m = Math.max(m, a * (1 - d / .5)); }); return m;
   }
 

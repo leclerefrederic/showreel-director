@@ -26,7 +26,7 @@ Starts only after the go from Step 2b. Research first (fetch source, extract fac
 
 **Music.** Run `scripts/analyze_audio.py` (tempo, beats, bars, probable drops, envelopes), then check the bar table by ear: tempo drift, breaks, ending. Place scene starts on real beats (beat indices from the beat map, not seconds: compute `K_(k)` or `barT(b)`). Put the strongest moment on the strongest drop, or on a **return** (the bar where the bass comes back after a breakdown, listed by the analysis) when the track has no loud/quiet jump; tension before, release after. Flashes under 3 per second. The player already embeds the track, uses audio as master clock (minus output latency), fades out the last 0.6 s and falls back to a wall clock without audio.
 
-**Accessibility.** The reel must stay understandable without sound when it will be watched muted, keep text contrast high, avoid flashing above 3 per second, and offer a reduced-motion or plain version when the audience may need it. Record the choices in the brief.
+**Accessibility.** The reel must stay understandable without sound when it will be watched muted, keep text contrast high, avoid flashing above 3 per second, and support reduced motion: the player sets `ctx.reduced` from the viewer's `prefers-reduced-motion` setting or its toggle (shown by default; hide it with `controls.reduced: false`). When `ctx.reduced` is true, drop screen shake and flashes (`SRK.shake`/`SRK.flash` do this when passed `ctx.reduced`), replace big scale-ins by fades (`SRK.slam` with `o.reduced`) and soften strobing or particles. Check that path with `node scripts/harness.js <html> --reduced`, and export a reduced version with `export_mp4.js --reduced`. Record the choices in the brief.
 
 ## Step 4 — Extra formats and languages
 

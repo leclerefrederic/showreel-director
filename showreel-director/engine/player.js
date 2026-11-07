@@ -4,13 +4,14 @@
 (function () {
   'use strict';
   const S = window.SHOWREEL, SR = window.SR, DUR = SR.data.dur;
-  const C = Object.assign({ pause: true, seek: true, mute: true, volume: true, loop: false, replay: true, lang: true, format: true, fullscreen: false }, S.controls || {});
+  const C = Object.assign({ pause: true, seek: true, mute: true, volume: true, loop: false, replay: true, lang: true, format: true, fullscreen: false, reduced: true }, S.controls || {});
   const $ = id => document.getElementById(id);
-  const state = { lang: S.languages[0].id, mode: Object.keys(S.formats)[0] };
+  const state = { lang: S.languages[0].id, mode: Object.keys(S.formats)[0], reduced: !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) };
   const nav = (navigator.language || 'en').slice(0, 2);
   if (S.languages.some(l => l.id === nav)) state.lang = nav;
   if (S.formats.m && matchMedia('(orientation:portrait)').matches) state.mode = 'm';
-  const UI = k => ((S.ui || {})[state.lang] || (S.ui || {}).en || {})[k] || k;
+  const UI_DEFAULT = { reduced: 'Reduced motion', reducedOn: 'Reduced motion: on' };
+  const UI = k => ((S.ui || {})[state.lang] || (S.ui || {}).en || {})[k] || UI_DEFAULT[k] || k;
   const cv = $('cv'), g = cv.getContext('2d');
   let playing = false, pos = 0, ac = null, buf = null, src = null, gain = null, silent = true, muted = false, vol = .9, loop = !!C.loop, t0 = 0, startedAt = 0, ended = false;
   const hasTrack = !!$('trackdata') && $('trackdata').textContent.trim().length > 100;
@@ -22,6 +23,7 @@
     ['pp', 'mu', 'lp', 'fm', 'lg', 'rp'].forEach(id => { const e = $(id); if (e) e.textContent = UI(id); });
     $('pp').textContent = playing ? UI('pause') : UI('play');
     $('mu').textContent = muted ? UI('muted') : UI('sound');
+    if ($('rm')) { $('rm').textContent = state.reduced ? UI('reducedOn') : UI('reduced'); $('rm').classList.toggle('off', !state.reduced); }
   }
   function fit() {
     const dpr = Math.min(2, devicePixelRatio || 1), r = cv.getBoundingClientRect();
@@ -78,13 +80,14 @@
   const refreshOv = () => {
     addBtns($('ovl'), S.languages.length > 1 ? S.languages : [], state.lang, id => { state.lang = id; applyState(); $('ovt').textContent = (S.title[id] || S.title.en); refreshOv(); });
     addBtns($('ovf'), Object.keys(S.formats).length > 1 ? Object.keys(S.formats).map(k => ({ id: k, label: S.formatLabels ? S.formatLabels[k] : k })) : [], state.mode, id => { state.mode = id; applyState(); refreshOv(); });
+    addBtns($('ovr'), C.reduced ? [{ id: 'r', label: state.reduced ? UI('reducedOn') : UI('reduced') }] : [], state.reduced ? 'r' : '', () => { state.reduced = !state.reduced; applyState(); refreshOv(); });
     $('ov1').textContent = UI('startSound'); $('ov2').textContent = UI('startSilent');
     $('ovsm').textContent = (S.footnote && (S.footnote[state.lang] || S.footnote.en)) || '';
   };
   $('ov1').onclick = () => boot(true); $('ov2').onclick = () => boot(false);
   if (!hasTrack) $('ov1').style.display = 'none';
   const hide = (id, on) => { const e = $(id); if (e && !on) e.style.display = 'none'; };
-  hide('pp', C.pause); hide('seek', C.seek); hide('mu', C.mute && hasTrack); hide('vl', C.volume && hasTrack); hide('lp', C.loop); hide('fm', C.format && Object.keys(S.formats).length > 1); hide('lg', C.lang && S.languages.length > 1); hide('fs', C.fullscreen);
+  hide('pp', C.pause); hide('seek', C.seek); hide('mu', C.mute && hasTrack); hide('vl', C.volume && hasTrack); hide('lp', C.loop); hide('fm', C.format && Object.keys(S.formats).length > 1); hide('lg', C.lang && S.languages.length > 1); hide('fs', C.fullscreen); hide('rm', C.reduced);
   $('rp').style.display = 'none'; $('rp').onclick = () => play(0);
   $('pp').onclick = () => { if (ended) play(0); else playing ? pause() : play(pos); };
   $('seek').max = Math.round(DUR * 10);
@@ -94,6 +97,7 @@
   $('lp').onclick = () => { loop = !loop; $('lp').classList.toggle('off', !loop); };
   $('fm').onclick = () => { const ks = Object.keys(S.formats); state.mode = ks[(ks.indexOf(state.mode) + 1) % ks.length]; applyState(); };
   $('lg').onclick = () => { const ids = S.languages.map(l => l.id); state.lang = ids[(ids.indexOf(state.lang) + 1) % ids.length]; applyState(); };
+  $('rm').onclick = () => { state.reduced = !state.reduced; applyState(); refreshOv(); };
   if ($('fs')) $('fs').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
   addEventListener('keydown', e => {
     if ($('ov').style.display !== 'none') return; // overlay first: the viewer must choose sound or silence

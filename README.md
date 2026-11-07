@@ -10,6 +10,9 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - 248 previewable effects in an effects lab, with search and "copy my picks".
 - Built-in glossary so people outside video and editing are understood and the right terms land in the brief.
 - Style-neutral engine: no look is imposed, the brief decides.
+- Visual scene cards (`scripts/build_scene_cards.py`) for the OK / MODIFY / DITCH review.
+- Reduced-motion mode in the player (`ctx.reduced`, from the viewer's setting or a toggle).
+- Works with fewer tools: `references/portability.md` maps each step to a fallback.
 - MP4 export without a browser (`scripts/export_mp4.js`, Node canvas + ffmpeg), about 100 frames per second.
 - Checks before release: harness (NaN, clipped or colliding text), player test, release gate.
 - Audio analysis finds tempo, bars, drops, and breakdowns with the bar to hit on when the bass returns.

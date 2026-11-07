@@ -4,7 +4,7 @@
    the embedded track is muxed as AAC with the same 0.6 s fade-out the player applies.
 
    Usage: NODE_PATH=<dir with node_modules/@napi-rs/canvas> node export_mp4.js BUILT_HTML --out reel.mp4
-            [--mode d] [--lang en] [--fps 30] [--start 0] [--end SECONDS] [--crf 18] [--scale 1] [--no-audio]
+            [--mode d] [--lang en] [--fps 30] [--start 0] [--end SECONDS] [--crf 18] [--scale 1] [--no-audio] [--reduced]
    Setup (once, in a scratch folder): npm install @napi-rs/canvas      Needs ffmpeg (libx264, aac) on the PATH.
    --start/--end export a segment (handy to test a scene: --start 78 --end 82).
    Output size = the stage size of the chosen mode times --scale (even numbers are enforced for H.264).
@@ -13,7 +13,7 @@
 const fs = require('fs'), os = require('os'), path = require('path'), vm = require('vm'), { spawn, spawnSync } = require('child_process');
 const args = process.argv.slice(2), file = args[0];
 const opt = (n, d) => { const i = args.indexOf(n); return i > -1 ? args[i + 1] : d; };
-if (!file || file.startsWith('--')) { console.error('usage: export_mp4.js BUILT_HTML --out reel.mp4 [--mode d] [--lang en] [--fps 30] [--start 0] [--end S] [--crf 18] [--scale 1] [--no-audio]'); process.exit(2); }
+if (!file || file.startsWith('--')) { console.error('usage: export_mp4.js BUILT_HTML --out reel.mp4 [--mode d] [--lang en] [--fps 30] [--start 0] [--end S] [--crf 18] [--scale 1] [--no-audio] [--reduced]'); process.exit(2); }
 let canvasLib;
 try { canvasLib = require('@napi-rs/canvas'); } catch (e) { console.error('Missing @napi-rs/canvas. In a scratch folder run: npm install @napi-rs/canvas, then set NODE_PATH to its node_modules.'); process.exit(2); }
 const { createCanvas, GlobalFonts } = canvasLib;
@@ -63,7 +63,7 @@ const done = new Promise(r => proc.on('close', r));
   console.log(`exporting ${frames} frames, ${W}x${H} @ ${fps} fps, mode ${mode}, lang ${lang}, ${start}s to ${end}s, ${fonts} font(s) registered, audio ${audioFile ? 'yes' : 'no'}`);
   for (let i = 0; i < frames; i++) {
     const t = start + i / fps;
-    SR.drawFrame(g, W, H, t, { mode, lang });
+    SR.drawFrame(g, W, H, t, { mode, lang, reduced: args.includes('--reduced') });
     const buf = Buffer.from(cv.data());
     if (procErr) break;
     if (!proc.stdin.write(buf)) await new Promise(r => proc.stdin.once('drain', r));

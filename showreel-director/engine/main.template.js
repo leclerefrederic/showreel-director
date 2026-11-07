@@ -3,7 +3,8 @@
 
    Contract:
    - window.SHOWREEL declares title/languages/formats/controls/ui/footnote and a pure render(g, t, ctx).
-   - ctx = {SW, SH, mode, lang, env:{kick,hat,energy}, beat:{i,bf}, scene, lt (time in scene), u (0..1 progress)}.
+   - ctx = {SW, SH, mode, lang, reduced, env:{kick,hat,energy}, beat:{i,bf}, scene, lt (time in scene), u (0..1 progress)}.
+     ctx.reduced is true when the viewer asked for reduced motion: drop screen shake and flashes, soften big scale jumps and strobing.
    - render draws in the virtual stage 0..SW x 0..SH (already letterboxed and clipped). Never read the clock inside.
    - Scenes start on beats/bars: setScenes([{name, bar:10}, {name, k:48}, {name, t:12.5}]).
    - window.SRK (engine/kit.js) offers neutral helpers: SRK.init({title, mono}); SRK.text, slam, letters, ring, shake, flash, confetti... (see its header).

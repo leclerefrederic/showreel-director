@@ -1,16 +1,13 @@
 # Roadmap
 
-Ideas on hold. Nothing here is started.
-
 ## Done
 - Packaging and repo checks: `tools/package.py`, `tools/check.py`, GitHub Action `.github/workflows/check.yml`.
 - MP4 export without a browser: `showreel-director/scripts/export_mp4.js`.
+- Portability fallbacks (`references/portability.md`).
+- Reduced-motion mode (`ctx.reduced`, player toggle, harness and export flags).
+- Visual scene cards (`scripts/build_scene_cards.py`).
 
-## Next candidates
-- MP4: hardware-accelerated encoding options, a `--lang` loop to export every language and format in one run, a frame-compare tool against the browser.
-- Portability: a fallback section for environments without the Cowork tools (Claude Code, other agent platforms): folder request, presenting files, artifacts.
-- Reduced motion: a player option and a `ctx.reduced` flag that switches off shake and flashes.
-- Visual scene cards: an HTML sheet of storyboard cards for the OK / MODIFY / DITCH review.
-- GIF download per effect in the effects lab.
-- Demo reel outside the package: publish it as a release asset to keep the `.skill` light.
-- Run the evals with and without the skill and track the results in the repo.
+## On hold
+- **GIF download per effect in the effects lab.** A button that records an effect's canvas animation and saves it as a GIF, so effects can be shared or pasted in a brief. Needs a small GIF encoder inlined in the lab (a few KB) and makes the lab heavier; nothing in the skill depends on it.
+- **Demo reel outside the package.** Publish the demo as a GitHub release asset instead of inside the `.skill`. The skill would no longer carry the demo or its Suno track, so it drops from about 2.4 MB to under 0.2 MB, but the "launch the demo" offer would then need a download link or must be removed.
+- **Evals with and without the skill.** Run the 7 cases in `showreel-director/evals/` twice (skill on, skill off) and keep the scores in the repo. It shows whether the skill changes behaviour and whether a change makes it worse; it costs sub-agent time and tokens.

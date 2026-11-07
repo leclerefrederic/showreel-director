@@ -24,6 +24,13 @@ const w = dom.window, $ = id => w.document.getElementById(id); const sleep = ms 
   ok('pause freezes the clock', $('tm').textContent === t1);
   $('seek').value = 100; $('seek').dispatchEvent(new w.Event('input')); await sleep(100);
   ok('seek moves the clock', /0:10/.test($('tm').textContent));
+  if ($('rm') && $('rm').style.display !== 'none') {
+    let seen = null; const r0 = w.SHOWREEL.render; w.SHOWREEL.render = (g, t, c) => { seen = c.reduced; return r0(g, t, c); };
+    const before = $('rm').textContent; $('rm').click(); await sleep(120);
+    ok('reduced-motion toggle changes the label', $('rm').textContent !== before);
+    ok('ctx.reduced reaches render()', seen === true);
+    $('rm').click(); await sleep(120); w.SHOWREEL.render = r0;
+  }
   if ($('lg').style.display !== 'none') { $('lg').click(); ok('language switch does not throw', true); }
   if ($('fm').style.display !== 'none') { $('fm').click(); ok('format switch does not throw', true); }
   ok('no script errors', errors.length === 0); if (errors.length) console.log(errors.slice(0, 5));
