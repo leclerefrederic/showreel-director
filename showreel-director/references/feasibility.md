@@ -1,6 +1,6 @@
 # Feasibility and standards
 
-Purpose: be a critical director, not an order taker. When the requested duration, number of scenes ("plans-séquences", shots), amount of text, languages or formats cannot work together, say so with numbers, explain which standard or finding backs the limit, and propose workable options. Never silently comply, and never silently shrink the request either.
+Purpose: be a critical director, not an order taker. When the requested duration, number of scenes (shots), amount of text, languages or formats cannot work together, say so with numbers, explain which standard or finding backs the limit, and propose workable options. Never silently comply, and never silently shrink the request either.
 
 ## When to run it
 1. **After round 1** (duration, purpose, message known) and again **after round 2b** (arc known): propose a structure (sections, seconds, scene count) and check any count the user volunteered.

@@ -8,7 +8,7 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - Scene-by-scene review (OK / MODIFY / DITCH) before anything is generated.
 - Audio analysis (tempo, beats, bars, drops) and asset audit.
 - 248 previewable effects in an effects lab, with search and "copy my picks".
-- Built-in glossary (EN/FR) so people outside video and editing are understood and the right terms land in the brief.
+- Built-in glossary so people outside video and editing are understood and the right terms land in the brief.
 - Style-neutral engine: no look is imposed, the brief decides.
 - Checks before release: harness (NaN, clipped text), player test, release gate.
 
