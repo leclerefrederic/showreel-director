@@ -17,7 +17,8 @@ nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px}
 .card canvas{display:block;width:100%;aspect-ratio:16/9;background:#000}
 .meta{padding:8px 10px;display:flex;gap:8px;align-items:flex-start}.meta b{display:block}.meta small{color:var(--mute);display:block;margin-top:2px}
 .tag{font-size:10px;border:1px solid var(--line);border-radius:10px;padding:1px 6px;color:var(--mute);white-space:nowrap}
-.heart{margin-left:auto;font-size:16px;line-height:1;padding:4px 8px}.heart.on{background:var(--acc);color:#111}
+.heart{font-size:16px;line-height:1;padding:4px 8px}.heart.on{background:var(--acc);color:#111}
+.gifb{font-size:11px;padding:4px 7px;margin-left:auto}
 h2{margin:18px 16px 4px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
 footer{position:fixed;left:0;right:0;bottom:0;background:#101010f2;border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center}
 #picks{flex:1;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -58,6 +59,7 @@ function arrow(g,x1,y1,x2,y2,k,col,w=5){g.save();g.strokeStyle=col;g.fillStyle=c
 const E=[];function fx(cat,name,desc,energy,dur,draw){E.push({cat,name,desc,energy,dur,draw})}
 const S1=c=>c.txt, SZ=44;
 /*__EFFECTS__*/
+/*__GIF__*/
 /* ---------- UI ---------- */
 const state={q:'',txt:$('txt'),speed:1,paused:false,picks:new Set(),cat:'All',P:Object.assign({},PAL)};
 ['c1','c2','c3','c4'].forEach((id,i)=>{const k=['bg','fg','accent','accent2'][i];$(id).value=PAL[k];$(id).oninput=ev=>{state.P[k]=ev.target.value}});
@@ -66,12 +68,20 @@ const cats=['All',...new Set(E.map(x=>x.cat))];
 cats.forEach(cn=>{const b=document.createElement('button');b.textContent=cn;b.className=cn==='All'?'on':'';b.onclick=()=>{state.cat=cn;[...$('nav').children].forEach(x=>x.classList.toggle('on',x===b));render()};$('nav').appendChild(b)});
 let cards=[];
 function render(){const gr=$('grid');gr.innerHTML='';cards=[];let last='';E.forEach(ef=>{if(state.cat!=='All'&&ef.cat!==state.cat)return;if(state.q&&!(ef.name+' '+ef.desc+' '+ef.cat).toLowerCase().includes(state.q))return;if(state.cat==='All'&&ef.cat!==last){const h=document.createElement('h2');h.textContent=ef.cat;h.style.gridColumn='1/-1';gr.appendChild(h);last=ef.cat}
- const key=ef.cat+' › '+ef.name;const d=document.createElement('div');d.className='card';d.innerHTML=`<canvas width="640" height="360"></canvas><div class="meta"><div><b>${ef.name}</b><small>${ef.desc}</small></div><span class="tag">${ef.energy}</span><button class="heart${state.picks.has(key)?' on':''}">♥</button></div>`;
+ const key=ef.cat+' › '+ef.name;const d=document.createElement('div');d.className='card';d.innerHTML=`<canvas width="640" height="360"></canvas><div class="meta"><div><b>${ef.name}</b><small>${ef.desc}</small></div><span class="tag">${ef.energy}</span><button class="gifb" title="Save this effect as a looping GIF">GIF</button><button class="heart${state.picks.has(key)?' on':''}">♥</button></div>`;
+ d.querySelector('.gifb').onclick=ev=>saveGif(ef,ev.target);
  d.querySelector('.heart').onclick=ev=>{state.picks.has(key)?state.picks.delete(key):state.picks.add(key);ev.target.classList.toggle('on');upd()};gr.appendChild(d);
  const cv=d.querySelector('canvas');cards.push({ef,cv,g:cv.getContext('2d'),vis:true});});
  if('IntersectionObserver'in window){const io=new IntersectionObserver(es=>es.forEach(en=>{const c=cards.find(x=>x.cv===en.target);if(c)c.vis=en.isIntersecting}));cards.forEach(c=>io.observe(c.cv))}}
 function upd(){const by={};state.picks.forEach(k=>{const[c,n]=k.split(' › ');(by[c]=by[c]||[]).push(n)});const s=Object.entries(by).map(([c,n])=>c+': '+n.join(', ')).join(' | ');$('picks').textContent=s||'Click ♥ on the effects you like, then copy your picks and paste them in the chat.';return s}
 $('copy').onclick=()=>{const s=upd();if(!state.picks.size)return;const fallback=()=>{const t=document.createElement('textarea');t.value=s;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(x){}t.remove()};try{navigator.clipboard.writeText(s).catch(fallback)}catch(x){fallback()}$('copy').textContent='Copied';setTimeout(()=>$('copy').textContent='Copy my picks',1200)};
+function saveGif(ef,btn){if(!window.GifLab)return;btn.disabled=true;const old=btn.textContent;btn.textContent='…';
+ setTimeout(()=>{try{const words=(state.txt.value||'Simple. Fast. Yours.').trim().split(/\s+/),ctxo={P:state.P,txt:state.txt.value||'Simple. Fast. Yours.',w1:words[0],w2:words[1]||words[0]};
+  const fps=20,gw=480,gh=270,n=Math.round((ef.dur+.6)*fps),big=document.createElement('canvas');big.width=W;big.height=H;const bg_=big.getContext('2d');
+  const sm=document.createElement('canvas');sm.width=gw;sm.height=gh;const sg=sm.getContext('2d');const frames=[];
+  for(let i=0;i<n;i++){const p=clamp(i/fps/ef.dur);bg_.setTransform(1,0,0,1,0,0);bg_.clearRect(0,0,W,H);bg_.save();ef.draw(bg_,p,ctxo);bg_.restore();sg.drawImage(big,0,0,W,H,0,0,gw,gh);frames.push(GifLab.quantize(sg.getImageData(0,0,gw,gh).data))}
+  const bytes=GifLab.encode(frames,gw,gh,Math.round(100/fps)),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'image/gif'}));a.download=ef.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.gif';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}catch(x){window.__ERR__=(window.__ERR__||[]).concat('gif '+ef.name+': '+x.message)}
+  btn.disabled=false;btn.textContent=old},30)}
 let clock=0,lastT=performance.now();
 function loop(now){const dt=Math.min(.05,(now-lastT)/1000);lastT=now;if(!state.paused)clock+=dt*state.speed;
  const words=(state.txt.value||'Simple. Fast. Yours.').trim().split(/\s+/);const ctxo={P:state.P,txt:state.txt.value||'Simple. Fast. Yours.',w1:words[0],w2:words[1]||words[0]};

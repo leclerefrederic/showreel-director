@@ -7,7 +7,7 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - Feasibility gate based on recognised standards (Netflix timed text, WCAG, EBU R128, Cinemetrics).
 - Scene-by-scene review (OK / MODIFY / DITCH) before anything is generated.
 - Audio analysis (tempo, beats, bars, drops) and asset audit.
-- 248 previewable effects in an effects lab, with search and "copy my picks".
+- 248 previewable effects in an effects lab, with search, "copy my picks" and a GIF download per effect.
 - Built-in glossary so people outside video and editing are understood and the right terms land in the brief.
 - Style-neutral engine: no look is imposed, the brief decides.
 - Visual scene cards (`scripts/build_scene_cards.py`) for the OK / MODIFY / DITCH review.
@@ -19,8 +19,9 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - Shared drawing helpers (`engine/kit.js`, style-neutral) so projects do not rewrite text, ring, shake, flash and confetti code.
 
 ## Layout
-- `showreel-director/` the skill: `SKILL.md`, `references/`, `engine/`, `scripts/`, `demo/`, `evals/` (7 cases, English)
+- `showreel-director/` the skill: `SKILL.md`, `references/`, `engine/`, `scripts/`, `evals/` (7 cases, English)
 - `tools/` repo tooling (`package.py`, `check.py`), `.github/workflows/check.yml`
+- `demo/` demo reel (HTML) and its notes, kept outside the packaged skill
 - `ROADMAP.md` ideas on hold
 - `showreel-director.skill` packaged skill (zip of the folder, `evals/` excluded)
 - `showreel-director/engine/effects-lab-sample.html` neutral effects lab, open it in a browser
@@ -29,7 +30,7 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 Open `showreel-director.skill` in Claude and click "Save skill".
 
 ## Try it
-Ask the skill what it can do, then pick the demo reel or the effects lab.
+Ask the skill what it can do, then pick the effects lab, or the demo reel (`demo/`, not part of the packaged skill).
 
 ## Maintenance
 - Effects live in `showreel-director/engine/effects/*.js`. After editing them run `python3 tools/check.py --fix` (refreshes `references/effects-index.md` and the sample lab, then re-checks).
@@ -40,7 +41,7 @@ Ask the skill what it can do, then pick the demo reel or the effects lab.
 Python 3 with numpy and ffmpeg (audio analysis), Node 16+ (tests). Optional: fontTools, brotli, jsdom, `@napi-rs/canvas` (MP4 export), a headless browser. `showreel-director/scripts/check_env.py` lists what is missing.
 
 ## Licence notes
-- `showreel-director/demo/` embeds the track "Deep-Space Funk", generated with Suno. This project is non-commercial and the track is provided for non-commercial use only, under Suno's terms. Do not reuse the track commercially.
+- `demo/` embeds the track "Deep-Space Funk", generated with Suno. This project is non-commercial and the track is provided for non-commercial use only, under Suno's terms. Do not reuse the track commercially.
 - Demo fonts: Liberation Sans Narrow Bold and Liberation Mono Bold.
 - `evals/` contains synthetic test fixtures (fictional brand "Ploma", placeholder fonts, photo, audio, video; about 8 MB).
 - Code: MIT, see `LICENSE`. The MIT licence covers the code and documentation only, not the Suno-generated demo track (non-commercial, Suno's terms) nor the fonts, which keep their own licences.

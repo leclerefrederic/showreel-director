@@ -17,7 +17,8 @@ nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px}
 .card canvas{display:block;width:100%;aspect-ratio:16/9;background:#000}
 .meta{padding:8px 10px;display:flex;gap:8px;align-items:flex-start}.meta b{display:block}.meta small{color:var(--mute);display:block;margin-top:2px}
 .tag{font-size:10px;border:1px solid var(--line);border-radius:10px;padding:1px 6px;color:var(--mute);white-space:nowrap}
-.heart{margin-left:auto;font-size:16px;line-height:1;padding:4px 8px}.heart.on{background:var(--acc);color:#111}
+.heart{font-size:16px;line-height:1;padding:4px 8px}.heart.on{background:var(--acc);color:#111}
+.gifb{font-size:11px;padding:4px 7px;margin-left:auto}
 h2{margin:18px 16px 4px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
 footer{position:fixed;left:0;right:0;bottom:0;background:#101010f2;border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center}
 #picks{flex:1;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -360,6 +361,67 @@ fx(CL,'Logo ripple','The logo settles while a ripple spreads from it.','low',2.2
 fx(CL,'URL slide-up','The web address slides up under the logo and holds.','low',2.6,(g,p,c)=>{bg(g,c);T(g,'LOGO',W/2,H/2-30,SZ*1.3,c.P.fg);const k=e.out3(clamp((p-.2)/.4));T(g,'example.com/demo',W/2,H/2+50+(1-k)*30,26,c.P.accent,{a:k})});
 fx(CL,'Social handles','Handles slide in one by one with icons.','low',2.6,(g,p,c)=>{bg(g,c);T(g,'LOGO',W/2,H/2-60,SZ*1.2,c.P.fg);['@brand','/brand','brand.com'].forEach((s,i)=>{const k=e.out3(clamp((p*1.6-.2-i*.25)/.4));circ(g,W/2-100,H/2+10+i*40,9*k,c.P.accent);T(g,s,W/2-70,H/2+10+i*40,22,c.P.fg,{al:'left',a:k})})});
 
+/* Tiny GIF89a encoder for the effects lab (no dependencies). Fixed 256-colour palette: 216 web-safe colours + 40 greys,
+   nearest-colour mapping, no dithering (flat motion-design frames survive well; photographic content would not).
+   GifLab.quantize(rgbaArray) -> Uint8Array of palette indices; GifLab.encode(indexFrames, w, h, delayCs) -> Uint8Array (.gif bytes, loops forever). */
+(function (G) {
+  'use strict';
+  const PAL = [];
+  for (let r = 0; r < 6; r++) for (let g = 0; g < 6; g++) for (let b = 0; b < 6; b++) PAL.push([r * 51, g * 51, b * 51]);
+  for (let i = 0; i < 40; i++) { const v = Math.round(i * 255 / 39); PAL.push([v, v, v]); }
+
+  function quantize(rgba) {
+    const n = rgba.length / 4, out = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      const r = rgba[i * 4], g = rgba[i * 4 + 1], b = rgba[i * 4 + 2];
+      const wr = Math.round(r / 51), wg = Math.round(g / 51), wb = Math.round(b / 51);
+      const e1 = (r - wr * 51) ** 2 + (g - wg * 51) ** 2 + (b - wb * 51) ** 2;
+      let idx = wr * 36 + wg * 6 + wb;
+      if (e1 > 60) { // maybe a grey is closer
+        const a = Math.round((r + g + b) / 3), gi = Math.round(a * 39 / 255), gv = PAL[216 + gi][0];
+        if ((r - gv) ** 2 + (g - gv) ** 2 + (b - gv) ** 2 < e1) idx = 216 + gi;
+      }
+      out[i] = idx;
+    }
+    return out;
+  }
+
+  function lzw(idx, min) {
+    const clear = 1 << min, eoi = clear + 1, bytes = []; let dict = new Map(), next = eoi + 1, size = min + 1, cur = 0, nb = 0;
+    const emit = c => { cur |= c << nb; nb += size; while (nb >= 8) { bytes.push(cur & 255); cur >>>= 8; nb -= 8; } };
+    emit(clear); let prefix = idx[0];
+    for (let i = 1; i < idx.length; i++) {
+      const k = prefix * 256 + idx[i], hit = dict.get(k);
+      if (hit !== undefined) { prefix = hit; continue; }
+      emit(prefix); dict.set(k, next);
+      if (next === (1 << size) && size < 12) size++;
+      next++;
+      if (next >= 4095) { emit(clear); dict = new Map(); next = eoi + 1; size = min + 1; }
+      prefix = idx[i];
+    }
+    emit(prefix); emit(eoi); if (nb > 0) bytes.push(cur & 255);
+    return bytes;
+  }
+
+  function encode(frames, w, h, delay) {
+    const o = []; const w16 = v => o.push(v & 255, (v >> 8) & 255);
+    'GIF89a'.split('').forEach(c => o.push(c.charCodeAt(0))); w16(w); w16(h); o.push(0xF7, 0, 0);
+    PAL.forEach(c => o.push(c[0], c[1], c[2]));
+    o.push(0x21, 0xFF, 11); 'NETSCAPE2.0'.split('').forEach(c => o.push(c.charCodeAt(0))); o.push(3, 1, 0, 0, 0);
+    frames.forEach(fr => {
+      o.push(0x21, 0xF9, 4, 0); w16(delay); o.push(0, 0);
+      o.push(0x2C); w16(0); w16(0); w16(w); w16(h); o.push(0);
+      o.push(8); const data = lzw(fr, 8);
+      for (let i = 0; i < data.length; i += 255) { const part = data.slice(i, i + 255); o.push(part.length); for (let j = 0; j < part.length; j++) o.push(part[j]); }
+      o.push(0);
+    });
+    o.push(0x3B);
+    return Uint8Array.from(o);
+  }
+
+  G.GifLab = { quantize, encode };
+})(typeof window !== 'undefined' ? window : globalThis);
+
 /* ---------- UI ---------- */
 const state={q:'',txt:$('txt'),speed:1,paused:false,picks:new Set(),cat:'All',P:Object.assign({},PAL)};
 ['c1','c2','c3','c4'].forEach((id,i)=>{const k=['bg','fg','accent','accent2'][i];$(id).value=PAL[k];$(id).oninput=ev=>{state.P[k]=ev.target.value}});
@@ -368,12 +430,20 @@ const cats=['All',...new Set(E.map(x=>x.cat))];
 cats.forEach(cn=>{const b=document.createElement('button');b.textContent=cn;b.className=cn==='All'?'on':'';b.onclick=()=>{state.cat=cn;[...$('nav').children].forEach(x=>x.classList.toggle('on',x===b));render()};$('nav').appendChild(b)});
 let cards=[];
 function render(){const gr=$('grid');gr.innerHTML='';cards=[];let last='';E.forEach(ef=>{if(state.cat!=='All'&&ef.cat!==state.cat)return;if(state.q&&!(ef.name+' '+ef.desc+' '+ef.cat).toLowerCase().includes(state.q))return;if(state.cat==='All'&&ef.cat!==last){const h=document.createElement('h2');h.textContent=ef.cat;h.style.gridColumn='1/-1';gr.appendChild(h);last=ef.cat}
- const key=ef.cat+' › '+ef.name;const d=document.createElement('div');d.className='card';d.innerHTML=`<canvas width="640" height="360"></canvas><div class="meta"><div><b>${ef.name}</b><small>${ef.desc}</small></div><span class="tag">${ef.energy}</span><button class="heart${state.picks.has(key)?' on':''}">♥</button></div>`;
+ const key=ef.cat+' › '+ef.name;const d=document.createElement('div');d.className='card';d.innerHTML=`<canvas width="640" height="360"></canvas><div class="meta"><div><b>${ef.name}</b><small>${ef.desc}</small></div><span class="tag">${ef.energy}</span><button class="gifb" title="Save this effect as a looping GIF">GIF</button><button class="heart${state.picks.has(key)?' on':''}">♥</button></div>`;
+ d.querySelector('.gifb').onclick=ev=>saveGif(ef,ev.target);
  d.querySelector('.heart').onclick=ev=>{state.picks.has(key)?state.picks.delete(key):state.picks.add(key);ev.target.classList.toggle('on');upd()};gr.appendChild(d);
  const cv=d.querySelector('canvas');cards.push({ef,cv,g:cv.getContext('2d'),vis:true});});
  if('IntersectionObserver'in window){const io=new IntersectionObserver(es=>es.forEach(en=>{const c=cards.find(x=>x.cv===en.target);if(c)c.vis=en.isIntersecting}));cards.forEach(c=>io.observe(c.cv))}}
 function upd(){const by={};state.picks.forEach(k=>{const[c,n]=k.split(' › ');(by[c]=by[c]||[]).push(n)});const s=Object.entries(by).map(([c,n])=>c+': '+n.join(', ')).join(' | ');$('picks').textContent=s||'Click ♥ on the effects you like, then copy your picks and paste them in the chat.';return s}
 $('copy').onclick=()=>{const s=upd();if(!state.picks.size)return;const fallback=()=>{const t=document.createElement('textarea');t.value=s;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(x){}t.remove()};try{navigator.clipboard.writeText(s).catch(fallback)}catch(x){fallback()}$('copy').textContent='Copied';setTimeout(()=>$('copy').textContent='Copy my picks',1200)};
+function saveGif(ef,btn){if(!window.GifLab)return;btn.disabled=true;const old=btn.textContent;btn.textContent='…';
+ setTimeout(()=>{try{const words=(state.txt.value||'Simple. Fast. Yours.').trim().split(/\s+/),ctxo={P:state.P,txt:state.txt.value||'Simple. Fast. Yours.',w1:words[0],w2:words[1]||words[0]};
+  const fps=20,gw=480,gh=270,n=Math.round((ef.dur+.6)*fps),big=document.createElement('canvas');big.width=W;big.height=H;const bg_=big.getContext('2d');
+  const sm=document.createElement('canvas');sm.width=gw;sm.height=gh;const sg=sm.getContext('2d');const frames=[];
+  for(let i=0;i<n;i++){const p=clamp(i/fps/ef.dur);bg_.setTransform(1,0,0,1,0,0);bg_.clearRect(0,0,W,H);bg_.save();ef.draw(bg_,p,ctxo);bg_.restore();sg.drawImage(big,0,0,W,H,0,0,gw,gh);frames.push(GifLab.quantize(sg.getImageData(0,0,gw,gh).data))}
+  const bytes=GifLab.encode(frames,gw,gh,Math.round(100/fps)),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'image/gif'}));a.download=ef.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.gif';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}catch(x){window.__ERR__=(window.__ERR__||[]).concat('gif '+ef.name+': '+x.message)}
+  btn.disabled=false;btn.textContent=old},30)}
 let clock=0,lastT=performance.now();
 function loop(now){const dt=Math.min(.05,(now-lastT)/1000);lastT=now;if(!state.paused)clock+=dt*state.speed;
  const words=(state.txt.value||'Simple. Fast. Yours.').trim().split(/\s+/);const ctxo={P:state.P,txt:state.txt.value||'Simple. Fast. Yours.',w1:words[0],w2:words[1]||words[0]};

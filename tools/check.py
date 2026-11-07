@@ -29,7 +29,7 @@ def main():
     else: bad("SKILL.md frontmatter (name must be showreel-director, description present)")
     # files named in SKILL.md
     names = set(re.findall(r"`((?:references|engine|scripts|demo)/[\w./-]+)`", s))
-    missing = sorted(n for n in names if not os.path.exists(os.path.join(SK, n)) and "<" not in n and "*" not in n)
+    missing = sorted(n for n in names if not os.path.exists(os.path.join(SK, n)) and "<" not in n and "*" not in n and not n.startswith("demo/"))  # demo/ is optional, outside the package
     ok(f"{len(names)} files named in SKILL.md exist") if not missing else bad("named in SKILL.md but missing: " + ", ".join(missing))
     # syntax
     for f in package.skill_files():
@@ -74,7 +74,7 @@ def main():
         elif any(hashlib.md5(inzip[n]).digest() != hashlib.md5(disk[n]).digest() for n in disk): bad(".skill content differs from the folder (run: python3 tools/package.py)")
         else: ok(f".skill identical to the folder ({len(disk)} files)")
     # demo harness
-    demo = os.path.join(SK, "demo", "showreel-director-demo.html")
+    demo = os.path.join(ROOT, "demo", "showreel-director-demo.html")
     if os.path.exists(demo):
         r = run(["node", os.path.join(SK, "scripts", "harness.js"), demo, "--step", "0.5"])
         line = next((l for l in r.stdout.splitlines() if l.startswith("issues:")), "issues: ?")

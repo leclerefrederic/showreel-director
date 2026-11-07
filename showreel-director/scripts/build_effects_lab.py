@@ -4,7 +4,7 @@
 Usage: python3 build_effects_lab.py --out PROJECT/qa/effects-lab.html
          [--bg #151515 --fg #f2f2f2 --accent #ffd166 --accent2 #6c8cff] [--font path/to/font.ttf --family "Brand Sans"]
 Neutral palette by default. Present the file to the user, who clicks the hearts on the effects they like and pastes
-"Copy my picks" back in the chat. Effects are drawn with plain canvas code: they show the idea, not your final render.
+"Copy my picks" back in the chat; each card also has a GIF button that saves that effect as a looping GIF. Effects are drawn with plain canvas code: they show the idea, not your final render.
 """
 import argparse, base64, io, json, os
 
@@ -23,6 +23,7 @@ def main():
     edir = os.path.join(HERE, "..", "engine", "effects")
     effects = "\n".join(open(os.path.join(edir, f), encoding="utf-8").read() for f in sorted(os.listdir(edir)) if f.endswith(".js"))
     html = html.replace("/*__EFFECTS__*/", effects)
+    html = html.replace("/*__GIF__*/", open(os.path.join(HERE, "..", "engine", "gif.js"), encoding="utf-8").read())
     css, family = "", "system-ui,sans-serif"
     if a.font:
         data, mime, fmt = open(a.font, "rb").read(), "font/ttf", "truetype"

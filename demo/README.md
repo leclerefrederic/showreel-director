@@ -1,5 +1,7 @@
 # Demo reel
 
+Lives next to the skill, not inside the `.skill` package, so the package stays light and does not carry the music. The skill offers it only when this folder is present next to it; otherwise it points to the project repository.
+
 `showreel-director-demo.html`: a ~90 s self-contained showreel (16 scenes, 16:9 and 9:16, English on screen) that explains this skill. Built with the skill itself from an interview-style brief, kinetic type and flashes on the beat, music Deep-Space Funk.
 
 - Open in a browser, click "Start with sound". Controls: pause, seek, mute/volume, replay, format switch.
