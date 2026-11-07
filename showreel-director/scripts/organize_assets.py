@@ -23,11 +23,18 @@ Usage:
   python3 organize_assets.py PROJECT --redacted shot-04=PATH     add a redacted copy (pixels painted over) of a held sensitive file; then approve it with --set
   python3 organize_assets.py PROJECT --register                  add the files the skill put in generated/ to the manifest (names must follow the convention)
   python3 organize_assets.py PROJECT --md             print the manifest as a Markdown table for brief.md
-  python3 organize_assets.py PROJECT --check          verify names, manifest, stray files and version paths; exit 1 on problems
+  python3 organize_assets.py PROJECT --check          verify names, manifest, stray files, held files and version paths (tracks, fonts, images); exit 1 on problems
+                                                      (--allow-hold while decisions are still being taken)
 Files that look sensitive (real customer data, secrets) or whose licence note forbids use are recorded as `hold`: they are
 kept in source/ and NOT copied to prepared/ until the user decides. Originals' contents are never changed.
 """
 import argparse, csv, json, os, re, shutil, sys, unicodedata
+sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from audit_assets import probe
+except Exception:
+    probe = None
 
 EMBED = {"logo", "icon", "shot", "photo", "illus", "img", "font", "audio", "voice", "sfx", "video", "frames"}
 NAME = re.compile(r"^(logo|icon|shot|photo|illus|img|font|audio|voice|sfx|video|frames)-(\d{2})-([a-z0-9]+(?:-[a-z0-9]+)*)(?:_([a-z0-9]+(?:-[a-z0-9]+)*))?(\.[a-z0-9]+)?$")
@@ -110,6 +117,13 @@ def plan(root, extra):
             if SENSITIVE.search(os.path.basename(rel)): status, reason = "hold", "name suggests real or confidential data: decide first"
             elif typ == "font" and re.search(r"proprietary|forbidden|not allowed|desktop only|workstation", txt, re.I): status, reason = "hold", "font licence forbids embedding"
             elif typ != "font" and re.search(r"not confirmed|unconfirmed|unknown", txt, re.I): status, reason = "hold", "rights or consent not confirmed"
+            elif typ in ("logo", "shot", "photo", "img") and probe and path.lower().endswith((".png", ".jpg", ".jpeg", ".webp")) and (lambda d: d[1] and (d[1] < 800 or d[2] < 450))(probe(path)) and typ != "logo":
+                status, reason = "hold", "low resolution (under 800x450): replace, accept or exclude"
+            elif typ == "logo" and probe and path.lower().endswith((".png", ".jpg", ".jpeg", ".webp")) and (lambda d: d[1] and d[1] < 200)(probe(path)):
+                status, reason = "hold", "logo bitmap is small: use a vector version, or accept or exclude"
+            elif typ == "video" and os.path.getsize(path) > 5e6: status, reason = "hold", "heavy video: the canvas cannot seek video exactly; stills or frames are better"
+            elif typ in ("audio", "voice", "sfx") and os.path.getsize(path) > 8e6: status, reason = "hold", "heavy audio file: check the weight budget"
+
             counters[typ] = counters.get(typ, 0) + 1
             nm = f"{typ}-{counters[typ]:02d}-{slugify(rel, typ)}" + os.path.splitext(path)[1].lower()
             items.append(dict(src=path, rel=rel, loose=loose, type=typ, id=f"{typ}-{counters[typ]:02d}", name=nm, status=status, reason=reason,
@@ -121,9 +135,9 @@ def plan(root, extra):
 def cmd_plan(a, apply):
     assets, rows, items = plan(a.project, a.src)
     if not items: print("nothing new to organise"); return 0
-    print(f"{'original':46s} {'type':6s} {'-> prepared name':48s} status")
+    print(f"{'id':10s}{'original':44s} {'type':6s} {'-> prepared name':48s} status")
     for it in items:
-        print(f"{it['rel'][:46]:46s} {it['type']:6s} {(('prepared/' + it['name']) if it['name'] and it['status'] != 'hold' else '(source only)')[:48]:48s} {it['status']}" + (f"  ({it['reason']})" if it["reason"] else ""))
+        print(f"{(it['id'] or '-'):10s}{it['rel'][:44]:44s} {it['type']:6s} {(('prepared/' + it['name']) if it['name'] and it['status'] != 'hold' else '(source only)')[:48]:48s} {it['status']}" + (f"  ({it['reason']})" if it["reason"] else ""))
     clash = [it["name"] for it in items if it["name"] and it["status"] != "hold" and os.path.exists(os.path.join(assets, "prepared", it["name"]))]
     if clash: print("name already exists, aborting: " + ", ".join(clash)); return 1
     if not apply: print("\nplan only. Run again with --apply to do it."); return 0
@@ -160,6 +174,10 @@ def cmd_set(a):
             src = os.path.join(a.project, "assets", "source", r["original"]); t = r["type"]
             nm = f"{t}-{i.split('-')[1]}-{slugify(r['original'], t)}" + os.path.splitext(src)[1].lower()
             os.makedirs(os.path.join(a.project, "assets", "prepared"), exist_ok=True); shutil.copy2(src, os.path.join(a.project, "assets", "prepared", nm)); r["file"] = "prepared/" + nm; r["origin"] = "prepared"
+        if st == "excluded" and r["file"].startswith("prepared/"):  # an excluded asset must not stay in prepared/ (our copy only; the original is untouched)
+            fp = os.path.join(a.project, "assets", r["file"])
+            if os.path.exists(fp): os.remove(fp)
+            r["file"] = ""; r["origin"] = "source"
         r["status"] = st
     save(man, rows); print("manifest updated" if ok else "manifest updated for the valid entries"); return 0 if ok else 1
 
@@ -204,6 +222,9 @@ def cmd_check(a):
             if not NAME.match(f): bad.append(f"{d}/{f}: name does not follow <type>-<nn>-<slug>[_<variant>]")
             if f"{d}/{f}" not in listed: bad.append(f"{d}/{f}: not in MANIFEST.csv")
     for r in rows:
+        if r["status"] == "hold" and not a.allow_hold: bad.append(f"{r['id']} ({r['original'] or r['file']}) is still on hold: decide it (--set {r['id']}=approved or excluded)")
+        if r["status"] == "excluded" and r["file"]: bad.append(f"{r['id']}: excluded but still in {r['file']}")
+        if r["status"] == "placeholder": print(f"  note: {r['id']} is a placeholder: it must be listed in the release gate of brief.md")
         if r["file"] and not os.path.exists(os.path.join(assets, r["file"])): bad.append(f"{r['file']}: listed but missing")
         if r["status"] not in STATUS: bad.append(f"{r['id']}: bad status {r['status']!r}")
     if os.path.isdir(assets):
@@ -213,7 +234,7 @@ def cmd_check(a):
         pj = os.path.join(a.project, v, "project.json")
         if re.fullmatch(r"v\d+", v) and os.path.exists(pj):
             cfg = json.load(open(pj))
-            paths = [cfg.get("track")] + [x.get("path") for x in cfg.get("fonts", [])]
+            paths = [cfg.get("track")] + [x.get("path") for x in cfg.get("fonts", [])] + list((cfg.get("images") or {}).values())
             for p in filter(None, paths):
                 if "/source/" in p.replace("\\", "/") or ("assets/" in p and not re.search(r"assets/(prepared|generated)/", p)):
                     bad.append(f"{v}/project.json: {p} must point to assets/prepared or assets/generated")
@@ -222,7 +243,7 @@ def cmd_check(a):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("project"); ap.add_argument("--from", dest="src"); ap.add_argument("--apply", action="store_true")
-    ap.add_argument("--set"); ap.add_argument("--register", action="store_true"); ap.add_argument("--redacted"); ap.add_argument("--md", action="store_true"); ap.add_argument("--check", action="store_true")
+    ap.add_argument("--set"); ap.add_argument("--register", action="store_true"); ap.add_argument("--redacted"); ap.add_argument("--md", action="store_true"); ap.add_argument("--check", action="store_true"); ap.add_argument("--allow-hold", action="store_true")
     a = ap.parse_args()
     if not os.path.isdir(a.project): sys.exit("project folder not found")
     if a.check: sys.exit(cmd_check(a))

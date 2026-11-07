@@ -11,7 +11,7 @@ ditched, time left when times are numeric) and a "Copy decisions" button that pu
 so the user can paste it in the chat. The decisions are only a draft: the skill still confirms every MODIFY and
 DITCH in the conversation (see references/scene-review.md). No palette or look is assumed: pass the brand colours.
 """
-import argparse, base64, html, json, os, re, sys
+import argparse, base64, html, json, os, re, sys, unicodedata
 
 def split_row(line):
     cells = [c.strip() for c in line.strip().strip("|").split("|")]
@@ -28,27 +28,37 @@ def parse_table(text):
         i += 1
     return [], []
 
+def norm(h):
+    return unicodedata.normalize("NFKD", h).encode("ascii", "ignore").decode().lower()
+
 def clean(s):
     return re.sub(r"\*\*(.+?)\*\*", r"\1", s).replace("<br>", " / ")
 
 def find(head, *keys):
     for h in head:
-        if any(k in h.lower() for k in keys): return h
+        if any(k in norm(h) for k in keys): return h
     return None
 
 def seconds(s):
-    m = re.search(r"(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)", s or "")
-    return (float(m.group(2)) - float(m.group(1))) if m else None
+    m = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:s)?\s*[-\u2013\u2014]\s*(\d+(?:[.,]\d+)?)", s or "")
+    return (float(m.group(2).replace(",", ".")) - float(m.group(1).replace(",", "."))) if m else None
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("storyboard"); ap.add_argument("--out", default="qa/cards-scenes.html"); ap.add_argument("--title", default="Storyboard")
     ap.add_argument("--bg", default="#111111"); ap.add_argument("--fg", default="#f4f4f0"); ap.add_argument("--accent", default="#e6ff00"); ap.add_argument("--accent2", default="#8a8a84")
-    ap.add_argument("--font"); ap.add_argument("--family", default="Reel Font")
+    ap.add_argument("--font"); ap.add_argument("--family", default="Reel Font"); ap.add_argument("--ui"); ap.add_argument("--lang", default="en")
     a = ap.parse_args()
     head, rows = parse_table(open(a.storyboard, encoding="utf-8").read())
     if not rows: sys.exit("no Markdown table found in " + a.storyboard)
-    cid = find(head, "id", "#", "scene") or head[0]; ctime = find(head, "time"); ctext = find(head, "text"); cimg = find(head, "image", "motion")
-    cfeel = find(head, "feeling", "tension"); cgag = find(head, "gag", "handoff", "jeu")
+    # headers are matched by English words and common translations (accents ignored); the time column is also detected by its values
+    cid = find(head, "id", "#", "scene", "sequence", "plan") or head[0]
+    ctime = find(head, "time", "temps", "duree", "duration", "tiempo", "zeit")
+    if not ctime:
+        ctime = next((h for h in head if rows and sum(1 for r in rows if seconds(r.get(h, "")) is not None) >= max(1, len(rows) // 2)), None)
+    ctext = find(head, "text", "texte", "texto", "titre", "line")
+    cimg = find(head, "image", "motion", "visuel", "mouvement", "imagen", "bild")
+    cfeel = find(head, "feeling", "tension", "ressenti", "emotion", "gefuhl")
+    cgag = find(head, "gag", "handoff", "jeu", "passage", "transition")
     used = {cid, ctime, ctext, cimg, cfeel, cgag}; extra = [h for h in head if h not in used]
     scenes = []
     for k, r in enumerate(rows):
@@ -63,14 +73,21 @@ def main():
         mime = "font/woff2" if a.font.lower().endswith(".woff2") else "font/woff" if a.font.lower().endswith(".woff") else "font/ttf"
         face = '@font-face{font-family:"%s";src:url(data:%s;base64,%s)}' % (a.family, mime, base64.b64encode(open(a.font, "rb").read()).decode())
     total = sum(s["dur"] or 0 for s in scenes)
-    page = PAGE.replace("__DATA__", json.dumps({"scenes": scenes, "total": round(total, 1), "title": a.title}, ensure_ascii=False).replace("</", "<\\/")) \
+    ui = dict(UI)
+    if a.ui: ui.update(json.load(open(a.ui, encoding="utf-8")))
+    page = PAGE.replace("__UI__", json.dumps(ui, ensure_ascii=False).replace("</", "<\\/")).replace("__LANG__", html.escape(a.lang)).replace("__DATA__", json.dumps({"scenes": scenes, "total": round(total, 1), "title": a.title}, ensure_ascii=False).replace("</", "<\\/")) \
                .replace("__TITLE__", html.escape(a.title)).replace("__BG__", a.bg).replace("__FG__", a.fg).replace("__ACC__", a.accent).replace("__ACC2__", a.accent2) \
                .replace("__FACE__", face).replace("__FAMILY__", a.family.replace('"', ''))
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     open(a.out, "w", encoding="utf-8").write(page)
     print(f"wrote {a.out}: {len(scenes)} scene cards, {total:.1f} s of timed scenes")
 
-PAGE = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>__TITLE__ - scene cards</title>
+UI = {"allok": "OK for all remaining", "copy": "Copy decisions", "copied": "Copied. Paste it in the chat.", "image": "Image and motion", "feel": "Feeling and tension",
+      "gag": "Gag / handoff", "note": "What should change?", "reading": "Reading: {cps} characters per second on screen (comfortable is about 15 to 17). Shorten the text or give the scene more time.",
+      "status": "{n} scenes: {ok} OK, {mod} to modify, {dit} ditched, {und} undecided", "left": " - {left} s of {total} s left", "needNote": "Say what to change for: {ids}",
+      "header": "Scene decisions (draft, please confirm in chat):", "undecided": "undecided"}
+
+PAGE = r"""<!DOCTYPE html><html lang="__LANG__"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>__TITLE__ - scene cards</title>
 <style>__FACE__
 :root{--bg:__BG__;--fg:__FG__;--acc:__ACC__;--mute:__ACC2__}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 "__FAMILY__",system-ui,sans-serif}
@@ -87,28 +104,29 @@ main{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:
 #tl{display:flex;gap:2px;padding:10px 20px 0;height:34px}#tl div{background:#ffffff22;border-radius:4px;min-width:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;overflow:hidden;color:var(--fg)}
 #tl div.OK{background:var(--acc);color:var(--bg)}#tl div.MODIFY{background:#ffb020;color:#111}#tl div.DITCH{background:#ffffff11;text-decoration:line-through}
 .warn{font-size:12px;color:#ffb020}#out{position:fixed;bottom:12px;right:12px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;padding:8px 12px;display:none}
-</style></head><body><header><h1>__TITLE__</h1><span id="tot"></span><button id="allok">OK for all remaining</button><button class="p" id="copy">Copy decisions</button></header>
-<div id="tl"></div><main id="m"></main><div id="out">Copied. Paste it in the chat.</div>
+</style></head><body><header><h1>__TITLE__</h1><span id="tot"></span><button id="allok"></button><button class="p" id="copy"></button></header>
+<div id="tl"></div><main id="m"></main><div id="out"></div>
 <script>
-const D=__DATA__,st={},note={};const m=document.getElementById('m');
+const D=__DATA__,U=__UI__,st={},note={};const m=document.getElementById('m');
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function draw(){m.innerHTML='';D.scenes.forEach(s=>{const c=document.createElement('div');c.className='card '+(st[s.id]||'');
 let h='<div class="top"><span class="id">'+esc(s.id)+'</span><span class="tm">'+esc(s.time)+'</span></div>';
 if(s.text)h+='<div class="txt">'+esc(s.text)+'</div>';
-const rd=s.dur&&s.text?s.text.length/s.dur:0;if(rd>17)h+='<div class="warn">Reading: '+rd.toFixed(0)+' characters per second on screen (comfortable is about 15 to 17). Shorten the text or give the scene more time.</div>';
+const rd=s.dur&&s.text?s.text.length/s.dur:0;if(rd>17)h+='<div class="warn">'+esc(U.reading.replace('{cps}',rd.toFixed(0)))+'</div>';
 const L=(k,v)=>v?'<div><span class="l">'+k+'</span><br>'+esc(v)+'</div>':'';
-h+=L('Image and motion',s.image)+L('Feeling and tension',s.feel)+L('Gag / handoff',s.gag)+s.extra.map(e=>L(e[0],e[1])).join('');
+h+=L(U.image,s.image)+L(U.feel,s.feel)+L(U.gag,s.gag)+s.extra.map(e=>L(e[0],e[1])).join('');
 h+='<div class="row">'+['OK','MODIFY','DITCH'].map(k=>'<button data-s="'+s.id+'" data-k="'+k+'" class="'+(st[s.id]===k?'on':'')+'">'+k+'</button>').join('')+'</div>';
-if(st[s.id]==='MODIFY')h+='<textarea data-n="'+s.id+'" placeholder="What should change?">'+esc(note[s.id]||'')+'</textarea>';
+if(st[s.id]==='MODIFY')h+='<textarea data-n="'+s.id+'" placeholder="'+esc(U.note)+'">'+esc(note[s.id]||'')+'</textarea>';
 c.innerHTML=h;m.appendChild(c)});
 c=document.querySelectorAll('button[data-k]');c.forEach(b=>b.onclick=()=>{st[b.dataset.s]=st[b.dataset.s]===b.dataset.k?'':b.dataset.k;draw()});
 document.querySelectorAll('textarea').forEach(t=>t.oninput=()=>{note[t.dataset.n]=t.value});
 const tl=document.getElementById('tl');tl.innerHTML='';const tot=D.scenes.reduce((a,s)=>a+(s.dur||1),0);D.scenes.forEach((s,i)=>{const d=document.createElement('div');d.className=st[s.id]||'';d.style.flex=String((s.dur||1)/tot*1000);d.textContent=s.id;d.title=s.id+(s.time?' '+s.time:'');d.onclick=()=>document.querySelectorAll('.card')[i].scrollIntoView({behavior:'smooth',block:'center'});tl.appendChild(d)});
 const n=k=>D.scenes.filter(s=>st[s.id]===k).length,left=D.total-D.scenes.filter(s=>st[s.id]==='DITCH').reduce((a,s)=>a+(s.dur||0),0);
-document.getElementById('tot').textContent=D.scenes.length+' scenes: '+n('OK')+' OK, '+n('MODIFY')+' to modify, '+n('DITCH')+' ditched, '+(D.scenes.length-n('OK')-n('MODIFY')-n('DITCH'))+' undecided'+(D.total?' - '+left.toFixed(1)+' s of '+D.total+' s left':'')}
+document.getElementById('tot').textContent=U.status.replace('{n}',D.scenes.length).replace('{ok}',n('OK')).replace('{mod}',n('MODIFY')).replace('{dit}',n('DITCH')).replace('{und}',D.scenes.length-n('OK')-n('MODIFY')-n('DITCH'))+(D.total?U.left.replace('{left}',left.toFixed(1)).replace('{total}',D.total):'')}
+document.getElementById('allok').textContent=U.allok;document.getElementById('copy').textContent=U.copy;
 document.getElementById('allok').onclick=()=>{D.scenes.forEach(s=>{if(!st[s.id])st[s.id]='OK'});draw()};
-document.getElementById('copy').onclick=()=>{const bad=D.scenes.filter(s=>st[s.id]==='MODIFY'&&!(note[s.id]||'').trim());if(bad.length){const o=document.getElementById('out');o.textContent='Say what to change for: '+bad.map(s=>s.id).join(', ');o.style.display='block';setTimeout(()=>{o.style.display='none';o.textContent='Copied. Paste it in the chat.'},3500);return}
-const t='Scene decisions (draft, please confirm in chat):\n'+D.scenes.map(s=>s.id+': '+(st[s.id]||'undecided')+(st[s.id]==='MODIFY'&&note[s.id]?' - '+note[s.id].replace(/\n/g,' '):'')).join('\n');
+document.getElementById('copy').onclick=()=>{const bad=D.scenes.filter(s=>st[s.id]==='MODIFY'&&!(note[s.id]||'').trim());if(bad.length){const o=document.getElementById('out');o.textContent=U.needNote.replace('{ids}',bad.map(s=>s.id).join(', '));o.style.display='block';setTimeout(()=>{o.style.display='none';o.textContent=U.copied},3500);return}
+const t=U.header+'\n'+D.scenes.map(s=>s.id+': '+(st[s.id]||U.undecided)+(st[s.id]==='MODIFY'&&note[s.id]?' - '+note[s.id].replace(/\n/g,' '):'')).join('\n');
 (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove()});
 const o=document.getElementById('out');o.style.display='block';setTimeout(()=>o.style.display='none',2500)};
 draw();

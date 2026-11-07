@@ -35,11 +35,11 @@ def main():
         if per < 0.5:
             add("scene count", "NOT FEASIBLE", f"{a.scenes} scenes in {D:g} s = {per:.2f} s each: below 0.5 s they are flashes, not scenes (and flashes must stay under 3 per second)")
         elif ts > math.floor(stretch) and ts > 0:
-            add("text scenes", "NOT FEASIBLE", f"{ts} scenes carrying text in {D:g} s leaves {D/ts:.1f} s each; text needs about 3 s (floor 1.5 s for 1-3 words)")
+            add("text scenes", "NOT FEASIBLE", f"{ts} scenes carrying text in {D:g} s leave {per:.1f} s per scene on average ({a.scenes} scenes share the duration); text needs about 3 s (floor 1.5 s for 1-3 words)")
         elif ts > math.floor(comf):
-            add("text scenes", "TIGHT", f"{ts} text scenes = {D/ts:.1f} s each: above the comfortable count ({math.floor(comf)}); keep lines short (about 6-8 words max)")
+            add("text scenes", "TIGHT", f"{ts} text scenes among {a.scenes} = {per:.1f} s per scene on average: above the comfortable count ({math.floor(comf)}); keep lines short (about 6-8 words max)")
         else:
-            add("text scenes", "OK", f"{ts} text scenes = {D/max(ts,1):.1f} s each")
+            add("text scenes", "OK", f"{ts} text scenes among {a.scenes} = {per:.1f} s per scene on average")
         if vs and (D - ts * 3) / vs < 0.5:
             add("visual beats", "NOT FEASIBLE", f"{vs} visual-only beats do not fit in the {max(D - ts*3, 0):.1f} s left after text scenes")
         if a.transition * a.scenes > D * 0.4:

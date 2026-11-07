@@ -38,6 +38,10 @@ const w = dom.window, $ = id => w.document.getElementById(id); const sleep = ms 
     ok('notes pad opens and pauses', !!$('pad') && $('pad').style.display !== 'none');
     $('padtx').value = 'test note'; $('padadd').click();
     ok('note is recorded with time, scene and format', /\[\d+:\d\d\.\d · .+ · \w+\/\w+\] test note/.test($('padls').textContent));
+    $('seek').value = 100; $('seek').dispatchEvent(new w.Event('input')); await sleep(60);
+    ok('pad stamp follows a seek while open', /0:10\.0/.test($('padhd').textContent));
+    $('padx').click(); $('nt').click(); await sleep(60);
+    ok('reopening the pad refreshes the stamp', !!$('padhd').textContent && $('pad').style.display !== 'none');
     $('padx').click();
   }
   if ($('lg').style.display !== 'none') { $('lg').click(); ok('language switch does not throw', true); }

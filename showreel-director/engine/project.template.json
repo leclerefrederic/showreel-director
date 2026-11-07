@@ -12,5 +12,7 @@
     "--ov-bg": "rgba(0,0,0,.85)", "--ov-fg": "#ffffff",
     "--font-ui": "system-ui,sans-serif", "--font-title": "system-ui,sans-serif"
   },
+  "duration": 30,
+  "images": {"shot-01": "../assets/prepared/shot-01-screen-home.png"},
   "weight_budget_mb": 20
 }

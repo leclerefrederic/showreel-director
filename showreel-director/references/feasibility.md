@@ -13,7 +13,7 @@ Ask for the duration in round 1 (target plus any cut-downs wanted, for example a
 ## Evidence base (state which kind of source backs each limit)
 | Topic | Value | Kind of source | How it is used |
 |---|---|---|---|
-| Subtitle event duration | minimum 5/6 s, maximum 7 s; up to 42 characters per line, 2 lines | Industry guideline: [Netflix Timed Text Style Guide](https://partnerhelp.netflixstudios.com/hc/en-us/articles/215758617-Timed-Text-Style-Guide-General-Requirements) | absolute floor for any text event; essential text longer than 7 s should be split |
+| Subtitle event duration | minimum 5/6 s (five sixths of a second, 0.83 s), maximum 7 s; up to 42 characters per line, 2 lines | Industry guideline: [Netflix Timed Text Style Guide](https://partnerhelp.netflixstudios.com/hc/en-us/articles/215758617-Timed-Text-Style-Guide-General-Requirements) | absolute floor for any text event; essential text longer than 7 s should be split |
 | Reading speed on screen | about 17 characters per second for adult subtitles (commonly cited; check the current guide) | Industry guideline | characters per scene = 17 × seconds the text is fully visible |
 | Silent reading rate | about 238 words per minute for adult English non-fiction (about 4 words per second), with a range of roughly 175–300 | Research: Brysbaert 2019, [Journal of Memory and Language](https://www.sciencedirect.com/science/article/abs/pii/S0749596X19300786) | upper bound for reading plain text with full attention; a reel with visuals competing needs far less (see budgets) |
 | Contrast | text 4.5:1, large text 3:1 | Standard: [WCAG 2.2, 1.4.3](https://www.w3.org/TR/WCAG22/) | colour checks |

@@ -26,8 +26,11 @@ Examples: `logo-01-ploma-clair.svg`, `shot-04-customers-list_redacted.png`, `fon
 
 Files that are not embedded (data, quotes, brand guides, licences, notes) stay in `source/` and are listed in the manifest only if they matter to a decision.
 
+## Lab and QA pages before the organiser has run
+The effects lab (round 3) comes before round 5, so it may use a font straight from the supplied folder; only embedded builds must use `prepared/` and `generated/`.
+
 ## Status
-`proposed` (default after organising), `approved` (the user confirmed it may be embedded), `excluded` (kept out on purpose), `placeholder` (stands in for something to be supplied; must be on the release gate), `hold` (blocked until decided: real or confidential data, font licence forbids embedding, rights or consent not confirmed). `build.py` refuses `excluded` and `hold`, and warns for `proposed`.
+`proposed` (default after organising), `approved` (the user confirmed it may be embedded), `excluded` (kept out on purpose), `placeholder` (stands in for something to be supplied; must be on the release gate), `hold` (blocked until decided: real or confidential data, font licence forbids embedding, rights or consent not confirmed). `build.py` refuses `excluded` and `hold` for the track, fonts and images, and warns for `proposed`. Excluding an asset removes its copy from `prepared/` (the original stays in `source/`). Low-resolution images (under 800x450, or a small logo bitmap), heavy videos (over 5 MB) and heavy audio are put on `hold` automatically.
 
 ## Commands (`scripts/organize_assets.py`)
 1. `python3 scripts/organize_assets.py <project> --from <folder>` (or no `--from` when files are already loose in `assets/`): plan only, changes nothing.
@@ -35,4 +38,4 @@ Files that are not embedded (data, quotes, brand guides, licences, notes) stay i
 3. `--set shot-04=excluded,logo-01=approved`: record decisions. A file held for looking like real data cannot be approved directly: paint over the sensitive parts in a copy, check the pixels, then `--redacted shot-04=<path>`, then approve.
 4. `--register` after the skill saves anything in `generated/`.
 5. `--md` prints the manifest as the table for `brief.md` (the scene column is completed in Step 2b).
-6. `--check` before the build and before delivery: names, manifest, stray files, version paths.
+6. `--check` before the build and before delivery: names, manifest, stray files, held files (fails while any is `hold`; `--allow-hold` while deciding), excluded files left in `prepared/`, version paths (tracks, fonts, images).

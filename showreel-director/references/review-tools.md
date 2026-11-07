@@ -12,6 +12,8 @@ Rule: the user never approves a block of text. A decision goes through the quest
 | Held assets (real data, unconfirmed rights, forbidden font) | decision sheet | one item per held file: Exclude (recommended) / Provide a redacted copy or confirm rights (note required); then `organize_assets.py --set` or `--redacted` |
 | Feedback on the built reel | review build with the **notes pad** | `controls.notes: true` in `main.js` for review builds only; key N or the Note button pauses and stamps time, scene, format and language; "Copy notes" puts them on the clipboard |
 
+Language: build every page with `--ui` (translated page texts; keys in the script header) and `--lang`, so the user never meets English buttons in a French conversation.
+
 If the session cannot present files, use the question tool for the same decisions (split into rounds of 4) and say what is different (see `portability.md`).
 
 ## Decision sheet: spec and guardrails
@@ -26,10 +28,10 @@ A JSON file with `title`, `intro` and up to 30 `items`. Each item has `id`, `tit
       "options": [ {"label": "Resolve first", "recommended": true}, {"label": "Waive and accept the risk", "needs_note": true} ] } ] }
 ```
 
-Built-in guardrails (do not remove them): nothing is pre-selected, the recommended option is only highlighted; "Accept all recommended" is a separate button and never accepts an option that needs a note; "Copy decisions" stays disabled until every item is decided and every required note is written; text is escaped, never interpreted as HTML; the builder refuses a spec with fewer than 2 or more than 4 options, duplicate ids, bad colours or an over-long body. Pass the brand colours once known; before that, use the defaults.
+Built-in guardrails (do not remove them): nothing is pre-selected, the recommended option is only highlighted; "Accept all recommended" is a separate button and never accepts an option that needs a note; "Copy decisions" refuses (and outlines the open cards) until every item is decided and every required note is written; text is escaped, never interpreted as HTML; the builder refuses a spec with fewer than 2 or more than 4 options, duplicate ids, bad colours or an over-long body. Pass the brand colours once known; before that, use the defaults.
 
 ## Typical sheets
-- **Brief review** (Step 1): one item per section of the brief that carries a decision (message and audience, feeling and look, sound, delivery, assets), options Keep / Change (needs a note).
+- **Brief review** (Step 1): one item per section of the brief that carries a decision (message and audience, feeling and look, sound, delivery, assets), options Keep / Change (needs a note). The assets item is where proposed assets become `approved`.
 - **Style sheet** (Step 2): one item per line with real alternatives; palette items carry swatches, type items carry a specimen with the line of the message in the chosen font.
 - **Structure options** (feasibility): two or three workable structures as options (sections, seconds, scenes, words), recommended first.
 - **Cut-downs**: which cuts to build (full, short), what each drops.

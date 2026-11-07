@@ -12,7 +12,12 @@ const opt = (n, d) => { const i = args.indexOf(n); return i > -1 ? args[i + 1] :
 const step = parseFloat(opt('--step', '0.25'));
 const html = fs.readFileSync(file, 'utf8');
 const sandbox = { console, atob: s => Buffer.from(s, 'base64').toString('binary'), Math, Uint8Array, Array, JSON };
-sandbox.window = sandbox; sandbox.globalThis = sandbox; vm.createContext(sandbox);
+sandbox.window = sandbox; sandbox.globalThis = sandbox;
+// images: a stub with the real pixel size (PNG header) or 100x100, so code that draws embedded images is exercised
+sandbox.SR_IMG_LOADER = uri => { const b = Buffer.from(uri.split(',')[1] || '', 'base64'); let w = 100, h = 100;
+  if (b.length > 24 && b.toString('latin1', 1, 4) === 'PNG') { w = b.readUInt32BE(16); h = b.readUInt32BE(20); }
+  return { width: w, height: h, naturalWidth: w, naturalHeight: h, complete: true }; };
+vm.createContext(sandbox);
 for (const id of ['sr-data', 'sr-core', 'sr-main']) {
   const m = new RegExp(`<script id="${id}">([\\s\\S]*?)</script>`).exec(html);
   if (!m) { console.error('missing script ' + id); process.exit(2); }

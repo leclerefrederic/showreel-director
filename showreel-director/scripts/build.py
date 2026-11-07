@@ -35,7 +35,7 @@ def font_css(fonts, root):
 def guard_assets(cfg, root):
     """Build only from prepared/ or generated/ assets that the manifest lists and the user did not exclude."""
     import csv
-    paths = [cfg.get("track")] + [f.get("path") for f in cfg.get("fonts", [])]
+    paths = [cfg.get("track")] + [f.get("path") for f in cfg.get("fonts", [])] + list((cfg.get("images") or {}).values())
     assets = os.path.normpath(os.path.join(root, "..", "assets")); man = os.path.join(assets, "MANIFEST.csv")
     rows = list(csv.DictReader(open(man, newline="", encoding="utf-8"))) if os.path.exists(man) else []
     errs = []
@@ -64,6 +64,17 @@ def main():
     track_tag = ""
     if cfg.get("track"):
         tp = os.path.join(root, cfg["track"]); raw = open(tp, "rb").read()
+        ad0 = os.path.join(root, cfg.get("analysis_dir", "analysis")); tdur = json.load(open(os.path.join(ad0, "beats.json")))["duration"]
+        want = cfg.get("duration")
+        if want and want > tdur + .01: print(f"warning: duration {want}s is longer than the track ({tdur:.1f}s)")
+        if want and tdur > want + 2:
+            import shutil, subprocess, tempfile
+            if shutil.which("ffmpeg"):
+                tmpf = os.path.join(tempfile.mkdtemp(), "trim.mp3")
+                r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", tp, "-t", str(want + 1), "-c:a", "libmp3lame", "-q:a", "2", tmpf], capture_output=True)
+                if r.returncode == 0: raw = open(tmpf, "rb").read(); print(f"track trimmed to {want + 1:.0f}s for embedding (the reel is {want}s; the beat map is unchanged)")
+            else: print(f"warning: the track ({tdur:.0f}s) is much longer than the reel ({want}s) and ffmpeg is missing to trim it: the whole track will be embedded")
+        elif not want and tdur: print(f"note: no \"duration\" in project.json, the reel lasts as long as the track ({tdur:.1f}s)")
         track_tag = '<script type="text/plain" id="trackdata">data:audio/mpeg;base64,%s</script>' % base64.b64encode(raw).decode()
         report.append((cfg["track"], len(raw) * 4 // 3))
         ad = os.path.join(root, cfg.get("analysis_dir", "analysis"))
@@ -73,6 +84,13 @@ def main():
         data = {"beats": bt["beats"], "dur": cfg.get("duration", bt["duration"]), "downbeat_offset": bt["downbeat_offset"],
                 "env": {"fps": 50, "b64": base64.b64encode(bytes(buf)).decode()}}
     elif cfg.get("duration"): data["dur"] = cfg["duration"]
+    imgs = {}
+    for key, rel in (cfg.get("images") or {}).items():
+        ip = os.path.join(root, rel); ext = rel.lower().rsplit(".", 1)[-1]
+        mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "svg": "image/svg+xml", "webp": "image/webp", "gif": "image/gif"}.get(ext)
+        if not mime: sys.exit(f"images.{key}: unsupported type .{ext}")
+        raw_i = open(ip, "rb").read(); imgs[key] = "data:%s;base64,%s" % (mime, base64.b64encode(raw_i).decode()); report.append((f"image {key}", len(raw_i) * 4 // 3))
+    if imgs: data["images"] = imgs
     fcss, frep = font_css(cfg.get("fonts", []), root); report += frep
     tokens = ";".join("%s:%s" % kv for kv in cfg.get("tokens", {}).items())
     rd = lambda p: open(p, encoding="utf-8").read()

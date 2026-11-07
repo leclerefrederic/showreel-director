@@ -103,6 +103,7 @@ def main():
                     nb = next((q for q in range(len(bars)) if bars[q] >= tr - 0.25 * spb), len(bars) - 1)
                     rt = {"t": round(tr, 3), "beat": j + 1, "next_bar": nb + 1, "next_bar_t": round(float(bars[nb]), 3)}
                     bd["return"] = rt; returns.append(rt)
+                if k == 0 or float(beats[k]) < 2 * 4 * spb and k < 8: bd["intro"] = True  # the bass is simply not in yet: an intro, not a breakdown
                 breakdowns.append(bd)
             k = j + 1
         else:
@@ -113,18 +114,18 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     json.dump({"duration": round(dur, 3), "bpm": round(bpm, 2), "first_beat": round(float(beats[0]), 3),
                "beats": [round(float(b), 3) for b in beats], "downbeat_offset": down,
-               "bars": [round(float(b), 3) for b in bars], "drops_bar_index": drops,
+               "bars": [round(float(b), 3) for b in bars], "drops_bar_index": drops, "drops_bar_number": [d + 1 for d in drops],
                "bar_energy": [round(v, 2) for v in be], "breakdowns": breakdowns, "returns": returns}, open(os.path.join(a.out, "beats.json"), "w"))
     json.dump({"fps": 50, "kick": at50(low), "hat": at50(high), "energy": at50(full)}, open(os.path.join(a.out, "env.json"), "w"))
     print(f"duration {dur:.2f}s  tempo {bpm:.2f} BPM  bar {4*spb:.3f}s  first beat {beats[0]:.3f}s  downbeat offset {down}")
     print("bar  start(s)  energy  note")
     for i, (b, e) in enumerate(zip(bars, be)):
-        print(f"{i+1:3d}  {b:8.2f}  {e:6.2f}  {'<- probable drop' if i in drops else ''}")
+        print(f"{i+1:3d}  {b:8.2f}  {e:6.2f}  {'<- probable drop (bar ' + str(i + 1) + ', 1-based like this table)' if i in drops else ''}")
     if breakdowns:
         print("\nbreakdowns (bass out, 4+ beats) and returns (bass back = best place for a hit):")
         for b in breakdowns:
             r = b.get("return")
-            if r: print(f"  {b['start']:.2f}s -> {b['end']:.2f}s ({b['beats']} beats)  bass back at {r['t']:.2f}s (beat {r['beat']}); hit on bar {r['next_bar']} at {r['next_bar_t']:.2f}s")
+            if r: print(f"  {'(intro) ' if b.get('intro') else ''}{b['start']:.2f}s -> {b['end']:.2f}s ({b['beats']} beats)  bass back at {r['t']:.2f}s (beat {r['beat']}); hit on bar {r['next_bar']} at {r['next_bar_t']:.2f}s")
             else: print(f"  {b['start']:.2f}s -> end of track ({b['beats']} beats)  outro: the bass fades out, no return")
     else:
         print("\nno breakdown found (bass never drops out for 4+ beats): choose emphasis moments from the bar energy table or by ear.")

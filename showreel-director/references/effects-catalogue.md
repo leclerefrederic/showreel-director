@@ -42,19 +42,19 @@ Show the attribute through what happens on screen; a word like "simple" written 
 ## Packs (starting points)
 | Pack | Feel | Typical effects |
 |---|---|---|
-| Deadpan | Calm, precise, comic by contrast | fade, soft rise, stamp, wind exit, scale explosion on one word, flash cut |
-| Kinetic punch | Loud, beat-driven | slam, zoom punch, letter stagger, shake cut, whip pan, particle burst |
-| Clean product | Corporate, clear, reassuring | mask wipe, line stagger, slide push, count-up, underline draw, fade to logo |
-| Playful toy | Bouncy, colourful | pop, elastic overshoot, bounce, squash and stretch, domino, confetti |
-| Cinematic | Slow, dramatic | blur-in, slow push-in, spotlight, silence then hit, curtain open |
-| Tech decode | Digital, fast | scramble decode, slot roll, hard wipe, grid reflow, ticker (glitch only if brand allows) |
+| Deadpan | Calm, precise, comic by contrast | Fade, Rise, Stamp, Wind exit, Scale one word, Flash cut |
+| Kinetic punch | Loud, beat-driven | Slam, Zoom punch, Letter stagger, Shake, Whip pan, Particle burst |
+| Clean product | Corporate, clear, reassuring | Mask wipe, Line mask rise, Push, Count-up, Underline draw, Fade to logo |
+| Playful toy | Bouncy, colourful | Pop, Elastic, Bounce, Squash and stretch, Domino, Confetti cannon |
+| Cinematic | Slow, dramatic | Blur in, Slow push-in, Spotlight, Silence then hit, Curtain |
+| Tech decode | Digital, fast | Scramble decode, Slot roll, Hard wipe, Grid reflow, Marquee (Glitch in only if the brand allows) |
 
 ## Text — entrances
 | Effect | What you see | Best for | Energy | Watch out |
 |---|---|---|---|---|
 | Fade | Opacity in | calm lines, legal text | low | none |
 | Rise | Slides up a few px while fading in | default subtitle | low | keep distance small |
-| Fly in (L/R) | Slides in from the side with ease | lists, side labels | mid | keep left edges consistent |
+| Fly in | Slides in from the side with ease | lists, side labels | mid | keep left edges consistent |
 | Drop | Falls from above, small settle | humour, weight | mid | do not overlap content below |
 | Pop | Scales from 0 with slight overshoot | labels, icons, keywords | mid | no pop on every line |
 | Zoom | Scales down from oversized | key words | high | clip at frame edge |
@@ -64,8 +64,8 @@ Show the attribute through what happens on screen; a word like "simple" written 
 | Word stagger | Words arrive on successive beats | rhythm lines | mid | align on beats |
 | Mask wipe | Text revealed by a moving edge | clean product | low–mid | hard edge looks sharper than soft |
 | Scramble decode | Random glyphs resolve into the text | tech, reveal | mid | fixed-width feel, keep short |
-| Blur-in | From blurred to sharp | cinematic | low | heavy on mobile canvas, use sparingly |
-| Elastic overshoot | Springs past its place and back | playful | mid | avoid on legal/serious lines |
+| Blur in | From blurred to sharp | cinematic | low | heavy on mobile canvas, use sparingly |
+| Elastic | Springs past its place and back | playful | mid | avoid on legal/serious lines |
 
 ## Text — exits
 | Effect | What you see | Best for | Watch out |
@@ -99,8 +99,8 @@ Always show source, date and label ("pilot results, to revalidate") with a figur
 | Flash cut | White/colour flash then new scene | high | max 3 flashes per second |
 | Ink/paper inversion | Background and content swap polarity | high | save for the WOW |
 | Hard wipe | Edge sweeps across the frame | mid | direction consistent |
-| Shape wipe / iris | Circle or shape opens or closes | mid | clear shape language |
-| Push / slide | New scene pushes the old one out | mid | keeps continuity |
+| Iris | Circle or shape opens or closes | mid | clear shape language |
+| Push | New scene pushes the old one out | mid | keeps continuity |
 | Whip pan | Fast slide with streaks | high | motion streaks drawn procedurally |
 | Zoom punch | Quick scale-in on a detail, cut | high | use at drops |
 | Morph | Shapes interpolate into the next layout | mid | the shape engine's native move |
@@ -108,7 +108,7 @@ Always show source, date and label ("pilot results, to revalidate") with a figur
 | Shatter / disperse | Elements scatter into tiles | high | pair with a silence |
 | Floor drop | Everything falls off the bottom | mid | comic, deadpan |
 | Curtain | Two panels part or close | low–mid | theatre feel |
-| Page turn | Corner peels | low | skip for tech tones |
+| Page peel | Corner peels | low | skip for tech tones |
 | Colour flood | Accent colour fills then recedes | mid | respects "no gradient" |
 | Speed ramp | Motion accelerates then freezes | high | needs strong easing |
 | Freeze and stamp | Freeze, stamp lands | mid | deadpan |

@@ -37,7 +37,7 @@ After every MODIFY or DITCH, recompute the timeline on the beat grid, re-run `sc
 2. Translations: show every line of the other reel languages once, grouped, for approval or adaptation (humour and idioms), unless the user reviewed them scene by scene.
 3. Rewrite `storyboard.md` as the next version (keep the previous one as an archive file): per scene ID, final timing, text per language, image and motion, effects, feeling and tension, assets, status (OK / MODIFIED / DITCHED with the reason), plus a change log.
 4. Update `brief.md`: duration, structure table, decisions log, open items.
-5. Show a compact summary of the new storyboard (scene list with times and a one-line description) and ask for the **go**. Generation starts only on an explicit yes. If the user asks for more changes, loop back to the affected scenes only.
+5. Present the new `storyboard.md` and the refreshed card sheet (files, not a chat summary), validate them with one question (Keep / Change a scene), and only then ask for the **go** in a message of its own. Generation starts only on an explicit yes. If the user asks for more changes, loop back to the affected scenes only.
 
 ## Why the order matters
 Ditching or reshaping a scene shifts every later start time and changes the arc; reviewing in order lets the skill re-snap the timeline and rebalance tension as it goes instead of repairing everything at the end.

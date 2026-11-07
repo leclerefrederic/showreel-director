@@ -2,6 +2,7 @@
    with what the brief and storyboard say. The engine (core.js, player.js) imposes none of it.
 
    Contract:
+   - Images listed under "images" in project.json are used with SR.img(key), which returns null until ready: const im = SR.img('shot-01'); if (im) g.drawImage(im, x, y, w, h).
    - window.SHOWREEL declares title/languages/formats/controls/ui/footnote and a pure render(g, t, ctx).
    - ctx = {SW, SH, mode, lang, reduced, env:{kick,hat,energy}, beat:{i,bf}, scene, lt (time in scene), u (0..1 progress)}.
      ctx.reduced is true when the viewer asked for reduced motion: drop screen shake and flashes, soften big scale jumps and strobing.
@@ -15,6 +16,7 @@
   const TXT = { en: { intro: 'Placeholder title', outro: 'Placeholder closing' } };
   window.SHOWREEL = {
     title: { en: 'Showreel' },
+    slug: 'showreel', // short name used in export file names: <slug>_<vN>_<mode>_<lang>.mp4
     footnote: { en: '' },
     languages: [{ id: 'en', label: 'EN' }],
     formats: { d: [1600, 900] },              // add m: [900, 1600] when 9:16 is in the brief

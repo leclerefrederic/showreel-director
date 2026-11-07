@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Check the tools the showreel scripts need, and say what degrades if one is missing.
 
-Usage: python3 check_env.py [--json]
+Usage: python3 check_env.py [--json] [--node-path DIR]
+--node-path DIR: node_modules folder of a scratch install (for example /tmp/x/node_modules); packages found there count as present and the
+summary prints the NODE_PATH to reuse. Save the result as <project>/qa/check-env.json (--json) so later steps do not repeat it.
 Prints one line per tool: OK / MISSING (required) / MISSING (optional), with the fallback and an install hint.
 Exit code 1 only if a required tool is missing. Never installs anything: ask the user before installing.
 """
@@ -20,12 +22,16 @@ def have_py(mod):
     except Exception:
         return False
 
+def _np():
+    a = sys.argv
+    return a[a.index("--node-path") + 1] if "--node-path" in a and a.index("--node-path") + 1 < len(a) else ""
+
 def node_has(mod):
     node = shutil.which("node")
     if not node: return False
     env = dict(os.environ)
     rc, out = run(["npm", "root", "-g"]) if shutil.which("npm") else (1, "")
-    paths = [p for p in [env.get("NODE_PATH", ""), out if rc == 0 else ""] if p]
+    paths = [p for p in [_np(), env.get("NODE_PATH", ""), out if rc == 0 else ""] if p]
     env["NODE_PATH"] = os.pathsep.join(paths)
     try:
         r = subprocess.run([node, "-e", f"require('{mod}')"], capture_output=True, env=env, timeout=15)
@@ -66,6 +72,7 @@ def main():
         if not r["ok"]: print(f"            used for: {r['used_for']}\n            fallback: {r['fallback']}\n            install : {r['install']}")
     req_missing = [r["tool"] for r in res if r["required"] and not r["ok"]]
     opt_missing = [r["tool"] for r in res if not r["required"] and not r["ok"]]
+    if _np(): print(f"\nReuse this when running node scripts: NODE_PATH={_np()}")
     print("\nSummary:", "all required tools present" if not req_missing else "REQUIRED missing: " + ", ".join(req_missing),
           "| optional missing: " + (", ".join(opt_missing) if opt_missing else "none"))
     sys.exit(1 if req_missing else 0)

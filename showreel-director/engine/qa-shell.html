@@ -13,7 +13,7 @@ figcaption{padding:3px 0;max-width:__TILEW__px;overflow:hidden;white-space:nowra
 <script id="sr-main">__MAIN__</script>
 <script>
 const Q=__QA__, S=window.SHOWREEL, SR=window.SR, TW=__TILEW__;
-(async()=>{ try{ await document.fonts.ready; await Promise.all([...document.fonts].map(f=>f.load())); }catch(e){}
+(async()=>{ try{ await document.fonts.ready; await Promise.all([...document.fonts].map(f=>f.load())); await SR.imagesReady(); }catch(e){}
   const g=document.getElementById('g');
   const LG=Q.langs[0]==='__ALL__'?S.languages.map(l=>l.id):Q.langs, MD=Q.modes[0]==='__ALL__'?Object.keys(S.formats):Q.modes;
   for(const lang of LG) for(const mode of MD){

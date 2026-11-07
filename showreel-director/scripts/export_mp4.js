@@ -5,6 +5,7 @@
 
    Usage: NODE_PATH=<dir with node_modules/@napi-rs/canvas> node export_mp4.js BUILT_HTML [--out FILE]   (default FILE: <slug>_<vN>_<mode>_<lang>.mp4 next to BUILT_HTML)
             [--mode d] [--lang en] [--fps 30] [--start 0] [--end SECONDS] [--crf 18] [--scale 1] [--no-audio] [--reduced]
+   --stills t1,t2,... [--cols 3 --tile 480 --out grid.png] writes one PNG with frames at those times and exits (no ffmpeg needed).
    Setup (once, in a scratch folder): npm install @napi-rs/canvas      Needs ffmpeg (libx264, aac) on the PATH.
    --start/--end export a segment (handy to test a scene: --start 78 --end 82).
    Output size = the stage size of the chosen mode times --scale (even numbers are enforced for H.264).
@@ -13,15 +14,20 @@
 const fs = require('fs'), os = require('os'), path = require('path'), vm = require('vm'), { spawn, spawnSync } = require('child_process');
 const args = process.argv.slice(2), file = args[0];
 const opt = (n, d) => { const i = args.indexOf(n); return i > -1 ? args[i + 1] : d; };
-if (!file || file.startsWith('--')) { console.error('usage: export_mp4.js BUILT_HTML [--out FILE] [--mode d] [--lang en] [--fps 30] [--start 0] [--end S] [--crf 18] [--scale 1] [--no-audio] [--reduced]'); process.exit(2); }
+if (!file || file.startsWith('--')) { console.error('usage: export_mp4.js BUILT_HTML [--out FILE] [--mode d] [--lang en] [--fps 30] [--start 0] [--end S] [--crf 18] [--scale 1] [--no-audio] [--reduced] | --stills t1,t2,...'); process.exit(2); }
 let canvasLib;
 try { canvasLib = require('@napi-rs/canvas'); } catch (e) { console.error('Missing @napi-rs/canvas. In a scratch folder run: npm install @napi-rs/canvas, then set NODE_PATH to its node_modules.'); process.exit(2); }
 const { createCanvas, GlobalFonts } = canvasLib;
-if (spawnSync('ffmpeg', ['-version']).status !== 0) { console.error('ffmpeg not found on the PATH.'); process.exit(2); }
+if (!args.includes('--stills') && spawnSync('ffmpeg', ['-version']).status !== 0) { console.error('ffmpeg not found on the PATH.'); process.exit(2); }
 
 const html = fs.readFileSync(file, 'utf8');
 const sandbox = { console, atob: s => Buffer.from(s, 'base64').toString('binary'), Math, Uint8Array, Array, JSON };
-sandbox.window = sandbox; sandbox.globalThis = sandbox; vm.createContext(sandbox);
+sandbox.window = sandbox; sandbox.globalThis = sandbox;
+// embedded images (project.json "images") are decoded with the canvas library, so MP4 frames match the browser
+// (decoding is asynchronous in the canvas library, so every image is preloaded before the first frame)
+const PRE = new Map();
+sandbox.SR_IMG_LOADER = uri => PRE.get(uri) || null;
+vm.createContext(sandbox);
 for (const id of ['sr-data', 'sr-core', 'sr-main']) {
   const m = new RegExp(`<script id="${id}">([\\s\\S]*?)</script>`).exec(html);
   if (!m) { console.error('missing script ' + id + ' (is this a built player page, not a contact sheet?)'); process.exit(2); }
@@ -33,7 +39,7 @@ if (!S.formats[mode]) { console.error('unknown mode ' + mode + '; available: ' +
 const fps = parseFloat(opt('--fps', '30')), start = parseFloat(opt('--start', '0')), end = Math.min(DUR, parseFloat(opt('--end', String(DUR))));
 const crf = opt('--crf', '18'), scale = parseFloat(opt('--scale', '1'));
 // default name: <slug>_<vN>_<mode>_<lang>.mp4 next to the built page (slug from the reel title, vN from the version folder)
-const slug = String(((S.title && (S.title[lang] || S.title.en)) || 'reel')).normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'reel';
+const slug = String(S.slug || ((S.title && (S.title[lang] || S.title.en)) || 'reel')).normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40).replace(/-$/, '') || 'reel';
 const ver = (path.resolve(file).split(path.sep).slice(-3, -2)[0] || 'v1');
 const out = opt('--out', path.join(path.dirname(path.resolve(file)), `${slug}_${ver}_${mode}_${lang}.mp4`));
 const [SW, SH] = S.formats[mode], W = Math.round(SW * scale / 2) * 2, H = Math.round(SH * scale / 2) * 2;
@@ -43,6 +49,22 @@ const frames = Math.round((end - start) * fps);
 let fonts = 0;
 for (const m of html.matchAll(/@font-face\{font-family:"([^"]+)";font-weight:(\d+);[^}]*?base64,([A-Za-z0-9+/=]+)\)/g)) {
   try { if (GlobalFonts.register(Buffer.from(m[3], 'base64'), m[1])) fonts++; } catch (e) { console.warn('font not registered: ' + m[1] + ' (' + e.message + ')'); }
+}
+const preload = async () => { for (const uri of Object.values((SR.data && SR.data.images) || {})) PRE.set(uri, await canvasLib.loadImage(Buffer.from(uri.split(',')[1] || '', 'base64'))); };
+// stills: a PNG grid of frames at chosen times, to look at a reel without a browser (also finds overflow the harness cannot see)
+if (opt('--stills', null)) { (async () => {
+  await preload();
+  const times = opt('--stills').split(',').map(Number), cols = parseInt(opt('--cols', String(Math.min(3, times.length)))), tw = parseInt(opt('--tile', '480'));
+  const th = Math.round(tw * SH / SW), rows = Math.ceil(times.length / cols), lab = 22;
+  const sheet = createCanvas(cols * tw, rows * (th + lab)), sg = sheet.getContext('2d'); sg.fillStyle = '#1d1d1d'; sg.fillRect(0, 0, sheet.width, sheet.height);
+  if (S.setup) S.setup({ mode, lang });
+  times.forEach((t, i) => {
+    const c = createCanvas(tw, th), g2 = c.getContext('2d'); SR.drawFrame(g2, tw, th, t, { mode, lang, reduced: args.includes('--reduced') });
+    const x = (i % cols) * tw, y = Math.floor(i / cols) * (th + lab); sg.drawImage(c, x, y);
+    const a = SR.sceneAt(t); sg.fillStyle = '#ccc'; sg.font = '13px sans-serif'; sg.fillText(`${mode}/${lang} t=${t.toFixed(1)} ${a && a.scene ? (a.scene.id || a.scene.name || '') : ''}`, x + 4, y + th + 15);
+  });
+  const outp = opt('--out', path.join(path.dirname(path.resolve(file)), 'stills.png')); fs.writeFileSync(outp, sheet.toBuffer('image/png')); console.log('wrote ' + outp + ' (' + times.length + ' stills)'); process.exit(0);
+  })(); return;
 }
 // audio
 let audioFile = null;
@@ -62,7 +84,7 @@ let procErr = null; proc.on('error', e => { procErr = e; }); proc.stdin.on('erro
 const done = new Promise(r => proc.on('close', r));
 
 (async () => {
-  if (S.setup) S.setup({ mode, lang });
+  await preload(); if (S.setup) S.setup({ mode, lang });
   const cv = createCanvas(W, H), g = cv.getContext('2d'), t0 = Date.now();
   console.log(`exporting ${frames} frames, ${W}x${H} @ ${fps} fps, mode ${mode}, lang ${lang}, ${start}s to ${end}s, ${fonts} font(s) registered, audio ${audioFile ? 'yes' : 'no'}`);
   for (let i = 0; i < frames; i++) {

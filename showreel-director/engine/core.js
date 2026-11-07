@@ -61,6 +61,22 @@
     for (const s of SCENES) if (t >= s.s) sc = s;
     return sc ? { scene: sc, lt: t - sc.s, u: clamp((t - sc.s) / Math.max(.001, sc.e - sc.s)) } : null;
   }
+  // Images listed under "images" in project.json (embedded as data URIs by build.py). SR.img(key) returns a drawable image
+  // once it is ready, or null while it is still decoding (the loop draws again next frame), so always guard: const im = SR.img('shot-01'); if (im) g.drawImage(im, ...).
+  // Hosts without a DOM (MP4 export, harness) provide G.SR_IMG_LOADER(dataUri) instead of the browser Image.
+  const IMG = {};
+  function img(key) {
+    if (!(key in IMG)) {
+      const src = (D.images || {})[key]; let im = null;
+      if (src) { if (typeof G.SR_IMG_LOADER === 'function') im = G.SR_IMG_LOADER(src); else if (typeof G.Image === 'function') { im = new G.Image(); im.src = src; } }
+      IMG[key] = im;
+    }
+    const im = IMG[key];
+    return im && im.complete !== false && im.naturalWidth !== 0 ? im : null;
+  }
+  function imagesReady() {
+    return Promise.all(Object.keys(D.images || {}).map(k => { img(k); const im = IMG[k]; return im && im.decode ? im.decode().catch(() => {}) : Promise.resolve(); }));
+  }
   // Letterbox a virtual stage SW x SH into the canvas W x H and clip to it. Returns the scale.
   function stage(g, W, H, SW, SH) {
     const k = Math.min(W / SW, H / SH), ox = (W - SW * k) / 2, oy = (H - SH * k) / 2;
@@ -76,5 +92,5 @@
     S.render(g, t, { SW, SH, mode: state.mode, lang: state.lang, env: envAt(t), beat: beatInfo(t), scene: s && s.scene, lt: s ? s.lt : t, u: s ? s.u : 0, reduced: !!state.reduced });
     g.restore();
   }
-  G.SR = { clamp, lerp, ease, K_, barT, beatInfo, envAt, setScenes, sceneAt, drawFrame, stage, data: D };
+  G.SR = { clamp, lerp, ease, K_, barT, beatInfo, envAt, setScenes, sceneAt, drawFrame, stage, img, imagesReady, data: D };
 })(typeof window !== 'undefined' ? window : globalThis);

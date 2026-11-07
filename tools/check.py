@@ -55,6 +55,39 @@ def main():
     if "Untrusted content" not in s: rules.append("untrusted-content rule missing")
     if len(s) > 32000: rules.append("SKILL.md over 32 KB: move detail to references")
     ok("process rules present (gates, steps, express, untrusted content, description)") if not rules else bad("; ".join(rules))
+    # effect names used in the catalogue (tables and packs) must exist in the generated index, so the user can find them in the lab
+    idxs = open(os.path.join(SK, "references", "effects-index.md"), encoding="utf-8").read()
+    names = {m.group(1).strip().lower() for m in re.finditer(r"^\| ([^|]+) \|", idxs, re.M)}
+    cat = open(os.path.join(SK, "references", "effects-catalogue.md"), encoding="utf-8").read(); miss = []; cl = cat.splitlines(); i = 0
+    while i < len(cl):
+        if cl[i].startswith("| Effect |"):
+            j = i + 2
+            while j < len(cl) and cl[j].startswith("|"):
+                n = cl[j].split("|")[1].strip()
+                if n.lower() not in names: miss.append(n)
+                j += 1
+            i = j
+        else: i += 1
+    pk = re.search(r"## Packs.*?\n\n", cat, re.S)
+    for ln in (pk.group(0).splitlines()[3:] if pk else []):
+        if ln.startswith("|"):
+            for e in re.sub(r"\([^)]*\)", "", ln.split("|")[3]).split(","):
+                if e.strip().lower() not in names: miss.append(e.strip())
+    ok("effect names in the catalogue and packs all exist in the effects index") if not miss else bad("catalogue names missing from the index: " + ", ".join(sorted(set(miss))[:8]))
+    # build self-test: a project with an embedded image and a duration shorter than nothing builds, passes the guard and the harness
+    import base64 as _b64, tempfile, json as _json, shutil as _sh
+    td = tempfile.mkdtemp()
+    bp = os.path.join(td, "bp"); os.makedirs(os.path.join(bp, "v1")); os.makedirs(os.path.join(bp, "assets", "prepared"))
+    png = _b64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+    open(os.path.join(bp, "assets", "prepared", "shot-01-pixel.png"), "wb").write(png)
+    _json.dump({"title": "T", "main": "main.js", "duration": 6, "fonts": [], "tokens": {}, "images": {"shot-01": "../assets/prepared/shot-01-pixel.png"}}, open(os.path.join(bp, "v1", "project.json"), "w"))
+    _sh.copy(os.path.join(SK, "engine", "main.template.js"), os.path.join(bp, "v1", "main.js"))
+    rb = run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(bp, "v1")]); built = os.path.join(bp, "v1", "dist", "index.html")
+    rh = run(["node", os.path.join(SK, "scripts", "harness.js"), built, "--step", "0.5"]) if os.path.exists(built) else None
+    _json.dump({"title": "T", "main": "main.js", "duration": 6, "fonts": [], "tokens": {}, "images": {"shot-01": "../assets/source/x.png"}}, open(os.path.join(bp, "v1", "project.json"), "w"))
+    rg = run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(bp, "v1")])
+    good = rb.returncode == 0 and rh is not None and rh.returncode == 0 and '"images"' in open(built, encoding="utf-8").read() and rg.returncode != 0
+    ok("build self-test: image embedded, harness passes, guard refuses assets/source") if good else bad("build self-test failed: " + (rb.stdout + rb.stderr + (rh.stdout if rh else ""))[-300:])
     # tools self-test: decision sheet builder accepts a good spec and refuses a bad one; scene cards build
     import tempfile, json as _json
     td = tempfile.mkdtemp(); good = os.path.join(td, "g.json"); badf = os.path.join(td, "b.json")
@@ -68,7 +101,7 @@ def main():
     pj = os.path.join(td, "proj"); fx = os.path.join(SK, "evals", "ploma-full-interview", "files", "assets")
     if os.path.isdir(fx):
         _sh.copytree(fx, os.path.join(pj, "assets")); org = [sys.executable, os.path.join(SK, "scripts", "organize_assets.py"), pj]
-        r1 = run(org + ["--apply"]); r2 = run(org + ["--check"]); man = open(os.path.join(pj, "assets", "MANIFEST.csv")).read()
+        r1 = run(org + ["--apply"]); r2 = run(org + ["--check", "--allow-hold"]); man = open(os.path.join(pj, "assets", "MANIFEST.csv")).read()
         held = man.count(",hold,"); r3 = run(org + ["--set", "shot-04=approved"])
         good = r1.returncode == 0 and r2.returncode == 0 and held >= 3 and r3.returncode != 0 and not os.path.exists(os.path.join(pj, "assets", "prepared", "shot-04-screen-customers.png"))
         ok("asset organiser: typed names, held files stay held, check passes") if good else bad("asset organiser self-test failed: " + (r1.stdout + r1.stderr + r2.stdout)[-300:])
