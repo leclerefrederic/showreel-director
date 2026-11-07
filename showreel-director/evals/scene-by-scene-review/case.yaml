@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: scene-by-scene-review
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  Before generating anything, the skill reviews the storyboard one scene at a time. For the first scene it shows a short card
+  (timing, text, image and motion, feeling, assets) and asks OK, MODIFY or DITCH, then waits. It does not start the build.

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>QA contact sheet</title>
+<style>
+:root{__TOKENS__}
+__FONTS_CSS__
+body{margin:0;background:#1d1d1d;color:#ccc;font:12px system-ui,sans-serif}
+#g{display:flex;flex-wrap:wrap;gap:8px;padding:8px}
+figure{margin:0}canvas{display:block;background:#000}
+figcaption{padding:3px 0;max-width:__TILEW__px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+</style></head><body><div id="g"></div>
+<script id="sr-data">window.SR_DATA=__DATA__;</script>
+<script id="sr-core">__CORE__</script>
+<script id="sr-main">__MAIN__</script>
+<script>
+const Q=__QA__, S=window.SHOWREEL, SR=window.SR, TW=__TILEW__;
+(async()=>{ try{ await document.fonts.ready; await Promise.all([...document.fonts].map(f=>f.load())); }catch(e){}
+  const g=document.getElementById('g');
+  const LG=Q.langs[0]==='__ALL__'?S.languages.map(l=>l.id):Q.langs, MD=Q.modes[0]==='__ALL__'?Object.keys(S.formats):Q.modes;
+  for(const lang of LG) for(const mode of MD){
+    if(S.setup) S.setup({lang,mode});
+    const f=S.formats[mode]; if(!f) continue; const w=TW, h=Math.round(TW*f[1]/f[0]);
+    for(const t of Q.times){
+      const fig=document.createElement('figure'), c=document.createElement('canvas'); c.width=w; c.height=h; c.style.width=w+'px';
+      SR.drawFrame(c.getContext('2d'),w,h,t,{lang,mode});
+      const sc=SR.sceneAt(t), cap=document.createElement('figcaption'); cap.textContent=lang+'/'+mode+' t='+t.toFixed(1)+' '+(sc?sc.scene.name:'');
+      fig.appendChild(c); fig.appendChild(cap); g.appendChild(fig);
+    }
+  }
+  document.title='QA ready'; })();
+</script></body></html>

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: infeasible-brief
+expected_outcome: |
+  The skill does not comply blindly. It states with numbers that 30 shots in 10 seconds (0.33 s each) and about 100 words in three languages
+  cannot work, explains why with reference to reading speed, minimum display time or flash limits, and offers two or three workable options
+  (longer film, fewer scenes, text removed, cut-downs) before building anything. It still asks the conversation and reel languages.

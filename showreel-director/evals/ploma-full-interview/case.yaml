@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: ploma-full-interview
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  The skill runs the full interview without building anything yet. Its first question asks the conversation language and the reel's
+  on-screen language (English by default). It reads the brief and the asset folder first, asks for a working folder, and only asks what
+  the brief does not already say. It flags the hidden problems in the assets (font that forbids embedding, 96x24 logo, screen with
+  personal data, photo without confirmed image rights, heavy video, figures marked internal or to confirm, an unvalidated pricing
+  hypothesis), runs a consistency review, and writes brief.md with an asset manifest and a release gate, then waits for approval.

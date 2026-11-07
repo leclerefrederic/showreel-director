@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+/* Tokens are injected from project.json ("tokens"): the engine has no look of its own. */
+:root{__TOKENS__}
+__FONTS_CSS__
+html,body{margin:0;height:100%;background:var(--page,#000);font-family:var(--font-ui,system-ui,sans-serif);overflow:hidden}
+#wrap{position:fixed;inset:0;display:flex;flex-direction:column}
+#cv{flex:1;width:100%;min-height:0;display:block}
+#bar{height:48px;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--bar-bg,#111);color:var(--bar-fg,#eee);font-size:13px}
+#bar button,#ov button{border:0;border-radius:6px;padding:7px 12px;font:600 13px var(--font-ui,system-ui,sans-serif);cursor:pointer;background:var(--btn-bg,#ddd);color:var(--btn-fg,#111)}
+#bar button.off{opacity:.55}
+#seek{flex:1;accent-color:var(--accent,#fff)}#vl{width:90px;accent-color:var(--accent,#fff)}
+#tm{min-width:84px;text-align:right}
+#ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--ov-bg,rgba(0,0,0,.85));color:var(--ov-fg,#fff);text-align:center}
+#ovt{font:800 clamp(28px,6vw,52px) var(--font-title,system-ui,sans-serif)}
+.bt{margin-top:20px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+#ov button{padding:12px 22px;font-size:16px}
+#ov button.f{background:transparent;color:inherit;border:2px solid #ffffff55}#ov button.f.on{border-color:var(--accent,#fff)}
+#ov button.s{background:transparent;color:inherit;border:1px solid #ffffff88}
+#ovsm{margin-top:26px;font-size:12px;opacity:.7;max-width:540px}
+@media(max-width:640px){#vl{display:none}#tm{min-width:66px}#bar{gap:8px;padding:0 8px}}
+</style></head><body>
+<div id="wrap"><canvas id="cv"></canvas>
+<div id="bar"><button id="pp"></button><button id="rp"></button><input id="seek" type="range" min="0" max="100" value="0"><span id="tm">0:00</span>
+<button id="mu"></button><input id="vl" type="range" min="0" max="100" value="90" aria-label="Volume"><button id="lp" class="off"></button><button id="fm"></button><button id="lg"></button><button id="fs">⛶</button></div></div>
+<div id="ov"><b id="ovt"></b><div class="bt" id="ovl"></div><div class="bt" id="ovf"></div>
+<div class="bt"><button id="ov1"></button><button id="ov2" class="s"></button></div><small id="ovsm"></small></div>
+__TRACK_TAG__
+<script id="sr-data">window.SR_DATA=__DATA__;</script>
+<script id="sr-core">__CORE__</script>
+<script id="sr-main">__MAIN__</script>
+<script id="sr-player">__PLAYER__</script>
+</body></html>

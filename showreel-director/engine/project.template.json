@@ -1,0 +1,16 @@
+{
+  "title": "Showreel",
+  "main": "main.js",
+  "track": "../assets/audio/track.mp3",
+  "analysis_dir": "../analysis",
+  "fonts": [
+    {"family": "Example Sans", "weight": 700, "path": "../assets/fonts/Example-Bold.ttf"}
+  ],
+  "tokens": {
+    "--page": "#000000", "--bar-bg": "#111111", "--bar-fg": "#eeeeee",
+    "--btn-bg": "#dddddd", "--btn-fg": "#111111", "--accent": "#ffffff",
+    "--ov-bg": "rgba(0,0,0,.85)", "--ov-fg": "#ffffff",
+    "--font-ui": "system-ui,sans-serif", "--font-title": "system-ui,sans-serif"
+  },
+  "weight_budget_mb": 20
+}
