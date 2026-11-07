@@ -10,12 +10,14 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - 248 previewable effects in an effects lab, with search and "copy my picks".
 - Built-in glossary so people outside video and editing are understood and the right terms land in the brief.
 - Style-neutral engine: no look is imposed, the brief decides.
+- MP4 export without a browser (`scripts/export_mp4.js`, Node canvas + ffmpeg), about 100 frames per second.
 - Checks before release: harness (NaN, clipped or colliding text), player test, release gate.
 - Audio analysis finds tempo, bars, drops, and breakdowns with the bar to hit on when the bass returns.
 - Shared drawing helpers (`engine/kit.js`, style-neutral) so projects do not rewrite text, ring, shake, flash and confetti code.
 
 ## Layout
 - `showreel-director/` the skill: `SKILL.md`, `references/`, `engine/`, `scripts/`, `demo/`, `evals/` (7 cases, English)
+- `tools/` repo tooling (`package.py`, `check.py`), `.github/workflows/check.yml`
 - `ROADMAP.md` ideas on hold
 - `showreel-director.skill` packaged skill (zip of the folder, `evals/` excluded)
 - `showreel-director/engine/effects-lab-sample.html` neutral effects lab, open it in a browser
@@ -27,11 +29,12 @@ Open `showreel-director.skill` in Claude and click "Save skill".
 Ask the skill what it can do, then pick the demo reel or the effects lab.
 
 ## Maintenance
-- Effects live in `engine/effects/*.js`. After editing: `python3 showreel-director/scripts/export_effects_index.py` (refreshes `references/effects-index.md`) and `python3 showreel-director/scripts/build_effects_lab.py --out showreel-director/engine/effects-lab-sample.html`.
-- Rebuild the `.skill` by zipping `showreel-director/` without `evals/` and `__pycache__/`.
+- Effects live in `showreel-director/engine/effects/*.js`. After editing them run `python3 tools/check.py --fix` (refreshes `references/effects-index.md` and the sample lab, then re-checks).
+- Build the package with `python3 tools/package.py`, then verify with `python3 tools/check.py` (syntax, index and lab up to date, English-only text, `.skill` identical to the folder, demo harness). The same check runs on every push (GitHub Action).
+- Ideas on hold are in `ROADMAP.md`.
 
 ## Requirements
-Python 3 with numpy and ffmpeg (audio analysis), Node 16+ (tests). Optional: fontTools, brotli, jsdom, a headless browser. `showreel-director/scripts/check_env.py` lists what is missing.
+Python 3 with numpy and ffmpeg (audio analysis), Node 16+ (tests). Optional: fontTools, brotli, jsdom, `@napi-rs/canvas` (MP4 export), a headless browser. `showreel-director/scripts/check_env.py` lists what is missing.
 
 ## Licence notes
 - `showreel-director/demo/` embeds the track "Deep-Space Funk", generated with Suno. This project is non-commercial and the track is provided for non-commercial use only, under Suno's terms. Do not reuse the track commercially.
