@@ -30,6 +30,8 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 Open `showreel-director.skill` in Claude and click "Save skill".
 
 ## Try it
+Demo reel (plays in the browser, click "Start with sound"): https://leclerefrederic.github.io/showreel-director/
+
 Ask the skill what it can do, then pick the effects lab, or the demo reel (`demo/`, not part of the packaged skill).
 
 ## Maintenance
