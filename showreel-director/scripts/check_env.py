@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Check the tools the showreel scripts need, and say what degrades if one is missing.
 
-Usage: python3 check_env.py [--json] [--node-path DIR]
+Usage: python3 check_env.py [--json] [--notice] [--node-path DIR]
+--notice: print only the degraded-mode notice (what is lost and how to fix it, one line per missing tool) to adapt and show the user.
 --node-path DIR: node_modules folder of a scratch install (for example /tmp/x/node_modules); packages found there count as present and the
 summary prints the NODE_PATH to reuse. Save the result as <project>/qa/check-env.json (--json) so later steps do not repeat it.
 Prints one line per tool: OK / MISSING (required) / MISSING (optional), with the fallback and an install hint.
@@ -64,6 +65,13 @@ def main():
     pw = have_py("playwright")
     add("headless browser", browsers or pw, False, "taking screenshots of contact sheets",
         "use the artifact screenshot tool if the session has one, or ask the user to open qa/contact-<vN>.html", "install Chromium or `pip install playwright`", ", ".join(browsers) + (" playwright" if pw else ""))
+    if "--notice" in sys.argv:
+        miss = [r for r in res if not r["ok"]]
+        if not miss: print("Mode: FULL. Every tool the skill can use is present.")
+        else:
+            print("Mode: " + ("BLOCKED (required tool missing)" if any(r["required"] for r in miss) else "DEGRADED") + ". To get the full mode, fix:")
+            for r in miss: print(f"- {r['tool']}: without it, {r['fallback']}. Fix: {r['install']}.")
+        sys.exit(1 if any(r["required"] for r in miss) else 0)
     if "--json" in sys.argv:
         print(json.dumps(res, indent=2)); sys.exit(1 if any(r["required"] and not r["ok"] for r in res) else 0)
     for r in res:
@@ -73,7 +81,8 @@ def main():
     req_missing = [r["tool"] for r in res if r["required"] and not r["ok"]]
     opt_missing = [r["tool"] for r in res if not r["required"] and not r["ok"]]
     if _np(): print(f"\nReuse this when running node scripts: NODE_PATH={_np()}")
-    print("\nSummary:", "all required tools present" if not req_missing else "REQUIRED missing: " + ", ".join(req_missing),
+    print("\nMode:", "FULL" if not (req_missing or opt_missing) else "BLOCKED" if req_missing else "DEGRADED (see the fallbacks above; tell the user what to fix)")
+    print("Summary:", "all required tools present" if not req_missing else "REQUIRED missing: " + ", ".join(req_missing),
           "| optional missing: " + (", ".join(opt_missing) if opt_missing else "none"))
     sys.exit(1 if req_missing else 0)
 

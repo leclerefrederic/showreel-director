@@ -18,3 +18,6 @@ The skill is written for an environment with file tools, a shell, a multiple-cho
 - Brief, storyboard and release gate are still written as files when files exist, or shown in full in the chat when they do not.
 - Say what could not be checked in the final report; a missing tool lowers the verification level, not the honesty of the report.
 - Do not name a tool in front of the user: say what you are doing ("I'll ask you a few questions", "I need a folder to work in").
+
+## Degraded-mode notice (first reply)
+On invocation, list what the session lacks and what it costs, then carry on unless the user wants to fix things first. Example shape (adapt to the conversation language, no tool names): "Heads-up: some tools are missing here, so I will work in degraded mode. Without a way to run scripts I cannot run the automatic tests or export an MP4; without a question tool I will ask in numbered text. To get the full mode: enable script execution, or run me on a machine that has it. Shall I continue as is?" The final report repeats what stayed unverified.
