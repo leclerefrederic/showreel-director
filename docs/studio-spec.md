@@ -1,6 +1,6 @@
 # Showreel Studio v2: a workspace with a copilot
 
-Status: VALIDATED (revision 1 validated; revision 2 of 2026-11-09 awaiting validation: section 5.3 modes and role of the AI, phase A3) by the owner on 2026-11-08 with the recommended choice for every point of section 11 (showreel.json plus markdown; copilot edits as proposals; one window per project; skill fully usable alone in Cowork; phases A to D in order). Build phase A first.
+Status: VALIDATED (revision 1 validated; revision 2 validated on 2026-11-09: section 5.3 modes and role of the AI, phase A3 next) by the owner on 2026-11-08 with the recommended choice for every point of section 11 (showreel.json plus markdown; copilot edits as proposals; one window per project; skill fully usable alone in Cowork; phases A to D in order). Build phase A first.
 
 ## 1. Idea
 

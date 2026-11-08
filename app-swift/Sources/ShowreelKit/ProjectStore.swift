@@ -2,9 +2,27 @@ import Foundation
 
 /// App-private settings of one project, kept in `.studio/ui.json`.
 public struct StudioSettings: Codable, Equatable {
-    /// When true the copilot's edits are written at once instead of shown as proposals.
+    public static let beginner = "beginner", expert = "expert"
+
+    /// When true the copilot's edits are written at once instead of shown as cards and proposals.
     public var applyDirectly = false
-    public init(applyDirectly: Bool = false) { self.applyDirectly = applyDirectly }
+    /// "beginner" (the wizard) or "expert" (the blocks). A project created by the app starts in beginner; a folder that
+    /// has no setting yet (made earlier, or opened from elsewhere) opens in expert, as it was used so far.
+    public var mode: String
+    /// Wizard steps the user settled without giving a value ("none needed"). Everything else is decided by the data itself.
+    public var decided: [String]
+
+    public init(applyDirectly: Bool = false, mode: String = StudioSettings.expert, decided: [String] = []) {
+        self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        applyDirectly = try c.decodeIfPresent(Bool.self, forKey: .applyDirectly) ?? false
+        let m = try c.decodeIfPresent(String.self, forKey: .mode)
+        mode = m == Self.beginner ? Self.beginner : Self.expert
+        decided = try c.decodeIfPresent([String].self, forKey: .decided) ?? []
+    }
 }
 
 /// One saved earlier version of a file.
@@ -42,6 +60,12 @@ public final class ProjectStore {
         let u = (path.hasPrefix("/") ? URL(fileURLWithPath: path) : root.appendingPathComponent(path)).standardizedFileURL
         guard u.isInside(root) else { throw AgentError.msg("refused: writes stay inside the project folder") }
         return u
+    }
+
+    /// Marks a wizard step as settled without a value ("none needed").
+    public func markDecided(_ step: String) {
+        var s = settings
+        if !s.decided.contains(step) { s.decided.append(step); settings = s }
     }
 
     public func isPrivate(_ rel: String) -> Bool { rel == Self.studioDir || rel.hasPrefix(Self.studioDir + "/") }
@@ -152,6 +176,9 @@ public final class ProjectStore {
         try fm.createDirectory(at: root.appendingPathComponent(Self.studioDir), withIntermediateDirectories: true)
         let f = ShowreelFile(name: name, conversationLanguage: conversationLanguage, reelLanguages: reelLanguages)
         try save(f)
+        var s = settings
+        s.mode = StudioSettings.beginner       // a new project starts in the wizard
+        settings = s
         return f
     }
 

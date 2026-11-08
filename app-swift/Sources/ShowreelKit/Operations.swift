@@ -62,7 +62,7 @@ public enum ParameterKey: String, CaseIterable, Sendable {
         }
     }
 
-    static func list(_ s: String, lowercase: Bool) -> [String] {
+    public static func list(_ s: String, lowercase: Bool) -> [String] {
         var out: [String] = []
         for p in s.split(whereSeparator: { ",;\n".contains($0) }) {
             let v = p.trimmingCharacters(in: .whitespaces)

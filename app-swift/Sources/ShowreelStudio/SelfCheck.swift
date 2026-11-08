@@ -112,6 +112,16 @@ enum SelfCheck {
             check(added.first?.id == "logo-01" && Assets.load(store).count == 1
                   && fm.fileExists(atPath: tmp.appendingPathComponent("assets/prepared/logo-01-incoming.svg").path), "a dropped file is copied and listed in MANIFEST.csv")
             check(store.read("brief.md")?.contains("Teams") == true, "brief.md is generated from showreel.json")
+
+            // modes, wizard, checks, versions
+            check(store.settings.mode == StudioSettings.beginner, "a new project starts in beginner mode")
+            let steps = Wizard.steps(assets: Assets.load(store), spec: spec)
+            check(steps.count >= 10 && steps.contains { !$0.isBuilt }, "the wizard has its steps and the blocks to come (\(steps.count))")
+            check(Wizard.firstUndecided(steps, file: store.loadShowreel(), assets: Assets.load(store), settings: store.settings, spec: spec).map { steps[$0].id } == "project.message",
+                  "the wizard resumes after what is already decided (languages, audience) at the first undecided step")
+            check(Checks.run(block: "project", store: store).first?.level == .pending && !Checks.run(block: "resources", store: store).isEmpty, "deterministic checks run without AI")
+            check(spec?.blocks.filter { $0.ai == "required" }.map { $0.id } == ["build"], "only build requires generation")
+            check(Skill.version()?.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil, "skill version is read (\(Skill.version() ?? "none"))")
         }
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1

@@ -33,13 +33,20 @@ struct ProjectView: View {
         VStack(spacing: 0) {
             if let offer = project.importOffer { ImportBanner(offer: offer) }
             if !project.docIssues.isEmpty { DocBanner() }
-            HSplitView {
-                BlocksSidebar()
-                    .frame(minWidth: 190, idealWidth: 220, maxWidth: 320)
-                CenterPane()
-                    .frame(minWidth: 420)
-                ChatView()
-                    .frame(minWidth: 340, idealWidth: 400)
+            if project.mode == StudioSettings.beginner {
+                HSplitView {
+                    WizardView().frame(minWidth: 560)
+                    if project.showCopilot { ChatView().frame(minWidth: 340, idealWidth: 400) }
+                }
+            } else {
+                HSplitView {
+                    BlocksSidebar()
+                        .frame(minWidth: 190, idealWidth: 220, maxWidth: 320)
+                    CenterPane()
+                        .frame(minWidth: 420)
+                    ChatView()
+                        .frame(minWidth: 340, idealWidth: 400)
+                }
             }
         }
         .toolbar {
@@ -47,7 +54,19 @@ struct ProjectView: View {
                 Button { openWindow(id: "library") } label: { Label("Library", systemImage: "books.vertical") }
                     .help("Project library")
             }
+            ToolbarItem(placement: .principal) {
+                Picker("Mode", selection: $project.mode) {
+                    Text("Beginner").tag(StudioSettings.beginner)
+                    Text("Expert").tag(StudioSettings.expert)
+                }
+                .pickerStyle(.segmented).frame(width: 200)
+                .help("Beginner: one question at a time. Expert: all the blocks at once. Switching loses nothing.")
+            }
             ToolbarItemGroup(placement: .primaryAction) {
+                if project.mode == StudioSettings.beginner {
+                    Button { project.showCopilot.toggle() } label: { Label("Copilot", systemImage: "sidebar.right") }
+                        .help(project.showCopilot ? "Hide the copilot" : "Show the copilot")
+                }
                 Button { chat.showSettings = true } label: { Label("Settings", systemImage: "gearshape") }
                     .help("Settings")
             }

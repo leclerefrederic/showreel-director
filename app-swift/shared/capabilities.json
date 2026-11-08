@@ -19,7 +19,7 @@
   {
    "need": "Fill in the project questions and decide on assets on screens",
    "provided": true,
-   "via": "the Project block (audience, message, tone, languages, formats, duration, constraints) and the Resources block (files, statuses, notes, scenes) are screens in the sidebar; update_parameter and update_asset change them as plain cards the user accepts or refuses"
+   "via": "the Project block (audience, message, tone, languages, formats, duration, constraints) and the Resources block (files, statuses, notes, scenes) are screens in the sidebar (Expert mode), or one question per screen in a wizard (Beginner mode); update_parameter and update_asset change them as plain cards the user accepts or refuses"
   },
   {
    "need": "Let the user read and edit the project files next to the assistant",

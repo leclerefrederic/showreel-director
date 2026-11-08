@@ -46,15 +46,29 @@ final class ProjectModel: ObservableObject {
     @Published var historyFor: EditorTab?
     @Published var error: String?
     @Published var applyDirectly: Bool {
-        didSet { store.settings = StudioSettings(applyDirectly: applyDirectly) }
+        didSet { var s = store.settings; s.applyDirectly = applyDirectly; store.settings = s }
     }
+    /// "beginner" (the wizard) or "expert" (the blocks), kept in .studio/ui.json. Switching never touches the project data.
+    @Published var mode: String {
+        didSet { var s = store.settings; s.mode = mode; store.settings = s; if mode == StudioSettings.beginner { resumeWizard() } else { showCopilot = true } }
+    }
+    @Published var showCopilot: Bool
+    @Published var wizardIndex = 0
+    @Published private(set) var wizardSteps: [WizardStep] = []
+    @Published private(set) var decided: [String] = []
+    /// The deterministic checks of the blocks that have some (no AI), recomputed with the data.
+    @Published private(set) var checks: [String: [CheckResult]] = [:]
 
     private var watcher: FileWatcher?
 
     init(path: String) {
         root = URL(fileURLWithPath: path)
         store = ProjectStore(root: root)
-        applyDirectly = store.settings.applyDirectly
+        let s = store.settings
+        applyDirectly = s.applyDirectly
+        mode = s.mode
+        showCopilot = s.mode == StudioSettings.expert
+        decided = s.decided
     }
 
     var title: String { showreel.flatMap { $0.name.isEmpty ? nil : $0.name } ?? root.lastPathComponent }
@@ -69,6 +83,7 @@ final class ProjectModel: ObservableObject {
         } else {
             importOffer = ProjectImporter.importMarkdown(from: root)
         }
+        if mode == StudioSettings.beginner { resumeWizard() }
         LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step)
         watcher = FileWatcher(root: root) { [weak self] paths in self?.filesChanged(paths) }
     }
@@ -78,6 +93,47 @@ final class ProjectModel: ObservableObject {
         showreel = store.loadShowreel()
         assets = Assets.load(store)
         docIssues = DocSync.pending(store).filter { !dismissedDocs.contains($0.file) }
+        decided = store.settings.decided
+        wizardSteps = Wizard.steps(assets: assets, spec: spec, systemLanguage: Locale.current.language.languageCode?.identifier)
+        for b in ["project", "resources"] { checks[b] = Checks.run(block: b, store: store) }
+    }
+
+    // MARK: wizard (Beginner mode): the same data and operations as the blocks
+
+    var builtSteps: [WizardStep] { wizardSteps.filter { $0.isBuilt } }
+
+    func isDecided(_ step: WizardStep) -> Bool {
+        Wizard.isDecided(step, file: showreel, assets: assets, settings: store.settings, spec: spec)
+    }
+
+    var wizardProgress: (decided: Int, total: Int) {
+        Wizard.progress(wizardSteps, file: showreel, assets: assets, settings: store.settings, spec: spec)
+    }
+
+    /// Goes to the first built step that is not decided yet; after the last one, the "done for now" screen.
+    func resumeWizard() {
+        refresh()
+        wizardIndex = Wizard.firstUndecided(wizardSteps, file: showreel, assets: assets, settings: store.settings, spec: spec) ?? builtSteps.count
+    }
+
+    func wizardNext() { wizardIndex = min(wizardIndex + 1, builtSteps.count) }
+    func wizardBack() { wizardIndex = max(wizardIndex - 1, 0) }
+
+    func jumpToFirstUndecided(in block: String) {
+        if let i = builtSteps.firstIndex(where: { $0.block == block && !isDecided($0) }) ?? builtSteps.firstIndex(where: { $0.block == block }) { wizardIndex = i }
+    }
+
+    /// The user settled a question without giving a value ("nothing special", "no files yet").
+    func markDecided(_ step: WizardStep) { store.markDecided(step.id); refresh() }
+
+    /// Writes a parameter through the typed operation, unless it already holds that value.
+    @discardableResult
+    func setParameter(_ key: ParameterKey, _ value: String) -> Bool {
+        guard let f = showreel else { error = "This project has no data yet."; return false }
+        var probe = f
+        do { try key.set(value, in: &probe) } catch { self.error = error.localizedDescription; return false }
+        if key.current(probe) == key.current(f) { return true }
+        return perform(.parameter(key, value))
     }
 
     func loadShowreel() { refresh() }
@@ -150,6 +206,7 @@ final class ProjectModel: ObservableObject {
             try ProjectImporter.confirm(r, in: root)
             importOffer = nil
             loadShowreel(); reloadTree()
+            if mode == StudioSettings.beginner { resumeWizard() }
             LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step)
         } catch { self.error = error.localizedDescription }
     }
@@ -248,7 +305,9 @@ final class ProjectModel: ObservableObject {
     /// One line sent with every message: step, open gates, file in front of the user.
     var contextLine: String {
         var parts: [String] = []
-        if case .block(let b) = selected { parts.append("block in front of the user: \(b)") }
+        if mode == StudioSettings.beginner {
+            parts.append("mode: beginner (wizard)" + (wizardIndex < builtSteps.count ? ", question on screen: \(builtSteps[wizardIndex].title)" : ""))
+        } else if case .block(let b) = selected { parts.append("mode: expert, block in front of the user: \(b)") }
         if let s = showreel {
             parts.append("step: \(s.step)")
             let open = s.gates.filter { $0.value != "passed" }.keys.sorted()

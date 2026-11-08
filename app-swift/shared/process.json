@@ -1,12 +1,12 @@
 {
  "blocks": [
-  { "id": "project",    "name": "Project",           "icon": "doc.text",                 "built": true,  "phase": "A2" },
-  { "id": "look",       "name": "Look and technique", "icon": "paintpalette",             "built": false, "phase": "B" },
-  { "id": "resources",  "name": "Resources",         "icon": "photo.on.rectangle.angled", "built": true,  "phase": "A2" },
-  { "id": "storyboard", "name": "Storyboard",        "icon": "rectangle.split.3x1",      "built": false, "phase": "C" },
-  { "id": "scene",      "name": "Scene editor",      "icon": "film",                     "built": false, "phase": "C" },
-  { "id": "build",      "name": "Build and preview", "icon": "play.rectangle",           "built": false, "phase": "D" },
-  { "id": "deliver",    "name": "Deliver",           "icon": "square.and.arrow.up",      "built": false, "phase": "D" }
+  { "id": "project", "ai": "optional",    "name": "Project",           "icon": "doc.text",                 "built": true,  "phase": "A2" },
+  { "id": "look", "ai": "optional",       "name": "Look and technique", "icon": "paintpalette",             "built": false, "phase": "B" },
+  { "id": "resources", "ai": "optional",  "name": "Resources",         "icon": "photo.on.rectangle.angled", "built": true,  "phase": "A2" },
+  { "id": "storyboard", "ai": "optional", "name": "Storyboard",        "icon": "rectangle.split.3x1",      "built": false, "phase": "C" },
+  { "id": "scene", "ai": "optional",      "name": "Scene editor",      "icon": "film",                     "built": false, "phase": "C" },
+  { "id": "build", "ai": "required",      "name": "Build and preview", "icon": "play.rectangle",           "built": false, "phase": "D" },
+  { "id": "deliver", "ai": "none",    "name": "Deliver",           "icon": "square.and.arrow.up",      "built": false, "phase": "D" }
  ],
  "steps": [
   { "id": "round0",     "name": "Round 0",               "gate": "Round 0",                "gateKey": null,         "block": "project",    "built": true,  "produces": ["showreel.json"] },

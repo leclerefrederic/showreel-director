@@ -314,6 +314,10 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
         keys_ok = sorted(gk) == sorted(["interview", "assets", "style", "storyboard", "review", "build", "verify", "publish"])
         ok("process.json: every step sits in a block, gate keys are the eight of showreel.json") if not wrong and keys_ok \
             else bad("process.json: steps in unknown blocks %s; gate keys %s" % (wrong, sorted(gk)))
+        missing_ai = [b["id"] for b in proc["blocks"] if b.get("ai") not in ("none", "optional", "required")]
+        required = [b["id"] for b in proc["blocks"] if b.get("ai") == "required"]
+        ok("process.json: every block has an ai field and only build (generation) is required") if not missing_ai and required == ["build"] \
+            else bad("process.json ai field: missing or invalid on %s; required on %s (only build may be required)" % (missing_ai, required))
         kit = os.path.join(sdir, "Sources", "ShowreelKit", "Process.swift")
         if os.path.exists(kit):
             ids = re.search(r"static let ids = \[([^\]]*)\]", open(kit).read())

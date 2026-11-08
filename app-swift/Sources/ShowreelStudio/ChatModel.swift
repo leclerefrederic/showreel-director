@@ -91,7 +91,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !running else { return }
-        guard let key = settings.apiKey() else { notice("Add your API key in Settings to start."); showSettings = true; return }
+        guard let key = settings.apiKey() else { notice("Connect an AI to talk to the copilot. Everything else works without one."); return }
         draft = ""
         items.append(ChatItem(kind: .user, text: text))
         remember(ChatRecord(role: "user", text: text))
@@ -112,6 +112,12 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
             do { try await a.send(text, context: context) } catch { self?.postNotice("Error: \(error.localizedDescription)") }
             self?.finish()
         }
+    }
+
+    /// Sends a message on the user's behalf (the wizard's "Suggest with AI"). The copilot answers with a card to accept or refuse.
+    func ask(prompt: String) {
+        draft = prompt
+        send()
     }
 
     func stop() {
@@ -235,7 +241,10 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     func foregroundBlock() async -> String? { await onMain { self.project.foregroundBlock } }
 
     func openBlock(_ id: String) async {
-        await onMain { self.project.selectBlock(id) }
+        await onMain {
+            // in Beginner mode there are no blocks to switch to: the wizard goes to the first undecided step of that block
+            if self.project.mode == StudioSettings.beginner { self.project.jumpToFirstUndecided(in: id) } else { self.project.selectBlock(id) }
+        }
     }
 
     func proposeOperation(_ card: OperationCard) async -> Bool {

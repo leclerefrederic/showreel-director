@@ -17,7 +17,7 @@ struct ProjectBlockView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
-                if project.showreel == nil { missing } else { form }
+                if project.showreel == nil { missing } else { form; ChecksPanel(block: "project") }
             }
             .padding(24)
             .frame(maxWidth: 720, alignment: .leading)
@@ -175,6 +175,7 @@ struct ResourcesBlockView: View {
                 if project.showreel != nil { ValidateButton(gate: "assets", block: "resources") }
             }
             .padding(24)
+            if project.showreel != nil { ChecksPanel(block: "resources").padding(.horizontal, 24).padding(.bottom, 16) }
             Divider()
             ZStack {
                 if project.assets.isEmpty {

@@ -9,6 +9,8 @@ public struct ProcessSpec: Decodable, Sendable {
         public let icon: String
         public let built: Bool
         public let phase: String?
+        /// Whether the block needs an AI: none, optional (a suggestion or review the user asks for) or required (generation: Build only).
+        public let ai: String
     }
     public struct StepSpec: Decodable, Sendable, Identifiable, Equatable {
         public let id: String

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ChatView: View {
     @EnvironmentObject var model: ChatModel
+    @EnvironmentObject var settings: AppSettings
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,7 +27,7 @@ struct ChatView: View {
                     }
                 }
             }
-            Composer()
+            if settings.hasKey { Composer() } else { ConnectAIView() }
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }
@@ -70,14 +71,6 @@ struct WelcomeView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 320)
-            if !settings.hasKey {
-                VStack(alignment: .leading, spacing: 6) {
-                    Label("Add your API key in Settings", systemImage: "circle")
-                }
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .padding(.top, 8)
-            }
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -346,5 +339,23 @@ struct OperationCardView: View {
             .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.primary.opacity(0.08)))
         }
+    }
+}
+
+/// Without a key the copilot panel says so and how to connect one. Nothing else in the app waits for it.
+struct ConnectAIView: View {
+    @EnvironmentObject var model: ChatModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("The copilot is off", systemImage: "sparkles").font(.headline)
+            Text("It answers questions, suggests values and makes changes that you accept or refuse. You can build a project by hand without it. Only generating the film (Build) needs an AI.")
+                .font(.callout).foregroundStyle(.secondary)
+            Button("Connect AI") { model.showSettings = true }.buttonStyle(.borderedProminent)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(12)
     }
 }
