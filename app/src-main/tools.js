@@ -1,23 +1,7 @@
 // Tool definitions and implementations for the agent.
 const fs = require("fs"), path = require("path"), cp = require("child_process");
 
-const DEFS = [
-  { name: "bash", description: "Run a shell command in the project folder. Returns stdout, stderr and exit code.",
-    input_schema: { type: "object", properties: { command: { type: "string" }, timeout_ms: { type: "integer", description: "default 120000, max 600000" } }, required: ["command"] } },
-  { name: "read_file", description: "Read a text file (project folder or skill folder). Optional offset/limit in lines.",
-    input_schema: { type: "object", properties: { path: { type: "string" }, offset: { type: "integer" }, limit: { type: "integer" } }, required: ["path"] } },
-  { name: "write_file", description: "Write a text file inside the project folder (creates folders, overwrites).",
-    input_schema: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } },
-  { name: "list_dir", description: "List a directory (project or skill folder).",
-    input_schema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } },
-  { name: "ask_user", description: "Ask the user 1 to 4 multiple-choice questions, shown as cards. Recommended option first. Returns the answers.",
-    input_schema: { type: "object", properties: { questions: { type: "array", minItems: 1, maxItems: 4, items: { type: "object", properties: {
-      question: { type: "string" }, header: { type: "string" }, multiSelect: { type: "boolean" },
-      options: { type: "array", minItems: 2, maxItems: 4, items: { type: "object", properties: { label: { type: "string" }, description: { type: "string" } }, required: ["label", "description"] } } },
-      required: ["question", "header", "options"] } } }, required: ["questions"] } },
-  { name: "show_page", description: "Open an HTML file in the preview pane (project or skill folder).",
-    input_schema: { type: "object", properties: { path: { type: "string" }, title: { type: "string" } }, required: ["path"] } },
-];
+const DEFS = require("../shared/tools.json"); // shared with the Swift app
 
 const LIMIT = 20000;
 const clip = s => s.length > LIMIT ? s.slice(0, LIMIT / 2) + "\n...[cut " + (s.length - LIMIT) + " chars]...\n" + s.slice(-LIMIT / 2) : s;

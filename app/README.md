@@ -2,7 +2,17 @@
 
 Desktop app around the `showreel-director` skill: chat on the left, preview pane on the right (look board, pickers, effects lab, scene cards, the reel). The app runs the skill itself: `SKILL.md` is the system prompt, the skill's scripts are run through a `bash` tool, decisions go through question cards.
 
-## Run it (from this folder)
+## Run it in the browser (no Electron, nothing to download)
+
+```
+cd app
+npm install --ignore-scripts
+ANTHROPIC_API_KEY=sk-... npm run web -- /path/to/project-folder
+```
+
+Opens `http://127.0.0.1:<port>` in your default browser. The key can also be typed in the page (kept in memory only). The server listens on 127.0.0.1 only and every request needs a per-launch token. Corporate TLS settings are not touched: if your network inspects HTTPS, point Node at the proper certificate bundle (`NODE_EXTRA_CA_CERTS`) as your IT documents.
+
+## Run it as an Electron app (from this folder)
 
 ```
 cd app

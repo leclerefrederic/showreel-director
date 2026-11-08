@@ -220,7 +220,15 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     if os.path.isdir(appdir):
         r = run(["node", os.path.join(appdir, "tests", "agent.test.js")])
         ok("app agent loop test") if r.returncode == 0 else bad("app agent loop test: " + (r.stderr or r.stdout)[-300:])
-        for f in ("src-main/main.js", "src-main/preload.js", "src-ui/renderer.js"):
+        r = run(["node", os.path.join(appdir, "tests", "server.test.js")])
+        ok("app browser-mode server test") if r.returncode == 0 else bad("app server test: " + (r.stderr or r.stdout)[-300:])
+        sw = os.path.join(ROOT, "app-swift", "Sources", "ShowreelStudio", "Tools.swift")
+        if os.path.exists(sw):
+            import json
+            names = [d["name"] for d in json.load(open(os.path.join(appdir, "shared", "tools.json")))]
+            missing = [n for n in names if '"%s"' % n not in open(sw).read()]
+            ok("swift app implements every shared tool") if not missing else bad("Tools.swift lacks tools: " + ", ".join(missing))
+        for f in ("src-main/server.js", "src-ui/bridge-web.js", "src-main/main.js", "src-main/preload.js", "src-ui/renderer.js"):
             r = run(["node", "--check", os.path.join(appdir, f)])
             if r.returncode: bad("app syntax " + f)
     print("\n" + ("all checks passed" if not fails else f"{len(fails)} check(s) failed"))

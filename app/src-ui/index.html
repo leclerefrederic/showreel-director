@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Showreel Studio</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; frame-src file: data:; img-src 'self' data: file:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; frame-src file: data: http://127.0.0.1:*; img-src 'self' data: file:">
 <style>
 *{box-sizing:border-box}body{margin:0;height:100vh;display:flex;flex-direction:column;background:#14141a;color:#eee;font:14px system-ui,sans-serif}
 #bar{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid #ffffff22}#bar b{margin-right:auto}
@@ -14,4 +14,4 @@ iframe{flex:1;border:0;background:#fff}#empty{flex:1;display:grid;place-items:ce
 <div id="bar"><b>Showreel Studio</b><button id="proj">Project folder…</button><span id="pn" class="t"></span><button id="key">API key…</button><button id="new">New conversation</button></div>
 <main><section id="chat"><div id="log"></div><div id="in"><textarea id="txt" placeholder="Describe the reel you want…"></textarea><button id="go">Send</button><button id="stop">Stop</button></div></section>
 <section id="pv"><div id="pvbar"><span id="pt">Preview</span><button id="pick">Send my picks to the chat</button><button id="rev">Show in Finder</button></div><div id="empty">Pages (look board, pickers, reel) open here.</div></section></main>
-<script src="renderer.js"></script></body></html>
+<script src="bridge-web.js"></script><script src="renderer.js"></script></body></html>
