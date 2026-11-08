@@ -1,6 +1,6 @@
 # Interview question bank
 
-Use as a menu, not a script. **Depth and express mode** are defined once, in `SKILL.md` (Step 1: full interview / I propose, you correct / express, and the list of gates that are never skipped). Otherwise, in a full interview: skip answered items, merge related ones, keep each round to 4 questions max (question tool). Put the recommended option first. Free-text items go in one plain question at the end of the round.
+Use as a menu, not a script. **Depth and express mode** are defined once, in `references/step-1-interview.md` (full interview / I propose, you correct / express, and the list of gates that are never skipped). Otherwise, in a full interview: skip answered items, merge related ones, keep each round to 4 questions max (question tool). Put the recommended option first. Free-text items go in one plain question at the end of the round.
 
 ## Round 0 — Languages (always first)
 Ask both in one round so the difference is visible.
