@@ -19,6 +19,7 @@ cat > "$APP/Contents/Info.plist" <<'P'
 <key>CFBundleName</key><string>Showreel Studio</string>
 <key>CFBundleIdentifier</key><string>local.showreel.studio.swift</string>
 <key>CFBundleExecutable</key><string>ShowreelStudio</string>
+<key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleVersion</key><string>0.1.0</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
@@ -26,6 +27,8 @@ cat > "$APP/Contents/Info.plist" <<'P'
 </dict></plist>
 P
 cp -R shared "$APP/Contents/Resources/shared"
+# Icon: the committed Icon/AppIcon.icns (made by tools/make_icon.py)
+cp Icon/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp -R ../showreel-director "$APP/Contents/Resources/skill"
 python3 ../tools/skill_hash.py > "$APP/Contents/Resources/skill.hash"
 cp ../tools/setup-env.sh "$APP/Contents/Resources/setup-env.sh"

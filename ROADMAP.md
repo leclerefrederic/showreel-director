@@ -16,9 +16,10 @@
 - `SKILL.md` split into a 14 KB router plus per-step references.
 - Refactoring: shared helpers `scripts/_common.py` (Python page builders) and `scripts/_reel.js` (harness and exporter).
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
+- Showreel Studio, native macOS app (`app-swift/`): SwiftUI chat with question cards, preview pane for the pickers and the reel, Keychain key storage, gateway endpoint (Bearer or x-api-key), launch-time environment check with guided install (`tools/setup-env.sh`), screenshot tool so the model can look at the preview, skill fingerprint and capability contract kept in step with the skill (`tools/check.py`).
 
 ## Next
-- Showreel Studio (`app-swift/`, macOS, experimental): written, not yet compiled or run; next: make it build, `--selftest` and a library split for tests, picks sent straight to the chat, screenshot tool for the model, bundled ffmpeg and node, progress and cost display, gateway endpoint check.
+- Showreel Studio (`app-swift/`): remaining: `--selftest` and a library split so the agent loop is tested without the UI; picks sent straight to the chat; progress and cost display; check which API format each gateway exposes; look and feel polish.
 - Bring Your Own Licensed Material, remaining: ask in the interview which use a supplied licence covers (web or app embedding, video only, unsure); deliver the MP4 only for video-only or unclear licences and keep the HTML private; the same question for supplied images, music and footage; optional glyph subsetting. Done: embedding flag (`fsType`) read in the audit and organiser, `--licence` note option.
 - Design system ingestion (a Claude Design export): needs a real export to build against.
 - Automatic check for text overflowing a card or panel (today only a visual check of stills catches it).

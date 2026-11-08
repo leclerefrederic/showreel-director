@@ -244,6 +244,26 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
             want = [k for k in keys if k != "brew"]
             ok("setup-env.sh --check keys match the app's checklist (%d)" % len(want)) if r.returncode == 0 and want == swift_ids \
                 else bad("setup-env.sh keys %s vs EnvModel items %s" % (want, swift_ids))
+        icon = os.path.join(sdir, "Icon", "AppIcon.png")
+        if os.path.exists(icon):
+            head = open(icon, "rb").read(24)
+            w, h = int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+            ok("app icon master is 1024x1024") if head[:8] == b"\x89PNG\r\n\x1a\n" and (w, h) == (1024, 1024) else bad("Icon/AppIcon.png must be a 1024x1024 PNG")
+        else: bad("app-swift/Icon/AppIcon.png missing (run python3 tools/make_icon.py)")
+        icns = os.path.join(sdir, "Icon", "AppIcon.icns")
+        if os.path.exists(icns):
+            import struct
+            data = open(icns, "rb").read()
+            entries, pos, good = {}, 8, data[:4] == b"icns" and struct.unpack(">I", data[4:8])[0] == len(data)
+            while good and pos + 8 <= len(data):
+                code = data[pos:pos + 4]; ln = struct.unpack(">I", data[pos + 4:pos + 8])[0]
+                png = data[pos + 8:pos + ln]
+                if png[:8] != b"\x89PNG\r\n\x1a\n": good = False; break
+                entries[code] = struct.unpack(">II", png[16:24]); pos += ln
+            want = {b"icp4": 16, b"icp5": 32, b"icp6": 64, b"ic07": 128, b"ic08": 256, b"ic09": 512, b"ic10": 1024, b"ic11": 32, b"ic12": 64, b"ic13": 256, b"ic14": 512}
+            sized = good and all(entries.get(k) == (v, v) for k, v in want.items())
+            ok("app icon .icns is complete (%d sizes)" % len(want)) if sized else bad("Icon/AppIcon.icns is not a valid icon with all sizes (run python3 tools/make_icon.py)")
+        else: bad("app-swift/Icon/AppIcon.icns missing (run python3 tools/make_icon.py)")
         import skill_hash
         ok("skill fingerprint is stable (" + skill_hash.fingerprint() + ")") if skill_hash.fingerprint() == skill_hash.fingerprint() else bad("skill fingerprint not deterministic")
         sw = os.path.join(sdir, "Sources", "ShowreelStudio", "Tools.swift")

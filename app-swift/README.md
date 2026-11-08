@@ -15,6 +15,8 @@ In the app: the folder button (top left) picks the project; the gear opens Setti
 
 Environment: at launch the app runs `setup-env.sh --check` (bundled in the app) and shows a setup screen until Python 3, the Python packages (numpy, fonttools), Node.js, npm, jsdom, canvas and ffmpeg are present; **Install missing** runs `setup-env.sh --install` (a Python venv and the node modules under `~/Library/Application Support/ShowreelStudio/env`, node and ffmpeg through Homebrew when it is installed, never Homebrew itself). Python 3 comes from the Command Line Tools (`xcode-select --install`). A link lets the user continue without, in reduced mode. The script also runs from a terminal: `bash tools/setup-env.sh --check` or `--install`.
 
+Icon: `Icon/AppIcon.png` is the 1024 px master, drawn by `python3 tools/make_icon.py` (an original design: a film reel with a play triangle). `Icon/AppIcon.icns` is the finished macOS icon (sizes 16 to 1024 px, retina included), committed with the master; `make-app.sh` copies it into the app.
+
 Signing: the build looks for a code-signing certificate named `Showreel Studio Local` (create it once in Keychain Access, Certificate Assistant, type Code Signing, self signed), then an Apple Development identity, else it signs ad hoc. A stable identity keeps the Keychain's "Always Allow" for the API key across rebuilds.
 
 Status: written without a Swift compiler at hand, so expect compile fixes; the GitHub workflow `swift.yml` builds it on a macOS runner.
