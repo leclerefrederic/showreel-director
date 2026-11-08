@@ -4,6 +4,7 @@ import SwiftUI
 @main
 struct ShowreelStudioApp: App {
     @StateObject private var model = ChatModel()
+    @StateObject private var env = EnvModel()
 
     init() {
         NSApplication.shared.setActivationPolicy(.regular)
@@ -13,6 +14,7 @@ struct ShowreelStudioApp: App {
         WindowGroup("Showreel Studio") {
             ContentView()
                 .environmentObject(model)
+                .environmentObject(env)
                 .frame(minWidth: 980, minHeight: 620)
                 .onAppear { NSApplication.shared.activate(ignoringOtherApps: true) }
         }

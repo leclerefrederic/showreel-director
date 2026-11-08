@@ -2,13 +2,23 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var model: ChatModel
+    @EnvironmentObject var env: EnvModel
 
     var body: some View {
-        HSplitView {
-            ChatView()
-                .frame(minWidth: 380, idealWidth: 460)
-            PreviewPane()
-                .frame(minWidth: 380)
+        Group {
+            if env.ready {
+                HSplitView {
+                    ChatView()
+                        .frame(minWidth: 380, idealWidth: 460)
+                    PreviewPane()
+                        .frame(minWidth: 380)
+                }
+            } else {
+                SetupView()
+            }
+        }
+        .onChange(of: env.ready) { ready in
+            if ready && !model.hasKey { model.showSettings = true }
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {

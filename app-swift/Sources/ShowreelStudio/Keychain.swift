@@ -4,6 +4,17 @@ import Security
 enum Keychain {
     static let service = "ShowreelStudio"
 
+    /// True when an item exists. Reads attributes only, never the secret, so it does not trigger a Keychain prompt.
+    static func exists() -> Bool {
+        let q: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+            kSecReturnAttributes as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var r: AnyObject?
+        return SecItemCopyMatching(q as CFDictionary, &r) == errSecSuccess
+    }
+
+    /// Reads the secret. This is the call that can show the macOS prompt: call it once and keep the result.
     static func get() -> String? {
         let q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,

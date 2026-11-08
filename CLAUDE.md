@@ -21,7 +21,7 @@ This repo holds a skill that directs motion-design showreels (`showreel-director
 
 ## Environment for the skill's full mode
 
-`bash tools/setup-env.sh` installs numpy, fonttools, jsdom and @napi-rs/canvas under `~/Library/Application Support/ShowreelStudio/env`; `Tools.swift` puts them first on PATH and NODE_PATH. The owner runs it; do not install packages yourself.
+`tools/setup-env.sh --check` prints `key=ok|missing` lines; `tools/setup-env.sh --install` installs what is missing (numpy and fonttools in a venv, jsdom and @napi-rs/canvas, and node and ffmpeg through Homebrew when it exists) under `~/Library/Application Support/ShowreelStudio/env`. The app runs `--check` at launch (`EnvModel.swift`), shows `SetupView` until everything is present or the user continues in reduced mode, and runs `--install` on request; `Tools.swift` puts the environment first on PATH and NODE_PATH. The item keys of the script and of `EnvModel` must match (`check.py` verifies). The owner runs the install; do not install packages yourself.
 
 ## One command to verify
 

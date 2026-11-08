@@ -34,6 +34,7 @@ final class Agent {
         var turn = 0
         while turn < 60 && !isAborted {
             turn += 1
+            pruneImages(keep: 3)
             let (content, stop) = try await streamOnce()
             if !content.isEmpty { messages.append(["role": "assistant", "content": content]) }
             ui.endText()
@@ -45,12 +46,36 @@ final class Agent {
                 let input = u["input"] as? [String: Any] ?? [:]
                 ui.tool(name, input)
                 let out = await tools.run(name, input)
-                results.append(["type": "tool_result", "tool_use_id": u["id"] as? String ?? "", "content": out])
+                var content: Any = out.text
+                if let img = out.image {
+                    let blocks: [[String: Any]] = [
+                        ["type": "image", "source": ["type": "base64", "media_type": "image/jpeg", "data": img.base64EncodedString()]],
+                        ["type": "text", "text": out.text],
+                    ]
+                    content = blocks
+                }
+                results.append(["type": "tool_result", "tool_use_id": u["id"] as? String ?? "", "content": content])
             }
             messages.append(["role": "user", "content": results])
         }
         ui.text("\n[stopped]")
         ui.endText()
+    }
+
+    /// Screenshots are heavy: keep the last few in the history and replace older ones by a short note.
+    private func pruneImages(keep: Int) {
+        var spots: [(Int, Int)] = []
+        for (i, m) in messages.enumerated() {
+            guard let arr = m["content"] as? [[String: Any]] else { continue }
+            for (j, b) in arr.enumerated() {
+                if (b["type"] as? String) == "tool_result", b["content"] is [[String: Any]] { spots.append((i, j)) }
+            }
+        }
+        for (i, j) in spots.dropLast(keep) {
+            guard var arr = messages[i]["content"] as? [[String: Any]] else { continue }
+            arr[j]["content"] = "[earlier screenshot removed to save space]"
+            messages[i]["content"] = arr
+        }
     }
 
     private func streamOnce() async throws -> ([[String: Any]], String) {

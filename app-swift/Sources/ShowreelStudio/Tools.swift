@@ -17,6 +17,12 @@ final class OutputBuffer: @unchecked Sendable {
     }
 }
 
+/// What a tool hands back to the model: text, and optionally an image (a screenshot).
+struct ToolResult {
+    var text: String
+    var image: Data? = nil
+}
+
 final class Tools {
     let project: URL
     let skill: URL
@@ -47,7 +53,18 @@ final class Tools {
     }
     private func readable(_ u: URL) -> Bool { u.isInside(project) || u.isInside(skill) }
 
-    func run(_ name: String, _ input: [String: Any]) async -> String {
+    func run(_ name: String, _ input: [String: Any]) async -> ToolResult {
+        if name == "screenshot_preview" {
+            let wait = min(max(input["wait_ms"] as? Int ?? 600, 0), 5000)
+            guard let jpeg = await ui.screenshot(javascript: input["javascript"] as? String, waitMs: wait) else {
+                return ToolResult(text: "no page is open in the preview pane: call show_page first")
+            }
+            return ToolResult(text: "screenshot of the preview pane", image: jpeg)
+        }
+        return ToolResult(text: await runText(name, input))
+    }
+
+    private func runText(_ name: String, _ input: [String: Any]) async -> String {
         switch name {
         case "bash":
             return await bash(input["command"] as? String ?? "", input["timeout_ms"] as? Int ?? 120000)

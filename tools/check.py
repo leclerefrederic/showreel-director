@@ -219,7 +219,7 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     sdir = os.path.join(ROOT, "app-swift")
     if os.path.isdir(sdir):
         import json
-        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "Agent.swift", "Tools.swift")]
+        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "Agent.swift", "Tools.swift")]
         gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
         ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
         capf = os.path.join(sdir, "shared", "capabilities.json")
@@ -235,6 +235,15 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
             miss = [r for r in rows if r not in declared]; extra = sorted(declared - set(rows))
             if rows and not miss and not extra: ok("app capabilities match the skill's portability table (%d)" % len(rows))
             else: bad("capabilities.json out of step with portability.md: undeclared %s, unknown %s" % (miss, extra))
+        setup = os.path.join(ROOT, "tools", "setup-env.sh")
+        envm = os.path.join(sdir, "Sources", "ShowreelStudio", "EnvModel.swift")
+        if os.path.exists(setup) and os.path.exists(envm):
+            r = run(["bash", setup, "--check"])
+            keys = [l.split("=")[0] for l in r.stdout.split() if l.split("=")[-1] in ("ok", "missing")]
+            swift_ids = re.findall(r'EnvItem\(id: "(\w+)"', open(envm).read())
+            want = [k for k in keys if k != "brew"]
+            ok("setup-env.sh --check keys match the app's checklist (%d)" % len(want)) if r.returncode == 0 and want == swift_ids \
+                else bad("setup-env.sh keys %s vs EnvModel items %s" % (want, swift_ids))
         import skill_hash
         ok("skill fingerprint is stable (" + skill_hash.fingerprint() + ")") if skill_hash.fingerprint() == skill_hash.fingerprint() else bad("skill fingerprint not deterministic")
         sw = os.path.join(sdir, "Sources", "ShowreelStudio", "Tools.swift")

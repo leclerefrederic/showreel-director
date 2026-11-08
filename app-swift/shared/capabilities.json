@@ -18,8 +18,8 @@
   },
   {
    "need": "Look at the result (contact sheets)",
-   "provided": false,
-   "fallback": "no screenshot tool: ask the user to look at the preview pane and describe what they see; never claim to have seen frames"
+   "provided": true,
+   "via": "screenshot_preview captures the preview pane (a page, a contact sheet or the reel, after show_page) as an image the model can look at"
   },
   {
    "need": "Persist or share a page",

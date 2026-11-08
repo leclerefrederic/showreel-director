@@ -21,7 +21,7 @@ struct PreviewPane: View {
             .background(.bar)
             Divider()
             if let url = model.previewURL {
-                WebPreview(url: url, nonce: model.previewNonce)
+                WebPreview(url: url, nonce: model.previewNonce, onCreate: { model.previewWebView = $0 })
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "rectangle.on.rectangle")
@@ -44,6 +44,7 @@ struct PreviewPane: View {
 struct WebPreview: NSViewRepresentable {
     let url: URL
     let nonce: Int
+    let onCreate: (WKWebView) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -61,6 +62,7 @@ struct WebPreview: NSViewRepresentable {
         let w = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
         w.uiDelegate = context.coordinator
         if #available(macOS 13.3, *) { w.isInspectable = true }
+        onCreate(w)
         return w
     }
 

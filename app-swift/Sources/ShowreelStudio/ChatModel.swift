@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import WebKit
 
 struct ChoiceOption: Identifiable {
     let id = UUID()
@@ -48,11 +49,14 @@ final class ChatModel: ObservableObject, AgentUI {
     @Published var previewTitle = "Preview"
     @Published var previewNonce = 0
 
+    /// The preview pane's web view, set when it is created; used for screenshots.
+    var previewWebView: WKWebView?
     private var agent: Agent?
     private var pending: CheckedContinuation<[String], Never>?
     private var assistantIdx: Int?
     private var stepsIdx: Int?
     private let defaults = UserDefaults.standard
+    private var cachedKey: String? // the Keychain is read once per launch, at the first message
 
     var modelName: String { defaults.string(forKey: "model") ?? "claude-sonnet-5-5" }
     var baseURL: String { defaults.string(forKey: "baseURL") ?? ProcessInfo.processInfo.environment["ANTHROPIC_BASE_URL"] ?? "" }
@@ -61,17 +65,25 @@ final class ChatModel: ObservableObject, AgentUI {
 
     init() {
         project = defaults.string(forKey: "project")
-        hasKey = apiKey() != nil
-        if !hasKey { showSettings = true }
+        hasKey = keyExists()
     }
 
-    private func apiKey() -> String? {
-        if let k = Keychain.get(), !k.isEmpty { return k }
+    private func envKey() -> String? {
         let env = ProcessInfo.processInfo.environment
         for name in ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"] {
             if let v = env[name], !v.isEmpty { return v }
         }
         return nil
+    }
+
+    /// Whether a key is available, without reading the Keychain secret (no prompt).
+    private func keyExists() -> Bool { cachedKey != nil || Keychain.exists() || envKey() != nil }
+
+    /// The key itself: the first call may show the Keychain prompt, later calls use the cached value.
+    private func apiKey() -> String? {
+        if let k = cachedKey { return k }
+        if let k = Keychain.get(), !k.isEmpty { cachedKey = k; return k }
+        return envKey()
     }
 
     // MARK: user actions (main thread)
@@ -129,14 +141,14 @@ final class ChatModel: ObservableObject, AgentUI {
     }
 
     func saveSettings(key: String, url: String, bearer: Bool, modelName: String) {
-        if !key.isEmpty { Keychain.set(key) }
+        if !key.isEmpty { Keychain.set(key); cachedKey = key }
         var u = url.trimmingCharacters(in: .whitespaces)
         while u.hasSuffix("/") { u.removeLast() }
         defaults.set(u, forKey: "baseURL")
         defaults.set(bearer, forKey: "bearer")
         let m = modelName.trimmingCharacters(in: .whitespaces)
         defaults.set(m.isEmpty ? "claude-sonnet-5-5" : m, forKey: "model")
-        hasKey = apiKey() != nil
+        hasKey = keyExists()
         agent = nil
     }
 
@@ -209,6 +221,48 @@ final class ChatModel: ObservableObject, AgentUI {
             self.previewTitle = title
             self.previewNonce += 1
         }
+    }
+
+    private func onMain<T>(_ f: @escaping () -> T) async -> T {
+        await withCheckedContinuation { (c: CheckedContinuation<T, Never>) in
+            DispatchQueue.main.async { c.resume(returning: f()) }
+        }
+    }
+
+    /// A JPEG of the preview pane (at most 1280 pt wide), or nil when nothing is open.
+    func screenshot(javascript: String?, waitMs: Int) async -> Data? {
+        guard await onMain({ self.previewWebView != nil && self.previewURL != nil }) else { return nil }
+        for _ in 0..<50 { // let the page finish loading, at most 5 s
+            if await onMain({ !(self.previewWebView?.isLoading ?? false) }) { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        if let js = javascript, !js.isEmpty {
+            await onMain { self.previewWebView?.evaluateJavaScript(js, completionHandler: nil) }
+        }
+        try? await Task.sleep(nanoseconds: UInt64(max(0, waitMs)) * 1_000_000)
+        return await withCheckedContinuation { (c: CheckedContinuation<Data?, Never>) in
+            DispatchQueue.main.async {
+                guard let web = self.previewWebView else { c.resume(returning: nil); return }
+                web.takeSnapshot(with: nil) { image, _ in
+                    c.resume(returning: image.flatMap { Self.jpeg($0) })
+                }
+            }
+        }
+    }
+
+    private static func jpeg(_ image: NSImage) -> Data? {
+        var img = image
+        if image.size.width > 1280 {
+            let s = 1280 / image.size.width
+            let size = NSSize(width: 1280, height: image.size.height * s)
+            let small = NSImage(size: size)
+            small.lockFocus()
+            image.draw(in: NSRect(origin: .zero, size: size), from: .zero, operation: .copy, fraction: 1)
+            small.unlockFocus()
+            img = small
+        }
+        guard let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return nil }
+        return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.8])
     }
 
     func ask(_ questions: [[String: Any]]) async -> [String] {

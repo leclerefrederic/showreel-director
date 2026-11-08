@@ -146,5 +146,22 @@
     "path"
    ]
   }
+ },
+ {
+  "name": "screenshot_preview",
+  "description": "Take a screenshot of what the preview pane shows now and get it back as an image, to look at a contact sheet, a card page or a reel. Open the page with show_page first. Optional javascript runs in the page before the capture: to look at a reel at t seconds, set the seek slider, for example document.getElementById('seek').value = t*10; document.getElementById('seek').dispatchEvent(new Event('input')). Only describe what you actually see.",
+  "input_schema": {
+   "type": "object",
+   "properties": {
+    "javascript": {
+     "type": "string",
+     "description": "optional script run in the page before the capture"
+    },
+    "wait_ms": {
+     "type": "integer",
+     "description": "wait before the capture, default 600, max 5000"
+    }
+   }
+  }
  }
 ]
