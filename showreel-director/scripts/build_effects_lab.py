@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Build a self-contained effects lab page: every effect of the catalogue animated, in the user's palette and font.
 
-Usage: python3 build_effects_lab.py --out PROJECT/qa/lab-effects.html [--ui ui.json --lang fr]
+Usage: python3 build_effects_lab.py --out PROJECT/qa/lab-effects.html [--ui ui.json --lang fr] [--mood "Kinetic punch"] [--full]
+  --mood: open directly on the moods already chosen (for example on the look board); --full: open on the whole list of effects
   --ui: JSON with translated page texts (keys: title sample bg fg accent accent2 search speed pause resume copy copied hint, and for the guided choice g_title g_hint g_show g_all g_change g_packs g_back); effect names stay in English.
          [--bg #151515 --fg #f2f2f2 --accent #ffd166 --accent2 #6c8cff] [--font path/to/font.ttf --family "Brand Sans"]
 Neutral palette by default. Present the file to the user, who clicks the hearts on the effects they like and pastes
 "Copy my picks" back in the chat; each card also has a GIF button that saves that effect as a looping GIF. Effects are drawn with plain canvas code: they show the idea, not your final render.
 """
 import argparse, json, os, sys
+sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C
 
@@ -33,6 +35,7 @@ def main():
     ap.add_argument("--out", required=True)
     C.add_brand_args(ap, "#151515", "#f2f2f2", "#ffd166", "#6c8cff", "LabFont")
     ap.add_argument("--mute", default="#8a8a8a")
+    ap.add_argument("--mood", help="open on these moods already chosen (comma-separated names of the Packs table, e.g. \"Kinetic punch\"), as picked on the look board")
     ap.add_argument("--full", action="store_true", help="open on the full list of effects instead of the guided choice of moods")
     a = ap.parse_args()
     C.require_colors(a.bg, a.fg, a.accent, a.accent2, a.mute)
@@ -53,6 +56,10 @@ def main():
     html = html.replace("/*__EFFECTS__*/", effects)
     packs = load_packs()
     html = html.replace("__PACKS__", json.dumps(packs)).replace("__GUIDED__", "false" if a.full else "true")
+    pre = [m.strip() for m in (a.mood or "").split(",") if m.strip()]
+    bad = [m for m in pre if m not in {p["name"] for p in packs}]
+    if bad: sys.exit("unknown mood(s): %s (choose among: %s)" % (", ".join(bad), ", ".join(p["name"] for p in packs)))
+    html = html.replace("__PRESEL__", json.dumps(pre))
     gt = {k: u[k] for k in ("g_title", "g_hint", "g_show", "g_all", "g_change", "g_packs", "g_back") if a.ui and k in u} if a.ui else {}
     html = html.replace("/*__GT__*/", "Object.assign(GT,%s);" % json.dumps({k[2:].replace("title", "title"): v for k, v in gt.items()}) if gt else "")
     html = html.replace("/*__GIF__*/", open(os.path.join(HERE, "..", "engine", "gif.js"), encoding="utf-8").read())

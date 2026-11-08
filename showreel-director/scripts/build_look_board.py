@@ -12,9 +12,10 @@ Spec (JSON):
                   "effects_pack": "Clean product" } ] }               one of the packs of references/effects-catalogue.md
 Guardrails: 3 packages recommended (2 to 4 accepted), distinct from each other; each one derived from the brief or the brand, never from habit.
 Nothing is pre-selected; "Copy" refuses until a look is chosen (or "none of these" with a note). The result is a draft the skill confirms in the conversation.
---ui keys: pick mix palette background fonts effects none note copy copied open needNote needPick sub (translated page texts), --lang sets the page language.
+--ui keys: pick mix palette background fonts effects none note copy copied open needNote needPick sub look mixw nonew asprop effw (the last five translate the words of the copied result) (translated page texts), --lang sets the page language.
 """
 import argparse, json, os, re, sys
+sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C
 
@@ -57,8 +58,15 @@ def check(spec, fonts, spec_dir):
             elif isinstance(f, dict):
                 if not f.get("name") or not f.get("file") or not os.path.exists(os.path.join(spec_dir, f["file"])): errs.append(f"{i}: supplied font {role} needs name and an existing file")
             else: errs.append(f"{i}: fonts.{role} missing")
-    sigs = [json.dumps([p["palette"], p["background"], p["fonts"]], sort_keys=True) for p in ps if not errs]
-    if not errs and len(set(sigs)) < len(sigs): errs.append("two packages are identical: propose distinct looks")
+    if not errs:
+        rgb = lambda c: [int(c.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)] if len(c.lstrip("#")) == 6 else [0, 0, 0]
+        dist = lambda x, y: sum(abs(u - v) for u, v in zip(rgb(x), rgb(y)))
+        for i in range(len(ps)):
+            for j in range(i + 1, len(ps)):
+                a, b = ps[i], ps[j]
+                near = dist(a["palette"]["bg"], b["palette"]["bg"]) < 60 and dist(a["palette"]["accent"], b["palette"]["accent"]) < 60
+                if near and a["background"] == b["background"] and a["fonts"] == b["fonts"]:
+                    errs.append(f"packages {a['id']} and {b['id']} are almost identical (near palette, same background and fonts): propose distinct looks")
     return errs
 
 
@@ -87,7 +95,7 @@ def main():
     html = html.replace("__FACES__", "\n".join(faces)).replace("__SPEC__", C.js_json(spec)).replace("__BACKGROUNDS__", open(os.path.join(HERE, "..", "engine", "backgrounds.js"), encoding="utf-8").read())
     if a.ui:
         u = json.load(open(a.ui, encoding="utf-8"))
-        keys = ("pick", "mix", "palette", "background", "fonts", "effects", "none", "note", "copy", "copied", "open", "needNote", "needPick", "sub", "why", "yours", "titles", "text")
+        keys = ("pick", "mix", "palette", "background", "fonts", "effects", "none", "note", "copy", "copied", "open", "needNote", "needPick", "sub", "why", "yours", "titles", "text", "look", "mixw", "nonew", "asprop", "effw")
         html = html.replace("/*__GT__*/", "Object.assign(GT,%s);" % C.js_json({k: u[k] for k in keys if k in u}))
         html = html.replace('<html lang="en">', '<html lang="%s">' % a.lang.replace('"', ""), 1)
     C.write_text(a.out, html)

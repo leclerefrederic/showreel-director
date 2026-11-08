@@ -20,6 +20,7 @@ Usage:
   python3 organize_assets.py PROJECT --apply          do it (files already loose in assets/ are moved into source/, files from --from are copied)
   python3 organize_assets.py PROJECT --from DIR       take supplied files from DIR (uploads folder, connected folder)
   python3 organize_assets.py PROJECT --set logo-01=approved,shot-04=excluded     record decisions (status: proposed approved excluded placeholder hold)
+  python3 organize_assets.py PROJECT --licence 'font-01=web and app embedding included (invoice 123)'   record the licence the user states (a font held for its licence needs this before --set approved)
   python3 organize_assets.py PROJECT --redacted shot-04=PATH     add a redacted copy (pixels painted over) of a held sensitive file; then approve it with --set
   python3 organize_assets.py PROJECT --scene "logo-01=S01,S07;shot-01=S03"   fill the scene column once the storyboard exists
   python3 organize_assets.py PROJECT --register                  add the files the skill put in generated/ to the manifest (names must follow the convention)
@@ -32,6 +33,7 @@ kept in source/ and NOT copied to prepared/ until the user decides. Originals' c
 import argparse, csv, json, os, re, shutil, sys, unicodedata
 sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _common as C
 try:
     from audit_assets import probe
 except Exception:
@@ -128,7 +130,9 @@ def plan(root, extra):
         if typ in EMBED:
             notes = note_text(os.path.dirname(path), os.path.basename(path)); txt = " ".join(t for _, t in notes)
             if SENSITIVE.search(os.path.basename(rel)): status, reason = "hold", "name suggests real or confidential data: decide first"
-            elif typ == "font" and re.search(r"proprietary|forbidden|not allowed|desktop only|workstation", txt, re.I): status, reason = "hold", "font licence forbids embedding"
+            elif typ == "font" and (C.FONT_FORBID.search(txt) or C.font_embedding(path)["restricted"]):
+                fe = C.font_embedding(path)
+                status, reason = "hold", "font licence forbids embedding" + (" (the font file's own flag says so too)" if fe["restricted"] else "") + (" (its metadata names an open licence: ask which one applies)" if fe["meta_licence"] and re.search(r"open font licen|\bOFL\b|apache", fe["meta_licence"], re.I) else "")
             elif typ != "font" and re.search(r"not confirmed|unconfirmed|unknown", txt, re.I): status, reason = "hold", "rights or consent not confirmed"
             elif typ in ("logo", "shot", "photo", "img") and probe and path.lower().endswith((".png", ".jpg", ".jpeg", ".webp")) and (lambda d: d[1] and (d[1] < 800 or d[2] < 450))(probe(path)) and typ != "logo":
                 status, reason = "hold", "low resolution (under 800x450): replace, accept or exclude"
@@ -189,6 +193,8 @@ def cmd_set(a):
         if st not in STATUS: print(f"bad status in {pair!r} (use: {', '.join(sorted(STATUS))})"); ok = False; continue
         r = next((x for x in rows if x["id"] == i), None)
         if not r: print(f"unknown id {i}"); ok = False; continue
+        if r["status"] == "hold" and st == "approved" and r["notes"].startswith("font licence"):
+            print(f"{i}: the font's licence (note or file flag) forbids embedding: record what the licence really covers first, with --licence {i}=\"what the licence allows, e.g. web/app embedding included, invoice no.\", then approve; or exclude it, or use a free font; with a desktop-only licence deliver the MP4 only"); ok = False; continue
         if r["status"] == "hold" and st == "approved" and "name suggests" in r["notes"]:
             print(f"{i}: looks like real or confidential data; paint over the sensitive parts in a copy, then run --redacted {i}=PATH_TO_REDACTED_FILE"); ok = False; continue
         if r["status"] == "hold" and st == "approved" and not r["file"]:
@@ -202,6 +208,18 @@ def cmd_set(a):
         r["status"] = st
         if st != "hold" and "decide first" in r["notes"] or st != "hold" and r["notes"].startswith(("low resolution", "logo bitmap", "heavy", "font licence", "rights or consent")): r["notes"] = ""  # the reason for the hold no longer applies once decided
     save(man, rows); print("manifest updated" if ok else "manifest updated for the valid entries"); return 0 if ok else 1
+
+def cmd_licence(a):
+    """--licence 'id=text;id2=text2': records the licence the user states for a file (manifest column licence_note). For a font held because its
+    licence forbids embedding, this is the explicit step that lets it be approved afterwards (the user vouches for the new licence)."""
+    man = os.path.join(a.project, "assets", "MANIFEST.csv"); rows = load(man); ok = True
+    for pair in a.licence.split(";"):
+        i, _, txt = pair.partition("=")
+        r = next((x for x in rows if x["id"] == i.strip()), None)
+        if not r or not txt.strip(): print(f"unknown id or empty licence text: {pair!r}"); ok = False; continue
+        r["licence_note"] = txt.strip()
+        if r["notes"].startswith("font licence"): r["notes"] = "licence stated by the user: " + txt.strip()[:120] + " (check it covers web/app embedding before delivering the HTML)"
+    save(man, rows); print("licence recorded" if ok else "licence recorded for the valid ids"); return 0 if ok else 1
 
 def cmd_redacted(a):
     i, _, path = a.redacted.partition("=")
@@ -276,12 +294,13 @@ def cmd_check(a):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("project"); ap.add_argument("--from", dest="src"); ap.add_argument("--apply", action="store_true")
-    ap.add_argument("--set"); ap.add_argument("--scene", help="fill the scene column: logo-01=S01,S07;shot-01=S03"); ap.add_argument("--register", action="store_true"); ap.add_argument("--redacted"); ap.add_argument("--md", action="store_true"); ap.add_argument("--check", action="store_true"); ap.add_argument("--allow-hold", action="store_true")
+    ap.add_argument("--set"); ap.add_argument("--scene", help="fill the scene column: logo-01=S01,S07;shot-01=S03"); ap.add_argument("--register", action="store_true"); ap.add_argument("--redacted"); ap.add_argument("--licence", help="record the licence the user states: id=text;id2=text2"); ap.add_argument("--md", action="store_true"); ap.add_argument("--check", action="store_true"); ap.add_argument("--allow-hold", action="store_true")
     a = ap.parse_args()
     if not os.path.isdir(a.project): sys.exit("project folder not found")
     if a.check: sys.exit(cmd_check(a))
     if a.scene: sys.exit(cmd_scene(a))
     if a.register: sys.exit(cmd_register(a))
+    if a.licence: return cmd_licence(a)
     if a.redacted: sys.exit(cmd_redacted(a))
     if a.md: sys.exit(cmd_md(a))
     if a.set: sys.exit(cmd_set(a))

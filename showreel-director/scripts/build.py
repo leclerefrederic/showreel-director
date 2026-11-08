@@ -7,6 +7,7 @@ envelopes (from analysis_dir/beats.json + env.json), core.js + kit.js (window.SR
 fails if the budget in project.json is exceeded. No track: omit "track" (the reel then runs silent).
 """
 import argparse, base64, json, os, re, sys
+sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C
 

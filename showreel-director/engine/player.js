@@ -24,7 +24,7 @@
     document.documentElement.lang = state.lang;
     document.title = (S.title && S.title[state.lang]) || (S.title && S.title.en) || document.title;
     ['pp', 'mu', 'lp', 'fm', 'lg', 'rp'].forEach(id => { const e = $(id); if (e) e.textContent = UI(id); });
-    state.music = hasTrack && !silent && !muted; // reactive visuals follow the music only while it is audible
+    state.music = hasTrack && !silent && !muted && vol > .02; // reactive visuals follow the music only while it is audible
     $('pp').textContent = playing ? UI('pause') : UI('play');
     $('mu').textContent = muted ? UI('muted') : UI('sound');
     if ($('rm')) { $('rm').textContent = state.reduced ? UI('reducedOn') : UI('reduced'); $('rm').classList.toggle('off', !state.reduced); }

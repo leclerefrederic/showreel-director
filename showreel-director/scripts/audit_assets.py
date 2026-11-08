@@ -3,10 +3,13 @@
 
 Usage: python3 audit_assets.py ASSET_DIR [--budget-mb 20]
 Per file: type, size, pixel size (images), duration (audio/video via ffprobe), licence/consent note found next to it,
-and flags: heavy, small, personal-data keywords in text-like files, no licence note, proprietary/unknown font licence.
+and flags: heavy, small, personal-data keywords in text-like files, no licence note, proprietary/unknown font licence (note next to the file and the font's own embedding flag).
 Read only; never modifies files. Treat flags as questions for the user, not verdicts.
 """
-import argparse, json, os, re, subprocess
+import argparse, json, os, re, subprocess, sys
+sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _common as C
 
 PII = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+|(?<!\d)(?:\+\d{1,3}[ .-]?)?(?:\d[ .-]?){9,}\d(?!\d)|\b[A-Z]{2}\d{2}[ ]?(?:\d{4}[ ]?){3,}|\b(?:iban|passport|ssn|password|secret|api[_-]?key)\b", re.I)
 
@@ -51,8 +54,12 @@ def main():
             if ext in ("png", "jpg", "jpeg") and re.search(r"client|customer|personal|data|real", f, re.I): flags.append("filename suggests real data")
             note = note_for(r, f)
             if ext in ("ttf", "otf", "woff", "woff2"):
+                fe = C.font_embedding(p)
                 if not note: flags.append("font without licence note")
-                elif re.search(r"proprietary|forbidden|not allowed|desktop only|workstation", note, re.I): flags.append("font licence forbids embedding")
+                elif C.FONT_FORBID.search(note): flags.append("font licence forbids embedding")
+                if fe["restricted"]: flags.append("font file flag (fsType %s) forbids embedding" % fe["fstype"])
+                if note and fe["meta_licence"] and C.FONT_FORBID.search(note) and re.search(r"open font licen|\bOFL\b|apache", fe["meta_licence"], re.I):
+                    flags.append("licence note and font metadata disagree (metadata names an open licence): ask which one applies")
             if ext in ("jpg", "jpeg", "png", "mp3", "wav", "mp4") and not note: flags.append("no licence/consent note next to it")
             if re.search(r"not confirmed|unconfirmed|unknown", note, re.I) and ext in ("jpg", "jpeg", "png", "mp4"): flags.append("rights/consent not confirmed")
             rows.append((os.path.relpath(p, a.dir), ext, sz, f"{w}x{h}" if w else "", f"{dur:.1f}s" if dur else "", flags))

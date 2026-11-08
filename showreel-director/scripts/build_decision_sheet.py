@@ -15,13 +15,14 @@ Spec (JSON):
                             {"label": "Change", "needs_note": true},        needs_note: the note field must be filled
                             {"label": "Waive and accept the risk", "needs_note": true} ] } ] }
 Page language: all page texts come from a UI table (English by default). Pass --ui FILE.json with the same keys translated into the
-conversation language (keys: accept, copy, rec, several, noteReq, noteOpt, status, open, copied, header, missing) and --lang CODE for the page's lang attribute.
+conversation language (keys: accept, copy, rec, several, noteReq, noteOpt, status, open, copied, header, missing; `status` must keep the placeholders {n} and {total}, `header` must keep {title}) and --lang CODE for the page's lang attribute.
 Guardrails built in: nothing is pre-selected (the recommended option is only highlighted); "Accept all recommended" is a
 separate explicit button; "Copy decisions" refuses (and outlines the open cards) until every item is decided and every needs_note note is filled;
 the copied text is a draft that the skill still confirms in the conversation. Text is never interpreted as HTML.
 No look is assumed: pass the brand colours.
 """
 import argparse, html, json, os, re, sys
+sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C
 

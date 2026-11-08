@@ -4,11 +4,12 @@ user's palette with the reel's message over it. The user picks one for the title
 
 Usage: python3 build_background_picker.py --out PROJECT/qa/backgrounds.html [--message "Know where your money goes"]
          [--bg #151515 --fg #f2f2f2 --accent #ffd166 --accent2 #6c8cff --font path/to/font.ttf --family "Name"] [--ui ui.json --lang fr]
-  --ui keys: title bg fg accent accent2 calm beat style moods hint all anim titles content closing copy copied open (and fam: {Solid, Gradient, Pattern, Texture, Animated}).
+  --ui keys: title bg fg accent accent2 calm beat style moods hint all anim titles content closing copy copied open (fam: {Solid, Gradient, Pattern, Texture, Animated} translated; names: {id: {name, desc}} to translate the background names and descriptions).
 The backgrounds are the same code a reel uses (window.SRB, inlined by build.py when main.js calls SRB.draw), so what the user picks is what the build can draw.
 Animated backgrounds freeze with the "calm preview" box, as they do with reduced motion in a reel. "Preview with a beat" simulates a 124 bpm kick and lets the user hear/see how each background would react in a given style (punch, playful, tech, clean, cinematic, deadpan): in a reel the signals come from the real track and stop when there is no music, the music is muted or reduced motion is on.
 """
 import argparse, json, os, sys
+sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C
 
@@ -29,7 +30,7 @@ def main():
     html = html.replace("__MESSAGE__", C.js_json(a.message)).replace("__FONT__", C.js_json(family))
     if a.ui:
         u = json.load(open(a.ui, encoding="utf-8"))
-        keys = ("title", "bg", "fg", "accent", "accent2", "calm", "beat", "style", "moods", "hint", "all", "anim", "titles", "content", "closing", "copy", "copied", "open", "fam")
+        keys = ("title", "bg", "fg", "accent", "accent2", "calm", "beat", "style", "moods", "hint", "all", "anim", "titles", "content", "closing", "copy", "copied", "open", "fam", "names")
         html = html.replace("/*__GT__*/", "Object.assign(GT,%s);" % C.js_json({k: u[k] for k in keys if k in u}))
         html = html.replace('<html lang="en">', '<html lang="%s">' % a.lang.replace('"', ""), 1)
     C.write_text(a.out, html)

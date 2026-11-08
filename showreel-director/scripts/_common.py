@@ -64,3 +64,22 @@ def fill(page, pairs):
 def write_text(out, text):
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     open(out, "w", encoding="utf-8").write(text)
+
+
+# ---- Font licence checks (used by audit_assets.py and organize_assets.py) ----
+FONT_FORBID = re.compile(r"proprietary|forbidden|not allowed|workstation|desktop[\s-]*(licen[cs]e[\s-]*)?only|no[\s-]+(web|app|embedding)|not licen[cs]ed for[^.\n]{0,40}(web|app|embed)|(web|app|embedding)[^.\n]{0,40}(not (allowed|permitted|included|licen[cs]ed)|prohibited|forbidden)|do not embed|cannot be embedded", re.I)
+
+
+def font_embedding(path):
+    """Reads the font file itself: {fstype, restricted, family, meta_licence}. restricted is True when the OS/2 embedding flag forbids
+    embedding (bit 1 restricted, bit 2 preview and print only). Needs fontTools; without it every value is None (the note text is still checked)."""
+    out = {"fstype": None, "restricted": None, "family": "", "meta_licence": ""}
+    try:
+        from fontTools.ttLib import TTFont
+        f = TTFont(path, lazy=True)
+        if "OS/2" in f:
+            t = f["OS/2"].fsType; out["fstype"] = t; out["restricted"] = bool(t & 0x2 or t & 0x4)
+        n = f["name"]; out["family"] = n.getDebugName(1) or ""; out["meta_licence"] = ((n.getDebugName(13) or "") + " " + (n.getDebugName(14) or "")).strip()
+    except Exception:
+        pass
+    return out

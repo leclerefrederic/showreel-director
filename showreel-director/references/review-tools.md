@@ -12,7 +12,7 @@ Rule: the user never approves a block of text. A decision goes through the quest
 | Fonts for titles and text | font picker | `scripts/build_font_picker.py` (free fonts by mood, "Copy my picks") |
 | Scenes of the storyboard | **scene cards** | `scripts/build_scene_cards.py storyboard.md --out qa/cards-scenes.html …` (timeline strip, reading-speed warning per scene, OK / MODIFY / DITCH) |
 | Look of the first frames | look test build | see "Look test" in `build-guide.md`: a build of 2 or 3 scenes, opened in the player |
-| Held assets (real data, unconfirmed rights, forbidden font) | decision sheet | one item per held file: Exclude (recommended) / Provide a redacted copy or confirm rights (note required); then `organize_assets.py --set` or `--redacted` |
+| Held assets (real data, unconfirmed rights, forbidden font) | decision sheet | one item per held file, with options that match why it is held: real or personal data: Exclude (recommended) / Provide a redacted copy (`--redacted`); unconfirmed rights: Exclude (recommended) / Rights confirmed (note required, record it with `--licence`); forbidden font licence: Use a free font (recommended) / Exclude / Licence covers web or app embedding (note required: `--licence`, then `--set approved`) / MP4 only (never in the HTML); low resolution: Replace / Accept / Exclude |
 | Feedback on the built reel | review build with the **notes pad** | `controls.notes: true` in `main.js` for review builds only; key N or the Note button pauses and stamps time, scene, format and language; "Copy notes" puts them on the clipboard |
 
 Language: build every page with `--ui` (translated page texts; keys in the script header) and `--lang`, so the user never meets English buttons in a French conversation.

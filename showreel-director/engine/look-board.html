@@ -30,8 +30,8 @@ footer{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--
 <script>
 __BACKGROUNDS__
 const SPEC=__SPEC__;
-const GT={pick:'Choose this look',mix:'Mix and match',palette:'Palette',background:'Background',fonts:'Fonts',effects:'Effects mood',none:'None of these: new direction',note:'What should change? (required)',copy:'Copy my choice',copied:'Copied',why:'Why',open:'Choose a look, or mix elements, then copy.',needNote:'Add a note for the new direction.',needPick:'Choose a look first.',yours:'Your mix',titles:'Titles',text:'Text',sub:'A supporting line goes here.'};/*__GT__*/
-const $=id=>document.getElementById(id);
+const GT={pick:'Choose this look',mix:'Mix and match',palette:'Palette',background:'Background',fonts:'Fonts',effects:'Effects mood',none:'None of these: new direction',note:'What should change? (required)',copy:'Copy my choice',copied:'Copied',why:'Why',open:'Choose a look, or mix elements, then copy.',needNote:'Add a note for the new direction.',needPick:'Choose a look first.',yours:'Your mix',look:'Look',mixw:'mix',nonew:'none of these',asprop:'as proposed',effw:'effects mood',titles:'Titles',text:'Text',sub:'A supporting line goes here.'};/*__GT__*/
+const $=id=>document.getElementById(id);const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 $('ttl').textContent=SPEC.title;$('intro').textContent=SPEC.intro||'';$('copy').textContent=GT.copy;$('status').textContent=GT.open;
 const P=SPEC.packages;const state={pick:null,none:false,mix:{palette:null,background:null,fonts:null,effects:null},note:''};
 const fam=(f)=>"'"+f.name+"',system-ui,sans-serif";
@@ -44,10 +44,10 @@ function frame(el,pal,bgk,fonts){el.style.background=pal.bg;el.style.color=pal.f
  t.style.fontFamily=fam(fonts.titles);s.style.fontFamily=fam(fonts.text);t.style.fontWeight=fonts.titles.bold?'700':'400';
  el.querySelector('.bar').style.background=pal.accent;el.querySelector('.dot').style.background=pal.accent2||pal.accent}
 let clk=0,lt=performance.now();function loop(n){clk+=Math.min(.05,(n-lt)/1000);lt=n;live.forEach(l=>l.draw(clk));requestAnimationFrame(loop)}requestAnimationFrame(loop);
-function chips(pal){return Object.entries(pal).map(([k,v])=>`<span class="chip"><i style="background:${v}"></i>${v}</span>`).join('')}
+function chips(pal){return Object.entries(pal).map(([k,v])=>`<span class="chip"><i style="background:${esc(v)}"></i>${esc(v)}</span>`).join('')}
 function render(){const g=$('grid');g.innerHTML='';live=[];
  P.forEach(p=>{const d=document.createElement('div');d.className='card'+(state.pick===p.id&&!state.none?' sel':'');
-  d.innerHTML=`<div class="frame"></div><div class="meta"><b>${p.id}. ${p.name}</b><small></small><div class="chips">${chips(p.palette)}</div><div><span class="tag">${p.background}</span><span class="tag">${p.fonts.titles.name} / ${p.fonts.text.name}</span><span class="tag">${p.effects_pack}</span></div><div style="margin-top:10px"><button class="pk${state.pick===p.id&&!state.none?' on':''}">${GT.pick}</button></div></div>`;
+  d.innerHTML=`<div class="frame"></div><div class="meta"><b>${esc(p.id)}. ${esc(p.name)}</b><small></small><div class="chips">${chips(p.palette)}</div><div><span class="tag">${esc(p.background)}</span><span class="tag">${esc(p.fonts.titles.name)} / ${esc(p.fonts.text.name)}</span><span class="tag">${esc(p.effects_pack)}</span></div><div style="margin-top:10px"><button class="pk${state.pick===p.id&&!state.none?' on':''}">${GT.pick}</button></div></div>`;
   d.querySelector('small').textContent=p.why||'';frame(d.querySelector('.frame'),p.palette,p.background,p.fonts);
   d.querySelector('.pk').onclick=()=>{state.pick=p.id;state.none=false;['palette','background','fonts','effects'].forEach(k=>state.mix[k]=p.id);render()};g.appendChild(d)});renderMix()}
 function by(id){return P.find(x=>x.id===id)}
@@ -58,10 +58,10 @@ function renderMix(){live=live.filter(l=>!l.mix);const m=$('mix');m.innerHTML=`<
  const ta=document.createElement('textarea');ta.placeholder=GT.note;ta.rows=2;ta.value=state.note;ta.oninput=()=>state.note=ta.value;ta.style.display=state.none?'block':'none';m.appendChild(ta);
  $('nn').onclick=()=>{state.none=!state.none;render()};
  if(state.pick&&!state.none){const x=state.mix,pa=by(x.palette||state.pick),bg=by(x.background||state.pick),fo=by(x.fonts||state.pick);const n0=live.length;frame($('mf'),pa.palette,bg.background,fo.fonts);if(live.length>n0)live[live.length-1].mix=true}else{$('mf').style.display='none'}}
-function result(){if(state.none)return state.note.trim()?'Look: none of these. '+state.note.trim():null;if(!state.pick)return null;const x=state.mix,ids=['palette','background','fonts','effects'].map(k=>x[k]||state.pick);
+function result(){if(state.none)return state.note.trim()?GT.look+': '+GT.nonew+'. '+state.note.trim():null;if(!state.pick)return null;const x=state.mix,ids=['palette','background','fonts','effects'].map(k=>x[k]||state.pick);
  const same=ids.every(i=>i===ids[0]);const pa=by(ids[0]),pb=by(ids[1]),pf=by(ids[2]),pe=by(ids[3]);
- if(same)return `Look: ${pa.id} (${pa.name}) as proposed`;
- return `Look: mix | palette ${pa.id} (${pa.name}) | background ${pb.id} (${pb.background}) | fonts ${pf.id} (${pf.fonts.titles.name} / ${pf.fonts.text.name}) | effects mood ${pe.id} (${pe.effects_pack})`}
+ if(same)return `${GT.look}: ${pa.id} (${pa.name}) ${GT.asprop}`;
+ return `${GT.look}: ${GT.mixw} | ${GT.palette} ${pa.id} (${pa.name}) | ${GT.background} ${pb.id} (${pb.background}) | ${GT.fonts} ${pf.id} (${pf.fonts.titles.name} / ${pf.fonts.text.name}) | ${GT.effw} ${pe.id} (${pe.effects_pack})`}
 $('copy').onclick=()=>{const s=result();if(!s){$('status').textContent=state.none?GT.needNote:GT.needPick;return}
  const fb=()=>{const t=document.createElement('textarea');t.value=s;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(x){}t.remove()};try{navigator.clipboard.writeText(s).catch(fb)}catch(x){fb()}
  $('status').textContent=s;const o=$('copy');o.textContent=GT.copied;setTimeout(()=>o.textContent=GT.copy,1400)};

@@ -18,16 +18,17 @@
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
 
 ## Next
-- Bring Your Own Licensed Material: supplied fonts, images, music and footage under a commercial licence. Read the font embedding flag (`fsType`) in the audit and the organiser; ask which use the licence covers (web or app embedding, video only, unsure) and record it in the manifest licence note; for video-only or unclear licences deliver the MP4 only and keep the HTML private, listed in the release gate; optional glyph subsetting. The same licence question for supplied images, music and footage.
+- Bring Your Own Licensed Material, remaining: ask in the interview which use a supplied licence covers (web or app embedding, video only, unsure); deliver the MP4 only for video-only or unclear licences and keep the HTML private; the same question for supplied images, music and footage; optional glyph subsetting. Done: embedding flag (`fsType`) read in the audit and organiser, `--licence` note option.
 - Design system ingestion (a Claude Design export): needs a real export to build against.
 - Automatic check for text overflowing a card or panel (today only a visual check of stills catches it).
-- Licence note option in the organiser (`--licence`), instead of editing the manifest by hand.
 
 ## To explore
 - Playwright (https://playwright.dev/mcp/introduction) for real-browser checks: playback, seek, muted sound and `ctx.music`, console errors, computed fonts on the picker pages, clipboard copy. Likely shape: Playwright tests run by GitHub Actions rather than the MCP server (deterministic, no token cost); an optional "real browser" tier in the skill when `check_env.py` finds a headless browser; the MCP or CLI only for hands-on exploration on an unlocked machine. A canvas has no accessibility tree, so reel frames still need screenshots; headless browsers play no sound.
 
 ## Known limits
 - The decision sheet embeds one font only.
+- Look board and font picker previews show titles at regular weight only.
+- An MP4 bakes the beat reaction in; a muted version needs its own export (`--silent`).
 - Text measurement is an estimate without the `@napi-rs/canvas` package.
 - Lab category tabs, counter and GIF tooltip are not translatable.
 - The organiser keeps the sub-folders of the uploads (a `source/source/` is possible).

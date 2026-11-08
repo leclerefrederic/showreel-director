@@ -12,6 +12,7 @@ so the user can paste it in the chat. The decisions are only a draft: the skill 
 DITCH in the conversation (see references/scene-review.md). No palette or look is assumed: pass the brand colours.
 """
 import argparse, html, json, os, re, sys, unicodedata
+sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C
 

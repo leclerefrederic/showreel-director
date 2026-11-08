@@ -77,3 +77,6 @@ SKILL.md went from about 32 KB to about 14 KB: rules that never bend, gates tabl
 
 ## Guided lab and font picker
 Checked with jsdom (moods, pack filter, picks copy, back/all navigation; font picker filters and Copy in EN and FR) and by screenshot. `fetch_font.py` only tested offline (network blocked in the build sandbox): its download path still needs a run on a machine with network.
+
+## E2E run 5 (look board, pickers, music-reactive backgrounds)
+Played by an independent agent with a scripted user. Fixed: reaction rules apply only with music (not muted, not reduced); `--silent` export is named `_muted`; `--mood` opens the lab on chosen moods; picker and look board texts translatable (`--message`, `--ui`); `--licence` records a stated licence and a font held for its embedding flag needs it before approval; `check_env.py --notice` mentions `--node-path` and stills; `analyze_audio.py` drops near-duplicate tempo candidates; docs aligned (notice placement, held-asset options, harness gate, decision-sheet placeholders). Not fixed: previews at weight 400 only; no music slice in the look test.

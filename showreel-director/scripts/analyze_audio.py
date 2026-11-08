@@ -139,7 +139,7 @@ def main():
                "bars": [round(float(b), 3) for b in bars], "drops_bar_index": drops, "drops_bar_number": [d + 1 for d in drops],
                "bar_energy": [round(v, 2) for v in be], "breakdowns": breakdowns, "returns": returns}, open(os.path.join(a.out, "beats.json"), "w"))
     json.dump({"fps": 50, "kick": at50(low), "hat": at50(high), "energy": at50(full)}, open(os.path.join(a.out, "env.json"), "w"))
-    print("other plausible tempi (score relative to the best): " + ", ".join(f"{b:.1f} BPM ({sc:.2f})" for b, sc in cands) + "  (equal scores are a tie: the tempo printed below is the one chosen; confirm by ear)  -> if the tempo above is wrong, rerun with --bpm N [--first-beat S]")
+    print("other plausible tempi (score relative to the best): " + (", ".join(f"{b:.1f} BPM ({sc:.2f})" for b, sc in cands if abs(b - bpm) / bpm > .03) or "none") + "  (candidates within 3% of the chosen tempo are the same tempo and are left out; confirm by ear)  -> if the tempo above is wrong, rerun with --bpm N [--first-beat S]")
     print(f"duration {dur:.2f}s  tempo {bpm:.2f} BPM  bar {4*spb:.3f}s  first beat {beats[0]:.3f}s  downbeat offset {down}")
     print("bar  start(s)  energy  note")
     for i, (b, e) in enumerate(zip(bars, be)):

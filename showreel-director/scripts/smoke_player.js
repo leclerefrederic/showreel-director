@@ -18,7 +18,9 @@ const w = dom.window, $ = id => w.document.getElementById(id); const sleep = ms 
   await sleep(200);
   ok('overlay shown with start buttons', $('ov').style.display !== 'none' && $('ov2').textContent.length > 0);
   ok('language buttons built', w.SHOWREEL.languages.length < 2 || $('ovl').children.length === w.SHOWREEL.languages.length);
-  $('ov2').click(); await sleep(700);
+  let musicSeen = null; const rm0 = w.SHOWREEL.render; w.SHOWREEL.render = (g, t, c) => { musicSeen = c.music; return rm0(g, t, c); };
+  $('ov2').click(); await sleep(700); w.SHOWREEL.render = rm0;
+  ok('ctx.music is false when the reel is started without sound', musicSeen === false);
   ok('overlay hidden after start', $('ov').style.display === 'none');
   ok('time label advances', /^0:0[0-9] \//.test($('tm').textContent) && $('tm').textContent !== '0:00 / 0:00');
   $('pp').click(); const t1 = $('tm').textContent; await sleep(500);
