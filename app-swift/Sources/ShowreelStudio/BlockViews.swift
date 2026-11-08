@@ -3,8 +3,8 @@ import ShowreelKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Project block: the questions of the interview's first round, as a form. Every change is a typed operation.
-struct ProjectBlockView: View {
+/// The project's parameters, as a form: the questions of the interview's first round. Every change is a typed operation.
+struct ProjectForm: View {
     @EnvironmentObject var project: ProjectModel
     @State private var drafts: [ParameterKey: String] = [:]
     @State private var dirty: Set<ParameterKey> = []
@@ -14,34 +14,10 @@ struct ProjectBlockView: View {
     private static let languages = ["": "Not set", "en": "English", "fr": "French", "de": "German", "es": "Spanish", "it": "Italian", "pt": "Portuguese", "nl": "Dutch"]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                header
-                if project.showreel == nil { missing } else { form; ChecksPanel(block: "project") }
-            }
-            .padding(24)
-            .frame(maxWidth: 720, alignment: .leading)
-            .frame(maxWidth: .infinity)
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-        .onAppear { load() }
-        .onChange(of: project.showreel) { _ in load() }
-        .onDisappear { commit() }
-    }
-
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Project").font(.title2.weight(.semibold))
-                Text("The answers the film is built on. The copilot reads them and does not ask again.").font(.callout).foregroundStyle(.secondary)
-            }
-            Spacer()
-            if project.showreel != nil { ValidateButton(gate: "interview", block: "project") }
-        }
-    }
-
-    private var missing: some View {
-        Text("This project has no data yet. Confirm the import or create it with the banner above.").foregroundStyle(.secondary)
+        form
+            .onAppear { load() }
+            .onChange(of: project.showreel) { _ in load() }
+            .onDisappear { commit() }
     }
 
     private var form: some View {
@@ -152,94 +128,6 @@ struct ValidateButton: View {
         .buttonStyle(.bordered)
         .tint(passed ? .green : .accentColor)
         .help(passed ? "Click to reopen this block" : "Say you are done with this block")
-    }
-}
-
-/// Resources block: the assets as a grid. Drop files in, decide on each one, link it to scenes.
-struct ResourcesBlockView: View {
-    @EnvironmentObject var project: ProjectModel
-    @State private var targeted = false
-    @State private var holding: AssetRow?
-    @State private var holdNote = ""
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Resources").font(.title2.weight(.semibold))
-                    Text("Drop your logos, screenshots, photos, fonts and music here. Nothing is used in the film until you approve it.")
-                        .font(.callout).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button { chooseFiles() } label: { Label("Add files...", systemImage: "plus") }
-                if project.showreel != nil { ValidateButton(gate: "assets", block: "resources") }
-            }
-            .padding(24)
-            if project.showreel != nil { ChecksPanel(block: "resources").padding(.horizontal, 24).padding(.bottom, 16) }
-            Divider()
-            ZStack {
-                if project.assets.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "square.and.arrow.down").font(.system(size: 36, weight: .light)).foregroundStyle(.secondary)
-                        Text("Drop files here").font(.headline)
-                        Text("Files only, not folders. Originals are copied into the project and never changed.").font(.caption).foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 14, alignment: .top)], spacing: 14) {
-                            ForEach(project.assets) { row in
-                                AssetCard(row: row, onHold: { holding = row; holdNote = row.notes })
-                            }
-                        }
-                        .padding(24)
-                    }
-                }
-                if targeted {
-                    RoundedRectangle(cornerRadius: 12).stroke(Color.accentColor, style: StrokeStyle(lineWidth: 3, dash: [8]))
-                        .background(Color.accentColor.opacity(0.08)).padding(10).allowsHitTesting(false)
-                }
-            }
-            .onDrop(of: [.fileURL], isTargeted: $targeted) { providers in drop(providers) }
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-        .sheet(item: $holding) { row in
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Hold \(row.name)").font(.headline)
-                Text("A held file is not used until you decide. Say why, so you and the copilot remember.").font(.callout).foregroundStyle(.secondary)
-                TextField("Why is it on hold?", text: $holdNote, axis: .vertical).lineLimit(2...4).textFieldStyle(.roundedBorder)
-                HStack {
-                    Spacer()
-                    Button("Cancel") { holding = nil }.keyboardShortcut(.cancelAction)
-                    Button("Hold") { project.perform(.asset(id: row.id, status: .hold, note: holdNote, licence: nil, scenes: nil)); holding = nil }
-                        .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
-                        .disabled(holdNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-            .padding(18).frame(width: 420)
-        }
-    }
-
-    private func chooseFiles() {
-        let p = NSOpenPanel()
-        p.canChooseFiles = true; p.canChooseDirectories = false; p.allowsMultipleSelection = true
-        p.prompt = "Add"
-        if p.runModal() == .OK { project.addAssets(p.urls) }
-    }
-
-    private func drop(_ providers: [NSItemProvider]) -> Bool {
-        var urls: [URL] = []
-        let group = DispatchGroup()
-        let lock = NSLock()
-        for p in providers where p.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
-            group.enter()
-            p.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
-                if let d = item as? Data, let u = URL(dataRepresentation: d, relativeTo: nil) { lock.lock(); urls.append(u); lock.unlock() }
-                group.leave()
-            }
-        }
-        group.notify(queue: .main) { project.addAssets(urls) }
-        return !providers.isEmpty
     }
 }
 

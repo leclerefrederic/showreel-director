@@ -161,29 +161,29 @@ final class LookTests: XCTestCase {
         XCTAssertEqual(FontLicense.assess(name: "Open Serif", assets: rows(), store: store).level, .ok)
         // the look checks carry the warning to the block
         try store.apply(.decisions([DecisionChange(.titleFont, "Locked Sans"), DecisionChange(.textFont, "Poppins")], title: nil))
-        let r = Dictionary(uniqueKeysWithValues: Checks.run(block: "look", store: store).map { ($0.id, $0.level) })
+        let r = Dictionary(uniqueKeysWithValues: Checks.run(area: "look", store: store).map { ($0.id, $0.level) })
         XCTAssertEqual(r["font.titles"], .fail); XCTAssertEqual(r["font.text"], .ok)
     }
 
     func testLookChecksStartPendingAndTrackTheGate() throws {
-        var r = Dictionary(uniqueKeysWithValues: Checks.run(block: "look", store: store).map { ($0.id, $0.level) })
+        var r = Dictionary(uniqueKeysWithValues: Checks.run(area: "look", store: store).map { ($0.id, $0.level) })
         XCTAssertEqual(r["palette.any"], .pending); XCTAssertEqual(r["font.any"], .pending); XCTAssertEqual(r["look.background"], .pending)
         XCTAssertEqual(r["gate.style"], .pending)
         try store.apply(.decisions(LookPackages.three(tone: nil)[0].decisions, title: nil))
         try store.apply(.gate("style", passed: true))
-        r = Dictionary(uniqueKeysWithValues: Checks.run(block: "look", store: store).map { ($0.id, $0.level) })
+        r = Dictionary(uniqueKeysWithValues: Checks.run(area: "look", store: store).map { ($0.id, $0.level) })
         XCTAssertEqual(r["palette.text"], .ok); XCTAssertEqual(r["look.background"], .ok); XCTAssertEqual(r["look.effects"], .ok); XCTAssertEqual(r["gate.style"], .ok)
     }
 
     // MARK: block status and wizard
 
-    func testLookBlockHasARealProgression() throws {
+    func testLookHasARealProgressionInTheInspector() throws {
         let spec = try XCTUnwrap(ProcessSpec.load())
-        func st() -> BlockStatus { Blocks.status("look", spec: spec, showreel: store.loadShowreel(), assets: Assets.load(store)) }
+        func st() -> BlockStatus { Blocks.status("inspector", spec: spec, showreel: store.loadShowreel(), assets: Assets.load(store)) }
         XCTAssertEqual(st(), .todo)
         try store.apply(.decisions([DecisionChange(.palette, "#101820, #FFFFFF")], title: nil))
         XCTAssertEqual(st(), .inProgress)
-        try store.apply(.gate("style", passed: true))
+        try store.apply(.gate("style", passed: true)); try store.apply(.gate("interview", passed: true))
         XCTAssertEqual(st(), .validated)
     }
 
@@ -196,8 +196,8 @@ final class LookTests: XCTestCase {
         XCTAssertEqual(look, ["look.board", "look.palette", "look.titleFont", "look.textFont", "look.background", "look.moods", "look.effectsPack", "look.summary"])
         XCTAssertLessThan(try XCTUnwrap(ids.firstIndex(of: "resources.summary")), try XCTUnwrap(ids.firstIndex(of: "look.board")), "the look follows the assets, as the process does")
         XCTAssertLessThan(try XCTUnwrap(ids.firstIndex(of: "look.summary")), try XCTUnwrap(ids.firstIndex(of: "storyboard.scenes")))
-        XCTAssertTrue(steps().filter { $0.block == "look" }.allSatisfy { $0.isBuilt && !$0.title.isEmpty && !$0.help.isEmpty })
-        XCTAssertTrue(steps().filter { $0.block == "look" }.allSatisfy { !decided($0) }, "nothing is decided until the user acts")
+        XCTAssertTrue(steps().filter { $0.area == "look" }.allSatisfy { $0.isBuilt && !$0.title.isEmpty && !$0.help.isEmpty })
+        XCTAssertTrue(steps().filter { $0.area == "look" }.allSatisfy { !decided($0) }, "nothing is decided until the user acts")
         // answers are the same typed operations as the block's pickers
         try store.apply(.decisions([DecisionChange(.palette, "#101820, #FFFFFF, #F2AA4C")], title: nil))
         XCTAssertTrue(decided(try XCTUnwrap(steps().first { $0.id == "look.palette" })))
@@ -215,7 +215,7 @@ final class LookTests: XCTestCase {
     }
 
     func testSuggestWithAIForLookStepsAsksForCards() throws {
-        for s in Wizard.steps(assets: [], spec: ProcessSpec.load()).filter({ $0.block == "look" && $0.id != "look.summary" }) {
+        for s in Wizard.steps(assets: [], spec: ProcessSpec.load()).filter({ $0.area == "look" && $0.id != "look.summary" }) {
             let p = Wizard.suggestionPrompt(s)
             XCTAssertTrue(p.contains("update_decision"), "\(s.id): \(p)")
             XCTAssertTrue(p.contains("accept or refuse") || p.contains("(key"), s.id)

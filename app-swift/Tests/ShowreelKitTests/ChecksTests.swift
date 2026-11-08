@@ -76,17 +76,18 @@ final class ChecksTests: XCTestCase {
 
     func testFeasibilityFromTheProject() throws {
         try store.create(name: "F", conversationLanguage: nil, reelLanguages: [])
-        XCTAssertEqual(Checks.run(block: "project", store: store).first?.level, .pending, "no duration, nothing to judge yet")
+        XCTAssertEqual(Checks.run(area: "project", store: store).first?.level, .pending, "no duration, nothing to judge yet")
         try store.apply(.parameter(.duration, "30"))
         var f = try XCTUnwrap(store.loadShowreel())
-        f.scenes = (1...14).map { .init(id: String(format: "S%02d", $0), start: Double($0 - 1) * 2, end: Double($0) * 2, text: "Some words here") }
+        f.scenes = (1...14).map { .init(id: String(format: "S%02d", $0), duration: 2, text: "Some words here") }
+        f.storyboards = [.init(items: f.scenes.map { .init(scene: $0.id) })]
         try store.save(f)
-        let r = Checks.run(block: "project", store: store)
+        let r = Checks.run(area: "project", store: store)
         XCTAssertEqual(r.first { $0.id == "feasibility.text-scenes" }?.level, .fail)
         XCTAssertEqual(Checks.worst(r), .fail)
         f.scenes = Array(f.scenes.prefix(5))
         try store.save(f)
-        XCTAssertEqual(Checks.run(block: "project", store: store).first { $0.id == "feasibility.text-scenes" }?.level, .ok)
+        XCTAssertEqual(Checks.run(area: "project", store: store).first { $0.id == "feasibility.text-scenes" }?.level, .ok)
     }
 
     // MARK: reading budget per scene
@@ -103,14 +104,15 @@ final class ChecksTests: XCTestCase {
         try store.create(name: "R", conversationLanguage: nil, reelLanguages: [])
         var f = try XCTUnwrap(store.loadShowreel())
         f.scenes = [
-            .init(id: "S01", start: 0, end: 4, text: "Notes that stay calm and clear"),                               // fits
-            .init(id: "S02", start: 4, end: 5, text: "Capture anything you think of, anywhere, at any time of day"),  // far too short
-            .init(id: "S03", text: "No timing yet"),
-            .init(id: "S04", start: 5, end: 9, text: "Skipped", status: "ditched"),
-            .init(id: "S05", start: 9, end: 11, text: "Un texte", texts: ["fr": "Un texte français nettement plus long que l'original"]),
+            .init(id: "S01", duration: 4, text: "Notes that stay calm and clear"),                               // fits
+            .init(id: "S02", duration: 1, text: "Capture anything you think of, anywhere, at any time of day"),  // far too short
+            .init(id: "S03", text: "No duration yet"),
+            .init(id: "S04", duration: 4, text: "Skipped", status: "ditched", archived: true),
+            .init(id: "S05", duration: 2, text: "Un texte", texts: ["fr": "Un texte français nettement plus long que l'original"]),
         ]
+        f.storyboards = [.init(items: f.scenes.map { .init(scene: $0.id, enabled: !$0.archived) })]
         try store.save(f)
-        let r = Dictionary(uniqueKeysWithValues: Checks.run(block: "storyboard", store: store).map { ($0.id, $0.level) })
+        let r = Dictionary(uniqueKeysWithValues: Checks.run(area: "storyboard", store: store).map { ($0.id, $0.level) })
         XCTAssertEqual(r["reading.S01"], .ok)
         XCTAssertEqual(r["reading.S02"], .fail)
         XCTAssertEqual(r["reading.S03"], .pending)
@@ -134,23 +136,23 @@ final class ChecksTests: XCTestCase {
         let inbox = makeTempDir("inbox-checks"); defer { try? FileManager.default.removeItem(at: inbox) }
         let logo = inbox.appendingPathComponent("Acme Logo.svg"); try "<svg/>".write(to: logo, atomically: true, encoding: .utf8)
         let secret = inbox.appendingPathComponent("customers-real-data.csv"); try "a,b\n".write(to: secret, atomically: true, encoding: .utf8)
-        XCTAssertEqual(Checks.run(block: "resources", store: store).first?.level, .pending, "no assets yet")
+        XCTAssertEqual(Checks.run(area: "resources", store: store).first?.level, .pending, "no assets yet")
         try Assets.add([logo, secret], to: store)
         // a held file: red here, and the organiser fails too
-        var r = Checks.run(block: "resources", store: store)
+        var r = Checks.run(area: "resources", store: store)
         XCTAssertEqual(r.first { $0.id == "assets.hold" }?.level, .fail)
         XCTAssertNotEqual(try pythonAssetsCheck(), 0)
         // decide it: green here, and the organiser passes
         try store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
         try store.apply(.asset(id: "data-01", status: .excluded, note: nil, licence: nil, scenes: nil))
-        r = Checks.run(block: "resources", store: store)
+        r = Checks.run(area: "resources", store: store)
         XCTAssertEqual(r.first { $0.id == "assets.hold" }?.level, .ok)
         XCTAssertEqual(Checks.worst(r.filter { $0.id.hasPrefix("assets.") }), .ok)
         XCTAssertEqual(try pythonAssetsCheck(), 0)
         // a stray file in assets/ and an unlisted prepared file: red, and the organiser fails too
         try "x".write(to: dir.appendingPathComponent("assets/loose.png"), atomically: true, encoding: .utf8)
         try "x".write(to: dir.appendingPathComponent("assets/prepared/logo-09-unlisted.svg"), atomically: true, encoding: .utf8)
-        r = Checks.run(block: "resources", store: store)
+        r = Checks.run(area: "resources", store: store)
         XCTAssertEqual(r.first { $0.id == "assets.stray" }?.level, .fail)
         XCTAssertEqual(r.first { $0.id == "assets.names" }?.level, .fail)
         XCTAssertNotEqual(try pythonAssetsCheck(), 0)
@@ -159,7 +161,7 @@ final class ChecksTests: XCTestCase {
     func testPlaceholderAndNothingApproved() throws {
         try store.create(name: "P", conversationLanguage: nil, reelLanguages: [])
         try Assets.save([AssetRow(id: "logo-01", type: "logo", status: "placeholder")], store)
-        let r = Checks.run(block: "resources", store: store)
+        let r = Checks.run(area: "resources", store: store)
         XCTAssertEqual(r.first { $0.id == "assets.placeholder" }?.level, .tight)
         XCTAssertEqual(r.first { $0.id == "assets.approved" }?.level, .pending)
     }
@@ -167,7 +169,7 @@ final class ChecksTests: XCTestCase {
     func testBadStatusAndDuplicateIDsAreRed() throws {
         try store.create(name: "B", conversationLanguage: nil, reelLanguages: [])
         try Assets.save([AssetRow(id: "logo-01", type: "logo", status: "great"), AssetRow(id: "logo-01", type: "logo")], store)
-        let r = Checks.run(block: "resources", store: store)
+        let r = Checks.run(area: "resources", store: store)
         XCTAssertEqual(r.first { $0.id == "assets.ids" }?.level, .fail)
         XCTAssertEqual(r.first { $0.id == "assets.status" }?.level, .fail)
     }
@@ -176,11 +178,11 @@ final class ChecksTests: XCTestCase {
 
     func testGateStateOfEachBlock() throws {
         try store.create(name: "G", conversationLanguage: nil, reelLanguages: [])
-        XCTAssertEqual(Checks.run(block: "project", store: store).first { $0.id == "gate.interview" }?.level, .pending)
+        XCTAssertEqual(Checks.run(area: "project", store: store).first { $0.id == "gate.interview" }?.level, .pending)
         try store.apply(.gate("interview", passed: true))
-        XCTAssertEqual(Checks.run(block: "project", store: store).first { $0.id == "gate.interview" }?.level, .ok)
-        XCTAssertEqual(Checks.run(block: "resources", store: store).first { $0.id == "gate.assets" }?.level, .pending)
-        let build = Checks.run(block: "build", store: store).map { $0.id }
+        XCTAssertEqual(Checks.run(area: "project", store: store).first { $0.id == "gate.interview" }?.level, .ok)
+        XCTAssertEqual(Checks.run(area: "resources", store: store).first { $0.id == "gate.assets" }?.level, .pending)
+        let build = Checks.run(area: "build", store: store).map { $0.id }
         XCTAssertEqual(build.filter { $0.hasPrefix("gate.") }, ["gate.build", "gate.verify"], "a block with two gates reports both")
         XCTAssertTrue(build.contains("build.go"), "and the build block reports whether the Go was given")
     }

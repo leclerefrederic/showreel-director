@@ -22,12 +22,13 @@ final class DocsTests: XCTestCase {
         f.decisions.track = .init(file: "assets/prepared/audio-01-theme.mp3", bpm: 120)
         f.gates = ["interview": "passed", "assets": "open"]
         f.scenes = [
-            .init(id: "S01", start: 0, end: 4, text: "Notes, finally calm", texts: ["fr": "Des notes enfin sereines"], visual: "Logo rises from ink",
+            .init(id: "S01", duration: 4, text: "Notes, finally calm", texts: ["fr": "Des notes enfin sereines"], visual: "Logo rises from ink",
                   feeling: "calm, 1/5", handoff: "wipe left", inCuts: "15s, 45s", extra: ["Sound": "soft pad"]),
-            .init(id: "S02", start: 4, end: 9, text: "Capture anything | fast", texts: ["fr": "Tout capturer"], visual: "Cards fly in", feeling: "curious, 2/5",
+            .init(id: "S02", duration: 5, text: "Capture anything | fast", texts: ["fr": "Tout capturer"], visual: "Cards fly in", feeling: "curious, 2/5",
                   handoff: "cut", inCuts: "45s", extra: ["Sound": "tick"], status: "modify", note: "shorter"),
-            .init(id: "S03", status: "ditched"),
+            .init(id: "S03", status: "ditched", archived: true),
         ]
+        f.storyboards = [.init(items: [.init(scene: "S01"), .init(scene: "S02"), .init(scene: "S03", enabled: false)])]
         return f
     }
     let assets = [AssetRow(id: "logo-01", file: "prepared/logo-01-notes.svg", original: "notes-logo.svg", origin: "prepared", type: "logo", status: "approved", scene: "S01")]

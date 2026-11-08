@@ -1,6 +1,6 @@
 # Showreel Studio v2: a workspace with a copilot
 
-Status: VALIDATED (revision 1 validated; revision 2 validated on 2026-11-09: section 5.3 modes and role of the AI, phase A3 next) by the owner on 2026-11-08 with the recommended choice for every point of section 11 (showreel.json plus markdown; copilot edits as proposals; one window per project; skill fully usable alone in Cowork; phases A to D in order). Build phase A first.
+Status: VALIDATED (revision 1 validated; revision 2 validated; revision 3, section 5.4; revision 4 validated on 2026-11-09: section 5.5 editing workspace with the film reel, phases W1 to W5, W1 next) by the owner on 2026-11-08 with the recommended choice for every point of section 11 (showreel.json plus markdown; copilot edits as proposals; one window per project; skill fully usable alone in Cowork; phases A to D in order). Build phase A first.
 
 ## 1. Idea
 
@@ -147,6 +147,67 @@ Switching mode never loses data; the wizard resumes at the first undecided step.
 
 `process.json` gets an `ai` field per block: `none`, `optional` or `required`; `check.py` verifies that every block has it and that only Build (generation) is `required`.
 
+### 5.4 Hierarchy: libraries and montage (revision 3)
+
+Problem found while testing phase T: Storyboard and Scene editor showed the same list. The elements need a hierarchy. Two libraries hold things, one block assembles them:
+
+| Block | Role | Verbs |
+|---|---|---|
+| **Resources** (library) | every file the film can use | add, replace, approve, exclude, archive |
+| **Scenes** (library) | every scene of the project, with its content: text, visual, feeling, handoff, own duration, linked resources, review state | create, edit (editor with preview), review (OK / MODIFY / DITCH), duplicate, archive |
+| **Storyboard** (montage, the editing window) | the order of the scenes in a film, on a timeline | reorder, switch a scene on or off, see timing against the music, run the film-level checks (feasibility, total duration, reading budget in context), validate, give the Go |
+| **Build and preview** | produce and play the film | build, checks, play |
+
+Rules:
+
+- The Storyboard never creates or deletes a scene. A scene switched off stays in the library and in the file. Deleting is done in the Scenes library and is an **archive**: the scene disappears from the lists but its ID stays reserved (tombstone), as the skill requires (an ID is never reused or renumbered; a ditched scene stays marked).
+- The review state belongs to the scene (open, ok, modify, ditched); the Go belongs to the Storyboard (it validates the montage). DITCH archives the scene and switches it off in every montage.
+- Timing belongs to the montage: a scene has its own `duration`; start and end are computed from the order, with an optional manual or beat-snapped override per montage.
+- A project can hold several montages (a "cut": master, short, vertical) built from the same scene library: this replaces the skill's "in cuts" column. The first version of the screen shows one montage; the data allows several.
+
+Contract change (supersedes the `scenes` shape of 5.1b): `scenes` stays an array and becomes the library `{id, text, texts, visual, feeling, handoff, duration, resources[], status, note, archived, extra}`; a new `storyboards` array holds `{id, name, format, items: [{scene, enabled, start?, end?}]}`. The app reads the phase T shape (start and end inside each scene) and converts it into one montage on first save; the skill export writes the new shape (scene table rows become the library and the one montage, a ditched row becomes archived and disabled; `inCuts` becomes extra montages when present). Sidebar order: Project, Look, Resources, Scenes, Storyboard, Build, Deliver. `process.json` gains the Scenes block; the gates keep the order of `SKILL.md` (the Scenes block carries the scene-review gate, the Storyboard block the storyboard gate and the Go).
+
+### 5.5 Editing workspace (revision 4, supersedes the sidebar layout)
+
+Showreel Studio is an editing application: a film is cut into scenes with durations, and a scene is an assembly of resources. The window is a workspace like a video editor, not a list of blocks:
+
+```
++--------------------------------------------------------------------------------+
+| project | Beginner/Expert | Checks | [Play] | Go / Build                          |
++---------------+------------------------------------------+---------------------+
+| LIBRARY       |   VIEWER                                 |  INSPECTOR          |
+| tabs:         |   the selected scene, or the film at     |  what is selected:  |
+| Resources     |   the playhead, rendered by the engine   |  project, look,     |
+| Scenes        |   with transport controls                |  scene, layer,      |
+| Look elements |                                          |  resource, check    |
+| (fonts,       |                                          |  + Copilot tab      |
+|  palettes,    |                                          |                     |
+|  backgrounds, |                                          |                     |
+|  effects)     |                                          |                     |
++---------------+------------------------------------------+---------------------+
+| STORYBOARD (timeline): scene clips in order with their durations, on/off,       |
+| the music track with beat markers, the playhead, the film-level checks         |
++--------------------------------------------------------------------------------+
+```
+
+- **Library (left):** Resources (files, drag and drop in), Scenes (every scene, create, duplicate, archive; section 5.4), Look elements (fonts, palettes, backgrounds, effects, scene transitions, looks). Items are dragged from here onto a scene or the timeline.
+- **Viewer (centre):** renders the selected scene or the film at the playhead with the embedded engine; play, pause, scrub.
+- **Inspector (right):** properties of the selection: nothing selected shows the project parameters and global look (palette, fonts, formats, languages, constraints); a scene shows duration, review state (OK / MODIFY / DITCH), notes, feeling and handoff, and its layers; a layer shows its parameters and timing inside the scene. The copilot is a tab here, always available, never required.
+- **Storyboard (bottom), the film reel:** a strip of frames, one frame per scene, in order. Each frame shows a thumbnail rendered by the engine, the scene ID and its duration; its parameters are linked to it (duration, on or off, review state, the transition to the next scene). Between two frames sits the transition marker: type (from the catalogue's scene transitions: cut on beat, flash cut, push, whip pan, iris, morph, and so on; default cut on beat), duration and parameters, editable in the inspector, and a transition can be dragged from the library onto the marker. Drag a frame to reorder, drag its edge to change the duration, toggle it on or off, add scenes from the library. The music track with beat markers sits under the strip; a cut or a transition can snap to a beat. Film-level checks (feasibility, total duration, reading budget, flashes per second across transitions) show on the strip. The Go and the storyboard validation are given here. The storyboard never creates or deletes a scene.
+- **Scene tree (Scenes tab):** each scene in the library expands into the tree of what composes it, so the composition is readable at a glance: **Raw** (images, video, sound, any resource used), **Texts**, **Effects**, **Background** (inherited from the project unless overridden), **Look** (palette and fonts, inherited from the project unless overridden). Inherited groups show the project value with an "inherited" mark; overriding it in the scene shows an "overridden" mark and a "Revert to project" action. Each node shows a status (approved, to approve, missing, over budget) and selecting a node drives the viewer and the inspector. The tree is also the drop target for library items (phase W5). The scene inspector (right) is organised in tabs, one per group of the tree, instead of one long form: **Settings** (in the film, duration, review OK / MODIFY / DITCH with note, feeling, passage to the next scene, duplicate, archive), **Content** (the texts), **Effects**, **Resources** (linked resources with their status), **Look** (background and look, inherited or overridden). Selecting a node of the tree opens the matching tab. The tabs of the inspector as a whole stay: Inspector, Copilot, Files (Advanced). Leftovers go: the duplicate "Review" heading, the redundant status label, and fields with no use yet ("In cuts" becomes a montage property, shown only where it matters). The collapsed row keeps the checkbox (on or off in the montage), the review state, the ID, the text and the duration.
+- **Scene content = a map of what the scene contains, and the instructions for the AI (revision 5):** the Content tab of a scene is an ordered list of content items. Item types: text, image or logo (a resource), sound or voice (a resource), and later shapes. Each item has:
+  - its subject: the words, or the linked resource;
+  - a **colour** (text and shapes): `auto` (the AI decides within the style sheet), a **palette role** (background, text, accent, accent 2) or a custom hex;
+  - an **animation**: `auto` (the AI decides) or a named effect from the library (fly in, and so on) with its parameters;
+  - an optional free **instruction** for the AI, in the user's words.
+  Every attribute is either *fixed* (the user chose it) or *auto* (left to the AI). The user decides how much control they want: a **control level** at project or scene level sets the default for new items (Auto: only the words; Guided: the user fixes what matters; Precise: everything is fixed) and any attribute can be overridden item by item. The generation honours fixed values strictly and decides the rest from the style sheet, the effect packs and the brief; the native checks verify fixed values (a palette role exists, an effect exists, a resource is approved).
+  **The order of the items is their processing priority:** the AI treats items from the first to the last, and the earlier items win conflicts of time, space and emphasis; if the feasibility or reading checks fail, the later items are simplified or dropped first, and the app says so. (Priority is not the stacking order on screen; the stacking order is decided by the AI unless an instruction fixes it.)
+  The tree groups follow from the content: Texts and Raw list the items by type, Effects lists the effects they use plus the scene-wide ones; the scene-wide effects (background effects, whole-scene moves) live in the Effects tab, while an item's own animation lives on the item.
+- **Beginner mode:** the wizard stays as the guided way to fill the project, the look, the resources and the first scenes (it asks the interview's questions and writes the same data); it ends in the workspace. Expert mode opens the workspace directly. The sidebar of blocks goes away; the process bar shows the gates (Checks menu).
+- **AI:** unchanged (5.3). Generation writes the build files from the content items and decisions; judgement and copilot stay optional. A later option, outside this phase: build without the AI when every attribute of the content is fixed.
+
+Data: `scenes[*].content` is an ordered array of `{id, type (text|image|audio|shape), text | resource, color: {mode: auto|role|custom, role?, hex?}, animation: {mode: auto|effect, effect?, params?}, instruction?, in?, out?}` (in and out, the timing inside the scene, come with W4); `scenes[*].controlLevel` is `auto|guided|precise` (default from `parameters`); unknown keys survive, as for everything else. The skill export puts each scene's text in one text item (all attributes `auto`) and the rest in notes, so a chat-made project opens with its words on the timeline.
+
 ## 6. Embedded engine
 
 The effects (248), backgrounds and the player are JavaScript in `showreel-director/engine/`. They are not rewritten in Swift. A reusable `EnginePreview` view (a `WKWebView` loading a small bundled host page that includes `core.js`, `kit.js`, `backgrounds.js` and the effect code) offers:
@@ -183,6 +244,13 @@ Library file with paths, last opened, pinned. One agent and one chat history per
 | A3 | Mode switch (Beginner wizard, Expert), wizard framework with Project and Resources steps (later blocks plug in as they are built), "Decide later", progress; the app runs without a key (no Settings at launch, copilot shows "Connect AI"); native deterministic checks per block (feasibility, readability budget, asset rules, gate status) with green/red display; `ai` field in `process.json` and its check | A project can be parameterised and fed with resources through the wizard with no key configured |
 | B | Look and technique block: palette, fonts, look board, background and effects pickers (engine preview spike first) | A validated look without a chat message |
 | T (thin slice, before C and D) | Library window opens at launch by default. Storyboard block: list of scenes (add, edit, reorder, ditch; stable IDs; start/end, text, visual, feeling, handoff, linked resources) with native readability and feasibility checks; storyboard.md generated. Scene editor (minimal): one scene form plus OK / MODIFY / DITCH with note, the explicit Go. Build and preview (minimal): the AI generates the version folder from storyboard and decisions through the existing agent loop, the app runs build.py, harness and smoke test, shows red/green issues, and plays the reel in the app. "Rédiger avec l'IA" optional on the storyboard | A user can create a project, drop a logo, write scenes by hand, press Go and watch the generated reel play in the app |
+| W1 (built, workspace shell) | The four-zone workspace replaces the sidebar of blocks: Library tabs (Resources, Scenes, Look elements) on the left, Viewer in the centre, Inspector with Copilot tab on the right, Storyboard timeline at the bottom; selection drives the inspector; project parameters and global look live in the inspector when nothing is selected; existing editors (palette, fonts, pickers) are moved into the library and inspector; Beginner wizard kept and ending in the workspace; data migration of 5.4 (scene library plus `storyboards`, archive with tombstone) | The same data as before is edited in the new layout, and nothing is lost |
+| W1b (scene tree) | The scene tree in the Scenes tab with the five groups; Raw from the resources linked to the scene, Texts from the scene's text, Background and Look inherited from the project with the inherited/overridden marks and "Revert to project" (scene-level background and look overrides added to the data), Effects empty until W4 unless the scene already carries some; node statuses; selecting a node drives the viewer and the inspector | The composition of a scene is readable in one tree, with what is inherited clearly shown |
+| W1c (scene content) | Content tab: ordered content items (text, image, sound) with colour (auto, palette role, custom), animation (auto or a library effect) and optional instruction; fixed or auto per attribute; control level (project default and per scene); reorder = priority; the tree groups follow the items; native checks of fixed values; the generation message for Build lists the items in priority order with fixed and auto marked; typed operations for add, update, remove and reorder items (cards, apply directly); skill export writes one text item per scene (skill bump) | A scene's content is mapped by hand, with the AI left to decide only what the user left open |
+| W2 (film reel) | Frames with thumbnails in order with durations, transition markers between frames (type, duration, drag from the library), drag to reorder, drag edges to change the duration, on/off, add from the library, playhead, music track with beat markers, snap to beats, film-level checks on the timeline, validation and Go | A film can be cut and timed on the timeline against the music |
+| W3 (viewer) | The viewer renders the selected scene and the film at the playhead with the engine; transport controls | The user sees the scene while editing |
+| W4 (timing and viewer content) | Timing of each content item inside the scene (in and out), scene-wide effects in the Effects tab, thumbnails and viewer drawn from the content items (colour, animation), `storyboard.md` visual column generated from the content; skill export updated if needed (skill bump) | A scene is assembled and timed by hand and the viewer shows it |
+| W5 (drag and drop) | Drag resources, backgrounds and effects from the library onto a scene, a content item or a tree node; Build reads the content items | A reel is assembled by hand and built |
 | C | Storyboard timeline and Scene editor with live preview, scene review and the explicit Go | Storyboard validated and Go given from the app |
 | D | Build and preview, Deliver, release gate | A full reel built, checked and exported from the app |
 

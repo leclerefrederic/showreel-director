@@ -8,6 +8,20 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 
 - The Library window opens at launch by default (built in phase T).
 
+## Library, Scenes tab
+
+- Each scene must expand into a tree of what composes it: Raw (images, sound, etc.), Texts, Effects, Background (inherited from the project), Look (inherited from the project). The goal is to see at a glance what a scene is made of (scheduled as phase W1b).
+
+## Inspector, scene
+
+- The scene inspector is one long form. Split it into tabs: Settings, Effects, Content, Resources (and Look for background and look). Selecting a node of the scene tree opens its tab.
+- Seen on screen: a duplicated "Review" heading, a redundant "Ok" status beside the buttons, an "In cuts" field that means nothing to a beginner.
+- The app interface is in English while the owner works in French: decide how the interface language is chosen (system language or the project's conversation language).
+
+## Scene content
+
+- Content is a map of what the scene contains and the instructions for the AI. Items: a text, its colour (linked to the palette, or "AI decides"), its animation (fly in, and so on, or "AI decides"), an optional instruction. The user chooses how much control they want. The order of the items is their processing priority.
+
 ## Project and wizard
 
 ## Resources

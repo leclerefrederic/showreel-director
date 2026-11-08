@@ -24,7 +24,8 @@ final class ProjectTests: XCTestCase {
         f.decisions.track = .init(file: "assets/prepared/audio-01-theme.mp3", bpm: 120)
         f.gates = ["interview": "passed", "assets": "open", "release": "open"]
         f.parameters.audience = "Product teams"
-        f.scenes = [.init(id: "S01", start: 0, end: 4, text: "Hello", status: "ok"), .init(id: "S02", start: 4, end: 9, text: "Next", status: "modify", note: "shorter")]
+        f.scenes = [.init(id: "S01", duration: 4, text: "Hello", status: "ok"), .init(id: "S02", duration: 5, text: "Next", status: "modify", note: "shorter")]
+        f.storyboards = [.init(items: [.init(scene: "S01"), .init(scene: "S02")])]
         return f
     }
 

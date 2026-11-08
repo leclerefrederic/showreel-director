@@ -8,9 +8,12 @@ final class SceneTests: XCTestCase {
     override func tearDown() { try? FileManager.default.removeItem(at: dir) }
 
     var scenes: [ShowreelFile.Scene] { store.loadShowreel()?.scenes ?? [] }
+    /// Adds a scene lasting `end - start` seconds (the times keep the tests readable: the order gives the real start).
     func add(_ text: String, _ start: String, _ end: String, after: String? = nil) throws {
-        try store.apply(.addScene(id: "", SceneEdit(start: start, end: end, text: text, after: after)))
+        let d = (Double(end) ?? 0) - (Double(start) ?? 0)
+        try store.apply(.addScene(id: "", SceneEdit(duration: ProjectDocs.seconds(d), text: text, after: after)))
     }
+    var order: [String] { store.loadShowreel()?.storyboards.first?.items.map { $0.scene } ?? [] }
     func gate(_ k: String) -> String? { store.loadShowreel()?.gates[k] }
 
     /// Three scenes, all OK, storyboard validated.
@@ -30,42 +33,44 @@ final class SceneTests: XCTestCase {
         try add("d", "6", "9")
         XCTAssertEqual(scenes.map { $0.id }, ["S01", "S02", "S03", "S04"], "a ditched ID is kept and never reused")
         XCTAssertEqual(scenes[2].status, "ditched")
-        try store.apply(.scene(id: "S04", SceneEdit(after: "start")))
-        XCTAssertEqual(scenes.map { $0.id }, ["S04", "S01", "S02", "S03"], "moving changes the order, never an ID")
+        try store.apply(.moveScene(id: "S04", after: "start", montage: nil))
+        XCTAssertEqual(order, ["S04", "S01", "S02", "S03"], "moving changes the order of the storyboard, never an ID")
+        XCTAssertEqual(scenes.map { $0.id }, ["S01", "S02", "S03", "S04"], "the library keeps its own order")
         try add("e", "0", "1")
         XCTAssertEqual(scenes.last?.id, "S05")
         XCTAssertTrue(SceneRules.isValidID("S04b") && SceneRules.isValidID("S120") && !SceneRules.isValidID("s1") && !SceneRules.isValidID("Scene 1"))
     }
 
     func testAddSceneValidationAndCard() throws {
-        let card = try store.plan(.addScene(id: "", SceneEdit(start: "0", end: "4", text: "Hello")))
+        let card = try store.plan(.addScene(id: "", SceneEdit(duration: "4", text: "Hello")))
         XCTAssertEqual(card.title, "Add scene S01")
         XCTAssertEqual(card.changes.first, Change("Scene", "(none)", "S01, first"))
         XCTAssertTrue(card.changes.contains(Change("On-screen text", "(empty)", "Hello")))
         XCTAssertTrue(scenes.isEmpty, "planning writes nothing")
-        try store.apply(.addScene(id: "", SceneEdit(start: "0", end: "4", text: "Hello")), expecting: card)
+        try store.apply(.addScene(id: "", SceneEdit(duration: "4", text: "Hello")), expecting: card)
         XCTAssertThrowsError(try store.plan(.addScene(id: "S01", SceneEdit(text: "again"))), "an ID is never reused")
         XCTAssertThrowsError(try store.plan(.addScene(id: "scene2", SceneEdit(text: "x"))))
-        XCTAssertThrowsError(try store.plan(.addScene(id: "", SceneEdit(start: "5", end: "3"))), "a scene ends after it starts")
-        XCTAssertThrowsError(try store.plan(.addScene(id: "", SceneEdit(start: "soon"))))
+        XCTAssertThrowsError(try store.plan(.addScene(id: "", SceneEdit(duration: "-3"))), "a duration is above zero")
+        XCTAssertThrowsError(try store.plan(.addScene(id: "", SceneEdit(duration: "soon"))))
         XCTAssertThrowsError(try store.plan(.addScene(id: "", SceneEdit(text: "x", assets: "logo-09"))), "an unknown asset")
         XCTAssertThrowsError(try store.plan(.addScene(id: "", SceneEdit(text: "x", after: "S77"))))
         // insertion after a given scene
         try add("third", "8", "10"); try add("second", "4", "8", after: "S01")
-        XCTAssertEqual(scenes.map { $0.text }, ["Hello", "second", "third"])
+        XCTAssertEqual(store.loadShowreel()?.orderedLibrary.map { $0.text }, ["Hello", "second", "third"], "the new scene sits after S01 in the storyboard")
+        XCTAssertEqual(scenes.map { $0.id }, ["S01", "S02", "S03"], "and the library lists it in creation order")
     }
 
     func testUpdateSceneFieldsStatusAndNote() throws {
         try add("old", "0", "4")
-        let card = try store.plan(.scene(id: "S01", SceneEdit(end: "5", text: "new", feeling: "calm")))
+        let card = try store.plan(.scene(id: "S01", SceneEdit(duration: "5", text: "new", feeling: "calm")))
         XCTAssertEqual(card.title, "Edit S01")
-        XCTAssertEqual(card.changes, [Change("End", "4", "5"), Change("On-screen text", "old", "new"), Change("Feeling and tension", "(empty)", "calm")])
-        try store.apply(.scene(id: "S01", SceneEdit(end: "5", text: "new", feeling: "calm")))
-        XCTAssertEqual(scenes[0].end, 5); XCTAssertEqual(scenes[0].text, "new")
+        XCTAssertEqual(card.changes, [Change("Duration", "4", "5"), Change("On-screen text", "old", "new"), Change("Feeling and tension", "(empty)", "calm")])
+        try store.apply(.scene(id: "S01", SceneEdit(duration: "5", text: "new", feeling: "calm")))
+        XCTAssertEqual(scenes[0].duration, 5); XCTAssertEqual(scenes[0].text, "new")
         XCTAssertThrowsError(try store.plan(.scene(id: "S01", SceneEdit(status: "great"))))
         XCTAssertThrowsError(try store.plan(.scene(id: "S09", SceneEdit(text: "x"))))
         XCTAssertThrowsError(try store.plan(.scene(id: "S01", SceneEdit(text: "new"))), "no change")
-        XCTAssertThrowsError(try store.plan(.scene(id: "S01", SceneEdit(start: "9"))), "start after the end")
+        XCTAssertThrowsError(try store.plan(.scene(id: "S01", SceneEdit(duration: "0"))), "a duration is above zero")
         try store.apply(.scene(id: "S01", SceneEdit(note: "shorter", status: "modify")))
         XCTAssertEqual(scenes[0].status, "modify"); XCTAssertEqual(scenes[0].note, "shorter")
         XCTAssertEqual(try store.plan(.scene(id: "S01", SceneEdit(status: "ditched"))).title, "Ditch S01")
@@ -100,7 +105,7 @@ final class SceneTests: XCTestCase {
         XCTAssertEqual(Assets.load(store).first { $0.id == "logo-01" }?.sceneIDs, ["S02"], "unlinked from S01, still linked to S02")
         XCTAssertThrowsError(try store.plan(.scene(id: "S01", SceneEdit(assets: "font-09"))))
         // a scene added with links
-        try store.apply(.addScene(id: "", SceneEdit(start: "6", end: "9", text: "three", assets: "logo-01")))
+        try store.apply(.addScene(id: "", SceneEdit(duration: "3", text: "three", assets: "logo-01")))
         XCTAssertEqual(Assets.load(store).first { $0.id == "logo-01" }?.sceneIDs, ["S02", "S03"])
     }
 
@@ -155,7 +160,7 @@ final class SceneTests: XCTestCase {
     func testTheCopilotCannotGiveTheGo() async throws {
         let ui = ScriptedUI()
         let tools = Tools(project: dir, skill: try XCTUnwrap(Skill.root()), ui: ui)
-        for (n, i) in [("add_scene", ["start": 0, "end": 4, "text": "x", "status": "ok"] as [String: Any]), ("update_scene", ["id": "S01", "status": "ok"]),
+        for (n, i) in [("add_scene", ["duration": 4, "text": "x", "status": "ok"] as [String: Any]), ("update_scene", ["id": "S01", "status": "ok"]),
                        ("write_file", ["path": "showreel.json", "content": "{\"gates\":{\"review\":\"passed\"}}"]), ("propose_edit", ["file": "showreel.json", "content": "{}"]),
                        ("update_parameter", ["key": "name", "value": "Renamed"])] as [(String, [String: Any])] { _ = await tools.run(n, i).text }
         XCTAssertNotEqual(gate("review"), "passed", "no tool gives the Go")
@@ -166,7 +171,7 @@ final class SceneTests: XCTestCase {
     // MARK: checks
 
     func testStoryboardRules() throws {
-        func r() -> [String: CheckLevel] { Dictionary(uniqueKeysWithValues: Checks.run(block: "storyboard", store: store).map { ($0.id, $0.level) }) }
+        func r() -> [String: CheckLevel] { Dictionary(uniqueKeysWithValues: Checks.run(area: "storyboard", store: store).map { ($0.id, $0.level) }) }
         XCTAssertEqual(r()["storyboard.any"], .pending)
         try store.apply(.parameter(.duration, "12"))
         try add("one", "0", "4"); try add("two", "4", "8")
@@ -174,12 +179,13 @@ final class SceneTests: XCTestCase {
         XCTAssertEqual(r()["storyboard.duration"], .tight, "the scenes stop four seconds before the end")
         try add("three", "8", "12")
         XCTAssertEqual(r()["storyboard.duration"], .ok)
-        try store.apply(.scene(id: "S03", SceneEdit(end: "15")))
+        try store.apply(.scene(id: "S03", SceneEdit(duration: "7")))
         XCTAssertEqual(r()["storyboard.duration"], .fail, "past the duration")
         // overlap and untimed scenes, written by hand in showreel.json
         var f = try XCTUnwrap(store.loadShowreel())
-        f.scenes[1].start = 3
+        f.storyboards[0].items[1].start = 3
         f.scenes.append(.init(id: "S04", text: "no time"))
+        f.storyboards[0].items.append(.init(scene: "S04"))
         try store.save(f)
         XCTAssertEqual(r()["storyboard.overlap"], .fail); XCTAssertEqual(r()["storyboard.times"], .pending)
         f.scenes.append(.init(id: "S04", text: "twice"))
@@ -190,7 +196,7 @@ final class SceneTests: XCTestCase {
     func testReadingBudgetAndFeasibilityShowInTheStoryboardBlock() throws {
         try store.apply(.parameter(.duration, "10"))
         try add("Capture anything you think of, anywhere, at any time of day", "0", "1.5")
-        let ids = Checks.run(block: "storyboard", store: store)
+        let ids = Checks.run(area: "storyboard", store: store)
         XCTAssertEqual(ids.first { $0.id == "reading.S01" }?.level, .fail)
         XCTAssertNotNil(ids.first { $0.id.hasPrefix("feasibility.") })
         XCTAssertEqual(ids.first { $0.id == "gate.storyboard" }?.level, .pending)
@@ -201,20 +207,20 @@ final class SceneTests: XCTestCase {
         let logo = inbox.appendingPathComponent("Acme Logo.svg"); try "<svg/>".write(to: logo, atomically: true, encoding: .utf8)
         try Assets.add([logo], to: store)
         try add("one", "0", "3"); try store.apply(.scene(id: "S01", SceneEdit(assets: "logo-01")))
-        XCTAssertEqual(Checks.run(block: "storyboard", store: store).first { $0.id == "storyboard.assets" }?.level, .tight)
+        XCTAssertEqual(Checks.run(area: "storyboard", store: store).first { $0.id == "storyboard.assets" }?.level, .tight)
         try store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
-        XCTAssertEqual(Checks.run(block: "storyboard", store: store).first { $0.id == "storyboard.assets" }?.level, .ok)
+        XCTAssertEqual(Checks.run(area: "storyboard", store: store).first { $0.id == "storyboard.assets" }?.level, .ok)
     }
 
     func testSceneReviewChecks() throws {
         try add("one", "0", "3"); try add("two", "3", "6")
-        var r = Dictionary(uniqueKeysWithValues: Checks.run(block: "scene", store: store).map { ($0.id, $0.level) })
+        var r = Dictionary(uniqueKeysWithValues: Checks.run(area: "scene", store: store).map { ($0.id, $0.level) })
         XCTAssertEqual(r["review.S01"], .pending); XCTAssertEqual(r["review.all"], .pending); XCTAssertEqual(r["gate.review"], .pending)
         try store.apply(.scene(id: "S01", SceneEdit(status: "ok"))); try store.apply(.scene(id: "S02", SceneEdit(note: "tighter", status: "modify")))
-        r = Dictionary(uniqueKeysWithValues: Checks.run(block: "scene", store: store).map { ($0.id, $0.level) })
+        r = Dictionary(uniqueKeysWithValues: Checks.run(area: "scene", store: store).map { ($0.id, $0.level) })
         XCTAssertEqual(r["review.S01"], .ok); XCTAssertEqual(r["review.S02"], .tight)
         try store.apply(.scene(id: "S02", SceneEdit(status: "ok")))
-        XCTAssertEqual(Checks.run(block: "scene", store: store).first { $0.id == "review.all" }?.level, .ok)
+        XCTAssertEqual(Checks.run(area: "scene", store: store).first { $0.id == "review.all" }?.level, .ok)
     }
 
     // MARK: generated storyboard.md
@@ -245,12 +251,12 @@ final class SceneToolTests: XCTestCase {
     override func tearDown() { try? FileManager.default.removeItem(at: dir) }
     func run(_ n: String, _ i: [String: Any]) async -> String { await tools.run(n, i).text }
 
-    func testAddSceneTakesNumbersForTimesAndShowsACard() async throws {
-        let r = await run("add_scene", ["start": 0, "end": 4.5, "text": "Hello", "visual": "Logo rises"])
+    func testAddSceneTakesNumbersForTheDurationAndShowsACard() async throws {
+        let r = await run("add_scene", ["duration": 4.5, "text": "Hello", "visual": "Logo rises"])
         XCTAssertTrue(r.hasPrefix("accepted and applied"), r)
         XCTAssertEqual(ui.cards.first?.title, "Add scene S01")
         let s = try XCTUnwrap(store.loadShowreel()?.scenes.first)
-        XCTAssertEqual(s.end, 4.5); XCTAssertEqual(s.visual, "Logo rises")
+        XCTAssertEqual(s.duration, 4.5); XCTAssertEqual(s.visual, "Logo rises")
         XCTAssertTrue(ui.proposals.isEmpty, "a card, not a file diff")
     }
 
@@ -259,7 +265,7 @@ final class SceneToolTests: XCTestCase {
         let refused = await run("add_scene", ["text": "x"])
         XCTAssertTrue(refused.hasPrefix("refused by the user")); XCTAssertTrue(store.loadShowreel()?.scenes.isEmpty == true)
         ui.accept = true
-        _ = await run("add_scene", ["start": 0, "end": 3, "text": "one"])
+        _ = await run("add_scene", ["duration": 3, "text": "one"])
         ui.beforeAnswer = { try? self.store.apply(.scene(id: "S01", SceneEdit(text: "someone else"))) }
         let stale = await run("update_scene", ["id": "S01", "text": "mine"])
         XCTAssertTrue(stale.contains("changed since the proposal"), stale)
@@ -271,18 +277,18 @@ final class SceneToolTests: XCTestCase {
     }
 
     func testBadInputIsRefusedWithoutACard() async throws {
-        _ = await run("add_scene", ["start": 0, "end": 3, "text": "one"])
+        _ = await run("add_scene", ["duration": 3, "text": "one"])
         let n = ui.cards.count
         let a = await run("update_scene", ["id": "S09", "text": "x"])
         let b = await run("update_scene", ["id": "S01", "status": "great"])
-        let c = await run("add_scene", ["start": 5, "end": 2])
+        let c = await run("add_scene", ["duration": -2])
         let d = await run("update_scene", ["id": "S01", "assets": "logo-77"])
         XCTAssertTrue([a, b, c, d].allSatisfy { $0.hasPrefix("refused") }, "\(a) | \(b) | \(c) | \(d)")
         XCTAssertEqual(ui.cards.count, n)
     }
 
     func testOpenBlocksAreBuiltAndStateShowsGoAndVersions() async throws {
-        for b in ["storyboard", "scene", "build"] { let r = await run("open_block", ["block": b]); XCTAssertTrue(r.hasPrefix("opened"), r) }
+        for b in ["library", "viewer", "inspector", "storyboard", "build"] { let r = await run("open_block", ["block": b]); XCTAssertTrue(r.hasPrefix("opened"), r) }
         let state = await run("get_state", [:])
         let o = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(state.utf8)) as? [String: Any])
         XCTAssertTrue((o["go"] as? String ?? "").hasPrefix("not given"))
@@ -291,7 +297,7 @@ final class SceneToolTests: XCTestCase {
 
     func testAgentWritesScenesThroughCards() async throws {
         let t = ScriptedTransport([
-            ([toolUse("a", "add_scene", ["start": 0, "end": 4, "text": "One"]), toolUse("b", "add_scene", ["start": 4, "end": 8, "text": "Two"])], "tool_use"),
+            ([toolUse("a", "add_scene", ["duration": 4, "text": "One"]), toolUse("b", "add_scene", ["duration": 4, "text": "Two"])], "tool_use"),
             ([textBlock("Drafted.")], "end_turn"),
         ])
         let agent = try Agent(apiKey: "test", model: "test", project: dir, ui: ui, transport: t)

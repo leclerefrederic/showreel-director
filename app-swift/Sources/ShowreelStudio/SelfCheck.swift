@@ -143,7 +143,7 @@ enum SelfCheck {
             check(steps.count >= 10 && steps.contains { !$0.isBuilt }, "the wizard has its steps and the blocks to come (\(steps.count))")
             check(Wizard.firstUndecided(steps, file: store.loadShowreel(), assets: Assets.load(store), settings: store.settings, spec: spec).map { steps[$0].id } == "project.message",
                   "the wizard resumes after what is already decided (languages, audience) at the first undecided step")
-            check(Checks.run(block: "project", store: store).first?.level == .pending && !Checks.run(block: "resources", store: store).isEmpty, "deterministic checks run without AI")
+            check(Checks.run(area: "project", store: store).first?.level == .pending && !Checks.run(area: "resources", store: store).isEmpty, "deterministic checks run without AI")
             check(spec?.blocks.filter { $0.ai == "required" }.map { $0.id } == ["build"], "only build requires generation")
             check(Skill.version()?.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil, "skill version is read (\(Skill.version() ?? "none"))")
         }
@@ -175,7 +175,7 @@ enum SelfCheck {
         defer { try? fm.removeItem(at: sb) }
         let bs = ProjectStore(root: sb)
         if (try? bs.create(name: "Selftest", conversationLanguage: "en", reelLanguages: ["en"])) != nil, let r = Skill.root() {
-            try? bs.apply(.addScene(id: "", SceneEdit(start: "0", end: "4", text: "Hello", status: "ok")))
+            try? bs.apply(.addScene(id: "", SceneEdit(duration: "4", text: "Hello", status: "ok")))
             try? bs.apply(.gate("storyboard", passed: true))
             check(bs.loadShowreel()?.scenes.first?.id == "S01" && bs.loadShowreel()?.gates["review"] == nil && !BuildRunner.canBuild(bs), "scenes are added with stable IDs, and the Go is never deduced")
             check((try? bs.apply(.gate("review", passed: true))) != nil && BuildRunner.canBuild(bs), "the Go is given by an explicit operation")
@@ -191,6 +191,20 @@ enum SelfCheck {
                     check(Versions.hasDist(bs, "v1") && inside(r) && !fm.fileExists(atPath: r.appendingPathComponent("dist").path), "the output is v1/dist in the project, nothing written into the skill")
                 } else { check(false, "the build runner finished") }
             } else { print("SKIP build run (python3, node or jsdom missing: run the setup check)") }
+        }
+        // the scene library and the montage (phase W1): the phase T shape migrates, switching a scene off and reordering are typed operations that take the Go back
+        let phaseT = #"{"schema": 1, "name": "T", "scenes": [{"id": "S01", "start": 0, "end": 4, "text": "A"}, {"id": "S02", "start": 4, "end": 6, "status": "ditched"}]}"#
+        let migrated = try? ShowreelFile.decode(phaseT)
+        check(migrated?.scenes.first?.duration == 4 && migrated?.storyboards.first?.items.map { $0.enabled } == [true, false] && migrated?.scenes[1].archived == true,
+              "a phase T file migrates into a scene library and one montage (ditched = archived and off)")
+        if bs.loadShowreel() != nil {
+            try? bs.apply(.addScene(id: "", SceneEdit(duration: "3", text: "Second", status: "ok")))
+            try? bs.apply(.gate("review", passed: true))
+            try? bs.apply(.moveScene(id: "S02", after: "start", montage: nil))
+            check(bs.loadShowreel()?.film.map { $0.id } == ["S02", "S01"] && bs.loadShowreel()?.gates["review"] == "open", "reordering the storyboard is an operation, and takes the Go back")
+            try? bs.apply(.sceneEnabled(id: "S01", enabled: false, montage: nil))
+            check(bs.loadShowreel()?.film.map { $0.id } == ["S02"] && bs.loadShowreel()?.library.count == 2, "switching a scene off keeps it in the library")
+            check(bs.read("storyboard.md")?.contains("off") == true, "storyboard.md is generated from the library and the montage")
         }
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1

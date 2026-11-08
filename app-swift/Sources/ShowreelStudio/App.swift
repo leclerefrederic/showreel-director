@@ -38,7 +38,7 @@ struct ShowreelStudioApp: App {
                 ProjectWindow(path: path)
                     .environmentObject(env)
                     .environmentObject(settings)
-                    .frame(minWidth: 1100, minHeight: 620)
+                    .frame(minWidth: 1180, minHeight: 720)
             }
         }
         .windowToolbarStyle(.unified(showsTitle: true))

@@ -114,48 +114,6 @@ struct Swatches: View {
     }
 }
 
-// MARK: the Look block (Expert)
-
-struct LookBlockView: View {
-    @EnvironmentObject var project: ProjectModel
-    @State private var section = "board"
-    private static let sections = [("board", "Look board"), ("palette", "Palette"), ("fonts", "Fonts"), ("background", "Background"), ("moods", "Moods"), ("effects", "Effects")]
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Look and technique").font(.title2.weight(.semibold))
-                        Text("Palette, fonts, background and the motion mood, drawn by the film's own engine. Nothing is chosen for you.").font(.callout).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if project.showreel != nil { ValidateButton(gate: "style", block: "look") }
-                }
-                Picker("", selection: $section) { ForEach(Self.sections, id: \.0) { Text($0.1).tag($0.0) } }
-                    .pickerStyle(.segmented).labelsHidden()
-                if project.showreel == nil {
-                    Text("This project has no data yet. Confirm the import or create it with the banner above.").foregroundStyle(.secondary)
-                } else {
-                    switch section {
-                    case "board": LookBoardView()
-                    case "palette": PaletteEditor()
-                    case "fonts": FontPickerView(roles: [.titleFont, .textFont])
-                    case "background": BackgroundPickerView()
-                    case "moods": MoodsPickerView()
-                    default: EffectsPickerView()
-                    }
-                    ChecksPanel(block: "look")
-                }
-            }
-            .padding(24)
-            .frame(maxWidth: 980, alignment: .leading)
-            .frame(maxWidth: .infinity)
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-}
-
 // MARK: look board
 
 /// Three complete looks to compare, drawn by the engine. Choosing one records its palette, fonts, background and moods.
@@ -212,6 +170,7 @@ struct LookBoardView: View {
 // MARK: palette
 
 struct PaletteEditor: View {
+    var compact = false
     @EnvironmentObject var project: ProjectModel
     @State private var draft: [String] = ["#101820", "#FFFFFF", "#F2AA4C"]
     @State private var loaded: [String]?
@@ -222,7 +181,8 @@ struct PaletteEditor: View {
     private var dirty: Bool { draft != saved }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 20) {
+        let layout = compact ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(alignment: .top, spacing: 20))
+        layout {
             VStack(alignment: .leading, spacing: 12) {
                 Text(saved.isEmpty ? "These are starting colours: nothing is saved until you press Save." : "The saved palette. Change a colour, then Save.")
                     .font(.callout).foregroundStyle(.secondary)
@@ -249,7 +209,7 @@ struct PaletteEditor: View {
                     Button("Revert") { draft = saved.isEmpty ? ["#101820", "#FFFFFF", "#F2AA4C"] : saved }.disabled(!dirty)
                 }
             }
-            .frame(maxWidth: 380, alignment: .leading)
+            .frame(maxWidth: compact ? .infinity : 380, alignment: .leading)
             VStack {
                 if let img = still { Image(nsImage: img).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: 10)) }
                 else { Rectangle().fill(Color.primary.opacity(0.06)).aspectRatio(16 / 9, contentMode: .fit).overlay(ProgressView()) }

@@ -22,29 +22,29 @@ public struct CheckResult: Equatable, Sendable, Identifiable {
     }
 }
 
-/// The checks of each block, native and deterministic: feasibility numbers, readability budget per scene, asset rules, gate state.
+/// The checks of each area (project, resources, look, storyboard, scene, build), native and deterministic: feasibility numbers, readability budget per scene, asset rules, gate state.
 public enum Checks {
-    /// The checks of a block. Every result has its own id, even when a hand-edited file repeats a scene ID.
-    public static func run(block: String, store: ProjectStore) -> [CheckResult] {
+    /// The checks of an area. Every result has its own id, even when a hand-edited file repeats a scene ID.
+    public static func run(area: String, store: ProjectStore) -> [CheckResult] {
         var seen: [String: Int] = [:]
-        return results(block: block, store: store).map { r in
+        return results(area: area, store: store).map { r in
             seen[r.id, default: 0] += 1
             guard seen[r.id]! > 1 else { return r }
             return CheckResult(id: r.id + "#\(seen[r.id]!)", block: r.block, title: r.title, level: r.level, detail: r.detail)
         }
     }
 
-    static func results(block: String, store: ProjectStore) -> [CheckResult] {
+    static func results(area: String, store: ProjectStore) -> [CheckResult] {
         let f = store.loadShowreel()
         let assets = Assets.load(store)
-        switch block {
-        case "project": return feasibility(f) + gates(block: block, f)
-        case "resources": return assetRules(assets, store: store) + gates(block: block, f)
-        case "look": return lookChecks(f, assets, store) + gates(block: block, f)
-        case "storyboard": return storyboardRules(f, assets) + readingBudget(f) + feasibility(f) + gates(block: block, f)
-        case "scene": return reviewRules(f) + gates(block: block, f)
-        case "build": return BuildRunner.readiness(store) + gates(block: block, f)
-        default: return gates(block: block, f)
+        switch area {
+        case "project": return feasibility(f) + gates(area: area, f)
+        case "resources": return assetRules(assets, store: store) + gates(area: area, f)
+        case "look": return lookChecks(f, assets, store) + gates(area: area, f)
+        case "storyboard": return storyboardRules(f, assets) + readingBudget(f) + feasibility(f) + gates(area: area, f)
+        case "scene": return reviewRules(f) + gates(area: area, f)
+        case "build": return BuildRunner.readiness(store) + gates(area: area, f)
+        default: return gates(area: area, f)
         }
     }
 
@@ -72,7 +72,7 @@ public enum Checks {
     public static func brief(from f: ShowreelFile) -> Brief {
         var b = Brief()
         b.duration = f.decisions.duration
-        let live = f.scenes.filter { $0.status != "ditched" }
+        let live = f.film
         if !live.isEmpty {
             b.scenes = live.count
             let withText = live.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -167,18 +167,18 @@ public enum Checks {
     static func readingBudget(_ f: ShowreelFile?) -> [CheckResult] {
         guard let f = f else { return [] }
         let portrait = (f.decisions.formats ?? []).contains("9:16")
-        let live = f.scenes.filter { $0.status != "ditched" }
-        if live.isEmpty { return [CheckResult(id: "reading", block: "storyboard", title: "Reading time per scene", level: .pending, detail: "No scenes yet.")] }
+        let live = f.timeline()
+        if live.isEmpty { return [CheckResult(id: "reading", block: "storyboard", title: "Reading time per scene", level: .pending, detail: "No scene on in the storyboard yet.")] }
         var out: [CheckResult] = []
-        for s in live {
+        for t in live {
+            let s = t.scene
             let lines = ([s.text] + s.texts.keys.sorted().map { s.texts[$0] ?? "" }).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             guard !lines.isEmpty else { continue }
-            guard let a = s.start, let b = s.end, b > a else {
-                out.append(CheckResult(id: "reading.\(s.id)", block: "storyboard", title: "\(s.id) reading time", level: .pending, detail: "Give \(s.id) a start and an end time."))
+            guard let dur = t.length, dur > 0 else {
+                out.append(CheckResult(id: "reading.\(s.id)", block: "storyboard", title: "\(s.id) reading time", level: .pending, detail: "Give \(s.id) a duration."))
                 continue
             }
             let need = lines.map { secondsNeeded(text: $0, portrait: portrait) }.max() ?? 0
-            let dur = b - a
             let level: CheckLevel = dur >= need ? .ok : dur >= need * 0.8 ? .tight : .fail
             let longest = lines.max { $0.count < $1.count } ?? ""
             let detail = String(format: "%.1f s on screen for %d characters (about %.1f s needed)", dur, longest.count, need)
@@ -245,23 +245,26 @@ public enum Checks {
         let badID = ids.filter { !SceneRules.isValidID($0) }
         out.append(Set(ids).count != ids.count ? r("ids", "Stable IDs", .fail, "an ID is used twice")
                    : !badID.isEmpty ? r("ids", "Stable IDs", .fail, badID.joined(separator: ", ") + ": not an ID like S01")
-                   : r("ids", "Stable IDs", .ok, "\(ids.count) scenes, each ID used once (a ditched scene keeps its ID)"))
-        let live = SceneRules.live(f)
-        let untimed = live.filter { $0.start == nil || $0.end == nil }
-        out.append(untimed.isEmpty ? r("times", "Start and end times", .ok, "every scene has a start and an end")
-                                   : r("times", "Start and end times", .pending, untimed.map { $0.id }.joined(separator: ", ") + ": no start or end yet"))
+                   : r("ids", "Stable IDs", .ok, "\(ids.count) scenes, each ID used once (an archived scene keeps its ID)"))
+        let tl = f.timeline()
+        if tl.isEmpty { out.append(r("on", "Scenes on", .pending, "no scene is switched on in the storyboard")); return out }
+        let untimed = tl.filter { $0.length == nil }
+        out.append(untimed.isEmpty ? r("times", "Durations", .ok, "every scene on has a duration")
+                                   : r("times", "Durations", .pending, untimed.map { $0.scene.id }.joined(separator: ", ") + ": no duration yet"))
         var overlaps: [String] = []
-        let timed = live.filter { $0.start != nil && $0.end != nil }
-        for (a, b) in zip(timed, timed.dropFirst()) where b.start! < a.end! - 0.001 { overlaps.append("\(b.id) starts at \(ProjectDocs.seconds(b.start!)) s, before \(a.id) ends at \(ProjectDocs.seconds(a.end!)) s") }
-        if !timed.isEmpty { out.append(overlaps.isEmpty ? r("overlap", "Scenes in time order", .ok, "no overlap") : r("overlap", "Scenes in time order", .fail, overlaps.joined(separator: "; "))) }
-        if let d = f.decisions.duration, let last = timed.compactMap({ $0.end }).max() {
+        for (a, b) in zip(tl, tl.dropFirst()) { if let e = a.end, let st = b.start, st < e - 0.001 { overlaps.append("\(b.scene.id) starts at \(ProjectDocs.seconds(st)) s, before \(a.scene.id) ends at \(ProjectDocs.seconds(e)) s") } }
+        out.append(overlaps.isEmpty ? r("overlap", "Scenes in time order", .ok, "no overlap") : r("overlap", "Scenes in time order", .fail, overlaps.joined(separator: "; ")))
+        let inMontage = Set(f.storyboards.flatMap { $0.items.map { $0.scene } })
+        let loose = f.library.filter { !inMontage.contains($0.id) }
+        if !loose.isEmpty { out.append(r("loose", "Library scenes placed", .tight, loose.map { $0.id }.joined(separator: ", ") + ": in the library but in no montage")) }
+        if let d = f.decisions.duration, let last = tl.compactMap({ $0.end }).max() {
             let fmt = { ProjectDocs.seconds($0) }
             if last > d + 0.01 { out.append(r("duration", "Fits the duration", .fail, "the scenes run to \(fmt(last)) s, past the \(fmt(d)) s you chose")) }
             else if last < d - 0.5 { out.append(r("duration", "Fits the duration", .tight, "the scenes stop at \(fmt(last)) s, \(fmt(d - last)) s before the end of the \(fmt(d)) s film")) }
             else { out.append(r("duration", "Fits the duration", .ok, "the scenes end at \(fmt(last)) s of \(fmt(d)) s")) }
         }
         var unapproved: [String] = []
-        for s in live { for a in assets where a.sceneIDs.contains(s.id) && a.status != "approved" { unapproved.append("\(s.id) uses \(a.name), which is \(a.status)") } }
+        for s in tl.map({ $0.scene }) { for a in assets where a.sceneIDs.contains(s.id) && a.status != "approved" { unapproved.append("\(s.id) uses \(a.name), which is \(a.status)") } }
         if assets.contains(where: { !$0.scene.isEmpty }) {
             out.append(unapproved.isEmpty ? r("assets", "Linked resources approved", .ok, "every linked resource is approved") : r("assets", "Linked resources approved", .tight, unapproved.joined(separator: "; ") + ": the build only uses approved files"))
         }
@@ -281,7 +284,7 @@ public enum Checks {
             }
         }
         let left = live.filter { $0.status != "ok" }
-        out.insert(left.isEmpty ? r("all", "Every scene OK or ditched", .ok, "ready for the Go") : r("all", "Every scene OK or ditched", .pending, "\(left.count) of \(live.count) still to decide"), at: 0)
+        out.insert(left.isEmpty ? r("all", "Every scene on is OK", .ok, "ready for the Go") : r("all", "Every scene on is OK", .pending, "\(left.count) of \(live.count) still to decide"), at: 0)
         return out
     }
 
@@ -308,13 +311,13 @@ public enum Checks {
 
     // MARK: gate state
 
-    static func gates(block: String, _ f: ShowreelFile?) -> [CheckResult] {
+    static func gates(area: String, _ f: ShowreelFile?) -> [CheckResult] {
         guard let spec = ProcessSpec.load() else { return [] }
-        let keys = spec.gateKeys(of: block)
+        let keys = spec.gateKeys(area: area)
         return keys.map { k in
             let passed = f?.gates[k] == "passed"
             let step = spec.steps.first { $0.gateKey == k }?.gate ?? k
-            return CheckResult(id: "gate.\(k)", block: block, title: "Gate: \(step)", level: passed ? .ok : .pending,
+            return CheckResult(id: "gate.\(k)", block: area, title: "Gate: \(step)", level: passed ? .ok : .pending,
                                detail: passed ? "validated" : "not validated yet")
         }
     }

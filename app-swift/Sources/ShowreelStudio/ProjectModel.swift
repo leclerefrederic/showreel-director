@@ -23,11 +23,46 @@ final class EditorTab: ObservableObject, Identifiable {
     func replace(with t: String) { text = t; saved = t; diskChanged = false }
 }
 
-enum CenterTab: Hashable {
-    case block(String)
-    case preview
-    case file(String)
+/// The kinds of look element the library lists.
+enum LookKind: String, CaseIterable, Identifiable {
+    case looks, palettes, fonts, backgrounds, effects, transitions
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .looks: return "Looks"
+        case .palettes: return "Palettes"
+        case .fonts: return "Fonts"
+        case .backgrounds: return "Backgrounds"
+        case .effects: return "Effects"
+        case .transitions: return "Scene transitions"
+        }
+    }
 }
+
+/// What the user selected in the workspace. It drives the viewer and the inspector.
+enum Selection: Hashable {
+    case none
+    case scene(String)
+    case asset(String)
+    case look(LookKind, String)
+    case file(String)      // a project file opened from the Advanced panel
+    case preview           // a page the copilot showed
+}
+
+enum LibraryTab: String, CaseIterable, Identifiable {
+    case resources, scenes, look
+    var id: String { rawValue }
+    var title: String { self == .look ? "Look" : rawValue.capitalized }
+}
+
+enum InspectorTab: String, CaseIterable, Identifiable {
+    case inspector, copilot, files
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+}
+
+/// What the centre of the workspace shows: the selection, or the build and its player.
+enum CenterMode { case viewer, build }
 
 /// State of one project window: files, open tabs, the showreel, the watcher. Main thread only.
 final class ProjectModel: ObservableObject {
@@ -35,7 +70,13 @@ final class ProjectModel: ObservableObject {
     let store: ProjectStore
     @Published var tree: [FileNode] = []
     @Published var tabs: [EditorTab] = []
-    @Published var selected: CenterTab = .block("project")
+    @Published var selection: Selection = .none
+    @Published var libraryTab: LibraryTab = .scenes
+    @Published var inspectorTab: InspectorTab = .inspector
+    @Published var centerMode: CenterMode = .viewer
+    @Published var lookKind: LookKind = .looks
+    /// Beginner mode walks the wizard first and ends in the workspace; Expert opens the workspace at once.
+    @Published var workspaceOpen: Bool
     @Published var showreel: ShowreelFile?
     @Published var assets: [AssetRow] = []
     @Published var docIssues: [DocReport] = []
@@ -48,9 +89,12 @@ final class ProjectModel: ObservableObject {
     @Published var applyDirectly: Bool {
         didSet { var s = store.settings; s.applyDirectly = applyDirectly; store.settings = s }
     }
-    /// "beginner" (the wizard) or "expert" (the blocks), kept in .studio/ui.json. Switching never touches the project data.
+    /// "beginner" (the wizard, then the workspace) or "expert" (the workspace), kept in .studio/ui.json. Switching never touches the project data.
     @Published var mode: String {
-        didSet { var s = store.settings; s.mode = mode; store.settings = s; if mode == StudioSettings.beginner { resumeWizard() } else { showCopilot = true } }
+        didSet {
+            var s = store.settings; s.mode = mode; store.settings = s
+            if mode == StudioSettings.beginner { resumeWizard(); workspaceOpen = wizardFinished } else { workspaceOpen = true }
+        }
     }
     @Published var showCopilot: Bool
     @Published var wizardIndex = 0
@@ -67,6 +111,7 @@ final class ProjectModel: ObservableObject {
         let s = store.settings
         applyDirectly = s.applyDirectly
         mode = s.mode
+        workspaceOpen = s.mode == StudioSettings.expert
         showCopilot = s.mode == StudioSettings.expert
         decided = s.decided
     }
@@ -83,7 +128,7 @@ final class ProjectModel: ObservableObject {
         } else {
             importOffer = ProjectImporter.importMarkdown(from: root)
         }
-        if mode == StudioSettings.beginner { resumeWizard() }
+        if mode == StudioSettings.beginner { resumeWizard(); workspaceOpen = wizardFinished }
         LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step)
         watcher = FileWatcher(root: root) { [weak self] paths in self?.filesChanged(paths) }
     }
@@ -97,7 +142,7 @@ final class ProjectModel: ObservableObject {
         versions = Versions.list(store)
         if playVersion == nil, let last = versions.last, Versions.hasDist(store, last) { playVersion = last }
         wizardSteps = Wizard.steps(assets: assets, spec: spec, systemLanguage: Locale.current.language.languageCode?.identifier, file: showreel)
-        for b in ["project", "resources", "look", "storyboard", "scene", "build"] { checks[b] = Checks.run(block: b, store: store) }
+        for a in Blocks.areas { checks[a] = Checks.run(area: a, store: store) }
     }
 
     // MARK: build and preview
@@ -114,14 +159,14 @@ final class ProjectModel: ObservableObject {
 
     /// The Go is given and nothing is running: the copilot may write the next version. Needs a key (this is the one step that does).
     func startBuild(with chat: ChatModel) {
-        guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it in the Scene editor first."; return }
+        guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it from the toolbar once every scene is OK."; return }
         guard !buildBusy else { return }
         let v = Versions.next(store)
         buildVersion = v
         generating = true
         buildReport = nil
         let sent = chat.ask(prompt: BuildRunner.prompt(version: v, store: store)) { [weak self] in self?.finishGeneration(v) }
-        if !sent { generating = false }
+        if !sent { generating = false } else { inspectorTab = .copilot }       // the user sees what the copilot does
     }
 
     private func finishGeneration(_ v: String) {
@@ -165,11 +210,14 @@ final class ProjectModel: ObservableObject {
         wizardIndex = Wizard.firstUndecided(wizardSteps, file: showreel, assets: assets, settings: store.settings, spec: spec) ?? builtSteps.count
     }
 
+    /// Every built step is decided: the wizard has nothing more to ask, and the workspace is where the work goes on.
+    var wizardFinished: Bool { showreel != nil && !builtSteps.isEmpty && wizardProgress.decided == wizardProgress.total }
+
     func wizardNext() { wizardIndex = min(wizardIndex + 1, builtSteps.count) }
     func wizardBack() { wizardIndex = max(wizardIndex - 1, 0) }
 
-    func jumpToFirstUndecided(in block: String) {
-        if let i = builtSteps.firstIndex(where: { $0.block == block && !isDecided($0) }) ?? builtSteps.firstIndex(where: { $0.block == block }) { wizardIndex = i }
+    func jumpToFirstUndecided(in area: String) {
+        if let i = builtSteps.firstIndex(where: { $0.area == area && !isDecided($0) }) ?? builtSteps.firstIndex(where: { $0.area == area }) { wizardIndex = i }
     }
 
     /// The user settled a question without giving a value ("nothing special", "no files yet").
@@ -187,6 +235,37 @@ final class ProjectModel: ObservableObject {
 
     func loadShowreel() { refresh() }
 
+    // MARK: the scenes and the montage (the workspace calls these; the rules live in ShowreelKit)
+
+    /// A new scene at the end of the master montage, selected. Returns false when it could not be added.
+    @discardableResult
+    func addScene(copying id: String? = nil) -> Bool {
+        var e = SceneEdit(duration: "3")
+        if let id = id, let s = showreel?.scenes.first(where: { $0.id == id }) {
+            e = SceneEdit(duration: s.duration.map { ProjectDocs.seconds($0) }, text: s.text, visual: s.visual, feeling: s.feeling, handoff: s.handoff, inCuts: s.inCuts)
+            e.after = id
+        } else if let last = showreel?.storyboards.first?.items.last { e.after = last.scene }
+        let before = Set(showreel?.scenes.map { $0.id } ?? [])
+        guard perform(.addScene(id: "", e)) else { return false }
+        if let n = showreel?.scenes.first(where: { !before.contains($0.id) }) { select(.scene(n.id)) }
+        return true
+    }
+
+    func setEnabled(_ id: String, _ on: Bool) { perform(.sceneEnabled(id: id, enabled: on, montage: nil)) }
+
+    /// Puts a scene before another one in the master montage (nil: at the end).
+    func moveScene(_ id: String, before target: String?) {
+        guard let f = showreel, let after = f.position(of: id, before: target) else { return }
+        perform(.moveScene(id: id, after: after, montage: nil))
+    }
+
+    func archiveScene(_ id: String) {
+        perform(.scene(id: id, SceneEdit(archived: true)))
+        if selection == .scene(id) { selection = .none }
+    }
+
+    func restoreScene(_ id: String) { perform(.scene(id: id, SceneEdit(status: "open", archived: false))) }
+
     // MARK: operations (the blocks and the copilot use the same ones)
 
     /// Applies a change the user made in a block. Errors are shown, never swallowed.
@@ -200,9 +279,9 @@ final class ProjectModel: ObservableObject {
         do { try Assets.add(urls, to: store); refresh(); reloadTree() } catch { self.error = error.localizedDescription }
     }
 
-    func status(_ block: String) -> BlockStatus {
+    func status(_ zone: String) -> BlockStatus {
         guard let spec = spec else { return .soon }
-        return Blocks.status(block, spec: spec, showreel: showreel, assets: assets)
+        return Blocks.status(zone, spec: spec, showreel: showreel, assets: assets)
     }
 
     // MARK: generated documents
@@ -242,10 +321,37 @@ final class ProjectModel: ObservableObject {
 
     func reloadTree() { tree = ProjectTree.scan(root) }
 
-    /// The last block the user was in, for the way back from a file in the Advanced panel.
-    private(set) var lastBlock = "project"
+    // MARK: selection and zones
 
-    func selectBlock(_ id: String) { lastBlock = id; selected = .block(id) }
+    func select(_ x: Selection) {
+        selection = x
+        centerMode = .viewer
+        switch x {
+        case .scene, .asset, .look: inspectorTab = .inspector
+        default: break
+        }
+    }
+
+    /// The copilot (or a link) asks for a zone of the workspace. In the wizard, it goes to the first undecided step of that part.
+    func openZone(_ id: String) {
+        if mode == StudioSettings.beginner, !workspaceOpen {
+            let areas: [String] = ["library": ["resources"], "inspector": ["project", "look"], "storyboard": ["storyboard", "scene"], "build": ["build"]][id] ?? []
+            for a in areas where builtSteps.contains(where: { $0.area == a && !isDecided($0) }) { jumpToFirstUndecided(in: a); return }
+            if let a = areas.first { jumpToFirstUndecided(in: a) }
+            return
+        }
+        workspaceOpen = true
+        switch id {
+        case "library": break
+        case "viewer": centerMode = .viewer
+        case "inspector": inspectorTab = .inspector; selection = .none
+        case "storyboard": centerMode = .viewer
+        case "build": centerMode = .build
+        default: break
+        }
+    }
+
+    func showPreview() { selection = .preview; centerMode = .viewer }
 
     // MARK: import
 
@@ -279,32 +385,38 @@ final class ProjectModel: ObservableObject {
         let url = root.appendingPathComponent(rel)
         let kind = ProjectTree.kind(of: rel)
         if kind == .binary { NSWorkspace.shared.open(url); return }
-        if tabs.contains(where: { $0.path == rel }) { selected = .file(rel); return }
+        if tabs.contains(where: { $0.path == rel }) { select(.file(rel)); return }
         guard let text = store.read(rel) else {
             error = "\(rel) is not a readable text file."
             NSWorkspace.shared.open(url)
             return
         }
         tabs.append(EditorTab(path: rel, kind: kind, text: text))
-        selected = .file(rel)
+        select(.file(rel))
     }
 
     func close(_ tab: EditorTab) {
         tabs.removeAll { $0.id == tab.id }
-        if selected == .file(tab.path) { selected = tabs.last.map { .file($0.path) } ?? .block("project") }
+        if selection == .file(tab.path) { selection = tabs.last.map { .file($0.path) } ?? .none }
     }
 
     func tab(_ id: String) -> EditorTab? { tabs.first { $0.id == id } }
 
     /// The file in front of the user, for the copilot's context.
     var foreground: String? {
-        if case .file(let p) = selected { return p }
+        if case .file(let p) = selection { return p }
         return nil
     }
 
+    /// The zone or selection in front of the user, for the copilot's context.
     var foregroundBlock: String? {
-        if case .block(let b) = selected { return b }
-        return nil
+        switch selection {
+        case .scene(let id): return "inspector: scene \(id)"
+        case .asset(let id): return "inspector: resource \(id)"
+        case .look(let k, let id): return "inspector: \(k.title.lowercased()) element \(id)"
+        case .file, .preview: return nil
+        case .none: return centerMode == .build ? "build" : "inspector: project and global look"
+        }
     }
 
     // MARK: save, reload, restore
@@ -354,9 +466,9 @@ final class ProjectModel: ObservableObject {
     /// One line sent with every message: step, open gates, file in front of the user.
     var contextLine: String {
         var parts: [String] = []
-        if mode == StudioSettings.beginner {
+        if mode == StudioSettings.beginner && !workspaceOpen {
             parts.append("mode: beginner (wizard)" + (wizardIndex < builtSteps.count ? ", question on screen: \(builtSteps[wizardIndex].title)" : ""))
-        } else if case .block(let b) = selected { parts.append("mode: expert, block in front of the user: \(b)") }
+        } else if let b = foregroundBlock { parts.append("mode: \(mode == StudioSettings.beginner ? "beginner, workspace" : "expert"), in front of the user: \(b)") }
         if let s = showreel {
             parts.append("step: \(s.step)")
             let open = s.gates.filter { $0.value != "passed" }.keys.sorted()

@@ -57,6 +57,8 @@ public struct EngineBackground: Decodable, Identifiable, Equatable, Sendable {
 }
 
 public struct EngineCatalogue: Decodable, Sendable {
+    /// The category of the effects that are passages between scenes.
+    public static let transitionCategory = "Scene transitions"
     public let effects: [EngineEffect]
     public let backgrounds: [EngineBackground]
     public let moods: [String]

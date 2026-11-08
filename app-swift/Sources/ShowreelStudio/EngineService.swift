@@ -74,31 +74,52 @@ final class EngineService: ObservableObject {
 
     static let frameSize = CGSize(width: 320, height: 180)
 
-    func effectFrames(_ name: String, palette: EnginePalette, font: String, store: ProjectStore, text: String = "Simple. Fast. Yours.") async -> [NSImage] {
+    static let viewerSize = CGSize(width: 640, height: 360)
+
+    private func tag(_ size: CGSize) -> String { "\(Int(size.width))" }
+
+    func effectFrames(_ name: String, palette: EnginePalette, font: String, store: ProjectStore, text: String = "Simple. Fast. Yours.", size: CGSize = EngineService.frameSize) async -> [NSImage] {
         await start()
         let fam = await family(for: font, store: store)
-        return await cached(store, key(["effect", name, palette.signature, fam, text])) {
-            try await renderer.effectStrip(name, palette: palette, font: fam, frames: 10, text: text, size: Self.frameSize)
+        return await cached(store, key(["effect", name, palette.signature, fam, text, tag(size)])) {
+            try await renderer.effectStrip(name, palette: palette, font: fam, frames: 10, text: text, size: size)
         }
     }
 
-    func backgroundFrames(_ id: String, mood: String?, palette: EnginePalette, store: ProjectStore) async -> [NSImage] {
+    func backgroundFrames(_ id: String, mood: String?, palette: EnginePalette, store: ProjectStore, size: CGSize = EngineService.frameSize) async -> [NSImage] {
         await start()
         var params: [String: Any] = [:]
         if let m = mood, !m.isEmpty { params["mood"] = m }
-        return await cached(store, key(["background", id, mood ?? "", palette.signature])) {
-            try await renderer.backgroundStrip(id, params: params, palette: palette, frames: 12, seconds: 4, size: Self.frameSize)
+        return await cached(store, key(["background", id, mood ?? "", palette.signature, tag(size)])) {
+            try await renderer.backgroundStrip(id, params: params, palette: palette, frames: 12, seconds: 4, size: size)
         }
     }
 
-    func lookFrames(background: String, mood: String?, effect: String, palette: EnginePalette, font: String, store: ProjectStore, text: String) async -> [NSImage] {
+    func lookFrames(background: String, mood: String?, effect: String, palette: EnginePalette, font: String, store: ProjectStore, text: String, size: CGSize = EngineService.frameSize) async -> [NSImage] {
         await start()
         let fam = await family(for: font, store: store)
         var params: [String: Any] = [:]
         if let m = mood, !m.isEmpty { params["mood"] = m }
-        return await cached(store, key(["look", background, mood ?? "", effect, palette.signature, fam, text])) {
-            try await renderer.lookStrip(background: background, params: params, effect: effect, palette: palette, font: fam, frames: 12, text: text, size: Self.frameSize)
+        return await cached(store, key(["look", background, mood ?? "", effect, palette.signature, fam, text, tag(size)])) {
+            try await renderer.lookStrip(background: background, params: params, effect: effect, palette: palette, font: fam, frames: 12, text: text, size: size)
         }
+    }
+
+    /// A scene as the engine can show it today: its words with the project's effects pack, over the project's background, in the project's
+    /// palette and title font. A scene has no layers yet (phase W4), so this is a stand-in that follows the global look.
+    func sceneFrames(_ scene: ShowreelFile.Scene, file: ShowreelFile?, store: ProjectStore, size: CGSize = EngineService.frameSize) async -> [NSImage] {
+        await start()
+        let d = file?.decisions
+        let palette = EnginePalette(stored: d?.palette)
+        let font = d?.fonts?.titles ?? ""
+        let line = scene.text.split(separator: "\n").first.map(String.init) ?? scene.texts.sorted { $0.key < $1.key }.first?.value ?? ""
+        let text = String((line.trimmingCharacters(in: .whitespaces).isEmpty ? scene.id : line).prefix(60))
+        let names = Look.packs().first { $0.name == (d?.effectsPack ?? d?.moods?.first ?? "") }?.effects ?? []
+        let effect = names.first { n in catalogue?.effects.contains { $0.name == n } ?? true } ?? "Fade"
+        if let bg = d?.background?.id, !bg.isEmpty, catalogue?.backgrounds.contains(where: { $0.id == bg }) ?? false {
+            return await lookFrames(background: bg, mood: d?.background?.mood, effect: effect, palette: palette, font: font, store: store, text: text, size: size)
+        }
+        return await effectFrames(effect, palette: palette, font: font, store: store, text: text, size: size)
     }
 
     /// One still of an effect with a palette, not cached (the palette editor changes it while the user picks colours).

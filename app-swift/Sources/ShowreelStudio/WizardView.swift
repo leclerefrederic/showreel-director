@@ -25,7 +25,7 @@ struct WizardView: View {
     }
 }
 
-/// The blocks in order, with how far each one is. Blocks that are not built appear as coming soon.
+/// The parts in order, with how far each one is. Parts that are not built appear as coming soon.
 struct WizardOutline: View {
     @EnvironmentObject var project: ProjectModel
 
@@ -34,29 +34,30 @@ struct WizardOutline: View {
             Text(project.title).font(.headline).lineLimit(1).padding(12)
             Divider()
             List {
-                ForEach(project.spec?.blocks ?? []) { b in
-                    let steps = project.builtSteps.filter { $0.block == b.id }
+                ForEach(Wizard.sections, id: \.area) { b in
+                    let steps = project.builtSteps.filter { $0.area == b.area }
+                    let built = project.spec?.isBuilt(area: b.area) ?? false
                     let done = steps.filter { project.isDecided($0) }.count
                     Button {
-                        if b.built { project.jumpToFirstUndecided(in: b.id) }
+                        if built { project.jumpToFirstUndecided(in: b.area) }
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: b.icon).frame(width: 18)
                             Text(b.name).lineLimit(1)
                             Spacer()
-                            if !b.built { Text("Coming soon").font(.caption2).foregroundStyle(.tertiary) }
+                            if !built { Text("Coming soon").font(.caption2).foregroundStyle(.tertiary) }
                             else if done == steps.count && !steps.isEmpty { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
                             else { Text("\(done)/\(steps.count)").font(.caption).foregroundStyle(.secondary) }
                         }
-                        .foregroundStyle(b.built ? Color.primary : Color.secondary)
+                        .foregroundStyle(built ? Color.primary : Color.secondary)
                     }
                     .buttonStyle(.plain)
-                    .disabled(!b.built)
+                    .disabled(!built)
                 }
             }
             .listStyle(.sidebar)
             Divider()
-            Text("Beginner mode walks you through the questions one at a time. Expert mode shows everything at once. Switching loses nothing.")
+            Text("Beginner mode walks you through the questions one at a time and ends in the editing workspace. Expert mode opens the workspace at once. Switching loses nothing.")
                 .font(.caption).foregroundStyle(.secondary).padding(12)
         }
     }
@@ -78,7 +79,7 @@ struct WizardDone: View {
             }
             HStack {
                 if p.decided < p.total { Button("Go to the first undecided step") { project.resumeWizard() } }
-                Button("Switch to Expert mode") { project.mode = StudioSettings.expert }
+                Button("Open the editing workspace") { project.workspaceOpen = true }.buttonStyle(.borderedProminent)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -127,7 +128,7 @@ struct WizardStepView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(project.spec?.block(step.block)?.name ?? step.block).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text(Wizard.sections.first { $0.area == step.area }?.name ?? step.area).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Spacer()
                 Text("Step \(index + 1) of \(total)").font(.caption).foregroundStyle(.secondary)
                 if decided { Label("Decided", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.green) }
@@ -196,7 +197,7 @@ struct WizardStepView: View {
             }
         case .files:
             WizardFiles(step: step)
-        case .scenes: StoryboardEditor()
+        case .scenes: SceneListEditor()
         case .scene(let id): sceneStep(id)
         case .go: GoPanel()
         case .build: BuildPanel()
@@ -208,11 +209,11 @@ struct WizardStepView: View {
         case .effectsPack: EffectsPickerView()
         case .asset(let id):
             if let row = project.assets.first(where: { $0.id == id }) { assetChoices(row) }
-        case .summary(let block):
+        case .summary(let area):
             VStack(alignment: .leading, spacing: 14) {
-                summaryFacts(block)
-                ChecksPanel(block: block)
-                ValidateButton(gate: project.spec?.gateKeys(of: block).first ?? "", block: block)
+                summaryFacts(area)
+                ChecksPanel(block: area)
+                ValidateButton(gate: project.spec?.gateKeys(area: area).first ?? "", block: area)
             }
         case .soon:
             EmptyView()
@@ -222,7 +223,7 @@ struct WizardStepView: View {
     @ViewBuilder private func sceneStep(_ id: String) -> some View {
         if let s = project.showreel?.scenes.first(where: { $0.id == id }) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack { Text(s.id).font(.headline.monospaced()); Text(s.timeLabel).foregroundStyle(.secondary) }
+                HStack { Text(s.id).font(.headline.monospaced()); Text(s.durationLabel).foregroundStyle(.secondary) }
                 if !s.text.isEmpty { Text("\u{201C}\(s.text)\u{201D}").font(.title3) }
                 if !s.visual.isEmpty { Text("Seen: \(s.visual)").font(.callout).foregroundStyle(.secondary) }
                 if !s.feeling.isEmpty { Text("Feeling: \(s.feeling)").font(.callout).foregroundStyle(.secondary) }

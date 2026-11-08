@@ -2,6 +2,10 @@
 
 Version of the skill (`metadata.version` in `showreel-director/SKILL.md`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The Studio file format has its own number (`schema` in `showreel.json`). Ship with `python3 tools/bump.py`.
 
+## 0.10.0 - 2026-11-08
+
+Studio export writes the scene library and one montage (scene durations, DITCH rows archived and off, handoff as the passage note); portability rows follow the app's editing workspace
+
 ## 0.9.2 - 2026-11-08
 
 Portability table: two rows for the desktop app, one to write the storyboard, review each scene and give the go on screens (an explicit Go button), one to build the reel, test it and play it. Same fallbacks as the steps describe. No change to the method.

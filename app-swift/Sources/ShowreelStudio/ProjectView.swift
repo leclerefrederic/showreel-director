@@ -28,25 +28,21 @@ struct ProjectView: View {
     @EnvironmentObject var chat: ChatModel
     @EnvironmentObject var settings: AppSettings
     @Environment(\.openWindow) private var openWindow
+    @State private var showChecks = false
+
+    private var inWizard: Bool { project.mode == StudioSettings.beginner && !project.workspaceOpen }
 
     var body: some View {
         VStack(spacing: 0) {
             if let offer = project.importOffer { ImportBanner(offer: offer) }
             if !project.docIssues.isEmpty { DocBanner() }
-            if project.mode == StudioSettings.beginner {
+            if inWizard {
                 HSplitView {
                     WizardView().frame(minWidth: 560)
                     if project.showCopilot { ChatView().frame(minWidth: 340, idealWidth: 400) }
                 }
             } else {
-                HSplitView {
-                    BlocksSidebar()
-                        .frame(minWidth: 190, idealWidth: 220, maxWidth: 320)
-                    CenterPane()
-                        .frame(minWidth: 420)
-                    ChatView()
-                        .frame(minWidth: 340, idealWidth: 400)
-                }
+                WorkspaceView()
             }
         }
         .toolbar {
@@ -60,19 +56,29 @@ struct ProjectView: View {
                     Text("Expert").tag(StudioSettings.expert)
                 }
                 .pickerStyle(.segmented).frame(width: 200)
-                .help("Beginner: one question at a time. Expert: all the blocks at once. Switching loses nothing.")
+                .help("Beginner: a guided path that ends in the workspace. Expert: the workspace at once. Switching loses nothing.")
             }
             ToolbarItemGroup(placement: .primaryAction) {
-                if project.mode == StudioSettings.beginner {
+                if inWizard {
                     Button { project.showCopilot.toggle() } label: { Label("Copilot", systemImage: "sidebar.right") }
                         .help(project.showCopilot ? "Hide the copilot" : "Show the copilot")
+                    Button { project.workspaceOpen = true } label: { Label("Workspace", systemImage: "rectangle.split.3x1") }
+                        .help("Open the editing workspace")
+                } else {
+                    if project.mode == StudioSettings.beginner {
+                        Button { project.workspaceOpen = false; project.resumeWizard() } label: { Label("Guide", systemImage: "list.number") }
+                            .help("Back to the guided path")
+                    }
+                    Button { showChecks.toggle() } label: { Label("Checks", systemImage: Checks.worst(project.checks.values.flatMap { $0 }).symbol) }
+                        .help("The checks and the gates of the process, green or red, no AI")
+                        .popover(isPresented: $showChecks) { ChecksPopover() }
+                    GoButton()
+                    Button { project.centerMode = project.centerMode == .build ? .viewer : .build } label: { Label("Build", systemImage: "play.rectangle") }
+                        .help("Build the film, test it and play it")
                 }
                 Button { chat.showSettings = true } label: { Label("Settings", systemImage: "gearshape") }
                     .help("Settings")
             }
-        }
-        .onChange(of: settings.advanced) { on in
-            if !on, case .file = project.selected { project.selectBlock(project.lastBlock) }
         }
         .sheet(isPresented: $chat.showSettings) { SettingsView() }
         .sheet(item: $project.historyFor) { tab in HistoryView(tab: tab) }
@@ -80,6 +86,27 @@ struct ProjectView: View {
         .alert("Something went wrong", isPresented: Binding(get: { project.error != nil }, set: { if !$0 { project.error = nil } })) {
             Button("OK") { project.error = nil }
         } message: { Text(project.error ?? "") }
+    }
+}
+
+/// The process bar of the workspace: every area's checks and gates, in the order of the process.
+struct ChecksPopover: View {
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Wizard.sections.filter { Blocks.areas.contains($0.area) }, id: \.area) { s in
+                    VStack(alignment: .leading, spacing: 4) {
+                        let results = project.checks[s.area] ?? []
+                        Label(s.name, systemImage: Checks.worst(results).symbol).font(.headline).foregroundStyle(Checks.worst(results).color)
+                        ChecksList(areas: [s.area])
+                    }
+                }
+            }
+            .padding(14)
+        }
+        .frame(width: 420, height: 480)
     }
 }
 
@@ -187,194 +214,5 @@ struct ChangeRow: View {
             .font(.callout)
             .textSelection(.enabled)
         }
-    }
-}
-
-
-struct BlocksSidebar: View {
-    @EnvironmentObject var project: ProjectModel
-    @EnvironmentObject var chat: ChatModel
-    @EnvironmentObject var settings: AppSettings
-
-    private var selection: Binding<String?> {
-        Binding(get: {
-            switch project.selected {
-            case .block(let b): return "block:" + b
-            case .preview: return "preview"
-            case .file(let p): return "file:" + p
-            }
-        }, set: { v in
-            guard let v = v else { return }
-            if v.hasPrefix("block:") { project.selectBlock(String(v.dropFirst(6))) }
-            else if v == "preview" { project.selected = .preview }
-            else if v.hasPrefix("file:") {
-                let rel = String(v.dropFirst(5))
-                if let n = project.node(rel), !n.isDir { project.open(rel) }
-            }
-        })
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(project.title).font(.headline).lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.bar)
-            Divider()
-            List(selection: selection) {
-                Section("Film") {
-                    ForEach(project.spec?.blocks ?? []) { b in
-                        BlockRow(block: b, status: project.status(b.id)).tag("block:" + b.id)
-                    }
-                    if chat.previewURL != nil {
-                        Label("Preview", systemImage: "rectangle.on.rectangle").tag("preview")
-                    }
-                }
-                if settings.advanced {
-                    Section("Files (advanced)") {
-                        OutlineGroup(project.tree, children: \.children) { node in
-                            Label(node.name, systemImage: icon(node)).lineLimit(1).tag((node.isDir ? "dir:" : "file:") + node.id)
-                                .contextMenu {
-                                    Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([project.root.appendingPathComponent(node.id)]) }
-                                    if !node.isDir { Button("Open with the system viewer") { NSWorkspace.shared.open(project.root.appendingPathComponent(node.id)) } }
-                                }
-                        }
-                    }
-                }
-            }
-            .listStyle(.sidebar)
-            Divider()
-            VStack(alignment: .leading, spacing: 6) {
-                Button { NSWorkspace.shared.activateFileViewerSelecting([project.root]) } label: { Label("Show in Finder", systemImage: "folder") }
-                    .buttonStyle(.borderless)
-                Toggle("Advanced panel", isOn: $settings.advanced)
-                    .toggleStyle(.checkbox)
-                    .help("Shows the project's files with editors and history, for debugging. Off by default.")
-            }
-            .font(.callout)
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private func icon(_ n: FileNode) -> String {
-        if n.isDir { return "folder" }
-        switch ProjectTree.kind(of: n.id) {
-        case .markdown: return "doc.richtext"
-        case .json: return "curlybraces"
-        case .csv: return "tablecells"
-        case .text: return "doc.text"
-        case .binary: return "photo.on.rectangle"
-        }
-    }
-}
-
-struct BlockRow: View {
-    let block: ProcessSpec.BlockSpec
-    let status: BlockStatus
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: block.icon).frame(width: 18)
-            Text(block.name).lineLimit(1)
-            Spacer()
-            switch status {
-            case .soon: Text("Soon").font(.caption2).foregroundStyle(.tertiary)
-            case .todo: Image(systemName: "circle").foregroundStyle(.tertiary).help(status.label)
-            case .inProgress: Image(systemName: "circle.lefthalf.filled").foregroundStyle(Color.accentColor).help(status.label)
-            case .validated: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).help(status.label)
-            }
-        }
-        .foregroundStyle(status == .soon ? .secondary : .primary)
-    }
-}
-
-struct CenterPane: View {
-    @EnvironmentObject var project: ProjectModel
-    @EnvironmentObject var settings: AppSettings
-
-    var body: some View {
-        VStack(spacing: 0) {
-            if settings.advanced && !project.tabs.isEmpty { tabBar; Divider() }
-            switch project.selected {
-            case .block(let id):
-                BlockHost(id: id)
-            case .preview:
-                PreviewPane()
-            case .file(let p):
-                if let t = project.tab(p) { EditorView(tab: t) } else { BlockHost(id: project.lastBlock) }
-            }
-        }
-    }
-
-    private var tabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 2) {
-                chip(title: "Blocks", icon: "square.grid.2x2", on: project.foreground == nil, dirty: false, close: nil) { project.selectBlock(project.lastBlock) }
-                ForEach(project.tabs) { t in
-                    chip(title: t.name, icon: "doc.text", on: project.selected == .file(t.path), dirty: t.dirty, close: { project.close(t) }) {
-                        project.selected = .file(t.path)
-                    }
-                }
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-        }
-        .background(.bar)
-    }
-
-    private func chip(title: String, icon: String, on: Bool, dirty: Bool, close: (() -> Void)?, pick: @escaping () -> Void) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon).font(.caption)
-            Text(title).lineLimit(1)
-            if dirty { Circle().fill(Color.secondary).frame(width: 6, height: 6) }
-            if let close = close {
-                Button(action: close) { Image(systemName: "xmark").font(.system(size: 9, weight: .bold)) }
-                    .buttonStyle(.borderless)
-            }
-        }
-        .font(.callout)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(on ? Color.accentColor.opacity(0.18) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .contentShape(Rectangle())
-        .onTapGesture(perform: pick)
-    }
-}
-
-/// The view of one block of the sidebar.
-struct BlockHost: View {
-    let id: String
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        switch id {
-        case "project": ProjectBlockView()
-        case "resources": ResourcesBlockView()
-        case "look": LookBlockView()
-        case "storyboard": StoryboardBlockView()
-        case "scene": SceneEditorBlockView()
-        case "build": BuildBlockView()
-        default: ComingSoonView(block: project.spec?.block(id))
-        }
-    }
-}
-
-struct ComingSoonView: View {
-    let block: ProcessSpec.BlockSpec?
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: block?.icon ?? "hourglass").font(.system(size: 40, weight: .light)).foregroundStyle(.secondary)
-            Text(block?.name ?? "Block").font(.title2.weight(.semibold))
-            Text("Coming soon").font(.headline).foregroundStyle(.secondary)
-            Text("This block is not built yet (phase \(block?.phase ?? "later")). Until then the copilot carries this step in the chat.")
-                .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 360)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .underPageBackgroundColor))
     }
 }

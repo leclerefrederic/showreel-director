@@ -1,25 +1,24 @@
 {
  "blocks": [
-  { "id": "project", "ai": "optional",    "name": "Project",           "icon": "doc.text",                 "built": true,  "phase": "A2" },
-  { "id": "look", "ai": "optional",       "name": "Look and technique", "icon": "paintpalette",             "built": true, "phase": "B" },
-  { "id": "resources", "ai": "optional",  "name": "Resources",         "icon": "photo.on.rectangle.angled", "built": true,  "phase": "A2" },
-  { "id": "storyboard", "ai": "optional", "name": "Storyboard",        "icon": "rectangle.split.3x1",      "built": true,  "phase": "T" },
-  { "id": "scene", "ai": "optional",      "name": "Scene editor",      "icon": "film",                     "built": true,  "phase": "T" },
-  { "id": "build", "ai": "required",      "name": "Build and preview", "icon": "play.rectangle",           "built": true, "phase": "T" },
-  { "id": "deliver", "ai": "none",    "name": "Deliver",           "icon": "square.and.arrow.up",      "built": false, "phase": "D" }
+  { "id": "library",   "ai": "optional", "name": "Library",           "icon": "books.vertical",           "built": true,  "phase": "W1" },
+  { "id": "viewer",    "ai": "none",     "name": "Viewer",            "icon": "rectangle.on.rectangle",   "built": true,  "phase": "W1" },
+  { "id": "inspector", "ai": "optional", "name": "Inspector",         "icon": "slider.horizontal.3",      "built": true,  "phase": "W1" },
+  { "id": "storyboard","ai": "optional", "name": "Storyboard",        "icon": "film.stack",               "built": true,  "phase": "W1" },
+  { "id": "build",     "ai": "required", "name": "Build and preview", "icon": "play.rectangle",           "built": true,  "phase": "T" },
+  { "id": "deliver",   "ai": "none",     "name": "Deliver",           "icon": "square.and.arrow.up",      "built": false, "phase": "D" }
  ],
  "steps": [
-  { "id": "round0",     "name": "Round 0",               "gate": "Round 0",                "gateKey": null,         "block": "project",    "built": true,  "produces": ["showreel.json"] },
-  { "id": "env",        "name": "Folder and environment", "gate": "Folder and environment", "gateKey": null,         "block": "project",    "built": true,  "produces": [] },
-  { "id": "interview",  "name": "Interview",             "gate": "Interview",              "gateKey": "interview",  "block": "project",    "built": true,  "produces": ["brief.md"] },
-  { "id": "assets",     "name": "Assets",                "gate": "Assets",                 "gateKey": "assets",     "block": "resources",  "built": true,  "produces": ["assets/MANIFEST.csv"] },
-  { "id": "brief",      "name": "Brief",                 "gate": "Brief",                  "gateKey": null,         "block": "project",    "built": true,  "produces": ["brief.md"] },
-  { "id": "style",      "name": "Style sheet",           "gate": "Style sheet",            "gateKey": "style",      "block": "look",       "built": true, "produces": ["style-sheet.md"] },
-  { "id": "storyboard", "name": "Storyboard",            "gate": "Storyboard",             "gateKey": "storyboard", "block": "storyboard", "built": true, "produces": ["storyboard.md"] },
-  { "id": "review",     "name": "Scene review",          "gate": "Scene review",           "gateKey": "review",     "block": "scene",      "built": true, "produces": [] },
-  { "id": "looktest",   "name": "Look test",             "gate": "Look test",              "gateKey": null,         "block": "look",       "built": false, "produces": [] },
-  { "id": "build",      "name": "Build",                 "gate": "Build",                  "gateKey": "build",      "block": "build",      "built": true, "produces": ["vN/dist"] },
-  { "id": "verify",     "name": "Verify",                "gate": "Verify",                 "gateKey": "verify",     "block": "build",      "built": true, "produces": ["qa/"] },
-  { "id": "publish",    "name": "Deliver",               "gate": "Publish or share",       "gateKey": "publish",    "block": "deliver",    "built": false, "produces": ["exports"] }
+  { "id": "round0",     "name": "Round 0",               "gate": "Round 0",                "gateKey": null,         "block": "inspector",  "area": "project",    "built": true,  "produces": ["showreel.json"] },
+  { "id": "env",        "name": "Folder and environment", "gate": "Folder and environment", "gateKey": null,         "block": "inspector",  "area": "project",    "built": true,  "produces": [] },
+  { "id": "interview",  "name": "Interview",             "gate": "Interview",              "gateKey": "interview",  "block": "inspector",  "area": "project",    "built": true,  "produces": ["brief.md"] },
+  { "id": "assets",     "name": "Assets",                "gate": "Assets",                 "gateKey": "assets",     "block": "library",    "area": "resources",  "built": true,  "produces": ["assets/MANIFEST.csv"] },
+  { "id": "brief",      "name": "Brief",                 "gate": "Brief",                  "gateKey": null,         "block": "inspector",  "area": "project",    "built": true,  "produces": ["brief.md"] },
+  { "id": "style",      "name": "Style sheet",           "gate": "Style sheet",            "gateKey": "style",      "block": "inspector",  "area": "look",       "built": true,  "produces": ["style-sheet.md"] },
+  { "id": "storyboard", "name": "Storyboard",            "gate": "Storyboard",             "gateKey": "storyboard", "block": "storyboard", "area": "storyboard", "built": true,  "produces": ["storyboard.md"] },
+  { "id": "review",     "name": "Scene review",          "gate": "Scene review",           "gateKey": "review",     "block": "storyboard", "area": "scene",      "built": true,  "produces": [] },
+  { "id": "looktest",   "name": "Look test",             "gate": "Look test",              "gateKey": null,         "block": "inspector",  "area": "look",       "built": false, "produces": [] },
+  { "id": "build",      "name": "Build",                 "gate": "Build",                  "gateKey": "build",      "block": "build",      "area": "build",      "built": true,  "produces": ["vN/dist"] },
+  { "id": "verify",     "name": "Verify",                "gate": "Verify",                 "gateKey": "verify",     "block": "build",      "area": "build",      "built": true,  "produces": ["qa/"] },
+  { "id": "publish",    "name": "Deliver",               "gate": "Publish or share",       "gateKey": "publish",    "block": "deliver",    "area": "deliver",    "built": false, "produces": ["exports"] }
  ]
 }

@@ -126,7 +126,7 @@ final class WizardTests: XCTestCase {
         let tone = try XCTUnwrap(steps.first { $0.id == "project.tone" })
         let prompt = Wizard.suggestionPrompt(tone)
         XCTAssertTrue(prompt.contains(tone.title) && prompt.contains("update_parameter") && prompt.contains("key tone") && prompt.contains("accept or refuse"))
-        let asset = Wizard.suggestionPrompt(WizardStep(id: "resources.asset.logo-01", block: "resources", title: "Use x?", help: "", kind: .asset("logo-01")))
+        let asset = Wizard.suggestionPrompt(WizardStep(id: "resources.asset.logo-01", area: "resources", title: "Use x?", help: "", kind: .asset("logo-01")))
         XCTAssertTrue(asset.contains("Do not change it"))
         for s in steps { XCTAssertFalse(Wizard.suggestionPrompt(s).isEmpty, s.id) }
     }

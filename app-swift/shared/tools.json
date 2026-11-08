@@ -1,442 +1,487 @@
 [
- {
-  "name": "bash",
-  "description": "Run a shell command in the project folder. Returns stdout, stderr and exit code.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "command": {
-     "type": "string"
-    },
-    "timeout_ms": {
-     "type": "integer",
-     "description": "default 120000, max 600000"
-    }
-   },
-   "required": [
-    "command"
-   ]
-  }
- },
- {
-  "name": "read_file",
-  "description": "Read a text file (project folder or skill folder). Optional offset/limit in lines.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "path": {
-     "type": "string"
-    },
-    "offset": {
-     "type": "integer"
-    },
-    "limit": {
-     "type": "integer"
-    }
-   },
-   "required": [
-    "path"
-   ]
-  }
- },
- {
-  "name": "write_file",
-  "description": "Write a text file inside the project folder (creates folders, overwrites).",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "path": {
-     "type": "string"
-    },
-    "content": {
-     "type": "string"
-    }
-   },
-   "required": [
-    "path",
-    "content"
-   ]
-  }
- },
- {
-  "name": "list_dir",
-  "description": "List a directory (project or skill folder).",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "path": {
-     "type": "string"
-    }
-   },
-   "required": [
-    "path"
-   ]
-  }
- },
- {
-  "name": "ask_user",
-  "description": "Ask the user 1 to 4 multiple-choice questions, shown as cards. Recommended option first. Returns the answers.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "questions": {
-     "type": "array",
-     "minItems": 1,
-     "maxItems": 4,
-     "items": {
+  {
+    "name": "bash",
+    "description": "Run a shell command in the project folder. Returns stdout, stderr and exit code.",
+    "input_schema": {
       "type": "object",
       "properties": {
-       "question": {
-        "type": "string"
-       },
-       "header": {
-        "type": "string"
-       },
-       "multiSelect": {
-        "type": "boolean"
-       },
-       "options": {
-        "type": "array",
-        "minItems": 2,
-        "maxItems": 4,
-        "items": {
-         "type": "object",
-         "properties": {
-          "label": {
-           "type": "string"
-          },
-          "description": {
-           "type": "string"
-          }
-         },
-         "required": [
-          "label",
-          "description"
-         ]
+        "command": {
+          "type": "string"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "description": "default 120000, max 600000"
         }
-       }
       },
       "required": [
-       "question",
-       "header",
-       "options"
+        "command"
       ]
-     }
     }
-   },
-   "required": [
-    "questions"
-   ]
-  }
- },
- {
-  "name": "show_page",
-  "description": "Open an HTML file in the preview pane (project or skill folder).",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "path": {
-     "type": "string"
-    },
-    "title": {
-     "type": "string"
+  },
+  {
+    "name": "read_file",
+    "description": "Read a text file (project folder or skill folder). Optional offset/limit in lines.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path"
+      ]
     }
-   },
-   "required": [
-    "path"
-   ]
-  }
- },
- {
-  "name": "screenshot_preview",
-  "description": "Take a screenshot of what the preview pane shows now and get it back as an image, to look at a contact sheet, a card page or a reel. Open the page with show_page first. Optional javascript runs in the page before the capture: to look at a reel at t seconds, set the seek slider, for example document.getElementById('seek').value = t*10; document.getElementById('seek').dispatchEvent(new Event('input')). Only describe what you actually see.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "javascript": {
-     "type": "string",
-     "description": "optional script run in the page before the capture"
-    },
-    "wait_ms": {
-     "type": "integer",
-     "description": "wait before the capture, default 600, max 5000"
+  },
+  {
+    "name": "write_file",
+    "description": "Write a text file inside the project folder (creates folders, overwrites).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "content"
+      ]
     }
-   }
-  }
- },
- {
-  "name": "get_state",
-  "description": "Read the project's state: showreel.json (parameters, decisions including the look, gates, step, scenes), the assets (id, type, status, scenes, note), the blocks of the sidebar with their status, the block and file the user has in front of them, and the top-level files. Call it before you propose anything, so you do not ask what the app already holds.",
-  "input_schema": {
-   "type": "object",
-   "properties": {}
-  }
- },
- {
-  "name": "propose_edit",
-  "description": "Offer a change to a project file the app does not model (replaces its whole content). The user sees a diff and accepts or refuses; nothing is written before that, unless they switched on apply-directly for the project. Use it for storyboard.md until the storyboard block exists, and for text files. Not for showreel.json or assets/MANIFEST.csv (use update_parameter and update_asset: they refuse file writes). brief.md, style-sheet.md and storyboard.md are generated from showreel.json: a change to one is offered back to the user as a re-import. If the answer says the file changed since, read it again and propose a new edit. Creating a new file and writing code can use write_file.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "file": {
-     "type": "string",
-     "description": "path inside the project folder"
-    },
-    "content": {
-     "type": "string",
-     "description": "the complete new content of the file"
-    },
-    "note": {
-     "type": "string",
-     "description": "one short line saying what changes and why, shown above the diff"
+  },
+  {
+    "name": "list_dir",
+    "description": "List a directory (project or skill folder).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ]
     }
-   },
-   "required": [
-    "file",
-    "content"
-   ]
-  }
- },
- {
-  "name": "update_parameter",
-  "description": "Change one field of the Project block. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Keys: name, audience, message, tone, constraints (free text), conversationLanguage (code), reelLanguages and formats (comma-separated), duration (seconds). An empty value clears the field.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "key": {
-     "type": "string",
-     "enum": [
-      "name",
-      "audience",
-      "message",
-      "tone",
-      "constraints",
-      "conversationLanguage",
-      "reelLanguages",
-      "formats",
-      "duration"
-     ]
-    },
-    "value": {
-     "type": "string"
+  },
+  {
+    "name": "ask_user",
+    "description": "Ask the user 1 to 4 multiple-choice questions, shown as cards. Recommended option first. Returns the answers.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string"
+              },
+              "header": {
+                "type": "string"
+              },
+              "multiSelect": {
+                "type": "boolean"
+              },
+              "options": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 4,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "description"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "question",
+              "header",
+              "options"
+            ]
+          }
+        }
+      },
+      "required": [
+        "questions"
+      ]
     }
-   },
-   "required": [
-    "key",
-    "value"
-   ]
-  }
- },
- {
-  "name": "update_asset",
-  "description": "Change one asset of the Resources block by its id (from get_state): status (proposed, approved, excluded, placeholder, hold; a hold needs a note), note, licence_note, or the scenes that use it (for example S01,S07). The user sees a plain card and accepts or refuses. Approving a file held for confidential data or a forbidden font licence is refused: that goes through the skill's organiser.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "id": {
-     "type": "string"
-    },
-    "status": {
-     "type": "string",
-     "enum": [
-      "proposed",
-      "approved",
-      "excluded",
-      "placeholder",
-      "hold"
-     ]
-    },
-    "note": {
-     "type": "string"
-    },
-    "licence_note": {
-     "type": "string"
-    },
-    "scenes": {
-     "type": "string"
+  },
+  {
+    "name": "show_page",
+    "description": "Open an HTML file in the preview pane (project or skill folder).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ]
     }
-   },
-   "required": [
-    "id"
-   ]
-  }
- },
- {
-  "name": "open_block",
-  "description": "Switch the user's window to a block of the sidebar: project, look, resources, storyboard, scene, build or deliver. Blocks that are not built yet answer so: say it and carry on in the chat.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "block": {
-     "type": "string",
-     "enum": [
-      "project",
-      "look",
-      "resources",
-      "storyboard",
-      "scene",
-      "build",
-      "deliver"
-     ]
+  },
+  {
+    "name": "screenshot_preview",
+    "description": "Take a screenshot of what the preview pane shows now and get it back as an image, to look at a contact sheet, a card page or a reel. Open the page with show_page first. Optional javascript runs in the page before the capture: to look at a reel at t seconds, set the seek slider, for example document.getElementById('seek').value = t*10; document.getElementById('seek').dispatchEvent(new Event('input')). Only describe what you actually see.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "javascript": {
+          "type": "string",
+          "description": "optional script run in the page before the capture"
+        },
+        "wait_ms": {
+          "type": "integer",
+          "description": "wait before the capture, default 600, max 5000"
+        }
+      }
     }
-   },
-   "required": [
-    "block"
-   ]
-  }
- },
- {
-  "name": "update_decision",
-  "description": "Change one decision of the Look block. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Keys: palette (colours as #RRGGBB, comma-separated, in the order background, text, accent, accent 2; at most 6), titleFont and textFont (a font name; prefer the free list of the skill, a font that is not in it is flagged for its licence), background (an id of the engine's backgrounds), backgroundMood (punch, playful, tech, clean, cinematic or deadpan: how an animated background reacts to music), moods (one or two mood packs of the effects catalogue, comma-separated) and effectsPack (one pack). An empty value clears the decision. Unknown ids are refused with the list of valid ones.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "key": {
-     "type": "string",
-     "enum": [
-      "palette",
-      "titleFont",
-      "textFont",
-      "background",
-      "backgroundMood",
-      "moods",
-      "effectsPack"
-     ]
-    },
-    "value": {
-     "type": "string"
+  },
+  {
+    "name": "get_state",
+    "description": "Read the project's state: showreel.json (parameters, decisions including the look, gates, step, the scene library with durations, and the storyboards: the order of the scenes, which are on, the transitions), `film` (the scenes that are on, in order, with start and end times), the assets (id, type, status, scenes, note), the zones of the workspace with their status, what the user has selected, and the top-level files. Call it before you propose anything, so you do not ask what the app already holds.",
+    "input_schema": {
+      "type": "object",
+      "properties": {}
     }
-   },
-   "required": [
-    "key",
-    "value"
-   ]
-  }
- },
- {
-  "name": "add_scene",
-  "description": "Add a scene to the storyboard, with the next free ID (or the ID you give, S04b style, if it is free). Propose one scene per call, in order, with a start and an end and a line short enough for the reading budget (about 3 s for a line of six to eight words). The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, a ditched scene stays in the list marked ditched. Changing the text, timing or look of a scene the user already marked OK sends it back to review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "id": {
-     "type": "string",
-     "description": "optional, for example S04b"
-    },
-    "start": {
-     "type": "number",
-     "description": "start time in seconds"
-    },
-    "end": {
-     "type": "number",
-     "description": "end time in seconds, after the start"
-    },
-    "text": {
-     "type": "string",
-     "description": "the on-screen text"
-    },
-    "visual": {
-     "type": "string",
-     "description": "image and motion"
-    },
-    "feeling": {
-     "type": "string",
-     "description": "feeling and tension level"
-    },
-    "handoff": {
-     "type": "string",
-     "description": "what hands over to the next scene"
-    },
-    "in_cuts": {
-     "type": "string",
-     "description": "the cut-downs this scene belongs to, for example 15s, 45s"
-    },
-    "note": {
-     "type": "string"
-    },
-    "status": {
-     "type": "string",
-     "enum": [
-      "open",
-      "ok",
-      "modify",
-      "ditched"
-     ],
-     "description": "only the user decides OK in the app; ditched keeps the ID marked"
-    },
-    "assets": {
-     "type": "string",
-     "description": "ids of the linked assets (from get_state), comma-separated: replaces the links of this scene"
-    },
-    "after": {
-     "type": "string",
-     "description": "position: put the scene after this scene ID, or 'start'. A move never changes an ID."
+  },
+  {
+    "name": "propose_edit",
+    "description": "Offer a change to a project file the app does not model (replaces its whole content). The user sees a diff and accepts or refuses; nothing is written before that, unless they switched on apply-directly for the project. Use it for storyboard.md until the storyboard block exists, and for text files. Not for showreel.json or assets/MANIFEST.csv (use update_parameter and update_asset: they refuse file writes). brief.md, style-sheet.md and storyboard.md are generated from showreel.json: a change to one is offered back to the user as a re-import. If the answer says the file changed since, read it again and propose a new edit. Creating a new file and writing code can use write_file.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "path inside the project folder"
+        },
+        "content": {
+          "type": "string",
+          "description": "the complete new content of the file"
+        },
+        "note": {
+          "type": "string",
+          "description": "one short line saying what changes and why, shown above the diff"
+        }
+      },
+      "required": [
+        "file",
+        "content"
+      ]
     }
-   }
-  }
- },
- {
-  "name": "update_scene",
-  "description": "Change one scene by its ID (from get_state): times, text, image and motion, feeling, handoff, cuts, note, status, linked assets, or position. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, a ditched scene stays in the list marked ditched. Changing the text, timing or look of a scene the user already marked OK sends it back to review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
-  "input_schema": {
-   "type": "object",
-   "properties": {
-    "id": {
-     "type": "string"
-    },
-    "start": {
-     "type": "number",
-     "description": "start time in seconds"
-    },
-    "end": {
-     "type": "number",
-     "description": "end time in seconds, after the start"
-    },
-    "text": {
-     "type": "string",
-     "description": "the on-screen text"
-    },
-    "visual": {
-     "type": "string",
-     "description": "image and motion"
-    },
-    "feeling": {
-     "type": "string",
-     "description": "feeling and tension level"
-    },
-    "handoff": {
-     "type": "string",
-     "description": "what hands over to the next scene"
-    },
-    "in_cuts": {
-     "type": "string",
-     "description": "the cut-downs this scene belongs to, for example 15s, 45s"
-    },
-    "note": {
-     "type": "string"
-    },
-    "status": {
-     "type": "string",
-     "enum": [
-      "open",
-      "ok",
-      "modify",
-      "ditched"
-     ],
-     "description": "only the user decides OK in the app; ditched keeps the ID marked"
-    },
-    "assets": {
-     "type": "string",
-     "description": "ids of the linked assets (from get_state), comma-separated: replaces the links of this scene"
-    },
-    "after": {
-     "type": "string",
-     "description": "position: put the scene after this scene ID, or 'start'. A move never changes an ID."
+  },
+  {
+    "name": "update_parameter",
+    "description": "Change one field of the Project block. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Keys: name, audience, message, tone, constraints (free text), conversationLanguage (code), reelLanguages and formats (comma-separated), duration (seconds). An empty value clears the field.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "enum": [
+            "name",
+            "audience",
+            "message",
+            "tone",
+            "constraints",
+            "conversationLanguage",
+            "reelLanguages",
+            "formats",
+            "duration"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "value"
+      ]
     }
-   },
-   "required": [
-    "id"
-   ]
+  },
+  {
+    "name": "update_asset",
+    "description": "Change one asset of the Resources block by its id (from get_state): status (proposed, approved, excluded, placeholder, hold; a hold needs a note), note, licence_note, or the scenes that use it (for example S01,S07). The user sees a plain card and accepts or refuses. Approving a file held for confidential data or a forbidden font licence is refused: that goes through the skill's organiser.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "approved",
+            "excluded",
+            "placeholder",
+            "hold"
+          ]
+        },
+        "note": {
+          "type": "string"
+        },
+        "licence_note": {
+          "type": "string"
+        },
+        "scenes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "open_block",
+    "description": "Bring a zone of the editing workspace to the front: library, viewer, inspector (the project parameters and the global look), storyboard, build or deliver. In the guided path (Beginner mode) it goes to the first undecided step of that part. A zone that is not built yet answers so: say it and carry on in the chat.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "block": {
+          "type": "string",
+          "enum": [
+            "library",
+            "viewer",
+            "inspector",
+            "storyboard",
+            "build",
+            "deliver"
+          ]
+        }
+      },
+      "required": [
+        "block"
+      ]
+    }
+  },
+  {
+    "name": "update_decision",
+    "description": "Change one decision of the Look block. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Keys: palette (colours as #RRGGBB, comma-separated, in the order background, text, accent, accent 2; at most 6), titleFont and textFont (a font name; prefer the free list of the skill, a font that is not in it is flagged for its licence), background (an id of the engine's backgrounds), backgroundMood (punch, playful, tech, clean, cinematic or deadpan: how an animated background reacts to music), moods (one or two mood packs of the effects catalogue, comma-separated) and effectsPack (one pack). An empty value clears the decision. Unknown ids are refused with the list of valid ones.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "enum": [
+            "palette",
+            "titleFont",
+            "textFont",
+            "background",
+            "backgroundMood",
+            "moods",
+            "effectsPack"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "value"
+      ]
+    }
+  },
+  {
+    "name": "add_scene",
+    "description": "Create a scene in the scene library, with the next free ID (or the ID you give, S04b style, if it is free); it is switched on at the end of the master storyboard, or after the scene you name in `after`. Propose one scene per call, in order, with a duration in seconds and a line short enough for the reading budget (about 3 s for a line of six to eight words). The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, an archived scene keeps its ID. Changing the text, duration or look of a scene the user already marked OK sends it back to review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "optional, for example S04b"
+        },
+        "duration": {
+          "type": "number",
+          "description": "the scene's own length in seconds (about 3 s for a line of six to eight words); where it starts follows from its place in the storyboard"
+        },
+        "text": {
+          "type": "string",
+          "description": "the on-screen text"
+        },
+        "visual": {
+          "type": "string",
+          "description": "image and motion"
+        },
+        "feeling": {
+          "type": "string",
+          "description": "feeling and tension level"
+        },
+        "handoff": {
+          "type": "string",
+          "description": "the note of the passage to the next scene"
+        },
+        "in_cuts": {
+          "type": "string",
+          "description": "the cut-downs this scene belongs to, for example 15s, 45s"
+        },
+        "note": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "ok",
+            "modify",
+            "ditched"
+          ],
+          "description": "only the user decides OK in the app; ditched keeps the ID marked"
+        },
+        "assets": {
+          "type": "string",
+          "description": "ids of the linked assets (from get_state), comma-separated: replaces the links of this scene"
+        },
+        "after": {
+          "type": "string",
+          "description": "position in the master storyboard: put the scene after this scene ID, or 'start'. A move never changes an ID."
+        }
+      }
+    }
+  },
+  {
+    "name": "update_scene",
+    "description": "Change one scene of the library by its ID (from get_state): duration, text, image and motion, feeling, passage note, cuts, note, status, archive, linked assets, or its position in the master storyboard. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, an archived or ditched scene keeps its ID. Changing the text, duration or look of a scene the user already marked OK sends it back to review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number",
+          "description": "the scene's own length in seconds (about 3 s for a line of six to eight words); where it starts follows from its place in the storyboard"
+        },
+        "text": {
+          "type": "string",
+          "description": "the on-screen text"
+        },
+        "visual": {
+          "type": "string",
+          "description": "image and motion"
+        },
+        "feeling": {
+          "type": "string",
+          "description": "feeling and tension level"
+        },
+        "handoff": {
+          "type": "string",
+          "description": "the note of the passage to the next scene"
+        },
+        "in_cuts": {
+          "type": "string",
+          "description": "the cut-downs this scene belongs to, for example 15s, 45s"
+        },
+        "note": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "ok",
+            "modify",
+            "ditched"
+          ],
+          "description": "only the user decides OK in the app; ditched archives the scene and switches it off everywhere"
+        },
+        "assets": {
+          "type": "string",
+          "description": "ids of the linked assets (from get_state), comma-separated: replaces the links of this scene"
+        },
+        "after": {
+          "type": "string",
+          "description": "position in the master storyboard: put the scene after this scene ID, or 'start'. A move never changes an ID."
+        },
+        "archived": {
+          "type": "boolean",
+          "description": "true archives the scene (the library's delete: it leaves the lists and is switched off in every montage, its ID stays reserved); false brings it back, still switched off"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "enable_scene",
+    "description": "Switch a scene on or off in a storyboard (the master unless you name another). A scene that is off stays in the library and in the file; nothing is created or deleted. The user sees a plain card and accepts or refuses. After the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "the scene ID, from get_state"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "true puts the scene in the film, false takes it out"
+        },
+        "montage": {
+          "type": "string",
+          "description": "the storyboard id; the master when omitted"
+        }
+      },
+      "required": [
+        "id",
+        "enabled"
+      ]
+    }
+  },
+  {
+    "name": "move_scene",
+    "description": "Reorder the storyboard: put a scene after another one (or first with 'start'). The scene's ID never changes. The user sees a plain card and accepts or refuses. After the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "the scene to move"
+        },
+        "after": {
+          "type": "string",
+          "description": "the scene ID it goes after, or 'start'"
+        },
+        "montage": {
+          "type": "string",
+          "description": "the storyboard id; the master when omitted"
+        }
+      },
+      "required": [
+        "id",
+        "after"
+      ]
+    }
   }
- }
 ]

@@ -94,6 +94,11 @@ public final class Tools {
             return await operate(.addScene(id: (input["id"] as? String) ?? "", Self.sceneEdit(input)))
         case "update_scene":
             return await operate(.scene(id: input["id"] as? String ?? "", Self.sceneEdit(input)))
+        case "enable_scene":
+            guard let on = input["enabled"] as? Bool else { return "enabled must be true or false" }
+            return await operate(.sceneEnabled(id: input["id"] as? String ?? "", enabled: on, montage: input["montage"] as? String))
+        case "move_scene":
+            return await operate(.moveScene(id: input["id"] as? String ?? "", after: input["after"] as? String ?? "", montage: input["montage"] as? String))
         case "update_asset":
             let st = (input["status"] as? String).flatMap { AssetStatus(rawValue: $0) }
             if input["status"] is String, st == nil { return "unknown status: use " + AssetStatus.allCases.map { $0.rawValue }.joined(separator: ", ") }
@@ -184,8 +189,8 @@ public final class Tools {
             if let n = i[k] as? Int { return String(n) }
             return nil
         }
-        return SceneEdit(start: str("start"), end: str("end"), text: str("text"), visual: str("visual"), feeling: str("feeling"), handoff: str("handoff"),
-                         inCuts: str("in_cuts"), note: str("note"), status: str("status"), assets: str("assets"), after: str("after"))
+        return SceneEdit(duration: str("duration"), text: str("text"), visual: str("visual"), feeling: str("feeling"), handoff: str("handoff"),
+                         inCuts: str("in_cuts"), note: str("note"), status: str("status"), archived: i["archived"] as? Bool, assets: str("assets"), after: str("after"))
     }
 
     /// showreel.json and the manifest hold the project's data: they change through typed operations, which the user can read.
@@ -220,6 +225,14 @@ public final class Tools {
         if let fg = await ui.foregroundFile() { state["foregroundFile"] = fg }
         if let b = await ui.foregroundBlock() { state["foregroundBlock"] = b }
         state["versions"] = Versions.list(store)
+        if let f = store.loadShowreel() {
+            state["film"] = f.timeline().map { t -> [String: Any] in
+                var d: [String: Any] = ["scene": t.scene.id, "status": t.scene.status]
+                if let a = t.start { d["start"] = a }
+                if let b = t.end { d["end"] = b }
+                return d
+            }
+        }
         state["go"] = (store.loadShowreel()?.gates["review"] == "passed") ? "given by the user" : "not given: only the user can give it, with the Go button"
         let assets = Assets.load(store)
         state["assets"] = assets.map { ["id": $0.id, "name": $0.name, "type": $0.type, "status": $0.status, "scenes": $0.scene, "note": $0.notes, "licenceNote": $0.licenceNote] }

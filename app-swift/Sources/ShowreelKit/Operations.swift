@@ -179,6 +179,10 @@ public enum ProjectOperation: Equatable, Sendable {
     case scene(id: String, SceneEdit)
     /// A new scene. `id` empty means the next free one.
     case addScene(id: String, SceneEdit)
+    /// Switches a scene on or off in a montage (the master when `montage` is nil).
+    case sceneEnabled(id: String, enabled: Bool, montage: String?)
+    /// Puts a scene after another one in a montage ("start" for first).
+    case moveScene(id: String, after: String, montage: String?)
 }
 
 public enum Operations {
@@ -198,12 +202,15 @@ public enum Operations {
         for s in b.scenes {
             guard let o = a.scenes.first(where: { $0.id == s.id }), o != s else { continue }
             if o.status != s.status { out.append(Change("Scene \(s.id) status", o.status, s.status)) }
+            if o.archived != s.archived { out.append(Change("Scene \(s.id) archive", o.archived ? "archived" : "in the library", s.archived ? "archived" : "in the library")) }
             if o.text != s.text { out.append(Change("Text of \(s.id)", shown(o.text), shown(s.text))) }
-            if o.start != s.start || o.end != s.end || o.visual != s.visual || o.feeling != s.feeling || o.handoff != s.handoff {
+            if o.duration != s.duration || o.visual != s.visual || o.feeling != s.feeling || o.handoff != s.handoff {
                 out.append(Change("Scene \(s.id) details", "before", "changed"))
             }
         }
         for id in ida.subtracting(idb) { out.append(Change("Scene \(id)", "present", "missing from the file")) }
+        let oa = a.timeline().map { $0.scene.id }, ob = b.timeline().map { $0.scene.id }
+        if oa != ob { out.append(Change("Storyboard order", oa.isEmpty ? "(empty)" : oa.joined(separator: ", "), ob.isEmpty ? "(empty)" : ob.joined(separator: ", "))) }
         return out
     }
 }
@@ -250,6 +257,8 @@ extension ProjectStore {
             return OperationCard(title: "\(verb) \(r.name)", changes: ch)
         case .scene(let id, let edit): return try planScene(id, edit, adding: false).card
         case .addScene(let id, let edit): return try planScene(id, edit, adding: true).card
+        case .sceneEnabled(let id, let on, let m): return try planEnabled(id, enabled: on, montage: m).card
+        case .moveScene(let id, let after, let m): return try planMove(id, after: after, montage: m).card
         case .gate(let key, let passed):
             let f = try needShowreel()
             guard ShowreelFile.gateKeys.contains(key) else { throw AgentError.msg("unknown gate \(key)") }
@@ -278,6 +287,8 @@ extension ProjectStore {
             try Assets.update(id, status: status, note: note, licence: licence, scenes: scenes, in: self)
         case .scene(let id, let edit): try planScene(id, edit, adding: false).run()
         case .addScene(let id, let edit): try planScene(id, edit, adding: true).run()
+        case .sceneEnabled(let id, let on, let m): try planEnabled(id, enabled: on, montage: m).run()
+        case .moveScene(let id, let after, let m): try planMove(id, after: after, montage: m).run()
         case .gate(let key, let passed):
             var f = try needShowreel()
             f.gates[key] = passed ? "passed" : "open"

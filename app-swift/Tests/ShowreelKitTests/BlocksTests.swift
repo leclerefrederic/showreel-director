@@ -10,28 +10,32 @@ final class BlocksTests: XCTestCase {
     func testProcessJSONMatchesTheApp() throws {
         let spec = try XCTUnwrap(ProcessSpec.load())
         XCTAssertEqual(spec.blocks.map { $0.id }, Blocks.ids)
-        XCTAssertTrue(spec.steps.allSatisfy { s in spec.block(s.block) != nil })
+        XCTAssertTrue(spec.steps.allSatisfy { s in spec.block(s.block) != nil }, "every step sits in a zone of the workspace")
+        XCTAssertTrue(spec.steps.allSatisfy { Blocks.areas.contains($0.area) || $0.area == "deliver" }, "and has an area the checks and the wizard know")
         XCTAssertEqual(Set(spec.steps.compactMap { $0.gateKey }), Set(ShowreelFile.gateKeys))
-        XCTAssertEqual(spec.blocks.filter { $0.built }.map { $0.id }, ["project", "look", "resources", "storyboard", "scene", "build"])
+        XCTAssertEqual(spec.blocks.filter { $0.built }.map { $0.id }, ["library", "viewer", "inspector", "storyboard", "build"])
+        XCTAssertEqual(spec.blocks.filter { $0.ai == "required" }.map { $0.id }, ["build"], "generation is the only step that needs an AI")
     }
 
     func testStatusesFollowTheProject() throws {
         let spec = try XCTUnwrap(ProcessSpec.load())
         func st(_ id: String) -> BlockStatus { Blocks.status(id, spec: spec, showreel: store.loadShowreel(), assets: Assets.load(store)) }
-        XCTAssertEqual(st("project"), .todo, "no showreel.json yet")
+        XCTAssertEqual(st("inspector"), .todo, "no showreel.json yet")
         var f = try store.create(name: "S", conversationLanguage: nil, reelLanguages: [])
-        XCTAssertEqual(st("project"), .todo)
-        XCTAssertEqual(st("resources"), .todo)
+        XCTAssertEqual(st("inspector"), .todo)
+        XCTAssertEqual(st("library"), .todo)
         try store.apply(.parameter(.audience, "Teams"))
-        XCTAssertEqual(st("project"), .inProgress)
+        XCTAssertEqual(st("inspector"), .inProgress)
         try store.apply(.gate("interview", passed: true))
-        XCTAssertEqual(st("project"), .validated)
+        XCTAssertEqual(st("inspector"), .inProgress, "the inspector also holds the look: its style gate is still open")
+        try store.apply(.gate("style", passed: true))
+        XCTAssertEqual(st("inspector"), .validated)
         f = try XCTUnwrap(store.loadShowreel())
         XCTAssertEqual(f.gates["interview"], "passed")
         try Assets.save([AssetRow(id: "logo-01", type: "logo")], store)
-        XCTAssertEqual(st("resources"), .inProgress)
+        XCTAssertEqual(st("library"), .inProgress)
         try store.apply(.gate("assets", passed: true))
-        XCTAssertEqual(st("resources"), .validated)
+        XCTAssertEqual(st("library"), .validated)
         XCTAssertEqual(st("deliver"), .soon, "an unbuilt block stays coming soon whatever the data says")
     }
 

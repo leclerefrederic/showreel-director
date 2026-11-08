@@ -1,6 +1,8 @@
 import Foundation
 
-/// The steps and gates the app implements and the blocks of its sidebar (`app-swift/shared/process.json`).
+/// The steps and gates the app implements and the zones of its editing workspace (`app-swift/shared/process.json`).
+/// A step sits in a zone (`block`: where the user does it) and has an `area` (what it is about: project, resources, look, storyboard, scene,
+/// build): the checks and the wizard are organised by area.
 /// `tools/check.py` keeps the steps in step with the Gates table of SKILL.md.
 public struct ProcessSpec: Decodable, Sendable {
     public struct BlockSpec: Decodable, Sendable, Identifiable, Equatable {
@@ -18,6 +20,7 @@ public struct ProcessSpec: Decodable, Sendable {
         public let gate: String
         public let gateKey: String?
         public let block: String
+        public let area: String
         public let built: Bool
         public let produces: [String]
     }
@@ -32,6 +35,8 @@ public struct ProcessSpec: Decodable, Sendable {
 
     public func block(_ id: String) -> BlockSpec? { blocks.first { $0.id == id } }
     public func gateKeys(of block: String) -> [String] { steps.filter { $0.block == block }.compactMap { $0.gateKey } }
+    public func gateKeys(area: String) -> [String] { steps.filter { $0.area == area }.compactMap { $0.gateKey } }
+    public func isBuilt(area: String) -> Bool { steps.contains { $0.area == area && $0.built } }
 }
 
 public enum BlockStatus: String, Sendable {
@@ -48,19 +53,22 @@ public enum BlockStatus: String, Sendable {
 }
 
 public enum Blocks {
-    /// The blocks of the sidebar, in the order of the process. Every id has a view in the app.
-    public static let ids = ["project", "look", "resources", "storyboard", "scene", "build", "deliver"]
+    /// The zones of the workspace. Every id has a view in the app.
+    public static let ids = ["library", "viewer", "inspector", "storyboard", "build", "deliver"]
 
-    /// Whether the user already put something in a block.
+    /// The areas the checks and the wizard are organised by, in the order of the process.
+    public static let areas = ["project", "resources", "look", "storyboard", "scene", "build"]
+
+    /// Whether the user already put something in a zone.
     static func hasContent(_ id: String, _ f: ShowreelFile, _ assets: [AssetRow]) -> Bool {
         switch id {
-        case "project":
+        case "inspector":
             let p = f.parameters
             return [p.audience, p.message, p.tone, p.constraints].contains { ($0 ?? "").isEmpty == false }
                 || !f.reelLanguages.isEmpty || f.decisions.duration != nil || !(f.decisions.formats ?? []).isEmpty
-        case "resources": return !assets.isEmpty
-        case "look": return f.decisions.palette != nil || f.decisions.fonts != nil || f.decisions.background != nil
-        case "storyboard", "scene": return !f.scenes.isEmpty
+                || f.decisions.palette != nil || f.decisions.fonts != nil || f.decisions.background != nil
+        case "library": return !assets.isEmpty || !f.library.isEmpty
+        case "viewer", "storyboard": return !f.film.isEmpty
         case "build": return f.gates["review"] == "passed"
         default: return false
         }

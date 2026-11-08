@@ -28,12 +28,12 @@ public struct WizardStep: Identifiable, Equatable, Sendable {
         case moods
         case effectsPack
         case asset(String)
-        case summary(block: String)
-        case soon(block: String)
+        case summary(area: String)
+        case soon(area: String)
     }
 
     public let id: String
-    public let block: String
+    public let area: String
     public let title: String
     public let help: String
     public let kind: Kind
@@ -42,6 +42,13 @@ public struct WizardStep: Identifiable, Equatable, Sendable {
 }
 
 public enum Wizard {
+    /// The parts of the wizard, in the order of the process: what the outline lists. `area` is the key of the steps and of the checks.
+    public static let sections: [(area: String, name: String, icon: String)] = [
+        ("project", "Project", "doc.text"), ("resources", "Resources", "photo.on.rectangle.angled"), ("look", "Look and technique", "paintpalette"),
+        ("storyboard", "Storyboard", "film.stack"), ("scene", "Scene review", "checkmark.rectangle"), ("build", "Build and preview", "play.rectangle"),
+        ("deliver", "Deliver", "square.and.arrow.up"),
+    ]
+
     static let languages = [
         WizardStep.Option("en", "English"), .init("fr", "French"), .init("de", "German"), .init("es", "Spanish"),
         .init("it", "Italian"), .init("pt", "Portuguese"), .init("nl", "Dutch"),
@@ -51,7 +58,7 @@ public enum Wizard {
     /// appear as "coming soon" steps, so later blocks plug in here.
     public static func steps(assets: [AssetRow], spec: ProcessSpec?, systemLanguage: String? = nil, file: ShowreelFile? = nil) -> [WizardStep] {
         func p(_ k: ParameterKey, _ title: String, _ kind: WizardStep.Kind) -> WizardStep {
-            WizardStep(id: "project." + k.rawValue, block: "project", title: title, help: k.help, kind: kind)
+            WizardStep(id: "project." + k.rawValue, area: "project", title: title, help: k.help, kind: kind)
         }
         let sys = systemLanguage.flatMap { l in languages.contains { $0.value == l } ? l : nil }
         var out: [WizardStep] = [
@@ -69,20 +76,20 @@ public enum Wizard {
               .multi(.formats, options: [.init("16:9", "Desktop 16:9", "big screen, laptop"), .init("9:16", "Mobile 9:16", "phone feed; changes the layout"),
                                          .init("1:1", "Square 1:1"), .init("4:5", "Portrait 4:5")], recommended: ["16:9"])),
             p(.constraints, "Is there anything that must or must not appear?", .text(.constraints, examples: [], optional: true)),
-            WizardStep(id: "project.summary", block: "project", title: "Is the project description complete?",
-                       help: "Here is what you decided, with the checks that need no AI. Validate it when you are happy, or come back later.", kind: .summary(block: "project")),
-            WizardStep(id: "resources.files", block: "resources", title: "Which files should the film be made from?",
+            WizardStep(id: "project.summary", area: "project", title: "Is the project description complete?",
+                       help: "Here is what you decided, with the checks that need no AI. Validate it when you are happy, or come back later.", kind: .summary(area: "project")),
+            WizardStep(id: "resources.files", area: "resources", title: "Which files should the film be made from?",
                        help: "Logos, screenshots, photos, fonts, music. Drop them in. Nothing is used in the film until you approve it.", kind: .files),
         ]
         for a in assets where !(a.file.isEmpty && a.status == "proposed" && a.notes == "not embedded") {
-            out.append(WizardStep(id: "resources.asset." + a.id, block: "resources", title: "Use \(a.name) in the film?",
+            out.append(WizardStep(id: "resources.asset." + a.id, area: "resources", title: "Use \(a.name) in the film?",
                                   help: a.notes.isEmpty ? "Approve it to let the build use it, exclude it to keep it out, or hold it until you know." : a.notes,
                                   kind: .asset(a.id)))
         }
-        out.append(WizardStep(id: "resources.summary", block: "resources", title: "Are your files ready?",
-                              help: "The asset rules, checked without AI. Validate when every file is decided.", kind: .summary(block: "resources")))
-        if spec?.block("look")?.built == true {
-            func l(_ id: String, _ title: String, _ help: String, _ kind: WizardStep.Kind) -> WizardStep { WizardStep(id: "look." + id, block: "look", title: title, help: help, kind: kind) }
+        out.append(WizardStep(id: "resources.summary", area: "resources", title: "Are your files ready?",
+                              help: "The asset rules, checked without AI. Validate when every file is decided.", kind: .summary(area: "resources")))
+        if spec?.isBuilt(area: "look") == true {
+            func l(_ id: String, _ title: String, _ help: String, _ kind: WizardStep.Kind) -> WizardStep { WizardStep(id: "look." + id, area: "look", title: title, help: help, kind: kind) }
             out += [
                 l("board", "Which of these looks feels right?", "Three complete looks to compare, each a palette, a background, a font pair and a motion mood. Pick one to start from, or decide later and choose each part yourself.", .lookBoard),
                 l("palette", "Which colours should the film use?", "A background, a text colour and an accent, in that order. The contrast check runs as you choose.", .palette),
@@ -91,29 +98,29 @@ public enum Wizard {
                 l("background", "Which background should sit behind the scenes?", "Animated thumbnails from the engine, in your palette. Calm ones keep the text readable.", .background),
                 l("moods", "Which mood should the motion have?", "Pick one or two. The mood decides which effects you see next.", .moods),
                 l("effectsPack", "Which effects pack fits?", "The pack gives the film a consistent set of text and transition effects.", .effectsPack),
-                WizardStep(id: "look.summary", block: "look", title: "Is the look settled?", help: "Here is what you decided, with the checks that need no AI. Validate it when you are happy, or come back later.", kind: .summary(block: "look")),
+                WizardStep(id: "look.summary", area: "look", title: "Is the look settled?", help: "Here is what you decided, with the checks that need no AI. Validate it when you are happy, or come back later.", kind: .summary(area: "look")),
             ]
         }
-        if spec?.block("storyboard")?.built == true {
-            out.append(WizardStep(id: "storyboard.scenes", block: "storyboard", title: "What happens, scene by scene?",
-                                  help: "Write the scenes in order: when each starts and ends, what is said, what is seen. Scene IDs stay the same for good. The reading budget is checked as you go.", kind: .scenes))
-            out.append(WizardStep(id: "storyboard.summary", block: "storyboard", title: "Is the storyboard complete?",
-                                  help: "Here is the film as you wrote it, with the checks that need no AI. Validate it when you are happy.", kind: .summary(block: "storyboard")))
+        if spec?.isBuilt(area: "storyboard") == true {
+            out.append(WizardStep(id: "storyboard.scenes", area: "storyboard", title: "What happens, scene by scene?",
+                                  help: "Write the scenes in order: how long each lasts, what is said, what is seen. Scene IDs stay the same for good. The reading budget is checked as you go.", kind: .scenes))
+            out.append(WizardStep(id: "storyboard.summary", area: "storyboard", title: "Is the storyboard complete?",
+                                  help: "Here is the film as you wrote it, with the checks that need no AI. Validate it when you are happy.", kind: .summary(area: "storyboard")))
         }
-        if spec?.block("scene")?.built == true {
+        if spec?.isBuilt(area: "scene") == true {
             for s in file.map({ SceneRules.live($0) }) ?? [] {
-                out.append(WizardStep(id: "scene." + s.id, block: "scene", title: "Is \(s.id) right as it is?",
+                out.append(WizardStep(id: "scene." + s.id, area: "scene", title: "Is \(s.id) right as it is?",
                                       help: s.text.isEmpty ? "Mark it OK, to modify, or ditch it. A ditched scene keeps its ID." : "\"\(s.text)\"", kind: .scene(s.id)))
             }
-            out.append(WizardStep(id: "scene.go", block: "scene", title: "Ready to give the Go?",
+            out.append(WizardStep(id: "scene.go", area: "scene", title: "Ready to give the Go?",
                                   help: "The build never starts without it, and the app never gives it for you. Every scene must be OK or ditched.", kind: .go))
         }
-        if spec?.block("build")?.built == true {
-            out.append(WizardStep(id: "build.run", block: "build", title: "Build the film",
+        if spec?.isBuilt(area: "build") == true {
+            out.append(WizardStep(id: "build.run", area: "build", title: "Build the film",
                                   help: "The copilot writes the version from your storyboard and your decisions, then the app builds it, tests it and plays it. This is the one step that needs an AI.", kind: .build))
         }
         for b in spec?.blocks ?? [] where !b.built {
-            out.append(WizardStep(id: "soon." + b.id, block: b.id, title: b.name, help: "Coming soon (phase \(b.phase ?? "later")). Until then the copilot carries this step in the chat.", kind: .soon(block: b.id)))
+            out.append(WizardStep(id: "soon." + b.id, area: b.id, title: b.name, help: "Coming soon (phase \(b.phase ?? "later")). Until then the copilot carries this step in the chat.", kind: .soon(area: b.id)))
         }
         return out
     }
@@ -140,7 +147,7 @@ public enum Wizard {
         case .effectsPack: return file.map { !DecisionKey.effectsPack.current($0).isEmpty } ?? false
         case .asset(let id): return ["approved", "excluded", "placeholder"].contains(assets.first { $0.id == id }?.status ?? "")
         case .summary(let b):
-            let keys = spec?.gateKeys(of: b) ?? []
+            let keys = spec?.gateKeys(area: b) ?? []
             return !keys.isEmpty && keys.allSatisfy { file?.gates[$0] == "passed" }
         case .soon: return false
         }
@@ -155,6 +162,11 @@ public enum Wizard {
     public static func progress(_ steps: [WizardStep], file: ShowreelFile?, assets: [AssetRow], settings: StudioSettings, spec: ProcessSpec?) -> (decided: Int, total: Int) {
         let built = steps.filter { $0.isBuilt }
         return (built.filter { isDecided($0, file: file, assets: assets, settings: settings, spec: spec) }.count, built.count)
+    }
+
+    /// The message behind "Draft with AI" in the scene library: the copilot proposes scenes as cards to accept or refuse.
+    public static var draftScenesPrompt: String {
+        suggestionPrompt(WizardStep(id: "storyboard.scenes", area: "storyboard", title: "", help: "", kind: .scenes))
     }
 
     /// What the optional "Suggest with AI" button asks the copilot. The copilot answers with a card the user accepts or refuses,
@@ -178,7 +190,7 @@ public enum Wizard {
         case .effectsPack:
             return "I am choosing the effects pack. From the chosen moods and the project (get_state), suggest one pack and propose it with update_decision (key effectsPack)."
         case .scenes:
-            return "I am writing the storyboard in the wizard. From the project (get_state: audience, message, tone, duration, look, assets), draft the scenes in order and propose each one with add_scene so I can accept or refuse each card. Keep to the duration, give every scene a start and an end, keep lines short enough for the reading budget, and link only approved assets."
+            return "I am writing the storyboard in the wizard. From the project (get_state: audience, message, tone, duration, look, assets), draft the scenes in order and propose each one with add_scene so I can accept or refuse each card. Keep to the duration, give every scene a duration in seconds, keep lines short enough for the reading budget, and link only approved assets."
         case .scene(let id):
             return "I am reviewing scene \(id). Look at it (get_state) and tell me in two lines what you would improve. Do not change it and do not mark it OK: I decide."
         case .go:
@@ -188,7 +200,7 @@ public enum Wizard {
         case .files:
             return "I am choosing the files the film is made from. From what the project says (get_state), list in a few lines which kinds of files would help (logos, screenshots, music...). Do not change anything."
         case .summary(let b):
-            return "Review the \(b) block of the project (get_state) and tell me in a few lines what looks incomplete or inconsistent. Do not change anything."
+            return "Review the \(b) part of the project (get_state) and tell me in a few lines what looks incomplete or inconsistent. Do not change anything."
         case .soon:
             return "Tell me in two lines what this step will involve."
         }

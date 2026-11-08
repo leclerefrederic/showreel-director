@@ -80,18 +80,24 @@ public enum ProjectDocs {
                 "7. Music approach: " + v(music), ""].joined(separator: "\n")
     }
 
+    /// The master montage as a table, in its order: the scenes on with their times, the switched-off ones with "off", then the archived ones
+    /// (an ID is never reused, so they stay in the table, marked). Library scenes that no montage places come last, off.
     static func storyboard(_ f: ShowreelFile) -> String? {
         guard !f.scenes.isEmpty else { return nil }
         let langs = Array(Set(f.scenes.flatMap { $0.texts.keys })).sorted()
         let extras = Array(Set(f.scenes.flatMap { $0.extra.keys })).sorted()
         let cuts = f.scenes.contains { !$0.inCuts.isEmpty }
         let notes = f.scenes.contains { !$0.note.isEmpty }
-        var head = ["ID", "Time", "On-screen text"] + langs + ["Image and motion", "Feeling and tension", "Handoff"] + (cuts ? ["In cuts"] : []) + extras + ["Status"] + (notes ? ["Note"] : [])
-        head = head.map { $0 }
-        let rows = f.scenes.map { s -> [String] in
-            let time: String = (s.start != nil && s.end != nil) ? "\(seconds(s.start!))-\(seconds(s.end!)) s" : ""
+        let head = ["ID", "Time", "On-screen text"] + langs + ["Image and motion", "Feeling and tension", "Handoff"] + (cuts ? ["In cuts"] : []) + extras + ["Status"] + (notes ? ["Note"] : [])
+        let timed = Dictionary(f.timeline().map { ($0.scene.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var order = (f.storyboards.first?.items.map { $0.scene } ?? []).filter { id in f.scenes.contains { $0.id == id } }
+        order += f.scenes.map { $0.id }.filter { !order.contains($0) }
+        let rows = order.compactMap { id in f.scenes.first { $0.id == id } }.map { s -> [String] in
+            var time = s.archived ? "" : "off"
+            if let t = timed[s.id] { time = (t.start != nil && t.end != nil) ? "\(seconds(t.start!))-\(seconds(t.end!)) s" : "" }
+            let status = s.archived ? (s.status == "ditched" ? "ditched" : "archived") : s.status
             return [s.id, time, s.text] + langs.map { s.texts[$0] ?? "" } + [s.visual, s.feeling, s.handoff] + (cuts ? [s.inCuts] : [])
-                + extras.map { s.extra[$0] ?? "" } + [s.status] + (notes ? [s.note] : [])
+                + extras.map { s.extra[$0] ?? "" } + [status] + (notes ? [s.note] : [])
         }
         return [header, "", "# Storyboard: \(f.name)", "", MarkdownTable(header: head, rows: rows).render(), ""].joined(separator: "\n")
     }
@@ -204,9 +210,7 @@ public enum DocSync {
             if !scratch.reelLanguages.isEmpty { f.reelLanguages = scratch.reelLanguages }
             if let d = scratch.decisions.duration { f.decisions.duration = d }
         }
-        if files.contains("storyboard.md"), let sb = store.read("storyboard.md"), let scenes = MarkdownRead.scenes(from: sb, keeping: current.scenes) {
-            f.scenes = scenes
-        }
+        if files.contains("storyboard.md"), let sb = store.read("storyboard.md") { MarkdownRead.apply(storyboard: sb, to: &f) }
         return (f, Operations.diff(current, f))
     }
 
@@ -239,27 +243,40 @@ enum MarkdownRead {
         ProjectImporter.matches(#"\d+(?:[.,]\d+)?"#, in: s).compactMap { Double($0.replacingOccurrences(of: ",", with: ".")) }
     }
 
-    /// The first table of a storyboard as scenes. Scenes already in the project keep their review state; an ID that left the table stays,
-    /// marked ditched (an ID is never reused).
-    static func scenes(from md: String, keeping old: [ShowreelFile.Scene]) -> [ShowreelFile.Scene]? {
-        guard let table = MarkdownTable.parse(md).compactMap({ b -> MarkdownTable? in if case .table(let t) = b { return t }; return nil }).first else { return nil }
+    /// The first table of a storyboard read back into the library and the master montage. Scenes already in the project keep their review
+    /// state and their transitions; an ID that left the table stays, archived and ditched (an ID is never reused). The rows give the order;
+    /// a Time of "off" switches the scene off, "a-b s" gives its duration (and a start that differs from the order is kept as an override).
+    static func apply(storyboard md: String, to f: inout ShowreelFile) {
+        guard let table = MarkdownTable.parse(md).compactMap({ b -> MarkdownTable? in if case .table(let t) = b { return t }; return nil }).first else { return }
+        let old = f.scenes
         func col(_ keys: [String]) -> Int? { table.header.firstIndex { h in keys.contains { h.lowercased().contains($0) } } }
         let cid = table.sceneColumn ?? 0
         let ctime = col(["time", "duration"]), cimg = col(["image", "motion", "visual"]), cfeel = col(["feeling", "tension"])
         let chand = col(["handoff", "gag", "transition"]), ccuts = col(["in cuts", "cuts"]), cstatus = col(["status"]), cnote = col(["note"])
         let ctext = table.header.firstIndex { let h = $0.lowercased(); return h.contains("text") && !h.contains("texts") && h.hasPrefix("on-screen") } ?? col(["text"])
         let known: Set<Int> = Set([cid, ctime, cimg, cfeel, chand, ccuts, cstatus, cnote, ctext].compactMap { $0 })
-        var out: [ShowreelFile.Scene] = []
+        var scenes: [ShowreelFile.Scene] = [], items: [ShowreelFile.MontageItem] = []
+        let oldItems = f.storyboards.first?.items ?? []
+        var t = 0.0
         for r in table.rows {
             func cell(_ c: Int?) -> String { c.flatMap { $0 < r.count ? r[$0] : nil } ?? "" }
             let id = cell(cid).trimmingCharacters(in: .whitespaces)
             guard !id.isEmpty else { continue }
             var s = old.first { $0.id == id } ?? ShowreelFile.Scene(id: id)
-            let t = number(cell(ctime))
-            if t.count >= 2 { s.start = t[0]; s.end = t[1] }
+            let time = cell(ctime).lowercased()
+            var off = time.contains("off")
+            let n = number(time)
+            var start: Double?
+            if !off, n.count >= 2, n[1] > n[0] { s.duration = n[1] - n[0]; start = n[0] }
+            else if !off, n.count == 1, n[0] > 0 { s.duration = n[0] }
             s.text = cell(ctext); s.visual = cell(cimg); s.feeling = cell(cfeel); s.handoff = cell(chand); s.inCuts = cell(ccuts)
-            if cstatus != nil { let st = cell(cstatus).lowercased(); if ["open", "ok", "modify", "ditched"].contains(st) { s.status = st } }
+            if cstatus != nil {
+                let st = cell(cstatus).lowercased()
+                if st == "archived" { s.archived = true }
+                else if ShowreelFile.Scene.statuses.contains(st) { s.status = st; s.archived = st == "ditched" }
+            }
             if cnote != nil { s.note = cell(cnote) }
+            if s.archived { off = true }
             var texts: [String: String] = [:], extra: [String: String] = [:]
             for (i, h) in table.header.enumerated() where !known.contains(i) {
                 let v = cell(i)
@@ -268,9 +285,21 @@ enum MarkdownRead {
             }
             s.texts = texts.isEmpty ? s.texts.filter { _ in false } : texts
             s.extra = extra
-            out.append(s)
+            var item = oldItems.first { $0.scene == id } ?? ShowreelFile.MontageItem(scene: id)
+            item.enabled = !off
+            item.start = nil; item.end = nil
+            if !off {
+                if let a = start, abs(a - t) > 0.001 { item.start = a; t = a }
+                t += s.duration ?? 0
+            }
+            scenes.append(s); items.append(item)
         }
-        for o in old where !out.contains(where: { $0.id == o.id }) { var d = o; d.status = "ditched"; out.append(d) }
-        return out
+        for o in old where !scenes.contains(where: { $0.id == o.id }) {
+            var d = o; d.status = "ditched"; d.archived = true; scenes.append(d)
+            if var it = oldItems.first(where: { $0.scene == o.id }) { it.enabled = false; items.append(it) }
+        }
+        f.scenes = scenes
+        if f.storyboards.isEmpty { f.storyboards = [ShowreelFile.Montage(format: f.decisions.formats?.first)] }
+        f.storyboards[0].items = items
     }
 }

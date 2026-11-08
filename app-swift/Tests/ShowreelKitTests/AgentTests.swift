@@ -240,11 +240,11 @@ final class OperationToolTests: XCTestCase {
     }
 
     func testOpenBlock() async throws {
-        let a = await run("open_block", ["block": "resources"])
-        XCTAssertEqual(ui.openedBlocks, ["resources"]); XCTAssertTrue(a.hasPrefix("opened"))
+        let a = await run("open_block", ["block": "library"])
+        XCTAssertEqual(ui.openedBlocks, ["library"]); XCTAssertTrue(a.hasPrefix("opened"))
         let b = await run("open_block", ["block": "deliver"])
         XCTAssertTrue(b.contains("not built yet") && b.contains("phase D"), b)
-        XCTAssertEqual(ui.openedBlocks, ["resources"], "an unbuilt block is not opened")
+        XCTAssertEqual(ui.openedBlocks, ["library"], "an unbuilt zone is not opened")
         let c = await run("open_block", ["block": "nope"])
         XCTAssertTrue(c.hasPrefix("unknown block"))
     }
@@ -257,7 +257,7 @@ final class OperationToolTests: XCTestCase {
         let state = await run("get_state", [:])
         let o = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(state.utf8)) as? [String: Any])
         let blocks = try XCTUnwrap(o["blocks"] as? [[String: String]])
-        XCTAssertEqual(blocks.first { $0["id"] == "project" }?["status"], "inProgress")
+        XCTAssertEqual(blocks.first { $0["id"] == "inspector" }?["status"], "inProgress")
         XCTAssertEqual(blocks.first { $0["id"] == "deliver" }?["status"], "soon")
         XCTAssertEqual((o["assets"] as? [[String: String]])?.first?["id"], "audio-01")
         XCTAssertEqual(o["foregroundBlock"] as? String, "project")
@@ -419,9 +419,11 @@ final class DecisionToolTests: XCTestCase {
         XCTAssertTrue(ui.cards.isEmpty)
     }
 
-    func testOpenBlockLookNowOpens() async throws {
-        let r = await run("open_block", ["block": "look"])
+    func testOpenBlockInspectorOpens() async throws {
+        let r = await run("open_block", ["block": "inspector"])
         XCTAssertTrue(r.hasPrefix("opened"), r)
-        XCTAssertEqual(ui.openedBlocks, ["look"])
+        XCTAssertEqual(ui.openedBlocks, ["inspector"])
+        let old = await run("open_block", ["block": "look"])
+        XCTAssertTrue(old.hasPrefix("unknown block"), "the sidebar's blocks are gone: \(old)")
     }
 }

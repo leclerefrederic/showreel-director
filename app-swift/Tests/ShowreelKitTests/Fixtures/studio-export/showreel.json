@@ -54,7 +54,8 @@
   ],
   "scenes": [
     {
-      "end": 4.0,
+      "archived": false,
+      "duration": 4.0,
       "extra": {
         "Sound": "soft pad"
       },
@@ -63,7 +64,6 @@
       "id": "S01",
       "inCuts": "15s, 45s",
       "note": "",
-      "start": 0.0,
       "status": "open",
       "text": "Notes, finally calm",
       "texts": {
@@ -72,7 +72,8 @@
       "visual": "Logo rises from ink"
     },
     {
-      "end": 9.0,
+      "archived": false,
+      "duration": 5.0,
       "extra": {
         "Sound": "tick"
       },
@@ -81,7 +82,6 @@
       "id": "S02",
       "inCuts": "45s",
       "note": "",
-      "start": 4.0,
       "status": "open",
       "text": "Capture anything",
       "texts": {
@@ -90,14 +90,14 @@
       "visual": "Cards fly in"
     },
     {
-      "end": 12.0,
+      "archived": true,
+      "duration": 3.0,
       "extra": {},
       "feeling": "",
       "handoff": "",
       "id": "S03",
       "inCuts": "",
       "note": "",
-      "start": 9.0,
       "status": "ditched",
       "text": "Ditched: old claim",
       "texts": {},
@@ -105,6 +105,35 @@
     }
   ],
   "schema": 1,
-  "step": "storyboard"
+  "step": "storyboard",
+  "storyboards": [
+    {
+      "id": "main",
+      "items": [
+        {
+          "enabled": true,
+          "scene": "S01",
+          "transition": {
+            "type": "cut"
+          }
+        },
+        {
+          "enabled": true,
+          "scene": "S02",
+          "transition": {
+            "type": "cut"
+          }
+        },
+        {
+          "enabled": false,
+          "scene": "S03",
+          "transition": {
+            "type": "cut"
+          }
+        }
+      ],
+      "name": "Master"
+    }
+  ]
 }
 

@@ -29,7 +29,7 @@ final class StudioFileTests: XCTestCase {
         XCTAssertEqual(f.origin?.files, ["brief.md", "style-sheet.md", "storyboard.md"])
         XCTAssertEqual(f.scenes.map { $0.id }, ["S01", "S02", "S03"], "an ordered array")
         let s1 = f.scenes[0]
-        XCTAssertEqual(s1.start, 0); XCTAssertEqual(s1.end, 4)
+        XCTAssertEqual(s1.duration, 4)
         XCTAssertEqual(s1.text, "Notes, finally calm")
         XCTAssertEqual(s1.texts, ["Text FR": "Des notes enfin sereines"])
         XCTAssertEqual(s1.extra, ["Sound": "soft pad"])

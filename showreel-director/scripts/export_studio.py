@@ -47,8 +47,11 @@ def languages(text):
     return out
 
 def storyboard(text):
+    """The scene library and the master montage from the first table of storyboard.md: (scenes, items). A row is a scene of the library with its
+    own duration (end minus start); the montage lists the rows in order. A start that differs from where the order puts the scene is kept as
+    the item's manual start. A DITCH row is archived and switched off; a Time of "off" switches the scene off."""
     head, rows = parse_table(text)
-    if not rows: return []
+    if not rows: return [], []
     cid = find(head, "id", "#", "scene", "sequence", "plan") or head[0]
     ctime = find(head, "time", "temps", "duree", "duration") or next((h for h in head if sum(1 for r in rows if seconds(r.get(h, "")) is not None) >= max(1, len(rows) // 2)), None)
     ctext = find(head, "text", "texte", "texto", "titre", "line"); cimg = find(head, "image", "motion", "visuel")
@@ -56,19 +59,29 @@ def storyboard(text):
     ccut = find(head, "in cuts", "cuts")
     xtext = [h for h in head if h != ctext and any(k in norm(h) for k in ("text", "texte", "texto"))]
     used = {cid, ctime, ctext, cimg, cfeel, cgag, ccut, *xtext}
-    out = []
+    out, items, t0 = [], [], 0.0
     for k, r in enumerate(rows):
         sid = clean(r.get(cid, "")).strip() or str(k + 1)
         sid = sid if re.match(r"^S\d+", sid) else "S%02d" % (int(sid) if sid.isdigit() else k + 1)
-        t = re.findall(r"\d+(?:[.,]\d+)?", r.get(ctime, "")) if ctime else []
-        sc = {"id": sid, "start": float(t[0].replace(",", ".")) if len(t) > 1 else None, "end": float(t[1].replace(",", ".")) if len(t) > 1 else None,
+        tcell = r.get(ctime, "") if ctime else ""
+        t = [float(x.replace(",", ".")) for x in re.findall(r"\d+(?:[.,]\d+)?", tcell)]
+        off = bool(re.search(r"\boff\b", tcell, re.I))
+        ditched = bool(re.search(r"ditch", " ".join(r.values()), re.I))
+        dur = round(t[1] - t[0], 3) if len(t) > 1 and t[1] > t[0] else (t[0] if len(t) == 1 and t[0] > 0 else None)
+        sc = {"id": sid, "duration": dur, "archived": ditched,
               "text": clean(r.get(ctext, "")) if ctext else "", "visual": clean(r.get(cimg, "")) if cimg else "",
               "feeling": clean(r.get(cfeel, "")) if cfeel else "", "handoff": clean(r.get(cgag, "")) if cgag else "",
               "inCuts": clean(r.get(ccut, "")) if ccut else "", "texts": {h: clean(r.get(h, "")) for h in xtext if r.get(h, "").strip()},
               "extra": {h: clean(r.get(h, "")) for h in head if h not in used and r.get(h, "").strip()},
-              "status": "ditched" if re.search(r"ditch", " ".join(r.values()), re.I) else "open", "note": ""}
+              "status": "ditched" if ditched else "open", "note": ""}
+        if sc["duration"] is None: del sc["duration"]
         out.append(sc)
-    return out
+        item = {"scene": sid, "enabled": not (ditched or off), "transition": {"type": "cut"}}
+        if item["enabled"]:
+            if len(t) > 1 and abs(t[0] - t0) > 0.001: item["start"] = t[0]; t0 = t[0]
+            t0 += dur or 0
+        items.append(item)
+    return out, items
 
 def deep(a, b):
     for k, v in b.items(): a[k] = deep(a[k], v) if isinstance(v, dict) and isinstance(a.get(k), dict) else v
@@ -100,10 +113,11 @@ def main():
             bj = json.load(open(bp, encoding="utf-8")); bpm = bj.get("bpm") or bj.get("tempo")
             if bpm: d["track"] = {"bpm": float(bpm)}
         except Exception: pass
-    scenes = storyboard(sb)
+    scenes, items = storyboard(sb)
     step = "storyboard" if scenes else "style" if style else "interview"
     doc = {"schema": 1, "name": os.path.basename(os.path.abspath(root)), "created": datetime.date.today().isoformat(), "step": step,
            "reelLanguages": languages(brief + "\n" + style), "parameters": {}, "decisions": d, "gates": {}, "scenes": scenes,
+           "storyboards": [{"id": "main", "name": "Master", "items": items}],
            "origin": {"tool": "skill", "exportedAt": datetime.date.today().isoformat(), "files": [n for n, s in (("brief.md", brief), ("style-sheet.md", style), ("storyboard.md", sb)) if s]}}
     cl = grab(r"conversation\s+language\s*[:=]\s*([A-Za-z]+)", brief)
     if cl: doc["conversationLanguage"] = LANGS.get(cl.lower(), cl.lower() if len(cl) == 2 else None)

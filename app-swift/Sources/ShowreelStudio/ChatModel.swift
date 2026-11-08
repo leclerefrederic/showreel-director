@@ -246,7 +246,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
             self.previewURL = URL(string: url)
             self.previewTitle = title
             self.previewNonce += 1
-            self.project.selected = .preview
+            self.project.showPreview()
         }
     }
 
@@ -255,8 +255,8 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     func openBlock(_ id: String) async {
         await onMain {
-            // in Beginner mode there are no blocks to switch to: the wizard goes to the first undecided step of that block
-            if self.project.mode == StudioSettings.beginner { self.project.jumpToFirstUndecided(in: id) } else { self.project.selectBlock(id) }
+            // in the wizard there are no zones to switch to: it goes to the first undecided step of that part; in the workspace the zone is brought forward
+            self.project.openZone(id)
         }
     }
 

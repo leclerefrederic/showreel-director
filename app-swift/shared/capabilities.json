@@ -19,22 +19,22 @@
   {
    "need": "Fill in the project questions and decide on assets on screens",
    "provided": true,
-   "via": "the Project block (audience, message, tone, languages, formats, duration, constraints) and the Resources block (files, statuses, notes, scenes) are screens in the sidebar (Expert mode), or one question per screen in a wizard (Beginner mode); update_parameter and update_asset change them as plain cards the user accepts or refuses"
+   "via": "the Inspector (project parameters and global look) and the Resources tab of the Library, in the editing workspace; or one question per screen in a wizard (Beginner mode) that ends in the workspace; update_parameter and update_asset change them as plain cards the user accepts or refuses"
   },
   {
    "need": "Pick the look on screens",
    "provided": true,
-   "via": "the Look block: a look board of three complete looks, a palette editor with a contrast check, a font picker with real samples and licence warnings, background and effects pickers with thumbnails drawn by the same engine as the reel; update_decision changes them as plain cards the user accepts or refuses"
+   "via": "the Look tab of the Library (looks, palettes, fonts, backgrounds, effects, scene transitions, each drawn in the Viewer by the same engine as the reel, with licence warnings for fonts) and the global look in the Inspector (palette editor with a contrast check); update_decision changes them as plain cards the user accepts or refuses"
   },
   {
    "need": "Write the storyboard, review each scene and give the go on screens",
    "provided": true,
-   "via": "the Storyboard block (a list of scenes: add, edit, reorder, ditch, with stable IDs, linked resources and native reading-budget and feasibility checks) and the Scene editor (OK, MODIFY or DITCH with a note, then a Go button that only the user can press); add_scene and update_scene propose changes as plain cards the user accepts or refuses"
+   "via": "the Scenes tab of the Library (the scene library: create, edit, duplicate, archive; each scene has its own duration, a stable ID, linked resources and a review state), the Storyboard strip at the bottom (the order of the scenes, each switched on or off, drag to reorder, native reading-budget and feasibility checks) and the Inspector (review: OK, MODIFY or DITCH with a note; the Go button that only the user can press); add_scene, update_scene, enable_scene and move_scene propose changes as plain cards the user accepts or refuses"
   },
   {
    "need": "Build the reel, test it and play it",
    "provided": true,
-   "via": "the Build and preview block: after the Go, you write the vN folder (project.json and main.js); the app runs build.py, harness.js and smoke_player.js, shows each result in green or red, and plays vN/dist/index.html in the window; outputs stay in the project folder"
+   "via": "the Build and preview view of the workspace: after the Go, you write the vN folder (project.json and main.js); the app runs build.py, harness.js and smoke_player.js, shows each result in green or red, and plays vN/dist/index.html in the window; outputs stay in the project folder"
   },
   {
    "need": "Let the user read and edit the project files next to the assistant",
