@@ -15,3 +15,9 @@
 **Licence notes.** Rights stated in the brief or by the user (a track "our own, rights fine") are recorded in the manifest `licence_note` column (edit `assets/MANIFEST.csv`) so the audit and release gate can quote them.
 
 **Storyboard archive.** Before rewriting `storyboard.md`, copy it to `archive/storyboard-v<n>.md`; never overwrite a validated version.
+
+**Missing style sheet.** If the user calls the storyboard approved but `style-sheet.md` does not exist or was never validated, say so in one line and validate it on a decision sheet before the scene review; the scene review never runs on an unvalidated look.
+
+**Scene IDs created by the tool.** When a storyboard supplied by the user numbers its scenes 1, 2, 3, the cards turn them into S01, S02, S03: tell the user once, and use the IDs from then on (they are never renumbered).
+
+**Infeasible brief and round 0.** When the brief cannot work as stated, the first reply names the problem with numbers and keeps round 0 alone at its end; the two or three workable options go in the question block of the reply that follows round 0's answer, not in the same block.
