@@ -1,0 +1,26 @@
+{
+  "name": "showreel-studio",
+  "version": "0.1.0",
+  "description": "Showreel Studio: desktop app around the showreel-director skill",
+  "main": "src-main/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node tests/agent.test.js",
+    "dist": "node tools/prepare-resources.js && electron-builder --mac dmg --arm64"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.60.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "local.showreel.studio",
+    "productName": "Showreel Studio",
+    "files": ["src-main/**", "src-ui/**", "package.json"],
+    "extraResources": [{ "from": "resources/skill", "to": "skill" }],
+    "mac": { "identity": null, "category": "public.app-category.video" }
+  }
+}

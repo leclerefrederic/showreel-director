@@ -215,6 +215,14 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
         r = run(["node", os.path.join(SK, "scripts", "harness.js"), demo, "--step", "0.5"])
         line = next((l for l in r.stdout.splitlines() if l.startswith("issues:")), "issues: ?")
         ok("demo harness " + line) if line == "issues: 0" else bad("demo harness " + line)
+    # desktop app (agent loop with a fake client, syntax of the Electron files)
+    appdir = os.path.join(ROOT, "app")
+    if os.path.isdir(appdir):
+        r = run(["node", os.path.join(appdir, "tests", "agent.test.js")])
+        ok("app agent loop test") if r.returncode == 0 else bad("app agent loop test: " + (r.stderr or r.stdout)[-300:])
+        for f in ("src-main/main.js", "src-main/preload.js", "src-ui/renderer.js"):
+            r = run(["node", "--check", os.path.join(appdir, f)])
+            if r.returncode: bad("app syntax " + f)
     print("\n" + ("all checks passed" if not fails else f"{len(fails)} check(s) failed"))
     sys.exit(1 if fails else 0)
 

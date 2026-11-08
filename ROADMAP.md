@@ -18,6 +18,7 @@
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
 
 ## Next
+- Showreel Studio (`app/`, macOS, experimental): first slice written (agent loop, tools, chat, preview pane, question cards); next: test in a real Electron window, picks sent straight to the chat, screenshot tool for the model, bundled ffmpeg and node, progress and cost display.
 - Bring Your Own Licensed Material, remaining: ask in the interview which use a supplied licence covers (web or app embedding, video only, unsure); deliver the MP4 only for video-only or unclear licences and keep the HTML private; the same question for supplied images, music and footage; optional glyph subsetting. Done: embedding flag (`fsType`) read in the audit and organiser, `--licence` note option.
 - Design system ingestion (a Claude Design export): needs a real export to build against.
 - Automatic check for text overflowing a card or panel (today only a visual check of stills catches it).

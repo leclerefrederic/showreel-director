@@ -1,0 +1,17 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Showreel Studio</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; frame-src file: data:; img-src 'self' data: file:">
+<style>
+*{box-sizing:border-box}body{margin:0;height:100vh;display:flex;flex-direction:column;background:#14141a;color:#eee;font:14px system-ui,sans-serif}
+#bar{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid #ffffff22}#bar b{margin-right:auto}
+button,select,input,textarea{background:#ffffff14;color:#eee;border:1px solid #ffffff33;border-radius:6px;padding:6px 10px;font:inherit}button{cursor:pointer}button:hover{background:#ffffff26}
+main{flex:1;display:flex;min-height:0}#chat{width:42%;min-width:340px;display:flex;flex-direction:column;border-right:1px solid #ffffff22}
+#log{flex:1;overflow:auto;padding:12px}.m{margin:0 0 12px;white-space:pre-wrap;line-height:1.45}.u{color:#9cf}.t{color:#888;font-size:12px}
+.card{border:1px solid #ffffff33;border-radius:10px;padding:10px;margin:0 0 12px;background:#ffffff0d}.card h4{margin:0 0 6px}.opt{display:block;width:100%;text-align:left;margin:4px 0}.opt.on{background:#6c8cff;color:#111}.opt small{display:block;opacity:.75}
+#in{display:flex;gap:6px;padding:10px;border-top:1px solid #ffffff22}#in textarea{flex:1;height:54px;resize:none}
+#pv{flex:1;display:flex;flex-direction:column;min-width:0}#pvbar{display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid #ffffff22}#pvbar span{margin-right:auto;color:#aaa}
+iframe{flex:1;border:0;background:#fff}#empty{flex:1;display:grid;place-items:center;color:#777}
+</style></head><body>
+<div id="bar"><b>Showreel Studio</b><button id="proj">Project folder…</button><span id="pn" class="t"></span><button id="key">API key…</button><button id="new">New conversation</button></div>
+<main><section id="chat"><div id="log"></div><div id="in"><textarea id="txt" placeholder="Describe the reel you want…"></textarea><button id="go">Send</button><button id="stop">Stop</button></div></section>
+<section id="pv"><div id="pvbar"><span id="pt">Preview</span><button id="pick">Send my picks to the chat</button><button id="rev">Show in Finder</button></div><div id="empty">Pages (look board, pickers, reel) open here.</div></section></main>
+<script src="renderer.js"></script></body></html>

@@ -4,3 +4,5 @@ __pycache__/
 node_modules/
 qa/
 *.skill.new
+app/resources/
+app/dist/
