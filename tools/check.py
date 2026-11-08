@@ -89,7 +89,9 @@ def main():
     rg = run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(bp, "v1")])
     # a project with a track must carry it (regression guard): tiny silent mp3 made with ffmpeg when available
     trk_ok = True
-    if _sh.which("ffmpeg"):
+    try: import numpy  # the track test needs numpy and ffmpeg; without numpy it is skipped (CI installs both)
+    except ImportError: numpy = None
+    if _sh.which("ffmpeg") and numpy:
         tp2 = os.path.join(td, "tp"); os.makedirs(os.path.join(tp2, "v1")); os.makedirs(os.path.join(tp2, "assets", "prepared")); os.makedirs(os.path.join(tp2, "analysis"))
         mp3 = os.path.join(tp2, "assets", "prepared", "audio-01-test.mp3")
         run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=110:duration=6", mp3])
@@ -167,7 +169,7 @@ def main():
     else:
         z = zipfile.ZipFile(pk); inzip = {n: z.read(n) for n in z.namelist()}
         disk = {os.path.relpath(f, ROOT): open(f, "rb").read() for f in package.skill_files()}
-        if set(inzip) != set(disk): bad(".skill file list differs from the folder: " + ", ".join(sorted(set(inzip) ^ set(disk))[:6]))
+        if set(inzip) != set(disk): bad(".skill file list differs from the folder. Only in the .skill (not in the folder): " + (", ".join(sorted(set(inzip) - set(disk))[:6]) or "none") + ". Only in the folder (not in the .skill): " + (", ".join(sorted(set(disk) - set(inzip))[:6]) or "none"))
         elif any(hashlib.md5(inzip[n]).digest() != hashlib.md5(disk[n]).digest() for n in disk): bad(".skill content differs from the folder (run: python3 tools/package.py)")
         else: ok(f".skill identical to the folder ({len(disk)} files)")
     # demo harness

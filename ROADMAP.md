@@ -16,6 +16,7 @@
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
 
 ## Next
+- Bring Your Own Licensed Material: supplied fonts, images, music and footage under a commercial licence. Read the font embedding flag (`fsType`) in the audit and the organiser; ask which use the licence covers (web or app embedding, video only, unsure) and record it in the manifest licence note; for video-only or unclear licences deliver the MP4 only and keep the HTML private, listed in the release gate; optional glyph subsetting. The same licence question for supplied images, music and footage.
 - Design system ingestion (a Claude Design export): needs a real export to build against.
 - Automatic check for text overflowing a card or panel (today only a visual check of stills catches it).
 - Licence note option in the organiser (`--licence`), instead of editing the manifest by hand.
