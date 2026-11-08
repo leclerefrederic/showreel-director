@@ -10,6 +10,7 @@
 - Process hardening: gates table, decision sheets, look test, notes pad, waiver and existing-project routes, untrusted-content rule.
 - Asset layout and naming convention, manifest, organiser and build guard (`references/assets.md`).
 - Cut-downs with their own build, audio analysis overrides.
+- Look board of design packages (`scripts/build_look_board.py`).
 - Guided effects lab (moods first, then their effects) and font picker over curated free fonts (`scripts/build_font_picker.py`, `scripts/fetch_font.py`).
 - `SKILL.md` split into a 14 KB router plus per-step references.
 - Refactoring: shared helpers `scripts/_common.py` (Python page builders) and `scripts/_reel.js` (harness and exporter).

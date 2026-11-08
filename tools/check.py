@@ -117,6 +117,13 @@ def main():
     rl = run([sys.executable, os.path.join(SK, "scripts", "build_effects_lab.py"), "--out", os.path.join(td, "lab.html")])
     lab_ok = rl.returncode == 0 and "const GUIDED=true" in open(os.path.join(td, "lab.html"), encoding="utf-8").read() and '"effects": [' in open(os.path.join(td, "lab.html"), encoding="utf-8").read()
     ok("font picker builds from a well-formed curated list; effects lab opens on the moods") if flist_ok and rp.returncode == 0 and lab_ok else bad("font picker or guided lab self-test failed: " + (rp.stderr + rl.stderr)[-200:])
+    lj = os.path.join(td, "look.json")
+    pk = lambda i, bgc, f1, f2, pack: {"id": i, "name": "N" + i, "palette": {"bg": bgc, "fg": "#ffffff", "accent": "#ff0000"}, "background": "solid", "fonts": {"titles": f1, "text": f2}, "effects_pack": pack}
+    _json.dump({"message": "Hello", "packages": [pk("A", "#000000", "Poppins", "Inter", "Deadpan"), pk("B", "#112233", "Lora", "Inter", "Cinematic")]}, open(lj, "w"))
+    rb1 = run([sys.executable, os.path.join(SK, "scripts", "build_look_board.py"), lj, "--out", os.path.join(td, "lb.html")])
+    _json.dump({"message": "Hello", "packages": [pk("A", "#000000", "Poppins", "Inter", "Deadpan"), pk("B", "#000000", "Poppins", "Inter", "Nope")]}, open(lj, "w"))
+    rb2 = run([sys.executable, os.path.join(SK, "scripts", "build_look_board.py"), lj, "--out", os.path.join(td, "lb2.html")])
+    ok("look board: good spec builds, unknown effects mood refused") if rb1.returncode == 0 and rb2.returncode != 0 else bad("look board self-test failed: " + (rb1.stdout + rb1.stderr + rb2.stdout)[-200:])
     # organiser self-test on the eval assets: plan, apply, held files, check
     import shutil as _sh
     pj = os.path.join(td, "proj"); fx = os.path.join(SK, "evals", "ploma-full-interview", "files", "assets")
