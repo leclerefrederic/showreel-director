@@ -16,7 +16,6 @@
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
 
 ## Next
-- Bundle the font preview files: run `python3 tools/fetch_font_previews.py` on a machine with network, commit `showreel-director/engine/fonts-preview/*.woff2` (about 1 MB), repackage.
 - Design system ingestion (a Claude Design export): needs a real export to build against.
 - Automatic check for text overflowing a card or panel (today only a visual check of stills catches it).
 - Licence note option in the organiser (`--licence`), instead of editing the manifest by hand.
