@@ -199,7 +199,7 @@
   },
   {
     "name": "update_parameter",
-    "description": "Change one field of the Project block. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Keys: name, audience, message, tone, constraints (free text), conversationLanguage (code), reelLanguages and formats (comma-separated), duration (seconds). An empty value clears the field.",
+    "description": "Change one field of the Project block. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Keys: name, audience, message, tone, constraints (free text), conversationLanguage (code), reelLanguages and formats (comma-separated), duration (seconds), controlLevel (auto, guided or precise: how much the user wants to decide in each scene; it sets the defaults of new content items). An empty value clears the field.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -214,7 +214,8 @@
             "conversationLanguage",
             "reelLanguages",
             "formats",
-            "duration"
+            "duration",
+            "controlLevel"
           ]
         },
         "value": {
@@ -328,7 +329,7 @@
         },
         "text": {
           "type": "string",
-          "description": "the on-screen text"
+          "description": "the on-screen text; it becomes the first text item of the scene's content"
         },
         "visual": {
           "type": "string",
@@ -427,6 +428,16 @@
         "archived": {
           "type": "boolean",
           "description": "true archives the scene (the library's delete: it leaves the lists and is switched off in every montage, its ID stays reserved); false brings it back, still switched off"
+        },
+        "control_level": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "guided",
+            "precise",
+            ""
+          ],
+          "description": "the control level of this scene (empty: the project's)"
         }
       },
       "required": [
@@ -480,6 +491,180 @@
       },
       "required": [
         "id",
+        "after"
+      ]
+    }
+  },
+  {
+    "name": "set_scene_override",
+    "description": "Give one scene its own palette, font or background, or take that override away so the scene follows the project again (an empty value). Without an override a scene inherits the project's look: do not override unless the user asks for a scene to look different. The user sees a plain card (inherited or overridden, before and after) and accepts or refuses. After the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "the scene ID, from get_state"
+        },
+        "key": {
+          "type": "string",
+          "enum": [
+            "palette",
+            "titleFont",
+            "textFont",
+            "background",
+            "backgroundMood"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "description": "the value, in the same form as update_decision; empty reverts to the project's"
+        }
+      },
+      "required": [
+        "id",
+        "key"
+      ]
+    }
+  },
+  {
+    "name": "add_content_item",
+    "description": "Add an item to a scene's content: words, an image or logo, or a sound or voice. Content items are what a scene contains, in processing priority (first = treated first, wins conflicts, dropped last). Every attribute is fixed (the user chose it) or auto (left to the AI): leave colour and animation out unless the user chose them, and never fix what they did not decide. The user sees a plain card and accepts or refuses. After the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "the scene ID, from get_state"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "image",
+            "audio"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "description": "the words (text items)"
+        },
+        "resource": {
+          "type": "string",
+          "description": "an asset id from get_state (image or audio items): approved files only"
+        },
+        "color": {
+          "type": "string",
+          "description": "text items only: 'auto' (the AI decides), a palette role (background, text, accent, accent2) or a #RRGGBB hex. Anything but auto is FIXED: the build honours it strictly"
+        },
+        "animation": {
+          "type": "string",
+          "description": "'auto' (the AI decides) or the name of an effect of the library (for example Pop). A named effect is FIXED"
+        },
+        "params": {
+          "type": "string",
+          "description": "parameters of the named effect, key=value separated by commas"
+        },
+        "instruction": {
+          "type": "string",
+          "description": "a free instruction for the AI, in the user's words (leave empty unless the user gave one)"
+        },
+        "after": {
+          "type": "string",
+          "description": "priority: put it after this item ID, or 'start'; the end when omitted"
+        }
+      },
+      "required": [
+        "scene",
+        "type"
+      ]
+    }
+  },
+  {
+    "name": "update_content_item",
+    "description": "Change one content item of a scene (item ids come from get_state: scenes[*].content[*].id). An empty colour or 'auto' hands the attribute back to the AI. Content items are what a scene contains, in processing priority (first = treated first, wins conflicts, dropped last). Every attribute is fixed (the user chose it) or auto (left to the AI): leave colour and animation out unless the user chose them, and never fix what they did not decide. The user sees a plain card and accepts or refuses. After the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "the scene ID, from get_state"
+        },
+        "item": {
+          "type": "string",
+          "description": "the item ID, for example c2"
+        },
+        "text": {
+          "type": "string",
+          "description": "the words (text items)"
+        },
+        "resource": {
+          "type": "string",
+          "description": "an asset id from get_state (image or audio items): approved files only"
+        },
+        "color": {
+          "type": "string",
+          "description": "text items only: 'auto' (the AI decides), a palette role (background, text, accent, accent2) or a #RRGGBB hex. Anything but auto is FIXED: the build honours it strictly"
+        },
+        "animation": {
+          "type": "string",
+          "description": "'auto' (the AI decides) or the name of an effect of the library (for example Pop). A named effect is FIXED"
+        },
+        "params": {
+          "type": "string",
+          "description": "parameters of the named effect, key=value separated by commas"
+        },
+        "instruction": {
+          "type": "string",
+          "description": "a free instruction for the AI, in the user's words (leave empty unless the user gave one)"
+        }
+      },
+      "required": [
+        "scene",
+        "item"
+      ]
+    }
+  },
+  {
+    "name": "remove_content_item",
+    "description": "Remove one content item from a scene. Content items are what a scene contains, in processing priority (first = treated first, wins conflicts, dropped last). Every attribute is fixed (the user chose it) or auto (left to the AI): leave colour and animation out unless the user chose them, and never fix what they did not decide. The user sees a plain card and accepts or refuses. After the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "the scene ID, from get_state"
+        },
+        "item": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scene",
+        "item"
+      ]
+    }
+  },
+  {
+    "name": "move_content_item",
+    "description": "Change the priority of an item: put it after another item of the scene, or first with 'start'. Content items are what a scene contains, in processing priority (first = treated first, wins conflicts, dropped last). Every attribute is fixed (the user chose it) or auto (left to the AI): leave colour and animation out unless the user chose them, and never fix what they did not decide. The user sees a plain card and accepts or refuses. After the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "the scene ID, from get_state"
+        },
+        "item": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string",
+          "description": "the item ID it goes after, or 'start'"
+        }
+      },
+      "required": [
+        "scene",
+        "item",
         "after"
       ]
     }

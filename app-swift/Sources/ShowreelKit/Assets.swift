@@ -119,12 +119,17 @@ public enum Assets {
     /// First check that puts an embeddable file on hold, with the reason. Fonts are not checked here (see the note on the row).
     static func holdReason(_ url: URL, rel: String, type: String) -> String? {
         if matches(sensitiveName, (rel as NSString).lastPathComponent) { return "name suggests real or confidential data: decide first" }
-        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         let ext = url.pathExtension.lowercased()
         if ["png", "jpg", "jpeg", "webp"].contains(ext), let (w, h) = pixelSize(url) {
             if type == "logo" { if w < 200 { return "logo bitmap is small: use a vector version, or accept or exclude" } }
             else if ["shot", "photo", "img"].contains(type), w < 800 || h < 450 { return "low resolution (under 800x450): replace, accept or exclude" }
         }
+        return heavyReason(url, type: type)
+    }
+
+    /// The weight rules: a video over 5 MB or a sound over 8 MB.
+    static func heavyReason(_ url: URL, type: String) -> String? {
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         if type == "video", size > 5_000_000 { return "heavy video: the canvas cannot seek video exactly; stills or frames are better" }
         if ["audio", "voice", "sfx"].contains(type), size > 8_000_000 { return "heavy audio file: check the weight budget" }
         return nil

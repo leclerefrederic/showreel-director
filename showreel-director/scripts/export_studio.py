@@ -75,6 +75,8 @@ def storyboard(text):
               "extra": {h: clean(r.get(h, "")) for h in head if h not in used and r.get(h, "").strip()},
               "status": "ditched" if ditched else "open", "note": ""}
         if sc["duration"] is None: del sc["duration"]
+        # the words are the scene's first content item, every attribute left to the AI (auto)
+        sc["content"] = [{"id": "c1", "type": "text", "text": sc["text"], "color": {"mode": "auto"}, "animation": {"mode": "auto"}}] if sc["text"] else []
         out.append(sc)
         item = {"scene": sid, "enabled": not (ditched or off), "transition": {"type": "cut"}}
         if item["enabled"]:

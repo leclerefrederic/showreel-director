@@ -42,7 +42,7 @@ public enum Checks {
         case "resources": return assetRules(assets, store: store) + gates(area: area, f)
         case "look": return lookChecks(f, assets, store) + gates(area: area, f)
         case "storyboard": return storyboardRules(f, assets) + readingBudget(f) + feasibility(f) + gates(area: area, f)
-        case "scene": return reviewRules(f) + gates(area: area, f)
+        case "scene": return reviewRules(f) + contentRules(f, assets, store) + gates(area: area, f)
         case "build": return BuildRunner.readiness(store) + gates(area: area, f)
         default: return gates(area: area, f)
         }
@@ -178,7 +178,9 @@ public enum Checks {
                 out.append(CheckResult(id: "reading.\(s.id)", block: "storyboard", title: "\(s.id) reading time", level: .pending, detail: "Give \(s.id) a duration."))
                 continue
             }
-            let need = lines.map { secondsNeeded(text: $0, portrait: portrait) }.max() ?? 0
+            // further text items are read one after the other: their time is added to the longest version of the first
+            let extra = s.content.filter { $0.type == "text" }.dropFirst().reduce(0.0) { $0 + secondsNeeded(text: $1.text ?? "", portrait: portrait) }
+            let need = (lines.map { secondsNeeded(text: $0, portrait: portrait) }.max() ?? 0) + extra
             let level: CheckLevel = dur >= need ? .ok : dur >= need * 0.8 ? .tight : .fail
             let longest = lines.max { $0.count < $1.count } ?? ""
             let detail = String(format: "%.1f s on screen for %d characters (about %.1f s needed)", dur, longest.count, need)
@@ -285,6 +287,62 @@ public enum Checks {
         }
         let left = live.filter { $0.status != "ok" }
         out.insert(left.isEmpty ? r("all", "Every scene on is OK", .ok, "ready for the Go") : r("all", "Every scene on is OK", .pending, "\(left.count) of \(live.count) still to decide"), at: 0)
+        return out
+    }
+
+    // MARK: scene content: what the user fixed must hold (no AI)
+
+    /// For every scene that is on: a palette role exists, an effect exists in the library, a linked resource is usable and approved, and a fixed
+    /// value is not contradicted (text in the background's colour, a colour that cannot be read on the background, a transition used as an animation).
+    static func contentRules(_ f: ShowreelFile?, _ assets: [AssetRow], _ store: ProjectStore) -> [CheckResult] {
+        guard let f = f else { return [] }
+        let known = Set(Look.effects())
+        var out: [CheckResult] = []
+        for s in f.film where !s.content.isEmpty {
+            var issues: [(CheckLevel, String)] = []
+            let palette = f.effective(.palette, for: s).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            let bgHex = palette.first
+            for it in s.content {
+                let name = "\(it.id) (\(it.type))"
+                if it.type == "text", it.color.isFixed {
+                    var hex: String?
+                    if it.color.mode == "role" {
+                        if let r = it.color.role.flatMap(PaletteRole.parse) {
+                            if palette.isEmpty { issues.append((.pending, "\(name): colour \(r.title) needs a palette, none is chosen yet")) }
+                            else if r.index >= palette.count { issues.append((.fail, "\(name): the palette has no \(r.title.lowercased()) colour (it has \(palette.count))")) }
+                            else { hex = palette[r.index]; if r == .background { issues.append((.fail, "\(name): coloured as the background, it would not show")) } }
+                        } else { issues.append((.fail, "\(name): \"\(it.color.role ?? "")\" is not a palette role")) }
+                    } else if it.color.mode == "custom" {
+                        if let h = it.color.hex, EnginePalette.isHex(h) { hex = h } else { issues.append((.fail, "\(name): \"\(it.color.hex ?? "")\" is not a #RRGGBB colour")) }
+                    }
+                    if let h = hex, let b = bgHex, EnginePalette.isHex(b), it.color.role.flatMap(PaletteRole.parse) != .background {
+                        let r = Contrast.ratio(h, b)
+                        if r < 3 { issues.append((.fail, "\(name): \(h) on the background \(b) has a contrast of \(String(format: "%.1f", r)):1, under 3:1")) }
+                    }
+                } else if it.type != "text", it.color.isFixed { issues.append((.tight, "\(name): a fixed colour has no effect on an \(it.type)")) }
+                if it.animation.mode == "effect" {
+                    let e = it.animation.effect ?? ""
+                    if !known.contains(e) { issues.append((.fail, "\(name): the effect \"\(e)\" is not in the library")) }
+                    else if Look.effectCategory(e) == EngineCatalogue.transitionCategory { issues.append((.tight, "\(name): \(e) is a scene transition, it belongs between scenes")) }
+                    if it.type == "audio" { issues.append((.tight, "\(name): a sound has no animation")) }
+                }
+                if it.type != "text" {
+                    if let r = it.resource, let a = assets.first(where: { $0.id == r }) {
+                        if !ContentRules.accepts(it.type, asset: a.type) { issues.append((.fail, "\(name): \(r) is a \(a.type), not an \(it.type) file")) }
+                        switch Assets.nodeStatus(a, store: store) {
+                        case .approved: break
+                        case .toApprove: issues.append((.tight, "\(name): \(a.name) is \(a.status): the build only uses approved files"))
+                        case .excluded: issues.append((.fail, "\(name): \(a.name) is excluded"))
+                        case .missing: issues.append((.fail, "\(name): the file of \(a.name) is missing"))
+                        case .overBudget: issues.append((.tight, "\(name): \(a.name) is over the weight rules"))
+                        }
+                    } else { issues.append((.fail, "\(name): the resource \"\(it.resource ?? "")\" is not in the manifest")) }
+                }
+            }
+            let level = issues.map { $0.0 }.max() ?? .ok
+            out.append(CheckResult(id: "content.\(s.id)", block: "scene", title: "\(s.id) content", level: level,
+                                   detail: issues.isEmpty ? "\(s.content.count) item\(s.content.count == 1 ? "" : "s"): what you fixed holds" : issues.map { $0.1 }.joined(separator: "; ")))
+        }
         return out
     }
 

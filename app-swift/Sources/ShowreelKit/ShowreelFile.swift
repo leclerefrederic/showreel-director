@@ -61,6 +61,8 @@ public struct ShowreelFile: Codable, Equatable {
         public var message: String?
         public var tone: String?
         public var constraints: String?
+        /// The default control level of the project: auto, guided or precise (a scene may have its own).
+        public var controlLevel: String?
         public var unknown: [String: JSONValue] = [:]
         public init() {}
         public init(from decoder: Decoder) throws {
@@ -69,10 +71,11 @@ public struct ShowreelFile: Codable, Equatable {
             message = try c.decodeIfPresent(String.self, forKey: "message")
             tone = try c.decodeIfPresent(String.self, forKey: "tone")
             constraints = try c.decodeIfPresent(String.self, forKey: "constraints")
-            unknown = try Keep.unknown(decoder, known: ["audience", "message", "tone", "constraints"])
+            controlLevel = try c.decodeIfPresent(String.self, forKey: "controlLevel")
+            unknown = try Keep.unknown(decoder, known: ["audience", "message", "tone", "constraints", "controlLevel"])
         }
         public func encode(to encoder: Encoder) throws {
-            try Keep.encode(encoder, fields: [("audience", audience), ("message", message), ("tone", tone), ("constraints", constraints)], unknown: unknown)
+            try Keep.encode(encoder, fields: [("audience", audience), ("message", message), ("tone", tone), ("constraints", constraints), ("controlLevel", controlLevel)], unknown: unknown)
         }
     }
 
@@ -121,6 +124,12 @@ public struct ShowreelFile: Codable, Equatable {
         public var status: String               // open, ok, modify, ditched
         public var note: String
         public var archived: Bool
+        /// What this scene does differently from the project's look: background (id, mood), palette, fonts. Absent: everything is inherited.
+        public var overrides: Decisions?
+        /// What the scene contains, in processing priority (docs/studio-spec.md, "Scene content"). The first text item holds `text`.
+        public var content: [ContentItem]
+        /// auto, guided or precise; absent: the project's.
+        public var controlLevel: String?
         public var unknown: [String: JSONValue] = [:]
         /// Phase T kept start and end inside the scene. Read once to build the montage, never written back.
         var legacyStart: Double?
@@ -128,13 +137,14 @@ public struct ShowreelFile: Codable, Equatable {
 
         public init(id: String, duration: Double? = nil, text: String = "", texts: [String: String] = [:], visual: String = "",
                     feeling: String = "", handoff: String = "", inCuts: String = "", extra: [String: String] = [:],
-                    status: String = "open", note: String = "", archived: Bool = false) {
+                    status: String = "open", note: String = "", archived: Bool = false, content: [ContentItem] = [], controlLevel: String? = nil) {
+            self.content = content; self.controlLevel = controlLevel
             self.id = id; self.duration = duration; self.text = text; self.texts = texts; self.visual = visual
             self.feeling = feeling; self.handoff = handoff; self.inCuts = inCuts; self.extra = extra; self.status = status; self.note = note
             self.archived = archived
         }
         public static let statuses = ["open", "ok", "modify", "ditched"]
-        static let keys: Set<String> = ["id", "duration", "text", "texts", "visual", "feeling", "handoff", "inCuts", "extra", "status", "note", "archived", "start", "end"]
+        static let keys: Set<String> = ["id", "duration", "text", "texts", "visual", "feeling", "handoff", "inCuts", "extra", "status", "note", "archived", "overrides", "content", "controlLevel", "start", "end"]
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: DynamicKey.self)
             id = try c.decode(String.self, forKey: "id")
@@ -152,12 +162,17 @@ public struct ShowreelFile: Codable, Equatable {
             status = try c.decodeIfPresent(String.self, forKey: "status") ?? "open"
             note = try c.decodeIfPresent(String.self, forKey: "note") ?? ""
             archived = try c.decodeIfPresent(Bool.self, forKey: "archived") ?? (status == "ditched")
+            overrides = try c.decodeIfPresent(Decisions.self, forKey: "overrides")
+            controlLevel = try c.decodeIfPresent(String.self, forKey: "controlLevel")
+            // a file from before the content list: the scene's words become one text item, every attribute auto (nothing is lost)
+            if c.contains("content") { content = try c.decode([ContentItem].self, forKey: "content") }
+            else { content = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? [] : [ContentItem(id: "c1", type: "text", text: text)] }
             unknown = try Keep.unknown(decoder, known: Self.keys)
         }
         public func encode(to encoder: Encoder) throws {
             try Keep.encode(encoder, fields: [("id", id), ("duration", duration), ("text", text), ("texts", texts), ("visual", visual),
                                               ("feeling", feeling), ("handoff", handoff), ("inCuts", inCuts), ("extra", extra),
-                                              ("status", status), ("note", note), ("archived", archived)], unknown: unknown)
+                                              ("status", status), ("note", note), ("archived", archived), ("overrides", overrides), ("content", content), ("controlLevel", controlLevel)], unknown: unknown)
         }
     }
 

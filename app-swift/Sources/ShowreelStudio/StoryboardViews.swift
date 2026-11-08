@@ -7,20 +7,22 @@ extension ShowreelFile.Scene {
     var statusSymbol: String { switch status { case "ok": return "checkmark.circle.fill"; case "modify": return "pencil.circle.fill"; case "ditched": return "xmark.circle"; default: return "circle" } }
 }
 
-/// The form of one scene of the library. Typed here, recorded with Save as one typed operation (one card in the history, not one per keystroke).
+/// The form of one scene of the library, one tab at a time (all of it when `tab` is nil, as in the wizard). Typed here, recorded with Save as
+/// one typed operation (one card in the history, not one per keystroke). The drafts live in this view, so they stay when the tab changes.
 struct SceneForm: View {
     let id: String
+    var tab: SceneTab?
     @EnvironmentObject var project: ProjectModel
     @State private var duration = ""
     @State private var text = ""
     @State private var visual = ""
     @State private var feeling = ""
     @State private var handoff = ""
-    @State private var inCuts = ""
     @State private var linked: Set<String> = []
     @State private var loadedFor = ""
 
     private var scene: ShowreelFile.Scene? { project.showreel?.scenes.first { $0.id == id } }
+    private func shows(_ t: SceneTab) -> Bool { tab == nil || tab == t }
 
     private var edit: SceneEdit? {
         guard let s = scene else { return nil }
@@ -32,7 +34,6 @@ struct SceneForm: View {
         if visual != s.visual { e.visual = visual }
         if feeling != s.feeling { e.feeling = feeling }
         if handoff != s.handoff { e.handoff = handoff }
-        if inCuts != s.inCuts { e.inCuts = inCuts }
         if linked != current { e.assets = linked.sorted().joined(separator: ", ") }
         return e == SceneEdit() ? nil : e
     }
@@ -40,27 +41,35 @@ struct SceneForm: View {
     var body: some View {
         if let s = scene {
             VStack(alignment: .leading, spacing: 10) {
-                field("Duration (s)", $duration, width: 110)
-                area("On-screen text", $text, 3)
-                area("Image and motion", $visual, 2)
-                area("Feeling and tension", $feeling, 2)
-                area("Passage to the next scene", $handoff, 2)
-                field("In cuts (for example 15s, 45s)", $inCuts, width: nil)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Linked resources").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    let usable = project.assets.filter { $0.type != "doc" && $0.type != "data" && $0.type != "note" && $0.type != "misc" }
-                    if usable.isEmpty { Text("No resource yet: add files in the Resources tab.").font(.caption).foregroundStyle(.secondary) }
-                    ForEach(usable) { a in
-                        Toggle(isOn: Binding(get: { linked.contains(a.id) }, set: { on in if on { linked.insert(a.id) } else { linked.remove(a.id) } })) {
-                            HStack { Text(a.name).lineLimit(1); Text(a.status).font(.caption).foregroundStyle(a.status == "approved" ? Color.green : .orange) }
-                        }.toggleStyle(.checkbox)
+                if shows(.settings) {
+                    field("Duration (s)", $duration, width: 110)
+                    area("Feeling and tension", $feeling, 2)
+                    area("Passage to the next scene", $handoff, 2)
+                }
+                if shows(.content) {
+                    if tab == nil { area("On-screen text", $text, 3) }
+                    area(tab == nil ? "Image and motion" : "Scene note (image and motion)", $visual, 2)
+                }
+                if shows(.resources) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Linked resources").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        let usable = project.assets.filter { $0.type != "doc" && $0.type != "data" && $0.type != "note" && $0.type != "misc" }
+                        if usable.isEmpty { Text("No resource yet: add files in the Resources tab of the library.").font(.caption).foregroundStyle(.secondary) }
+                        ForEach(usable) { a in
+                            Toggle(isOn: Binding(get: { linked.contains(a.id) }, set: { on in if on { linked.insert(a.id) } else { linked.remove(a.id) } })) {
+                                HStack {
+                                    Text(a.name).lineLimit(1)
+                                    if let st = project.assetStatus[a.id] { Text(st.rawValue).font(.caption).foregroundStyle(st.color) }
+                                }
+                            }.toggleStyle(.checkbox)
+                        }
                     }
                 }
                 HStack {
                     Button("Save scene") { if let e = edit { project.perform(.scene(id: id, e)) } }.buttonStyle(.borderedProminent).disabled(edit == nil)
                     Button("Revert") { load(force: true) }.disabled(edit == nil)
                 }
-                if s.status == "ok" { Text("Changing the text or the duration sends this scene back to review.").font(.caption).foregroundStyle(.secondary) }
+                if s.status == "ok", shows(.settings) || shows(.content) { Text("Changing the text or the duration sends this scene back to review.").font(.caption).foregroundStyle(.secondary) }
             }
             .onAppear { load(force: false) }
             .onChange(of: project.showreel) { _ in load(force: false) }
@@ -88,7 +97,7 @@ struct SceneForm: View {
         guard let s = scene else { return }
         if !force, loadedFor == id, edit != nil { return }
         duration = s.duration.map { ProjectDocs.seconds($0) } ?? ""
-        text = s.text; visual = s.visual; feeling = s.feeling; handoff = s.handoff; inCuts = s.inCuts
+        text = s.text; visual = s.visual; feeling = s.feeling; handoff = s.handoff
         linked = Set(project.assets.filter { $0.sceneIDs.contains(id) }.map { $0.id })
         loadedFor = id
     }
@@ -222,14 +231,12 @@ struct SceneDecision: View {
     var body: some View {
         if let s = scene {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Review").font(.headline)
                 TextField("Note (what to change, or why)", text: $note, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
                 HStack {
                     Button("OK") { decide("ok") }.buttonStyle(.borderedProminent).tint(.green).disabled(s.status == "ok" && note == s.note)
                     Button("MODIFY") { decide("modify") }.tint(.orange).disabled(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     Button("DITCH", role: .destructive) { ditching = true }
                     Spacer()
-                    Label(s.status.capitalized, systemImage: s.statusSymbol).foregroundStyle(s.statusColor)
                 }
                 if note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { Text("MODIFY needs a note that says what to change.").font(.caption).foregroundStyle(.secondary) }
             }

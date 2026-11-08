@@ -29,7 +29,7 @@
   {
    "need": "Write the storyboard, review each scene and give the go on screens",
    "provided": true,
-   "via": "the Scenes tab of the Library (the scene library: create, edit, duplicate, archive; each scene has its own duration, a stable ID, linked resources and a review state), the Storyboard strip at the bottom (the order of the scenes, each switched on or off, drag to reorder, native reading-budget and feasibility checks) and the Inspector (review: OK, MODIFY or DITCH with a note; the Go button that only the user can press); add_scene, update_scene, enable_scene and move_scene propose changes as plain cards the user accepts or refuses"
+   "via": "the Scenes tab of the Library (the scene library: create, edit, duplicate, archive; each scene opens into a tree of what it contains (its content items by type, the effects they use, background and look), with a status per resource and the project's look inherited unless the scene overrides it), the Storyboard strip at the bottom (the order of the scenes, each switched on or off, drag to reorder, native reading-budget and feasibility checks) and the Inspector (a Content tab: the ordered list of what the scene contains, each item with its words or resource, colour, animation and instruction, each attribute fixed or auto, at a control level of auto, guided or precise; review: OK, MODIFY or DITCH with a note; the Go button that only the user can press); add_scene, update_scene, enable_scene, move_scene, set_scene_override and add_, update_, remove_ and move_content_item propose changes as plain cards the user accepts or refuses"
   },
   {
    "need": "Build the reel, test it and play it",

@@ -12,11 +12,13 @@ public struct SceneEdit: Equatable, Sendable {
     public var note: String?
     public var status: String?        // open, ok, modify, ditched (ditched archives the scene and switches it off everywhere)
     public var archived: Bool?        // true archives (the "delete" of the library); false brings it back, still switched off
+    public var controlLevel: String?  // auto, guided, precise; empty: the project's
     public var assets: String?        // ids of the linked assets, comma-separated (the manifest's scene column)
     public var after: String?         // position in the master montage: after this ID, "start" for first (a move never changes an ID)
 
     public init(duration: String? = nil, text: String? = nil, visual: String? = nil, feeling: String? = nil, handoff: String? = nil,
-                inCuts: String? = nil, note: String? = nil, status: String? = nil, archived: Bool? = nil, assets: String? = nil, after: String? = nil) {
+                inCuts: String? = nil, note: String? = nil, status: String? = nil, archived: Bool? = nil, assets: String? = nil, after: String? = nil, controlLevel: String? = nil) {
+        self.controlLevel = controlLevel
         self.duration = duration; self.text = text; self.visual = visual; self.feeling = feeling; self.handoff = handoff
         self.inCuts = inCuts; self.note = note; self.status = status; self.archived = archived; self.assets = assets; self.after = after
     }
@@ -62,6 +64,26 @@ extension ShowreelFile {
         if let t = target { guard let i = ids.firstIndex(of: t) else { return nil }; to = i } else { to = ids.count }
         guard to != from else { return nil }
         return to == 0 ? "start" : ids[to - 1]
+    }
+
+    /// The value a scene uses for a look decision: its own override, or the project's.
+    public func effective(_ key: DecisionKey, for scene: Scene) -> String {
+        var tmp = ShowreelFile(name: "")
+        tmp.decisions = scene.overrides ?? Decisions()
+        let own = key.current(tmp)
+        return own.isEmpty ? key.current(self) : own
+    }
+
+    /// Whether the scene has its own value for it.
+    public func isOverridden(_ key: DecisionKey, for scene: Scene) -> Bool {
+        var tmp = ShowreelFile(name: "")
+        tmp.decisions = scene.overrides ?? Decisions()
+        return !key.current(tmp).isEmpty
+    }
+
+    func describe(_ key: DecisionKey, for scene: Scene) -> String {
+        let v = effective(key, for: scene)
+        return isOverridden(key, for: scene) ? "overridden: \(v)" : "inherited: \(v.isEmpty ? "(none)" : v)"
     }
 
     /// The library in the order of the master montage (switched-off scenes included), then the scenes no montage places.
@@ -117,7 +139,11 @@ public enum SceneRules {
         }
         func secs(_ x: Double?) -> String { x.map { ProjectDocs.seconds($0) } ?? "" }
         if let v = e.duration { let t = try time(v, "duration"); if t != s.duration { ch.append(Change("Duration", shown(secs(s.duration)), shown(secs(t)))); s.duration = t } }
-        set("On-screen text", e.text, s.text) { s.text = $0 }
+        set("On-screen text", e.text, s.text) { s.setMasterText($0) }
+        if let v = e.controlLevel?.trimmingCharacters(in: .whitespaces).lowercased() {
+            guard v.isEmpty || ControlLevel(rawValue: v) != nil else { throw AgentError.msg("the control level is auto, guided or precise (empty: the project's)") }
+            if (v.isEmpty ? nil : v) != s.controlLevel { ch.append(Change("Control level", s.controlLevel ?? "(project's)", v.isEmpty ? "(project's)" : v)); s.controlLevel = v.isEmpty ? nil : v }
+        }
         set("Image and motion", e.visual, s.visual) { s.visual = $0 }
         set("Feeling and tension", e.feeling, s.feeling) { s.feeling = $0 }
         set("Handoff", e.handoff, s.handoff) { s.handoff = $0 }
@@ -137,7 +163,7 @@ public enum SceneRules {
     static func signature(_ f: ShowreelFile) -> [String] {
         f.timeline().map { t in
             let s = t.scene
-            return [s.id, s.text, s.texts.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "|"), s.visual, s.feeling, s.handoff, s.inCuts,
+            return [s.id, s.text, "\(String(describing: s.overrides))", "\(s.content)", s.texts.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "|"), s.visual, s.feeling, s.handoff, s.inCuts,
                     "\(t.start ?? -1)", "\(t.end ?? -1)", t.item.transition.type, "\(t.item.transition.duration ?? -1)"].joined(separator: "\u{1}")
         }
     }
@@ -268,6 +294,28 @@ extension ProjectStore {
         let r = try SceneRules.place(id, after: after, in: &g.storyboards[k])
         guard r.from != r.to else { throw AgentError.msg("no change: \(id) already is there") }
         return finish(title: "Move \(id)", changes: [Change("Position of \(id)", "\((r.from ?? 0) + 1)", "\(r.to + 1)")], from: f, to: g)
+    }
+
+    /// Sets or removes the scene's own background and look. An empty value takes the override away: the scene follows the project again.
+    func planSceneLook(_ id: String, _ changes: [DecisionChange]) throws -> (card: OperationCard, run: () throws -> Void) {
+        guard let f = loadShowreel() else { throw AgentError.msg("there is no readable showreel.json: create the project first") }
+        guard let i = f.scenes.firstIndex(where: { $0.id == id }) else { throw AgentError.msg("unknown scene \(id)") }
+        guard !changes.isEmpty else { throw AgentError.msg("nothing to change") }
+        var g = f
+        var tmp = ShowreelFile(name: "")
+        tmp.decisions = g.scenes[i].overrides ?? ShowreelFile.Decisions()
+        var lines: [Change] = []
+        for c in changes {
+            guard DecisionKey.sceneKeys.contains(c.key) else { throw AgentError.msg("a scene can override the palette, the fonts and the background, not \(c.key.title.lowercased())") }
+            let before = g.describe(c.key, for: g.scenes[i])
+            try c.key.set(c.value, in: &tmp)
+            g.scenes[i].overrides = tmp.decisions == ShowreelFile.Decisions() ? nil : tmp.decisions
+            let after = g.describe(c.key, for: g.scenes[i])
+            if before != after { lines.append(Change("\(id) \(c.key.title.lowercased())", before, after)) }
+        }
+        guard !lines.isEmpty else { throw AgentError.msg("no change for \(id)") }
+        let reverts = changes.allSatisfy { $0.value.trimmingCharacters(in: .whitespaces).isEmpty }
+        return finish(title: reverts ? "Revert \(id) to the project look" : "Override the look of \(id)", changes: lines, from: f, to: g)
     }
 
     /// Why the Go cannot be given yet, or nil when it can.

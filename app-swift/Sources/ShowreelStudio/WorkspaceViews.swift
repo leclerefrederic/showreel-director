@@ -213,10 +213,15 @@ struct ScenesLibrary: View {
                 ScrollView {
                     LazyVStack(spacing: 2) {
                         ForEach(list) { s in
-                            HStack(spacing: 4) {
-                                Toggle("", isOn: Binding(get: { onIDs.contains(s.id) }, set: { project.setEnabled(s.id, $0) }))
-                                    .toggleStyle(.checkbox).labelsHidden().help("In the film (the storyboard)")
-                                LibraryRow(selected: project.selection == .scene(s.id), action: { project.select(.scene(s.id)) }) { SceneRowView(scene: s, on: onIDs.contains(s.id)) }
+                            VStack(alignment: .leading, spacing: 0) {
+                                HStack(spacing: 4) {
+                                    Button { toggle(s.id) } label: { Image(systemName: project.expanded.contains(s.id) ? "chevron.down" : "chevron.right").frame(width: 12) }
+                                        .buttonStyle(.borderless).help("Show what the scene is made of")
+                                    Toggle("", isOn: Binding(get: { onIDs.contains(s.id) }, set: { project.setEnabled(s.id, $0) }))
+                                        .toggleStyle(.checkbox).labelsHidden().help("In the film (the storyboard)")
+                                    LibraryRow(selected: project.selection == .scene(s.id), action: { project.select(.scene(s.id)) }) { SceneRowView(scene: s, on: onIDs.contains(s.id)) }
+                                }
+                                if project.expanded.contains(s.id) { SceneTreeView(scene: s.id).padding(.leading, 34).padding(.bottom, 4) }
                             }
                             .contextMenu {
                                 Button("Duplicate") { project.addScene(copying: s.id) }
@@ -243,6 +248,10 @@ struct ScenesLibrary: View {
                 }
             }
         }
+    }
+
+    private func toggle(_ id: String) {
+        if project.expanded.contains(id) { project.expanded.remove(id) } else { project.expanded.insert(id) }
     }
 
     private func draft() {
@@ -467,7 +476,7 @@ struct FrameCard: View {
     @EnvironmentObject var project: ProjectModel
     @State private var targeted = false
 
-    private var selected: Bool { project.selection == .scene(scene.id) }
+    private var selected: Bool { project.selection.sceneID == scene.id }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -512,7 +521,7 @@ struct SceneThumb: View {
 
     private var token: String {
         let d = project.showreel?.decisions
-        return [scene.id, scene.text, scene.texts.sorted { $0.key < $1.key }.map { $0.value }.joined(), (d?.palette ?? []).joined(), d?.fonts?.titles ?? "", d?.background?.id ?? "",
+        return [scene.id, "\(String(describing: scene.overrides))", scene.text, scene.texts.sorted { $0.key < $1.key }.map { $0.value }.joined(), (d?.palette ?? []).joined(), d?.fonts?.titles ?? "", d?.background?.id ?? "",
                 d?.background?.mood ?? "", d?.effectsPack ?? "", (d?.moods ?? []).joined(), "\(Int(size.width))"].joined(separator: "|")
     }
 
@@ -531,5 +540,53 @@ struct SceneThumb: View {
         }
         .aspectRatio(16 / 9, contentMode: .fit)
         .task(id: token) { frames = await engine.sceneFrames(scene, file: project.showreel, store: project.store, size: size) }
+    }
+}
+
+// MARK: the scene tree
+
+extension NodeStatus {
+    var color: Color {
+        switch self {
+        case .approved: return .green
+        case .toApprove: return .orange
+        case .missing, .overBudget: return .red
+        case .excluded: return .secondary
+        }
+    }
+}
+
+/// What a scene is made of: Raw, Texts, Effects, Background, Look. Selecting a node opens the matching tab of the scene's inspector.
+struct SceneTreeView: View {
+    let scene: String
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(project.trees[scene] ?? []) { g in
+                HStack(spacing: 4) {
+                    Text(g.group.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    if !g.nodes.isEmpty && g.group != .background && g.group != .look { Text("\(g.nodes.count)").font(.caption2).foregroundStyle(.tertiary) }
+                    Spacer()
+                }
+                .padding(.top, 3)
+                if g.nodes.isEmpty {
+                    Text(g.group == .effects ? "none yet" : g.group == .raw ? "no resource linked" : "none").font(.caption2).foregroundStyle(.tertiary).padding(.leading, 8)
+                }
+                ForEach(g.nodes) { n in
+                    LibraryRow(selected: project.selection == .sceneNode(scene, g.group, n.id), action: { project.selectNode(scene, g.group, n.id) }) {
+                        HStack(spacing: 6) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(n.title).font(.caption).lineLimit(1).truncationMode(.middle)
+                                Text(n.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Spacer(minLength: 2)
+                            if let st = n.status { Text(st.rawValue).font(.caption2.weight(.semibold)).foregroundStyle(st.color) }
+                            if let o = n.origin { Text(o.rawValue).font(.caption2).foregroundStyle(o == .overridden ? Color.orange : .secondary) }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

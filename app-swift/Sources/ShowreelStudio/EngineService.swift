@@ -110,14 +110,17 @@ final class EngineService: ObservableObject {
     func sceneFrames(_ scene: ShowreelFile.Scene, file: ShowreelFile?, store: ProjectStore, size: CGSize = EngineService.frameSize) async -> [NSImage] {
         await start()
         let d = file?.decisions
-        let palette = EnginePalette(stored: d?.palette)
-        let font = d?.fonts?.titles ?? ""
+        func eff(_ k: DecisionKey) -> String { file?.effective(k, for: scene) ?? "" }
+        let pal = eff(.palette).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let palette = EnginePalette(stored: pal.isEmpty ? nil : pal)
+        let font = eff(.titleFont)
         let line = scene.text.split(separator: "\n").first.map(String.init) ?? scene.texts.sorted { $0.key < $1.key }.first?.value ?? ""
         let text = String((line.trimmingCharacters(in: .whitespaces).isEmpty ? scene.id : line).prefix(60))
         let names = Look.packs().first { $0.name == (d?.effectsPack ?? d?.moods?.first ?? "") }?.effects ?? []
         let effect = names.first { n in catalogue?.effects.contains { $0.name == n } ?? true } ?? "Fade"
-        if let bg = d?.background?.id, !bg.isEmpty, catalogue?.backgrounds.contains(where: { $0.id == bg }) ?? false {
-            return await lookFrames(background: bg, mood: d?.background?.mood, effect: effect, palette: palette, font: font, store: store, text: text, size: size)
+        let bg = eff(.background)
+        if !bg.isEmpty, catalogue?.backgrounds.contains(where: { $0.id == bg }) ?? false {
+            return await lookFrames(background: bg, mood: eff(.backgroundMood), effect: effect, palette: palette, font: font, store: store, text: text, size: size)
         }
         return await effectFrames(effect, palette: palette, font: font, store: store, text: text, size: size)
     }

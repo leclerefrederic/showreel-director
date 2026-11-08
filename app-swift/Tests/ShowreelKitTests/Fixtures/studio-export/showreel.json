@@ -55,6 +55,19 @@
   "scenes": [
     {
       "archived": false,
+      "content": [
+        {
+          "animation": {
+            "mode": "auto"
+          },
+          "color": {
+            "mode": "auto"
+          },
+          "id": "c1",
+          "text": "Notes, finally calm",
+          "type": "text"
+        }
+      ],
       "duration": 4.0,
       "extra": {
         "Sound": "soft pad"
@@ -73,6 +86,19 @@
     },
     {
       "archived": false,
+      "content": [
+        {
+          "animation": {
+            "mode": "auto"
+          },
+          "color": {
+            "mode": "auto"
+          },
+          "id": "c1",
+          "text": "Capture anything",
+          "type": "text"
+        }
+      ],
       "duration": 5.0,
       "extra": {
         "Sound": "tick"
@@ -91,6 +117,19 @@
     },
     {
       "archived": true,
+      "content": [
+        {
+          "animation": {
+            "mode": "auto"
+          },
+          "color": {
+            "mode": "auto"
+          },
+          "id": "c1",
+          "text": "Ditched: old claim",
+          "type": "text"
+        }
+      ],
       "duration": 3.0,
       "extra": {},
       "feeling": "",

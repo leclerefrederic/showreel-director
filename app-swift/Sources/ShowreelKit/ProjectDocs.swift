@@ -80,6 +80,19 @@ public enum ProjectDocs {
                 "7. Music approach: " + v(music), ""].joined(separator: "\n")
     }
 
+    /// The "Image and motion" column: the scene's note, then what the content list adds (resources, fixed colours and effects, instructions) in
+    /// priority order, so the table stays readable from the content. Nothing is added when every item is just words left to the AI.
+    public static func visualColumn(_ s: ShowreelFile.Scene) -> String {
+        guard s.content.contains(where: { $0.type != "text" || !$0.allAuto }) else { return s.visual }
+        let parts = s.content.enumerated().map { n, i -> String in
+            var d = i.type == "text" ? "text \u{201C}\(i.text ?? "")\u{201D}" : "\(i.type) \(i.resource ?? "?")"
+            let fixed = [i.color.isFixed ? "colour \(i.color.text)" : nil, i.animation.isFixed ? i.animation.text : nil, i.hasInstruction ? "\u{201C}\(i.instruction!)\u{201D}" : nil].compactMap { $0 }
+            if !fixed.isEmpty { d += " [" + fixed.joined(separator: ", ") + "]" }
+            return "\(n + 1). " + d
+        }
+        return (s.visual.isEmpty ? "" : s.visual + " ") + "Content in priority order: " + parts.joined(separator: "; ")
+    }
+
     /// The master montage as a table, in its order: the scenes on with their times, the switched-off ones with "off", then the archived ones
     /// (an ID is never reused, so they stay in the table, marked). Library scenes that no montage places come last, off.
     static func storyboard(_ f: ShowreelFile) -> String? {
@@ -96,7 +109,7 @@ public enum ProjectDocs {
             var time = s.archived ? "" : "off"
             if let t = timed[s.id] { time = (t.start != nil && t.end != nil) ? "\(seconds(t.start!))-\(seconds(t.end!)) s" : "" }
             let status = s.archived ? (s.status == "ditched" ? "ditched" : "archived") : s.status
-            return [s.id, time, s.text] + langs.map { s.texts[$0] ?? "" } + [s.visual, s.feeling, s.handoff] + (cuts ? [s.inCuts] : [])
+            return [s.id, time, s.text] + langs.map { s.texts[$0] ?? "" } + [visualColumn(s), s.feeling, s.handoff] + (cuts ? [s.inCuts] : [])
                 + extras.map { s.extra[$0] ?? "" } + [status] + (notes ? [s.note] : [])
         }
         return [header, "", "# Storyboard: \(f.name)", "", MarkdownTable(header: head, rows: rows).render(), ""].joined(separator: "\n")
@@ -269,7 +282,10 @@ enum MarkdownRead {
             var start: Double?
             if !off, n.count >= 2, n[1] > n[0] { s.duration = n[1] - n[0]; start = n[0] }
             else if !off, n.count == 1, n[0] > 0 { s.duration = n[0] }
-            s.text = cell(ctext); s.visual = cell(cimg); s.feeling = cell(cfeel); s.handoff = cell(chand); s.inCuts = cell(ccuts)
+            let generated = old.first { $0.id == id }.map { ProjectDocs.visualColumn($0) }
+            if cell(ctext) != s.text { s.setMasterText(cell(ctext)) }
+            if cell(cimg) != generated { s.visual = cell(cimg) }          // the content summary the app wrote is not the user's note
+            s.feeling = cell(cfeel); s.handoff = cell(chand); s.inCuts = cell(ccuts)
             if cstatus != nil {
                 let st = cell(cstatus).lowercased()
                 if st == "archived" { s.archived = true }

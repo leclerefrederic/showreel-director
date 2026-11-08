@@ -17,7 +17,7 @@ public struct OperationCard: Equatable, Sendable {
 
 /// The fields of the Project block, by the name the copilot uses.
 public enum ParameterKey: String, CaseIterable, Sendable {
-    case name, audience, message, tone, constraints, conversationLanguage, reelLanguages, formats, duration
+    case name, audience, message, tone, constraints, conversationLanguage, reelLanguages, formats, duration, controlLevel
 
     public var title: String {
         switch self {
@@ -30,6 +30,7 @@ public enum ParameterKey: String, CaseIterable, Sendable {
         case .reelLanguages: return "Reel languages"
         case .formats: return "Formats"
         case .duration: return "Duration"
+        case .controlLevel: return "Control level"
         }
     }
 
@@ -45,6 +46,7 @@ public enum ParameterKey: String, CaseIterable, Sendable {
         case .reelLanguages: return "English by default. Add languages the viewer can switch to; the first is the master text. Fonts must cover every language's glyphs."
         case .formats: return "Desktop 16:9 only, or also mobile 9:16? Decide now: 9:16 changes the layout design."
         case .duration: return "How long, in seconds. No default and no cap: you decide. A feasibility check follows the answer."
+        case .controlLevel: return "How much you want to decide in each scene: auto (only the words), guided (you fix what matters) or precise (everything). It sets the defaults of new content items; a scene and any attribute can differ."
         }
     }
 
@@ -59,6 +61,7 @@ public enum ParameterKey: String, CaseIterable, Sendable {
         case .reelLanguages: return f.reelLanguages.joined(separator: ", ")
         case .formats: return (f.decisions.formats ?? []).joined(separator: ", ")
         case .duration: return f.decisions.duration.map { ProjectDocs.seconds($0) + " s" } ?? ""
+        case .controlLevel: return f.parameters.controlLevel ?? ""
         }
     }
 
@@ -90,6 +93,9 @@ public enum ParameterKey: String, CaseIterable, Sendable {
             let n = v.lowercased().replacingOccurrences(of: "seconds", with: "").replacingOccurrences(of: "s", with: "").trimmingCharacters(in: .whitespaces)
             guard let d = Double(n.replacingOccurrences(of: ",", with: ".")), d > 0 else { throw AgentError.msg("the duration must be a positive number of seconds") }
             f.decisions.duration = d
+        case .controlLevel:
+            guard v.isEmpty || ControlLevel(rawValue: v.lowercased()) != nil else { throw AgentError.msg("the control level is auto, guided or precise") }
+            f.parameters.controlLevel = v.isEmpty ? nil : v.lowercased()
         }
     }
 }
@@ -97,6 +103,9 @@ public enum ParameterKey: String, CaseIterable, Sendable {
 /// The decisions of the Look block, by the name the copilot uses (update_decision).
 public enum DecisionKey: String, CaseIterable, Sendable {
     case palette, titleFont, textFont, background, backgroundMood, moods, effectsPack
+
+    /// What a scene may override: the palette, the fonts and the background (not the moods or the effects pack).
+    public static let sceneKeys: [DecisionKey] = [.palette, .titleFont, .textFont, .background, .backgroundMood]
 
     public var title: String {
         switch self {
@@ -183,6 +192,10 @@ public enum ProjectOperation: Equatable, Sendable {
     case sceneEnabled(id: String, enabled: Bool, montage: String?)
     /// Puts a scene after another one in a montage ("start" for first).
     case moveScene(id: String, after: String, montage: String?)
+    /// A scene's own palette, fonts or background. An empty value takes the override away (back to the project's).
+    case sceneLook(id: String, [DecisionChange])
+    /// Add, change, remove or reorder one content item of a scene.
+    case content(scene: String, ContentOp)
 }
 
 public enum Operations {
@@ -259,6 +272,8 @@ extension ProjectStore {
         case .addScene(let id, let edit): return try planScene(id, edit, adding: true).card
         case .sceneEnabled(let id, let on, let m): return try planEnabled(id, enabled: on, montage: m).card
         case .moveScene(let id, let after, let m): return try planMove(id, after: after, montage: m).card
+        case .sceneLook(let id, let ch): return try planSceneLook(id, ch).card
+        case .content(let id, let op): return try planContent(id, op).card
         case .gate(let key, let passed):
             let f = try needShowreel()
             guard ShowreelFile.gateKeys.contains(key) else { throw AgentError.msg("unknown gate \(key)") }
@@ -289,6 +304,8 @@ extension ProjectStore {
         case .addScene(let id, let edit): try planScene(id, edit, adding: true).run()
         case .sceneEnabled(let id, let on, let m): try planEnabled(id, enabled: on, montage: m).run()
         case .moveScene(let id, let after, let m): try planMove(id, after: after, montage: m).run()
+        case .sceneLook(let id, let ch): try planSceneLook(id, ch).run()
+        case .content(let id, let op): try planContent(id, op).run()
         case .gate(let key, let passed):
             var f = try needShowreel()
             f.gates[key] = passed ? "passed" : "open"

@@ -94,6 +94,19 @@ public final class Tools {
             return await operate(.addScene(id: (input["id"] as? String) ?? "", Self.sceneEdit(input)))
         case "update_scene":
             return await operate(.scene(id: input["id"] as? String ?? "", Self.sceneEdit(input)))
+        case "add_content_item":
+            return await operate(.content(scene: input["scene"] as? String ?? "", .add(Self.contentEdit(input), after: input["after"] as? String)))
+        case "update_content_item":
+            return await operate(.content(scene: input["scene"] as? String ?? "", .update(item: input["item"] as? String ?? "", Self.contentEdit(input))))
+        case "remove_content_item":
+            return await operate(.content(scene: input["scene"] as? String ?? "", .remove(item: input["item"] as? String ?? "")))
+        case "move_content_item":
+            return await operate(.content(scene: input["scene"] as? String ?? "", .move(item: input["item"] as? String ?? "", after: input["after"] as? String ?? "")))
+        case "set_scene_override":
+            guard let key = DecisionKey(rawValue: input["key"] as? String ?? ""), DecisionKey.sceneKeys.contains(key) else {
+                return "unknown key: use one of " + DecisionKey.sceneKeys.map { $0.rawValue }.joined(separator: ", ")
+            }
+            return await operate(.sceneLook(id: input["id"] as? String ?? "", [DecisionChange(key, input["value"] as? String ?? "")]))
         case "enable_scene":
             guard let on = input["enabled"] as? Bool else { return "enabled must be true or false" }
             return await operate(.sceneEnabled(id: input["id"] as? String ?? "", enabled: on, montage: input["montage"] as? String))
@@ -181,6 +194,12 @@ public final class Tools {
         return commit(rel, content).replacingOccurrences(of: "wrote", with: "accepted and applied:")
     }
 
+    /// The fields of a content-item tool call.
+    static func contentEdit(_ i: [String: Any]) -> ContentEdit {
+        ContentEdit(type: i["type"] as? String, text: i["text"] as? String, resource: i["resource"] as? String, color: i["color"] as? String,
+                    animation: i["animation"] as? String, params: i["params"] as? String, instruction: i["instruction"] as? String)
+    }
+
     /// The fields of a scene tool call. Numbers are accepted for the times.
     static func sceneEdit(_ i: [String: Any]) -> SceneEdit {
         func str(_ k: String) -> String? {
@@ -190,7 +209,7 @@ public final class Tools {
             return nil
         }
         return SceneEdit(duration: str("duration"), text: str("text"), visual: str("visual"), feeling: str("feeling"), handoff: str("handoff"),
-                         inCuts: str("in_cuts"), note: str("note"), status: str("status"), archived: i["archived"] as? Bool, assets: str("assets"), after: str("after"))
+                         inCuts: str("in_cuts"), note: str("note"), status: str("status"), archived: i["archived"] as? Bool, assets: str("assets"), after: str("after"), controlLevel: str("control_level"))
     }
 
     /// showreel.json and the manifest hold the project's data: they change through typed operations, which the user can read.

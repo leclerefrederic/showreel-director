@@ -43,10 +43,35 @@ enum LookKind: String, CaseIterable, Identifiable {
 enum Selection: Hashable {
     case none
     case scene(String)
+    /// A node of a scene's tree: the group it belongs to and, for a resource or a text, which one.
+    case sceneNode(String, SceneGroup, String?)
     case asset(String)
     case look(LookKind, String)
     case file(String)      // a project file opened from the Advanced panel
     case preview           // a page the copilot showed
+
+    /// The scene the selection is about, itself or one of its nodes.
+    var sceneID: String? {
+        switch self {
+        case .scene(let id), .sceneNode(let id, _, _): return id
+        default: return nil
+        }
+    }
+}
+
+/// The tabs of a scene's inspector, one per group of its tree (plus Settings).
+enum SceneTab: String, CaseIterable, Identifiable {
+    case settings, content, effects, resources, look
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    init(_ g: SceneGroup) {
+        switch g {
+        case .raw: self = .resources
+        case .texts: self = .content
+        case .effects: self = .effects
+        case .background, .look: self = .look
+        }
+    }
 }
 
 enum LibraryTab: String, CaseIterable, Identifiable {
@@ -71,6 +96,15 @@ final class ProjectModel: ObservableObject {
     @Published var tree: [FileNode] = []
     @Published var tabs: [EditorTab] = []
     @Published var selection: Selection = .none
+    @Published var sceneTab: SceneTab = .settings
+    /// The content item open in the Content tab (set by selecting its node in the tree).
+    @Published var contentItem: String?
+    /// The scenes whose tree is open in the library.
+    @Published var expanded: Set<String> = []
+    /// The tree of each scene of the library, with the statuses computed natively.
+    @Published private(set) var trees: [String: [SceneGroupNodes]] = [:]
+    /// The status of each resource (approved, to approve, missing, over budget), from the asset rules.
+    @Published private(set) var assetStatus: [String: NodeStatus] = [:]
     @Published var libraryTab: LibraryTab = .scenes
     @Published var inspectorTab: InspectorTab = .inspector
     @Published var centerMode: CenterMode = .viewer
@@ -143,6 +177,8 @@ final class ProjectModel: ObservableObject {
         if playVersion == nil, let last = versions.last, Versions.hasDist(store, last) { playVersion = last }
         wizardSteps = Wizard.steps(assets: assets, spec: spec, systemLanguage: Locale.current.language.languageCode?.identifier, file: showreel)
         for a in Blocks.areas { checks[a] = Checks.run(area: a, store: store) }
+        assetStatus = Dictionary(uniqueKeysWithValues: assets.map { ($0.id, Assets.nodeStatus($0, store: store)) })
+        trees = Dictionary(uniqueKeysWithValues: (showreel?.library ?? []).map { ($0.id, SceneTree.build($0, in: showreel!, assets: assets, store: store)) })
     }
 
     // MARK: build and preview
@@ -247,9 +283,45 @@ final class ProjectModel: ObservableObject {
         } else if let last = showreel?.storyboards.first?.items.last { e.after = last.scene }
         let before = Set(showreel?.scenes.map { $0.id } ?? [])
         guard perform(.addScene(id: "", e)) else { return false }
-        if let n = showreel?.scenes.first(where: { !before.contains($0.id) }) { select(.scene(n.id)) }
+        if let n = showreel?.scenes.first(where: { !before.contains($0.id) }) {
+            // a copy keeps the other items too (the first text item came with the text)
+            if let id = id, let src = showreel?.scenes.first(where: { $0.id == id }) {
+                var skippedFirstText = false
+                for it in src.content {
+                    if it.type == "text", !skippedFirstText { skippedFirstText = true; continue }
+                    perform(.content(scene: n.id, .add(it.edit, after: nil)))
+                }
+            }
+            select(.scene(n.id))
+        }
         return true
     }
+
+    // MARK: scene content
+
+    /// A new item at the end of a scene's list. An image or a sound takes the first resource of its kind (approved ones first).
+    func addItem(_ scene: String, type: String) {
+        var e = ContentEdit(type: type)
+        if type == "text" { e.text = "Your words" }
+        else {
+            let fit = assets.filter { ContentRules.accepts(type, asset: $0.type) && $0.status != "excluded" }
+            guard let a = fit.first(where: { $0.status == "approved" }) ?? fit.first else { error = "Add \(type == "image" ? "an image or a logo" : "a sound or a voice") in the Resources tab first."; return }
+            e.resource = a.id
+        }
+        if perform(.content(scene: scene, .add(e, after: nil))), let last = showreel?.scenes.first(where: { $0.id == scene })?.content.last { contentItem = last.id }
+    }
+
+    func updateItem(_ scene: String, _ item: String, _ e: ContentEdit) { perform(.content(scene: scene, .update(item: item, e))) }
+    func removeItem(_ scene: String, _ item: String) { perform(.content(scene: scene, .remove(item: item))) }
+
+    /// Moves an item up (-1) or down (+1) in the priority order.
+    func moveItem(_ scene: String, _ item: String, by delta: Int) {
+        guard let after = showreel?.contentPosition(scene: scene, item: item, by: delta) else { return }
+        perform(.content(scene: scene, .move(item: item, after: after)))
+    }
+
+    /// A scene's control level (empty: the project's).
+    func setControlLevel(_ scene: String, _ level: String) { perform(.scene(id: scene, SceneEdit(controlLevel: level))) }
 
     func setEnabled(_ id: String, _ on: Bool) { perform(.sceneEnabled(id: id, enabled: on, montage: nil)) }
 
@@ -261,7 +333,7 @@ final class ProjectModel: ObservableObject {
 
     func archiveScene(_ id: String) {
         perform(.scene(id: id, SceneEdit(archived: true)))
-        if selection == .scene(id) { selection = .none }
+        if selection.sceneID == id { selection = .none }
     }
 
     func restoreScene(_ id: String) { perform(.scene(id: id, SceneEdit(status: "open", archived: false))) }
@@ -327,10 +399,23 @@ final class ProjectModel: ObservableObject {
         selection = x
         centerMode = .viewer
         switch x {
-        case .scene, .asset, .look: inspectorTab = .inspector
+        case .scene: inspectorTab = .inspector; sceneTab = .settings
+        case .asset, .look, .sceneNode: inspectorTab = .inspector
         default: break
         }
     }
+
+    /// Selecting a node of a scene's tree opens the matching tab of the scene's inspector and shows the node in the viewer.
+    func selectNode(_ scene: String, _ group: SceneGroup, _ item: String?) {
+        select(.sceneNode(scene, group, item))
+        sceneTab = SceneTab(group)
+        if let i = item, i.hasPrefix("item.") { sceneTab = .content; contentItem = String(i.dropFirst(5)) }
+        expanded.insert(scene)
+    }
+
+    /// A scene's own palette, fonts or background (an empty value takes the override away).
+    @discardableResult
+    func setSceneLook(_ id: String, _ changes: [DecisionChange]) -> Bool { perform(.sceneLook(id: id, changes)) }
 
     /// The copilot (or a link) asks for a zone of the workspace. In the wizard, it goes to the first undecided step of that part.
     func openZone(_ id: String) {
@@ -412,6 +497,7 @@ final class ProjectModel: ObservableObject {
     var foregroundBlock: String? {
         switch selection {
         case .scene(let id): return "inspector: scene \(id)"
+        case .sceneNode(let id, let g, _): return "inspector: scene \(id), \(g.title) tab"
         case .asset(let id): return "inspector: resource \(id)"
         case .look(let k, let id): return "inspector: \(k.title.lowercased()) element \(id)"
         case .file, .preview: return nil

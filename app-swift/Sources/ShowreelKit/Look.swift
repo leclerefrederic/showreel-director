@@ -40,6 +40,24 @@ public enum Look {
         return out
     }
 
+    /// Every effect of the library with its category, read from references/effects-index.md (the tables under "## Category (n)").
+    public static func effectList() -> [(cat: String, name: String)] { effectCache }
+    public static func effects() -> [String] { effectCache.map { $0.name } }
+    public static func effectCategory(_ name: String) -> String? { effectCache.first { $0.name == name }?.cat }
+
+    private static let effectCache: [(cat: String, name: String)] = {
+        guard let u = Skill.root()?.appendingPathComponent("references/effects-index.md"), let md = try? String(contentsOf: u, encoding: .utf8) else { return [] }
+        var cat = "", out: [(String, String)] = []
+        for line in md.components(separatedBy: "\n") {
+            if line.hasPrefix("## ") { cat = line.dropFirst(3).replacingOccurrences(of: #"\s*\(\d+\)\s*$"#, with: "", options: .regularExpression); continue }
+            guard line.hasPrefix("|"), !cat.isEmpty else { continue }
+            let c = MarkdownTable.cells(line)
+            guard let n = c.first, !n.isEmpty, n != "Effect", !n.hasPrefix("---"), !n.hasPrefix(":-") else { continue }
+            out.append((cat, n))
+        }
+        return out
+    }()
+
     public struct Font: Decodable, Equatable, Sendable, Identifiable {
         public let name: String
         public let dir: String

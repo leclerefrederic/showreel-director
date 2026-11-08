@@ -46,6 +46,10 @@ The built `.app` must not depend on the repository: the skill, `shared/`, `setup
 2. Warnings left: `isLoading` and `evaluateJavaScript` in `ChatModel`, `self` capture in `EnvModel`.
 3. Update `ROADMAP.md` when a limit is lifted.
 
+## Scope discipline
+
+Build only the phase the owner asked for, in the order of `docs/studio-spec.md` section 10. A good idea that is not in that phase goes in one line in `docs/ideas.md`, not in the code. Polish comes after the build, block by block (`docs/ux-notes.md`).
+
 ## Working style
 
 Answer the owner in French, short. Fix the first compiler error first. Keep changes small and say what was verified and what was not.

@@ -49,6 +49,14 @@ struct ProjectForm: View {
             }
             field(.duration, lines: 1, prompt: "seconds, for example 45", width: 160)
             field(.constraints, lines: 3)
+            VStack(alignment: .leading, spacing: 4) {
+                label(.controlLevel)
+                Picker("", selection: Binding(get: { project.showreel?.parameters.controlLevel ?? "auto" }, set: { v in
+                    if v != (project.showreel?.parameters.controlLevel ?? "auto") { project.perform(.parameter(.controlLevel, v)) }
+                })) { ForEach(ControlLevel.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) } }
+                .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 260)
+                help(.controlLevel)
+            }
         }
     }
 

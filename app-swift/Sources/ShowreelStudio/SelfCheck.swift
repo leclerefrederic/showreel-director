@@ -153,15 +153,16 @@ enum SelfCheck {
         check(engineScript != nil && fm.fileExists(atPath: engineScript!.path) && inside(engineScript), "engine host script found" + (bundled ? " inside the app" : ""))
         check(shared?.appendingPathComponent("look-packages.json").path.isEmpty == false && LookPackages.all().count >= 6, "starting looks load (\(LookPackages.all().count))")
         let pal = EnginePalette(bg: "#101820", fg: "#FFFFFF", accent: "#F2AA4C", accent2: "#4CC2F2")
-        let drawn = awaitMain { () -> (Int, Int, Data, Data, [String]) in
+        let drawn = awaitMain { () -> (Int, Int, Data, Data, [String], Set<String>) in
             let e = EngineRenderer()
             try await e.start()
             let fx = try await e.renderEffect("Pop", palette: pal, font: "Helvetica", t: 0.9)
             let bgd = try await e.renderBackground("duotone", palette: pal, t: 0)
-            return (e.catalogue?.effects.count ?? 0, e.catalogue?.backgrounds.count ?? 0, fx, bgd, try await e.errors())
+            return (e.catalogue?.effects.count ?? 0, e.catalogue?.backgrounds.count ?? 0, fx, bgd, try await e.errors(), Set(e.catalogue?.effects.map { $0.name } ?? []))
         }
         switch drawn {
-        case .success(let (nfx, nbg, fx, bgd, errs)):
+        case .success(let (nfx, nbg, fx, bgd, errs, names)):
+            check(names == Set(Look.effects()), "the effect library the checks read (effects-index.md) is the engine's catalogue (\(names.count))")
             check(nfx >= 240 && nbg >= 20, "engine catalogue loads (\(nfx) effects, \(nbg) backgrounds)")
             let a = pixelStats(fx, background: pal.bg), b = pixelStats(bgd, background: pal.bg)
             check(a.distinct > 3 && a.shareOfBackground > 0.5, "an effect renders: not empty, drawn in the palette (\(a.distinct) colours)")
@@ -205,6 +206,14 @@ enum SelfCheck {
             try? bs.apply(.sceneEnabled(id: "S01", enabled: false, montage: nil))
             check(bs.loadShowreel()?.film.map { $0.id } == ["S02"] && bs.loadShowreel()?.library.count == 2, "switching a scene off keeps it in the library")
             check(bs.read("storyboard.md")?.contains("off") == true, "storyboard.md is generated from the library and the montage")
+            try? bs.apply(.content(scene: "S02", .add(ContentEdit(type: "text", text: "More", color: "accent", animation: "Pop"), after: nil)))
+            check(bs.loadShowreel()?.scenes.first { $0.id == "S02" }?.content.last?.animation.effect == "Pop" && BuildRunner.prompt(version: "v2", store: bs).contains("animation: FIXED Pop"),
+                  "a content item is an operation, and the build message lists it with its fixed attributes")
+            try? bs.apply(.sceneLook(id: "S02", [DecisionChange(.background, "duotone")]))
+            if let f = bs.loadShowreel(), let sc = f.scenes.first(where: { $0.id == "S02" }) {
+                let node = SceneTree.build(sc, in: f, assets: [], store: bs).first { $0.group == .background }?.nodes.first
+                check(node?.origin == .overridden && f.decisions.background == nil, "a scene overrides its background without touching the project's")
+            }
         }
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1

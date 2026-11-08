@@ -57,17 +57,41 @@ public enum BuildRunner {
         let f = store.loadShowreel()
         let dur = f?.decisions.duration.map { ProjectDocs.seconds($0) + " s" } ?? "the end of the last scene"
         let langs = (f?.reelLanguages ?? []).joined(separator: ", ")
+        let overrides = (f?.film ?? []).compactMap { sc -> String? in
+            guard let f = f, sc.overrides != nil else { return nil }
+            let parts = DecisionKey.sceneKeys.filter { f.isOverridden($0, for: sc) }.map { "\($0.title.lowercased()) \(f.effective($0, for: sc))" }
+            return parts.isEmpty ? nil : "\(sc.id): " + parts.joined(separator: "; ")
+        }
+        let overrideLine = overrides.isEmpty ? "" : " Scenes with their own look (they override the style sheet for that scene only): " + overrides.joined(separator: " | ") + "."
         return """
         The user pressed Go in the app: the storyboard is validated and every scene is OK. Write the new version folder \(version)/ now.
 
         Do this:
         1. Read the state with get_state, read storyboard.md, style-sheet.md and brief.md of the project, and read the skill's references/build-guide.md, references/steps-3-to-6.md (Step 3) and references/engine.md.
         2. Write \(version)/project.json starting from engine/project.template.json, and \(version)/main.js starting from engine/main.template.js, with write_file. Paths in project.json are relative to \(version)/.
-        3. main.js implements the storyboard scene by scene with the stable IDs as scene names, the Time column of storyboard.md as scene starts (t in seconds, there is no beat map; scenes marked off or archived are not in the film), the on-screen text in each reel language (\(langs.isEmpty ? "the language of the brief" : langs)), the palette, the fonts, the background and the effects pack or moods the user chose, and the linked approved assets. The film lasts \(dur). Every scene honours ctx.reduced.
-        4. Use only approved assets listed in assets/MANIFEST.csv, from assets/prepared or assets/generated. Do not embed a font file that is not an approved asset: set the family in tokens and let the reel fall back to a system font, and say so in your answer. Add the formats of the brief (16:9 as d, 9:16 as m).
-        5. Do not change any decision, scene or asset, do not run build.py, the harness or the smoke test (the app runs them next and shows the user the result), and do not give or assume any Go beyond this one. Do not write outside \(version)/.
+        3. main.js implements the storyboard scene by scene with the stable IDs as scene names, the Time column of storyboard.md as scene starts (t in seconds, there is no beat map; scenes marked off or archived are not in the film), the on-screen text in each reel language (\(langs.isEmpty ? "the language of the brief" : langs)), the palette, the fonts, the background and the effects pack or moods the user chose, and the linked approved assets.\(overrideLine) The film lasts \(dur). Every scene honours ctx.reduced.
+        4. Scene content. Each scene lists what it contains, in processing priority: treat the items from the first to the last, the earlier ones win conflicts of time, space and emphasis (this priority is not the stacking order on screen, which you decide unless an instruction fixes it). Every attribute is marked FIXED (the user chose it: honour it strictly, exactly as written) or AUTO (decide it yourself from the style sheet, the effect packs and the brief). If the feasibility or the reading budget fail, simplify or drop the last items first and say so in your answer.
+        \(contentBrief(f))
+        5. Use only approved assets listed in assets/MANIFEST.csv, from assets/prepared or assets/generated. Do not embed a font file that is not an approved asset: set the family in tokens and let the reel fall back to a system font, and say so in your answer. Add the formats of the brief (16:9 as d, 9:16 as m).
+        6. Do not change any decision, scene or asset, do not run build.py, the harness or the smoke test (the app runs them next and shows the user the result), and do not give or assume any Go beyond this one. Do not write outside \(version)/.
         Answer in two short lines: what you built, and anything you could not do.
         """
+    }
+
+    /// The content items of every scene that is on, in priority order, with each attribute marked fixed or auto and the instructions.
+    static func contentBrief(_ f: ShowreelFile?) -> String {
+        guard let f = f else { return "" }
+        return f.film.filter { !$0.content.isEmpty }.map { s -> String in
+            let head = "\(s.id) (control level \(f.controlLevel(for: s).rawValue)):"
+            let items = s.content.enumerated().map { n, i -> String in
+                let subject = i.type == "text" ? "text \u{201C}\(i.text ?? "")\u{201D}" : "\(i.type) \(i.resource ?? "?")"
+                let color = i.type == "text" ? "; colour: " + (i.color.isFixed ? "FIXED \(i.color.text)" + (i.color.mode == "role" ? " (\(f.paletteHex(i.color.role, for: s) ?? "role not in the palette"))" : "") : "AUTO") : ""
+                let anim = i.type == "audio" ? "" : "; animation: " + (i.animation.isFixed ? "FIXED \(i.animation.text)" : "AUTO")
+                let ins = i.hasInstruction ? "; instruction: \u{201C}\(i.instruction!)\u{201D}" : ""
+                return "   \(n + 1). \(subject)\(color)\(anim)\(ins)"
+            }
+            return ([head] + items).joined(separator: "\n")
+        }.joined(separator: "\n")
     }
 
     static func q(_ u: URL) -> String { "'" + u.path.replacingOccurrences(of: "'", with: "'\\''") + "'" }

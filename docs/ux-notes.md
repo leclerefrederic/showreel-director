@@ -14,6 +14,8 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 
 ## Inspector, scene
 
+- Known behaviours of W1b to review: a background mood cannot be overridden to "calm" if the project has one (only "revert to project" exists); picking the same value as the project still creates an override.
+
 - The scene inspector is one long form. Split it into tabs: Settings, Effects, Content, Resources (and Look for background and look). Selecting a node of the scene tree opens its tab.
 - Seen on screen: a duplicated "Review" heading, a redundant "Ok" status beside the buttons, an "In cuts" field that means nothing to a beginner.
 - The app interface is in English while the owner works in French: decide how the interface language is chosen (system language or the project's conversation language).
@@ -29,6 +31,10 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 ## Look and technique
 
 ## Storyboard and scene editor
+
+## Storyboard and music
+
+- The project's music should show under the storyboard with its waveform and analysis. Stretching a scene to the left or right snaps to the track's grid (stick to grid), so scenes are timed on the music.
 
 ## Build and preview
 
