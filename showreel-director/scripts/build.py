@@ -3,7 +3,7 @@
 
 Usage: python3 build.py PROJECT_DIR [--out FILE]
 Inlines: CSS tokens, fonts (woff2 base64, falls back to the raw file), the track (base64), beat map and
-envelopes (from analysis_dir/beats.json + env.json), core.js + kit.js (window.SR, window.SRK), backgrounds.js when main.js uses SRB, film.js + transitions.js when it uses SRF, main.js, player.js. Prints a weight report and
+envelopes (from analysis_dir/beats.json + env.json), core.js + kit.js (window.SR, window.SRK), backgrounds.js when main.js uses SRB, film.js + transitions.js when it uses SRF (film.json next to project.json goes to SR.data.film), main.js, player.js. Prints a weight report and
 fails if the budget in project.json is exceeded. No track: omit "track" (the reel then runs silent).
 """
 import argparse, base64, json, os, re, sys
@@ -103,6 +103,13 @@ def main():
         if not mime: sys.exit(f"images.{key}: unsupported type .{ext}")
         raw_i = open(ip, "rb").read(); imgs[key] = "data:%s;base64,%s" % (mime, base64.b64encode(raw_i).decode()); report.append((f"image {key}", len(raw_i) * 4 // 3))
     if imgs: data["images"] = imgs
+    # film format (engine/film.js): the montage the app wrote next to project.json (scenes with name, t, duration and the transition to the next one)
+    fp = os.path.join(root, cfg.get("film", "film.json"))
+    if os.path.exists(fp):
+        film = json.load(open(fp, encoding="utf-8"))
+        sc = film.get("scenes")
+        if not isinstance(sc, list) or not all(isinstance(s.get("name"), str) and isinstance(s.get("t"), (int, float)) for s in sc): sys.exit("film.json: scenes must be a list of {name, t, ...}")
+        data["film"] = film
     if cut: data["cut"] = cut
     fcss, frep = font_css(cfg.get("fonts", []), root); report += frep
     tokens = ";".join("%s:%s" % kv for kv in cfg.get("tokens", {}).items())

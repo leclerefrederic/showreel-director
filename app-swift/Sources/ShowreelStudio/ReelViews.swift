@@ -252,10 +252,10 @@ struct TransitionMarker: View {
         .overlay(Circle().stroke(targeted || selected ? Color.accentColor : Color.primary.opacity(0.35), lineWidth: targeted || selected ? 3 : 1))
         .contentShape(Circle())
         .help(transition.text)
-        .onTapGesture { project.select(.transition(from)) }
+        .onTapGesture { project.selectTransition(from: from) }
         .dropDestination(for: String.self, action: { ids, _ in
             guard let p = ids.first, p.hasPrefix("transition:") else { return false }
-            project.select(.transition(from))
+            project.selectTransition(from: from)
             return project.setTransition(from: from, TransitionEdit(type: String(p.dropFirst(11))))
         }, isTargeted: { targeted = $0 })
     }
@@ -350,10 +350,17 @@ struct TransitionInspector: View {
             InspectorHeader(title: "\(from) \u{2192} \(pair?.next.id ?? "?")", subtitle: "Transition")
             if let p = pair {
                 InspectorSection(title: "Type") {
-                    Picker("", selection: Binding(get: { p.item.type }, set: { v in project.setTransition(from: from, TransitionEdit(type: v)) })) {
-                        Text("Cut on beat (default)").tag("cut")
-                        ForEach(Look.transitions(), id: \.name) { Text("\($0.name) · \($0.energy)").tag($0.name) }
-                    }.labelsHidden()
+                    // a transition that does not run between two real scenes stays visible but cannot be chosen
+                    Menu {
+                        Button("Cut on beat (default)") { project.setTransition(from: from, TransitionEdit(type: "cut")) }
+                        Divider()
+                        ForEach(Look.transitions(), id: \.name) { t in
+                            Button(Look.isPreviewOnly(t.name) ? "\(t.name) (preview only)" : "\(t.name) · \(t.energy)") { project.setTransition(from: from, TransitionEdit(type: t.name)) }
+                                .disabled(Look.isPreviewOnly(t.name))
+                        }
+                    } label: { Text(p.item.isCut ? "Cut on beat (default)" : p.item.type) }
+                    .menuStyle(.borderlessButton).fixedSize()
+                    if Look.isPreviewOnly(p.item.type) { Label("Preview only: it does not run between two real scenes. Choose another or a cut.", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange) }
                     if let lib = Look.transitions().first(where: { $0.name == p.item.type }) { Text(lib.desc).font(.caption).foregroundStyle(.secondary) }
                 }
                 if !p.item.isCut {

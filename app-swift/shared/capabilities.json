@@ -34,7 +34,7 @@
   {
    "need": "Build the reel, test it and play it",
    "provided": true,
-   "via": "the Build and preview view of the workspace: after the Go, you write the vN folder (project.json and main.js); the app runs build.py, harness.js and smoke_player.js, shows each result in green or red, and plays vN/dist/index.html in the window; outputs stay in the project folder"
+   "via": "the Build and preview view of the workspace: after the Go, the app writes vN/film.json (the montage: starts, durations, transitions) and you write the rest of the vN folder (project.json and a main.js in the film format: one module per scene and one SRF.fromData call); the app runs build.py, harness.js and smoke_player.js, shows each result in green or red, and plays vN/dist/index.html in the viewer at the playhead of the reel, with the music; outputs stay in the project folder"
   },
   {
    "need": "Let the user read and edit the project files next to the assistant",

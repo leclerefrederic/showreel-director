@@ -1,0 +1,11 @@
+{
+ "_": "Scene transitions that do not run between two real scenes (scripts/test_film.js --all): they stay visible as previews but cannot be chosen for a montage. tools/check.py fails when this list differs from the probe.",
+ "previewOnly": [
+  "Curtain",
+  "Ink/paper inversion",
+  "Match cut",
+  "Mirror split",
+  "Morph",
+  "Star reveal"
+ ]
+}

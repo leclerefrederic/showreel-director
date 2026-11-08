@@ -217,6 +217,8 @@ enum SelfCheck {
                 check(bs.loadShowreel()?.storyboards.first?.items.first { $0.scene == lead }?.transition.type == "Push" && bs.loadShowreel()?.scenes.first { $0.id == lead }?.duration == 6
                       && BuildRunner.prompt(version: "v2", store: bs).contains("Push 0.5 s"), "a transition and a duration are operations, and the build message lists the transition")
             }
+            check(Film.data(bs.loadShowreel()!)["scenes"] is [[String: Any]] && BuildRunner.prompt(version: "v2", store: bs).contains("SRF.fromData(MODULES") && Look.transitionsPreviewOnly().count == 6
+                  && (try? bs.apply(.transition(from: bs.loadShowreel()?.film.first?.id ?? "S01", TransitionEdit(type: "Morph")))) == nil, "the build message quotes the montage (film.json) and a preview-only transition cannot be chosen")
             try? bs.apply(.sceneLook(id: "S02", [DecisionChange(.background, "duotone")]))
             if let f = bs.loadShowreel(), let sc = f.scenes.first(where: { $0.id == "S02" }) {
                 let node = SceneTree.build(sc, in: f, assets: [], store: bs).first { $0.group == .background }?.nodes.first

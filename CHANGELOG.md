@@ -2,6 +2,10 @@
 
 Version of the skill (`metadata.version` in `showreel-director/SKILL.md`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The Studio file format has its own number (`schema` in `showreel.json`). Ship with `python3 tools/bump.py`.
 
+## 0.14.0 - 2026-11-08
+
+film format for the app's Build: film.json (the montage) inlined by build.py as SR.data.film, SRF.fromData, main.film.template.js, harness --scene, list of transitions that are previews only
+
 ## 0.13.0 - 2026-11-08
 
 optional film layer: one render module per scene assembled by engine/film.js, scene transitions of the effects lab as a compositor (engine/transitions.js, generated), test film and pixel test; documented in references/engine.md

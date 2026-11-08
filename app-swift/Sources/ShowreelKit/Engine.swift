@@ -92,6 +92,7 @@ public enum EngineHost {
         <script>\(try read("core.js"))</script>
         <script>\(try read("kit.js"))</script>
         <script>\(try read("backgrounds.js"))</script>
+        <script>\(try read("transitions.js"))</script>
         <script>
         let FONT = 'sans-serif';
         \(helpers)
@@ -177,6 +178,15 @@ public final class EngineRenderer: NSObject, WKNavigationDelegate {
                                ["id": id, "params": params, "pal": palette.json, "t": t, "w": Int(size.width), "h": Int(size.height)])
         guard let s = r as? String else { throw AgentError.msg("engine: no such background \(id)") }
         return try Self.data(fromDataURL: s)
+    }
+
+    /// The frames of a scene transition of the library between two images (stills of two scenes), mixed by the same compositor the film layer uses
+    /// (engine/transitions.js, with the images as the outgoing and incoming buffers).
+    public func transitionStrip(_ name: String, from a: Data, to b: Data, palette: EnginePalette, frames: Int, size: CGSize = CGSize(width: 320, height: 180)) async throws -> [Data] {
+        func url(_ d: Data) -> String { "data:image/jpeg;base64," + d.base64EncodedString() }
+        let r = try await call("return await studioEngine.transitionStrip(name, a, b, pal, n, w, h)",
+                               ["name": name, "a": url(a), "b": url(b), "pal": palette.json, "n": frames, "w": Int(size.width), "h": Int(size.height)])
+        return try Self.strip(r)
     }
 
     /// `frames` frames covering the effect's duration (plus a short hold), for an animated thumbnail.

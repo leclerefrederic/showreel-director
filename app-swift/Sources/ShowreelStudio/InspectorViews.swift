@@ -35,11 +35,25 @@ struct ViewerPane: View {
     @EnvironmentObject var project: ProjectModel
     @ObservedObject private var engine = EngineService.shared
 
+    /// The built version the viewer plays for a selection that belongs to the film (nothing, a scene, a node that is not a resource, a transition).
+    private var filmVersion: String? {
+        switch project.selection {
+        case .none, .scene, .transition: return project.playableVersion
+        case .sceneNode(_, let g, _): return g == .raw ? nil : project.playableVersion
+        default: return nil
+        }
+    }
+
     var body: some View {
         VStack(spacing: 12) {
-            Spacer(minLength: 0)
-            content
-            Spacer(minLength: 0)
+            if let v = filmVersion, !project.viewerShowsDraft {
+                FilmViewer(version: v, player: project.player)
+            } else {
+                Spacer(minLength: 0)
+                if filmVersion != nil { Button("Show the built film (\(filmVersion!))") { project.viewerShowsDraft = false }.buttonStyle(.borderless).font(.caption) }
+                content
+                Spacer(minLength: 0)
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -63,8 +77,7 @@ struct ViewerPane: View {
         case .look(let kind, let id):
             LookViewer(kind: kind, id: id)
         case .transition(let id):
-            if let pair = f?.transition(after: id), !pair.item.isCut { LookViewer(kind: .transitions, id: pair.item.type) }
-            else { caption("Cut on beat", "The default: a hard cut on the beat, no overlap.") }
+            TransitionPreview(from: id)
         default:
             VStack(spacing: 8) {
                 Image(systemName: "rectangle.on.rectangle").font(.system(size: 44, weight: .light)).foregroundStyle(.secondary)
@@ -597,7 +610,8 @@ struct LookInspector: View {
             if let e = engine.catalogue?.effects.first(where: { $0.name == id }) {
                 Text("energy \(e.energy) · \(String(format: "%.1f", e.dur)) s").font(.caption).foregroundStyle(.secondary)
             }
-            Text("A transition sits between two scenes of the storyboard. Choosing one per passage comes with the film reel (next phase).").font(.caption).foregroundStyle(.secondary)
+            if Look.isPreviewOnly(id) { Label("Preview only: it does not run between two real scenes, so it cannot be chosen for a montage.", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange) }
+            else { Text("Drag it onto a marker of the reel, or choose it in the inspector of a transition.").font(.caption).foregroundStyle(.secondary) }
         }
     }
 }

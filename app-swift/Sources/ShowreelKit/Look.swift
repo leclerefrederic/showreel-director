@@ -46,6 +46,15 @@ public enum Look {
     public struct LibraryEffect: Equatable, Sendable { public let cat: String; public let name: String; public let desc: String; public let energy: String; public let duration: Double }
     /// The same list with what each effect shows, its energy and its natural duration (a scene transition's default length).
     public static func effectDetails() -> [LibraryEffect] { effectCache }
+    /// The scene transitions that do not run between two real scenes (Morph, Match cut...): visible as previews, never chosen for a montage. The list is
+    /// engine/transitions-preview-only.json, which tools/check.py keeps equal to what scripts/test_film.js finds.
+    public static func transitionsPreviewOnly() -> Set<String> {
+        guard let u = engineDir?.appendingPathComponent("transitions-preview-only.json"), let d = try? Data(contentsOf: u),
+              let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any], let l = j["previewOnly"] as? [String] else { return [] }
+        return Set(l)
+    }
+    public static func isPreviewOnly(_ name: String) -> Bool { transitionsPreviewOnly().contains(name) }
+
     public static func transitions() -> [LibraryEffect] { effectCache.filter { $0.cat == EngineCatalogue.transitionCategory } }
     public static func effects() -> [String] { effectCache.map { $0.name } }
     public static func effectCategory(_ name: String) -> String? { effectCache.first { $0.name == name }?.cat }

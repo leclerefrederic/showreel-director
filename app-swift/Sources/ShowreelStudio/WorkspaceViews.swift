@@ -429,7 +429,7 @@ struct LookLibrary: View {
         case .transitions:
             ForEach((engine.catalogue?.effects ?? []).filter { $0.cat == EngineCatalogue.transitionCategory }) { e in
                 row(.transitions, e.name) {
-                    HStack { Text(e.name).font(.callout); Spacer(); Text(e.energy).font(.caption2).foregroundStyle(.secondary) }
+                    HStack { Text(e.name).font(.callout); Spacer(); if Look.isPreviewOnly(e.name) { chip("preview only") } else { Text(e.energy).font(.caption2).foregroundStyle(.secondary) } }
                 }
             }
         }

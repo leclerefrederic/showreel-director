@@ -221,9 +221,26 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
             d1 = [l for l in t1.stdout.splitlines() if l.startswith("digest ")]; d2 = [l for l in t2.stdout.splitlines() if l.startswith("digest ")]
             ok("film test: mid-transition frames hold pixels of both scenes (push, iris) and are identical from one run to the next") if t1.returncode == 0 and d1 and d1 == d2 \
                 else bad("film test: pixel test failed: " + (t1.stdout + t1.stderr)[-400:])
-            ta = run(["node", os.path.join(SK, "scripts", "test_film.js"), built, "--all", "--min-working", "36"], env=env, timeout=600)
+            ta = run(["node", os.path.join(SK, "scripts", "test_film.js"), built, "--all", "--min-working", "36", "--json"], env=env, timeout=600)
             summary = next((l for l in ta.stdout.splitlines() if l.startswith("transitions that run")), "")
             ok("film test: " + summary) if ta.returncode == 0 and summary else bad("film test: transitions between two real scenes: " + ta.stdout[-500:])
+            # the list of transitions that cannot be chosen for a montage is what the probe finds (the app reads engine/transitions-preview-only.json)
+            jl = next((l for l in ta.stdout.splitlines() if l.startswith("json ")), "")
+            try:
+                probe = sorted(_json.loads(jl[5:])["notWorking"]); listed = sorted(_json.load(open(os.path.join(SK, "engine", "transitions-preview-only.json"), encoding="utf-8"))["previewOnly"])
+            except Exception: probe, listed = None, []
+            ok("preview-only transitions listed in engine/transitions-preview-only.json are the ones the probe finds (%d)" % len(listed)) if probe is not None and probe == listed else bad("engine/transitions-preview-only.json %s differs from the probe %s" % (listed, probe))
+            # film format with the montage in film.json (the way the app's Build works): same build, same harness, same pixels, and --scene filters the harness
+            f2 = os.path.join(SK, "evals", "film-spike", "v2"); built2 = os.path.join(td, "film2.html")
+            rb2 = run([sys.executable, os.path.join(SK, "scripts", "build.py"), f2, "--out", built2])
+            rh2 = run(["node", os.path.join(SK, "scripts", "harness.js"), built2, "--step", "0.25"], env=env) if rb2.returncode == 0 else None
+            rs2 = run(["node", os.path.join(SK, "scripts", "harness.js"), built2, "--step", "0.25", "--scene", "S02"], env=env) if rb2.returncode == 0 else None
+            fr_all = next((l for l in (rh2.stdout.splitlines() if rh2 else []) if l.startswith("frames rendered:")), ""); fr_one = next((l for l in (rs2.stdout.splitlines() if rs2 else []) if l.startswith("frames rendered:")), "")
+            n_all = int(fr_all.split()[2]) if fr_all else 0; n_one = int(fr_one.split()[2]) if fr_one else 0
+            t3 = run(["node", os.path.join(SK, "scripts", "test_film.js"), built2, "--quiet"], env=env, timeout=300)
+            d3 = [l for l in t3.stdout.splitlines() if l.startswith("digest ")]
+            ok("film.json: SRF.fromData builds, passes the harness, --scene limits it to one scene, and draws the same pixels as the main.js montage") if rb2.returncode == 0 and rh2.returncode == 0 and rs2.returncode == 0 and 0 < n_one < n_all and d3 == d1 \
+                else bad("film.json build failed: " + (rb2.stderr + (rh2.stdout if rh2 else "") + t3.stdout)[-400:])
     # syntax
     for f in package.skill_files():
         if f.endswith(".py"):
@@ -276,7 +293,7 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     sdir = os.path.join(ROOT, "app-swift")
     if os.path.isdir(sdir):
         import json
-        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "shared/process.json", "shared/engine-host.js", "shared/look-packages.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "BlockViews.swift", "EditorViews.swift", "LibraryView.swift", "LookViews.swift", "EngineService.swift", "WizardView.swift", "StoryboardViews.swift", "BuildViews.swift", "WorkspaceViews.swift", "InspectorViews.swift", "ContentViews.swift", "ReelViews.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift", "Assets.swift", "ProjectDocs.swift", "Operations.swift", "Process.swift", "JSONValue.swift", "Engine.swift", "Look.swift", "Checks.swift", "Wizard.swift", "Storyboard.swift", "Build.swift", "SceneTree.swift", "Content.swift", "Reel.swift", "Music.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift", "StudioFileTests.swift", "BlocksTests.swift", "DocsTests.swift", "AssetTests.swift", "EngineTests.swift", "LookTests.swift", "ChecksTests.swift", "WizardTests.swift", "SceneTests.swift", "WorkspaceTests.swift", "SceneTreeTests.swift", "ContentTests.swift", "ReelTests.swift", "LayoutTests.swift")]
+        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "shared/process.json", "shared/engine-host.js", "shared/look-packages.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "BlockViews.swift", "EditorViews.swift", "LibraryView.swift", "LookViews.swift", "EngineService.swift", "WizardView.swift", "StoryboardViews.swift", "BuildViews.swift", "WorkspaceViews.swift", "InspectorViews.swift", "ContentViews.swift", "ReelViews.swift", "PlayerViews.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift", "Assets.swift", "ProjectDocs.swift", "Operations.swift", "Process.swift", "JSONValue.swift", "Engine.swift", "Look.swift", "Checks.swift", "Wizard.swift", "Storyboard.swift", "Build.swift", "SceneTree.swift", "Content.swift", "Reel.swift", "Music.swift", "Film.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift", "StudioFileTests.swift", "BlocksTests.swift", "DocsTests.swift", "AssetTests.swift", "EngineTests.swift", "LookTests.swift", "ChecksTests.swift", "WizardTests.swift", "SceneTests.swift", "WorkspaceTests.swift", "SceneTreeTests.swift", "ContentTests.swift", "ReelTests.swift", "LayoutTests.swift", "FilmTests.swift")]
         gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
         ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
         capf = os.path.join(sdir, "shared", "capabilities.json")

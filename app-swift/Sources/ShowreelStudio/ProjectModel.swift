@@ -101,6 +101,10 @@ final class ProjectModel: ObservableObject {
     @Published var sceneTab: SceneTab = .settings
     /// The content item open in the Content tab (set by selecting its node in the tree).
     @Published var contentItem: String?
+    /// With a built version the viewer plays it; true shows the draft thumbnails instead.
+    @Published var viewerShowsDraft = false
+    /// Plays the built version in the viewer (one page for the project, so it survives a change of selection).
+    lazy var player = ReelPlayer()
     /// The sizes of the workspace's panels, remembered in .studio/ui.json.
     @Published private(set) var layout: PanelLayout
     /// The playhead of the reel, in seconds, and the zoom of the reel (pixels per second).
@@ -224,6 +228,7 @@ final class ProjectModel: ObservableObject {
         guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it from the toolbar once every scene is OK."; return }
         guard !buildBusy else { return }
         let v = Versions.next(store)
+        do { try Film.write(version: v, store: store) } catch { self.error = "Could not write \(v)/film.json: \(error.localizedDescription)"; return }   // the exact montage, for the build to read
         buildVersion = v
         generating = true
         buildReport = nil
@@ -348,6 +353,22 @@ final class ProjectModel: ObservableObject {
     }
 
     /// A scene dropped on the reel (from the library or from another frame): switched on if needed, then put before `target` (nil: at the end).
+    /// The version the viewer can play: the one picked in Build, or the last one, when its page exists.
+    var playableVersion: String? {
+        if let v = playVersion, Versions.hasDist(store, v) { return v }
+        if let v = versions.last, Versions.hasDist(store, v) { return v }
+        return nil
+    }
+
+    /// Selects the marker after a scene and puts the playhead just before the transition starts (centred on the cut).
+    func selectTransition(from id: String) {
+        select(.transition(id))
+        if let f = showreel, let tl = Optional(f.timeline()), let i = tl.firstIndex(where: { $0.scene.id == id }), i + 1 < tl.count, let cut = tl[i + 1].start {
+            let d = f.transition(after: id).map { $0.item.duration ?? f.defaultTransitionDuration($0.item.type, between: tl[i].scene, and: tl[i + 1].scene) } ?? 0
+            playhead = max(0, cut - d / 2 - 0.2)
+        }
+    }
+
     func place(_ id: String, before target: String?) {
         let on = showreel?.storyboards.first?.items.first { $0.scene == id }?.enabled ?? false
         if !on { guard perform(.sceneEnabled(id: id, enabled: true, montage: nil)) else { return } }

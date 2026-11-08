@@ -105,6 +105,27 @@ final class EngineService: ObservableObject {
         }
     }
 
+    /// What makes a scene's thumbnail change: its words and the look it is drawn with.
+    func sceneToken(_ s: ShowreelFile.Scene, _ f: ShowreelFile?) -> String {
+        let d = f?.decisions
+        return [s.id, "\(String(describing: s.overrides))", s.text, (d?.palette ?? []).joined(), d?.fonts?.titles ?? "", d?.background?.id ?? "", d?.background?.mood ?? "", d?.effectsPack ?? "", (d?.moods ?? []).joined()].joined(separator: "|")
+    }
+
+    /// A transition of the library between the thumbnails of two scenes, mixed by the film layer's own compositor: what the passage will look like.
+    func transitionFrames(_ name: String, from a: ShowreelFile.Scene, to b: ShowreelFile.Scene, file: ShowreelFile?, store: ProjectStore) async -> [NSImage] {
+        await start()
+        func still(_ s: ShowreelFile.Scene) async -> Data? {
+            let fr = await sceneFrames(s, file: file, store: store)
+            guard let img = fr.isEmpty ? nil : fr[min(fr.count - 1, fr.count * 3 / 4)], let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return nil }
+            return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.85])
+        }
+        guard let da = await still(a), let db = await still(b) else { return [] }
+        let pal = EnginePalette(stored: file?.decisions.palette)
+        return await cached(store, key(["transition", name, sceneToken(a, file), sceneToken(b, file)])) {
+            try await renderer.transitionStrip(name, from: da, to: db, palette: pal, frames: 12)
+        }
+    }
+
     /// A scene as the engine can show it today: its words with the project's effects pack, over the project's background, in the project's
     /// palette and title font. A scene has no layers yet (phase W4), so this is a stand-in that follows the global look.
     func sceneFrames(_ scene: ShowreelFile.Scene, file: ShowreelFile?, store: ProjectStore, size: CGSize = EngineService.frameSize) async -> [NSImage] {

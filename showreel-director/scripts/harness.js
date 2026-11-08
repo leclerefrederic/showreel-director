@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Headless test: renders the whole timeline in every format and language with a Proxy canvas stub.
-   Usage: node harness.js BUILT_HTML [--step 0.25] [--modes d,m] [--langs en,fr] [--reduced]
+   Usage: node harness.js BUILT_HTML [--step 0.25] [--modes d,m] [--langs en,fr] [--reduced] [--scene NAME]
+   --scene NAME limits the analysis to the frames of one scene (its name or id, as in the report), for a fix-and-retest loop on one scene of a film.
    --reduced renders with ctx.reduced = true (reduced-motion mode) to check that path too.
    ctx.music is true when the build embeds a track (music-reactive visuals are exercised); --silent renders as if the music were off or muted.
    Reports: exceptions, non-finite values in drawing calls, text drawn outside the stage (tracks translate/scale/save/restore,
@@ -9,7 +10,7 @@
    It cannot judge looks: still look at contact sheets. */
 const { makeOpt, loadReel, registerFonts, stubImage } = require('./_reel');
 const args = process.argv.slice(2), file = args[0], opt = makeOpt(args);
-const step = parseFloat(opt('--step', '0.25'));
+const step = parseFloat(opt('--step', '0.25')), only = opt('--scene', null);
 const offscreen = [];   // stub canvases the film layer asked for (transitions draw two scenes into them): same stub as the main one, emptied every frame
 const { html, S, SR, DUR } = loadReel(file, stubImage, (w, h) => { const ctx = mkCtx(); const c = { width: w, height: h, getContext: () => ctx }; offscreen.push(ctx); return c; });
 // Text measurement: with @napi-rs/canvas available (NODE_PATH) the embedded fonts are registered and measureText is real, so wrapping
@@ -74,6 +75,7 @@ for (const mode of modes) for (const lang of langs) {
   for (let t = 0; t <= DUR; t += step) {
     const sc = SR.sceneAt(t); cur = `${sc ? sc.scene.name : '-'}|${lang}/${mode} t=${t.toFixed(2)}`;
     offscreen.forEach(o => { o.__texts.length = 0; });
+    if (only && !(sc && (sc.scene.name === only || sc.scene.id === only))) continue;
     const before = g.__ops;
     try { SR.drawFrame(g, W, H, t, { mode, lang, reduced: args.includes('--reduced'), music: /id="trackdata"/.test(html) && !args.includes('--silent') }); } catch (e) { issues.push(`${cur}: EXCEPTION ${e.message}`); }
     frames++; if (g.__ops - before < 4) empty++;
@@ -90,6 +92,7 @@ for (const mode of modes) for (const lang of langs) {
     T.length = 0;
   }
 }
+if (only && !frames) issues.push(`scene filter: no frame belongs to a scene named "${only}"`);
 console.log(`frames rendered: ${frames}  (modes ${modes}, langs ${langs}, step ${step}s, duration ${DUR}s)`);
 console.log(`issues: ${issues.length}`); issues.slice(0, 30).forEach(i => console.log('  ' + i));
 console.log(`near-empty frames: ${empty}`);

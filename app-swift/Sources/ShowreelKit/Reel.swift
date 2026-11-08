@@ -106,6 +106,9 @@ extension ProjectStore {
                     guard let lib = Look.transitions().first(where: { $0.name.caseInsensitiveCompare(ty) == .orderedSame }) else {
                         throw AgentError.msg("unknown transition \"\(ty)\": it is not among the scene transitions of the library")
                     }
+                    guard !Look.isPreviewOnly(lib.name) else {
+                        throw AgentError.msg("\(lib.name) is a preview only: it does not run between two real scenes, so it cannot be chosen for a montage")
+                    }
                     if lib.name != old.type { t = ShowreelFile.Transition(type: lib.name, duration: f.defaultTransitionDuration(lib.name, between: outgoing, and: pair.next), instruction: old.instruction) }
                 }
             }
@@ -214,6 +217,7 @@ extension Checks {
             if let at = n.start { boundaries.append(at) }
             let tr = t.item.transition
             guard !tr.isCut, let la = t.length, let lb = n.length else { continue }
+            if Look.isPreviewOnly(tr.type) { long.append("\(t.scene.id) \u{2192} \(n.scene.id): \(tr.type) is a preview only and cannot be drawn between two real scenes: choose another transition or a cut") }
             let d = tr.duration ?? f.defaultTransitionDuration(tr.type, between: t.scene, and: n.scene)
             if d > min(la, lb) + 0.001 { long.append("\(t.scene.id) \u{2192} \(n.scene.id): \(tr.type) lasts \(sec(d)) s, a scene lasts \(sec(min(la, lb))) s") }
             let outTexts = t.scene.content.filter { $0.type == "text" && !($0.text ?? "").isEmpty }.filter { let v = visible($0, length: la); return v.1 > la - d && v.0 < la }

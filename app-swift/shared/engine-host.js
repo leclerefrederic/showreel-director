@@ -82,6 +82,20 @@
       for (let i = 0; i < n; i++) { drawLook(bgId, params, ef, pal, font, span * i / Math.max(1, n - 1), text); frames.push(toURL(w, h, 'image/jpeg')); }
       return JSON.stringify(frames);
     },
+    // A scene transition of the library between two images (the outgoing and the incoming buffers of the film layer's compositor), as n frames.
+    async transitionStrip(name, urlA, urlB, pal, n, w, h) {
+      if (!window.SRT || !window.SRT.has(name)) return null;
+      const load = u => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('image')); i.src = u; });
+      const [ia, ib] = await Promise.all([load(urlA), load(urlB)]);
+      const buf = im => { const c = sizeCanvas(W, H); c.getContext('2d').drawImage(im, 0, 0, W, H); return c; };
+      const A = buf(ia), B = buf(ib), frames = [];
+      for (let i = 0; i < n; i++) {
+        sg.setTransform(1, 0, 0, 1, 0, 0); sg.globalAlpha = 1; sg.globalCompositeOperation = 'source-over'; sg.clearRect(0, 0, W, H);
+        try { window.SRT.draw(sg, name, n > 1 ? i / (n - 1) : 0, { P: palette(pal) }, A, B, W, H); } catch (e) { note(name, e); }
+        frames.push(toURL(w, h, 'image/jpeg'));
+      }
+      return JSON.stringify(frames);
+    },
     errors() { return errors.slice(); }
   };
 })();

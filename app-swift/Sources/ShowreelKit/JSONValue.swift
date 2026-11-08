@@ -9,6 +9,18 @@ public enum JSONValue: Codable, Equatable, Sendable {
     case array([JSONValue])
     case object([String: JSONValue])
 
+    /// The value as Foundation objects, for JSONSerialization.
+    public var any: Any {
+        switch self {
+        case .null: return NSNull()
+        case .bool(let b): return b
+        case .number(let n): return n
+        case .string(let s): return s
+        case .array(let a): return a.map { $0.any }
+        case .object(let o): return o.mapValues { $0.any }
+        }
+    }
+
     public init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         if c.decodeNil() { self = .null }

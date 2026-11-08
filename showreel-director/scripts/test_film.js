@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Pixel test of the film layer (engine/film.js): does a transition really draw two scenes at once, and is the output the same on every run?
-   Usage: NODE_PATH=<dir with node_modules/@napi-rs/canvas> node test_film.js BUILT_HTML [--mode d] [--all [--min-working N]] [--quiet]
+   Usage: NODE_PATH=<dir with node_modules/@napi-rs/canvas> node test_film.js BUILT_HTML [--mode d] [--all [--min-working N] [--json]] [--quiet]
    Default: for every transition of the built film, a frame in the middle of the transition is rendered with a real canvas (Skia); it must hold pixels that
    belong to the outgoing scene only and pixels that belong to the incoming scene only (colours found by drawing each scene alone), twice the same bytes in this process;
    a SHA-256 of each frame is printed on a `digest` line so two runs (two processes) can be compared.
@@ -92,6 +92,7 @@ if (!args.includes('--all')) {
   lines.forEach(l => console.log(l));
   console.log(`transitions that run between two real scenes: ${works} of ${names.length} (start = outgoing scene, end = incoming scene, no exception, the frames move)`);
   console.log(`transitions that show both scenes together at some point (3% or more of each): ${both} of ${names.length}`);
+  if (args.includes('--json')) console.log('json ' + JSON.stringify({ working: lines.filter(l => l.startsWith('ok')).map(l => l.slice(5, 29).trim()), notWorking: lines.filter(l => l.startsWith('FAIL')).map(l => l.slice(5, 29).trim()) }));
   const need = parseInt(opt('--min-working', '0'));
   if (works < need) fails.push(works + ' transitions run, ' + need + ' expected');
 }

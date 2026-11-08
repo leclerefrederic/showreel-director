@@ -6,11 +6,19 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 
 ## Application (launch, library, settings)
 
+- Project settings belong in the top bar of the project window (one button opening the project's parameters: audience, message, tone, languages, formats, duration, constraints, control level). App settings (API key, gateway, model, environment, skill version) do not belong in the toolbar: they stay in the application menu (Showreel Studio, Settings, Cmd+,), because they are about the app and not about a project.
+
+- Overall feel: too much like a form-based Windows application of the 2000s. More drag and drop everywhere (reorder elements, rearrange, drop resources onto scenes), more fluid, visual and dynamic. Up and Down buttons should go. Scheduled as W5 (direct manipulation) and P (feel).
+
+- Bug seen on screen after the resizable panels: the storyboard strip cannot be resized vertically (the library and inspector widths work).
+
 - Panels (library, inspector, storyboard strip) must resize freely with no imposed maximum, only a sensible minimum; sizes remembered per project. Requested by the owner and added to the W3a pass as a separate item.
 
 - The Library window opens at launch by default (built in phase T).
 
 ## Library, Scenes tab
+
+- A scene can be renamed (a name chosen by the user, shown next to its ID). The ID (S01, S02) stays stable and is never renamed or reused; the name is only a label, used in the library, the tree, the reel and the copilot's messages.
 
 - Each scene must expand into a tree of what composes it: Raw (images, sound, etc.), Texts, Effects, Background (inherited from the project), Look (inherited from the project). The goal is to see at a glance what a scene is made of (scheduled as phase W1b).
 
@@ -23,6 +31,9 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 - The app interface is in English while the owner works in French: decide how the interface language is chosen (system language or the project's conversation language).
 
 ## Scene content
+
+- Bug seen in use: adding another content item (a second text) makes the existing items lose what was typed, and every text field shows the placeholder "Your words" again.
+- "Your words" must be a real placeholder (grey ghost text that disappears as soon as the field has focus), never a stored value. An empty text item stays empty. This may be the cause of the bug above if the default text is saved as content.
 
 - Content is a map of what the scene contains and the instructions for the AI. Items: a text, its colour (linked to the palette, or "AI decides"), its animation (fly in, and so on, or "AI decides"), an optional instruction. The user chooses how much control they want. The order of the items is their processing priority.
 

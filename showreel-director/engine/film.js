@@ -24,6 +24,9 @@
    its start: it shows its first frame). d is capped at the shorter of the two scenes. Outside the transitions each scene is drawn straight onto g, so the
    harness checks (text outside the stage, collisions) see it as usual; inside one, both scenes are drawn into off-screen canvases (the host provides
    SR_CANVAS_FACTORY(w, h) when it has no DOM) and mixed by the transition of the catalogue (engine/transitions.js, generated from the effects lab).
+   SRF.fromData(modules, {palette, background, overlay}) is the same call when the montage comes from the app: the version folder holds film.json (scenes with name,
+   t, duration and the transition to the next scene, written by the app from the montage), build.py inlines it as SR.data.film, and the modules are an object keyed
+   by scene name: SRF.fromData({ S01(g, lt, c) {...}, S02(g, lt, c) {...} }, {palette}). It throws when a scene has no module. Do not copy the montage into main.js.
    film.windows lists the transitions with their start and end times; film.scenes is the scene list as the engine holds it. */
 (function (G) {
   'use strict';
@@ -74,5 +77,12 @@
     G.SRF.current = api;
     return api;
   }
-  G.SRF = { film, current: null };
+  function fromData(modules, opt) {
+    const d = SR.data.film;
+    if (!d || !Array.isArray(d.scenes)) throw new Error('SRF.fromData: this build has no film.json (the version folder must hold one, written by the app)');
+    const miss = d.scenes.filter(s => typeof (modules || {})[s.name] !== 'function').map(s => s.name);
+    if (miss.length) throw new Error('SRF.fromData: no scene module for ' + miss.join(', '));
+    return film(Object.assign({}, opt, { scenes: d.scenes.map(s => ({ name: s.name, t: s.t, render: modules[s.name], transition: s.transition })) }));
+  }
+  G.SRF = { film, fromData, current: null };
 })(typeof window !== 'undefined' ? window : globalThis);
