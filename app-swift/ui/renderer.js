@@ -23,6 +23,7 @@ $("go").onclick = send; $("txt").onkeydown = e => { if (e.key === "Enter" && (e.
 $("stop").onclick = () => studio.stop(); $("new").onclick = async () => { await studio.reset(); log.innerHTML = ""; };
 $("proj").onclick = async () => { const p = await studio.pickProject(); if (p) $("pn").textContent = p; };
 $("key").onclick = async () => { const k = prompt("Anthropic API key (stored encrypted in the macOS keychain)"); if (k) { await studio.setKey(k.trim()); add("t", "API key saved."); } };
+$("ep").onclick = async () => { const c = await studio.cfg(); const u = prompt("Gateway base URL (empty = api.anthropic.com). Example: https://host/path, without /v1/messages", c.baseURL || ""); if (u === null) return; const b = confirm("Send the key as 'Authorization: Bearer' (gateways)? OK = Bearer, Cancel = x-api-key (api.anthropic.com)"); await studio.setEndpoint(u, b); add("t", "Endpoint saved: " + (u || "api.anthropic.com") + (b ? " (Bearer)" : " (x-api-key)")); };
 $("pick").onclick = async () => { const t = await studio.readClipboard(); if (t) { $("txt").value += (($("txt").value ? "\n" : "") + t); $("txt").focus(); } };
 $("rev").onclick = () => curFile && studio.reveal(curFile);
 studio.cfg().then(c => { $("pn").textContent = c.project || "no project folder"; if (!c.hasKey) add("t", "Set your API key (top bar) and choose a project folder to start."); });

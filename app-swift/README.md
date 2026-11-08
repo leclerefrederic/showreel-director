@@ -1,16 +1,16 @@
-# Showreel Studio, native macOS version (SwiftPM + WKWebView)
+# Showreel Studio (native macOS app)
 
-Same agent and same UI as `../app`, without Electron or Node for the model calls. The chat UI (`../app/src-ui`) is shown in a `WKWebView`; the agent loop (Messages API streaming), the tools and the Keychain storage of the API key are Swift. The macOS trust store is used for HTTPS, so the corporate TLS inspection certificate is already trusted.
+A chat plus a preview pane that run the `showreel-director` skill with its own agent loop, so the look board, the pickers, the effects lab and the scene cards open next to the conversation.
 
-Shared with the Electron app: `../app/shared/tools.json` (tool definitions) and `../app/shared/addendum.md` (system prompt addendum), plus the skill itself.
+Pieces: a `WKWebView` shows `ui/` (chat, question cards, preview iframe); `Agent.swift` streams the Messages API over `URLSession`; `Tools.swift` runs the tools (`bash`, `read_file`, `write_file`, `list_dir`, `ask_user`, `show_page`); `Studio.swift` bridges the page and the native side and keeps the API key in the Keychain. The system prompt is the skill's `SKILL.md` plus `shared/addendum.md`; the tools are defined in `shared/tools.json`. HTTPS uses the macOS trust store.
 
 ```
 cd app-swift
 swift build                 # compile
-swift run                   # run from the source tree (resources are found by walking up)
+swift run                   # run from the source tree (resources found by walking up)
 ./make-app.sh               # build/ShowreelStudio.app, ad-hoc signed
 ```
 
-Needs `python3`, `node` and `ffmpeg` on the PATH for the skill's scripts (`bash` runs in a login zsh that also sources `~/.zshrc`).
+In the app: **API key...** (Keychain), **Endpoint...** (gateway base URL and Bearer or x-api-key; `ANTHROPIC_BASE_URL` is also read), **Project folder...**, then describe the reel. `python3`, `node` and `ffmpeg` must be on the PATH (`bash` runs in a login zsh that also sources `~/.zshrc`).
 
-Status: written without a Swift compiler at hand; expect a first round of compile fixes. The GitHub workflow `swift.yml` builds it on a macOS runner.
+Status: written without a Swift compiler at hand, so expect compile fixes; the GitHub workflow `swift.yml` builds it on a macOS runner.

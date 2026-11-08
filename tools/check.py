@@ -215,22 +215,23 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
         r = run(["node", os.path.join(SK, "scripts", "harness.js"), demo, "--step", "0.5"])
         line = next((l for l in r.stdout.splitlines() if l.startswith("issues:")), "issues: ?")
         ok("demo harness " + line) if line == "issues: 0" else bad("demo harness " + line)
-    # desktop app (agent loop with a fake client, syntax of the Electron files)
-    appdir = os.path.join(ROOT, "app")
-    if os.path.isdir(appdir):
-        r = run(["node", os.path.join(appdir, "tests", "agent.test.js")])
-        ok("app agent loop test") if r.returncode == 0 else bad("app agent loop test: " + (r.stderr or r.stdout)[-300:])
-        r = run(["node", os.path.join(appdir, "tests", "server.test.js")])
-        ok("app browser-mode server test") if r.returncode == 0 else bad("app server test: " + (r.stderr or r.stdout)[-300:])
-        sw = os.path.join(ROOT, "app-swift", "Sources", "ShowreelStudio", "Tools.swift")
-        if os.path.exists(sw):
-            import json
-            names = [d["name"] for d in json.load(open(os.path.join(appdir, "shared", "tools.json")))]
-            missing = [n for n in names if '"%s"' % n not in open(sw).read()]
+    # native app: shared files exist, every tool is implemented, UI script parses
+    sdir = os.path.join(ROOT, "app-swift")
+    if os.path.isdir(sdir):
+        import json
+        need = ["ui/index.html", "ui/renderer.js", "shared/tools.json", "shared/addendum.md", "Package.swift"]
+        gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
+        ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
+        sw = os.path.join(sdir, "Sources", "ShowreelStudio", "Tools.swift")
+        tj = os.path.join(sdir, "shared", "tools.json")
+        if os.path.exists(sw) and os.path.exists(tj):
+            names = [d["name"] for d in json.load(open(tj))]
+            code = open(sw).read()
+            missing = [n for n in names if '"%s"' % n not in code]
             ok("swift app implements every shared tool") if not missing else bad("Tools.swift lacks tools: " + ", ".join(missing))
-        for f in ("src-main/server.js", "src-ui/bridge-web.js", "src-main/main.js", "src-main/preload.js", "src-ui/renderer.js"):
-            r = run(["node", "--check", os.path.join(appdir, f)])
-            if r.returncode: bad("app syntax " + f)
+        if os.path.exists(os.path.join(sdir, "ui", "renderer.js")):
+            r = run(["node", "--check", os.path.join(sdir, "ui", "renderer.js")])
+            ok("app UI script syntax") if r.returncode == 0 else bad("app UI script syntax")
     print("\n" + ("all checks passed" if not fails else f"{len(fails)} check(s) failed"))
     sys.exit(1 if fails else 0)
 

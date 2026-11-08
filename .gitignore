@@ -6,3 +6,5 @@ qa/
 *.skill.new
 app/resources/
 app/dist/
+.build/
+app-swift/build/

@@ -25,8 +25,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
-        guard let ui = resource("ui", dev: "app/src-ui") else {
-            let a = NSAlert(); a.messageText = "UI files not found (app/src-ui)."; a.runModal(); return
+        guard let ui = resource("ui", dev: "app-swift/ui") else {
+            let a = NSAlert(); a.messageText = "UI files not found (app-swift/ui)."; a.runModal(); return
         }
         web.loadFileURL(ui.appendingPathComponent("index.html"), allowingReadAccessTo: URL(fileURLWithPath: "/"))
     }

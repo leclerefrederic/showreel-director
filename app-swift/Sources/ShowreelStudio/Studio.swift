@@ -30,6 +30,8 @@ final class Studio: NSObject, WKScriptMessageHandlerWithReply, WKUIDelegate {
 
     private var model: String { defaults.string(forKey: "model") ?? "claude-sonnet-5-5" }
     private var project: String? { defaults.string(forKey: "project") }
+    private var baseURL: String { defaults.string(forKey: "baseURL") ?? ProcessInfo.processInfo.environment["ANTHROPIC_BASE_URL"] ?? "" }
+    private var bearer: Bool { defaults.bool(forKey: "bearer") }
     private func apiKey() -> String? {
         if let k = Keychain.get(), !k.isEmpty { return k }
         let e = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"]
@@ -46,7 +48,7 @@ final class Studio: NSObject, WKScriptMessageHandlerWithReply, WKUIDelegate {
       const call=function(name,arg){return window.webkit.messageHandlers.studio.postMessage({name:name,arg:arg===undefined?null:arg})};
       const on=function(ev){return function(f){(L[ev]=L[ev]||[]).push(f)}};
       window.studio={
-        cfg:function(){return call('cfg')},setKey:function(k){return call('setKey',k)},setModel:function(m){return call('setModel',m)},
+        cfg:function(){return call('cfg')},setKey:function(k){return call('setKey',k)},setModel:function(m){return call('setModel',m)},setEndpoint:function(u,b){return call('setEndpoint',{url:u,bearer:b})},
         pickProject:function(){return call('pickProject')},send:function(t){return call('send',t)},stop:function(){return call('stop')},
         reset:function(){return call('reset')},answer:function(a){return call('answer',a)},
         readClipboard:function(){return call('readClipboard')},reveal:function(f){return call('reveal',f)},
@@ -63,12 +65,19 @@ final class Studio: NSObject, WKScriptMessageHandlerWithReply, WKUIDelegate {
         let arg = body["arg"]
         switch name {
         case "cfg":
-            replyHandler(["hasKey": apiKey() != nil, "model": model, "project": project ?? ""], nil)
+            replyHandler(["hasKey": apiKey() != nil, "model": model, "project": project ?? "", "baseURL": baseURL, "bearer": bearer], nil)
         case "setKey":
             if let k = arg as? String { Keychain.set(k); agent = nil }
             replyHandler(true, nil)
         case "setModel":
             if let m = arg as? String { defaults.set(m, forKey: "model"); agent = nil }
+            replyHandler(true, nil)
+        case "setEndpoint":
+            if let d = arg as? [String: Any] {
+                var u = (d["url"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+                while u.hasSuffix("/") { u.removeLast() }
+                defaults.set(u, forKey: "baseURL"); defaults.set(d["bearer"] as? Bool ?? false, forKey: "bearer"); agent = nil
+            }
             replyHandler(true, nil)
         case "pickProject":
             let panel = NSOpenPanel()
@@ -102,7 +111,7 @@ final class Studio: NSObject, WKScriptMessageHandlerWithReply, WKUIDelegate {
         guard let key = apiKey() else { return "Set your API key first." }
         guard let proj = project else { return "Choose a project folder first." }
         do {
-            if agent == nil { agent = try Agent(apiKey: key, model: model, project: URL(fileURLWithPath: proj), ui: ui) }
+            if agent == nil { agent = try Agent(apiKey: key, model: model, baseURL: baseURL, bearer: bearer, project: URL(fileURLWithPath: proj), ui: ui) }
             try await agent!.send(text)
             return ""
         } catch { return "Error: \(error.localizedDescription)" }

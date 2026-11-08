@@ -4,6 +4,8 @@ import Foundation
 final class Agent {
     private let apiKey: String
     private let model: String
+    private let baseURL: String
+    private let bearer: Bool
     private let tools: Tools
     private let ui: UIBridge
     private let system: [[String: Any]]
@@ -11,10 +13,12 @@ final class Agent {
     private var aborted = false
     private let lock = NSLock()
 
-    init(apiKey: String, model: String, project: URL, ui: UIBridge) throws {
+    init(apiKey: String, model: String, baseURL: String = "", bearer: Bool = false, project: URL, ui: UIBridge) throws {
         let sp = try Skill.systemPrompt(project: project, lang: nil)
         self.apiKey = apiKey
         self.model = model
+        self.baseURL = baseURL.isEmpty ? "https://api.anthropic.com" : baseURL
+        self.bearer = bearer
         self.ui = ui
         self.tools = Tools(project: project, skill: sp.root, ui: ui)
         self.system = [["type": "text", "text": sp.text, "cache_control": ["type": "ephemeral"]]]
@@ -22,9 +26,10 @@ final class Agent {
 
     func abort() { lock.lock(); aborted = true; lock.unlock() }
     private var isAborted: Bool { lock.lock(); defer { lock.unlock() }; return aborted }
+    private func resetAbort() { lock.lock(); aborted = false; lock.unlock() }
 
     func send(_ text: String) async throws {
-        lock.lock(); aborted = false; lock.unlock()
+        resetAbort()
         messages.append(["role": "user", "content": text])
         var turn = 0
         while turn < 60 && !isAborted {
@@ -49,9 +54,11 @@ final class Agent {
     }
 
     private func streamOnce() async throws -> ([[String: Any]], String) {
-        var req = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        guard let url = URL(string: baseURL + "/v1/messages") else { throw AgentError.msg("Invalid endpoint URL: \(baseURL)") }
+        var req = URLRequest(url: url)
         req.httpMethod = "POST"
-        req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        if bearer { req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization") }
+        else { req.setValue(apiKey, forHTTPHeaderField: "x-api-key") }
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         req.timeoutInterval = 300

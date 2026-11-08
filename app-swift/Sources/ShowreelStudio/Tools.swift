@@ -1,10 +1,15 @@
 import Foundation
 
 /// Thread-safe output buffer for a child process.
-final class OutputBuffer {
+/// @unchecked Sendable: every stored property is only touched under `lock`.
+final class OutputBuffer: @unchecked Sendable {
     private let lock = NSLock()
     private var out = Data(), err = Data()
-    var timedOut = false
+    private var _timedOut = false
+    var timedOut: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _timedOut }
+        set { lock.lock(); _timedOut = newValue; lock.unlock() }
+    }
     func add(_ d: Data, isErr: Bool) { lock.lock(); if isErr { err.append(d) } else { out.append(d) }; lock.unlock() }
     func text() -> (String, String) {
         lock.lock(); defer { lock.unlock() }
@@ -21,9 +26,9 @@ final class Tools {
         self.project = project; self.skill = skill; self.ui = ui
     }
 
-    /// Tool definitions shared with the Electron app (app/shared/tools.json).
+    /// Tool definitions shared with the Electron app (app-swift/shared/tools.json).
     static let definitions: [[String: Any]] = {
-        guard let u = resource("shared", dev: "app/shared")?.appendingPathComponent("tools.json"),
+        guard let u = resource("shared", dev: "app-swift/shared")?.appendingPathComponent("tools.json"),
               let d = try? Data(contentsOf: u),
               let a = try? JSONSerialization.jsonObject(with: d) as? [[String: Any]] else { return [] }
         return a

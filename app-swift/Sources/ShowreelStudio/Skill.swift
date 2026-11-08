@@ -23,7 +23,7 @@ enum Skill {
                 skill = String(skill[r.upperBound...])
             }
         }
-        guard let addURL = resource("shared", dev: "app/shared")?.appendingPathComponent("addendum.md"),
+        guard let addURL = resource("shared", dev: "app-swift/shared")?.appendingPathComponent("addendum.md"),
               let template = try? String(contentsOf: addURL, encoding: .utf8) else {
             throw AgentError.msg("shared/addendum.md not found")
         }

@@ -11,7 +11,7 @@ A change is done when all of these hold:
 1. `tools/verify.sh` ends with `VERIFY OK`.
 2. If `showreel-director/` changed: `python3 tools/package.py` was run and `check.py` reports the `.skill` identical to the folder.
 3. If a script, page or engine file changed: the matching check or sample ran (the build self-test, the picker pages through jsdom, the harness on the demo reel). `check.py` runs them.
-4. If `app/` or `app-swift/` changed: `app/shared/` stays the single source for the tool definitions and prompt addendum, and every tool in `tools.json` exists in both `app/src-main/tools.js` and `app-swift/Sources/ShowreelStudio/Tools.swift`.
+4. If `app-swift/` changed: every tool in `app-swift/shared/tools.json` is implemented in `Sources/ShowreelStudio/Tools.swift` (`check.py` fails otherwise).
 5. Nothing is claimed that was not run. Say what ran, what failed, and what could not run here (for example Electron windows, the Swift app on Linux).
 
 Fix the first failure first. Do not weaken a check to make it pass.

@@ -7,15 +7,13 @@ description: Rules for working on app-swift, the native macOS shell of Showreel 
 
 ## Shape
 
-`WKWebView` shows `app/src-ui`. `Studio.swift` injects `window.studio` and answers its calls. `Agent.swift` streams the Messages API over `URLSession`. `Tools.swift` runs the tools. `UIBridge.swift` sends events to the page and waits for question-card answers. Tool definitions and the prompt addendum come from `app/shared/`; the system prompt is `SKILL.md` without frontmatter plus that addendum.
+`WKWebView` shows `ui/`. `Studio.swift` injects `window.studio` and answers its calls. `Agent.swift` streams the Messages API over `URLSession`. `Tools.swift` runs the tools. `UIBridge.swift` sends events to the page and waits for question-card answers. Tool definitions and the prompt addendum come from `shared/`; the system prompt is `SKILL.md` without frontmatter plus that addendum.
 
 ## Compile and run
 
 ```
-cd app-swift
-swift build            # fix the first error first
-./make-app.sh          # build/ShowreelStudio.app
-open build/ShowreelStudio.app
+swift build --package-path app-swift --scratch-path ~/Library/Developer/ShowreelStudio/build   # fix the first error first
+tools/rebuild-app.sh   # stop, rebuild, bundle, open, confirm with pgrep
 ```
 
 Run from the source tree with `swift run`: resources are found by walking up from the current directory.
@@ -30,7 +28,7 @@ Run from the source tree with `swift run`: resources are found by walking up fro
 - Never name a type `Task`, `View`, `Color`, `Image`, `Text`, `Menu`, `Group`.
 - The API key lives in the Keychain only. Never log it, never write it to a file, never put it in a command line.
 - `bash` runs a login `zsh` that also sources `~/.zshrc`, so the PATH and the corporate trust settings match the user's terminal. Do not add environment overrides that weaken TLS.
-- A new tool is added in `app/shared/tools.json` first, then in `tools.js` and `Tools.swift`; `tools/check.py` fails if one side lacks it.
+- A new tool is added in `shared/tools.json` first, then in `Tools.swift`; `tools/check.py` fails if one side lacks it.
 
 ## Done when
 
