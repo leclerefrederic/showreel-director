@@ -24,13 +24,26 @@ public struct CheckResult: Equatable, Sendable, Identifiable {
 
 /// The checks of each block, native and deterministic: feasibility numbers, readability budget per scene, asset rules, gate state.
 public enum Checks {
+    /// The checks of a block. Every result has its own id, even when a hand-edited file repeats a scene ID.
     public static func run(block: String, store: ProjectStore) -> [CheckResult] {
+        var seen: [String: Int] = [:]
+        return results(block: block, store: store).map { r in
+            seen[r.id, default: 0] += 1
+            guard seen[r.id]! > 1 else { return r }
+            return CheckResult(id: r.id + "#\(seen[r.id]!)", block: r.block, title: r.title, level: r.level, detail: r.detail)
+        }
+    }
+
+    static func results(block: String, store: ProjectStore) -> [CheckResult] {
         let f = store.loadShowreel()
         let assets = Assets.load(store)
         switch block {
         case "project": return feasibility(f) + gates(block: block, f)
         case "resources": return assetRules(assets, store: store) + gates(block: block, f)
-        case "storyboard", "scene": return readingBudget(f) + gates(block: block, f)
+        case "look": return lookChecks(f, assets, store) + gates(block: block, f)
+        case "storyboard": return storyboardRules(f, assets) + readingBudget(f) + feasibility(f) + gates(block: block, f)
+        case "scene": return reviewRules(f) + gates(block: block, f)
+        case "build": return BuildRunner.readiness(store) + gates(block: block, f)
         default: return gates(block: block, f)
         }
     }
@@ -219,6 +232,77 @@ public enum Checks {
         let approved = rows.filter { $0.status == "approved" }.count
         out.append(approved > 0 ? r("approved", "Approved assets", .ok, "\(approved) approved")
                                 : r("approved", "Approved assets", .pending, "Nothing approved yet: the build only uses approved assets"))
+        return out
+    }
+
+    // MARK: storyboard rules and scene review
+
+    static func storyboardRules(_ f: ShowreelFile?, _ assets: [AssetRow]) -> [CheckResult] {
+        func r(_ id: String, _ title: String, _ level: CheckLevel, _ detail: String) -> CheckResult { CheckResult(id: "storyboard." + id, block: "storyboard", title: title, level: level, detail: detail) }
+        guard let f = f, !f.scenes.isEmpty else { return [r("any", "Scenes", .pending, "No scene yet.")] }
+        var out: [CheckResult] = []
+        let ids = f.scenes.map { $0.id }
+        let badID = ids.filter { !SceneRules.isValidID($0) }
+        out.append(Set(ids).count != ids.count ? r("ids", "Stable IDs", .fail, "an ID is used twice")
+                   : !badID.isEmpty ? r("ids", "Stable IDs", .fail, badID.joined(separator: ", ") + ": not an ID like S01")
+                   : r("ids", "Stable IDs", .ok, "\(ids.count) scenes, each ID used once (a ditched scene keeps its ID)"))
+        let live = SceneRules.live(f)
+        let untimed = live.filter { $0.start == nil || $0.end == nil }
+        out.append(untimed.isEmpty ? r("times", "Start and end times", .ok, "every scene has a start and an end")
+                                   : r("times", "Start and end times", .pending, untimed.map { $0.id }.joined(separator: ", ") + ": no start or end yet"))
+        var overlaps: [String] = []
+        let timed = live.filter { $0.start != nil && $0.end != nil }
+        for (a, b) in zip(timed, timed.dropFirst()) where b.start! < a.end! - 0.001 { overlaps.append("\(b.id) starts at \(ProjectDocs.seconds(b.start!)) s, before \(a.id) ends at \(ProjectDocs.seconds(a.end!)) s") }
+        if !timed.isEmpty { out.append(overlaps.isEmpty ? r("overlap", "Scenes in time order", .ok, "no overlap") : r("overlap", "Scenes in time order", .fail, overlaps.joined(separator: "; "))) }
+        if let d = f.decisions.duration, let last = timed.compactMap({ $0.end }).max() {
+            let fmt = { ProjectDocs.seconds($0) }
+            if last > d + 0.01 { out.append(r("duration", "Fits the duration", .fail, "the scenes run to \(fmt(last)) s, past the \(fmt(d)) s you chose")) }
+            else if last < d - 0.5 { out.append(r("duration", "Fits the duration", .tight, "the scenes stop at \(fmt(last)) s, \(fmt(d - last)) s before the end of the \(fmt(d)) s film")) }
+            else { out.append(r("duration", "Fits the duration", .ok, "the scenes end at \(fmt(last)) s of \(fmt(d)) s")) }
+        }
+        var unapproved: [String] = []
+        for s in live { for a in assets where a.sceneIDs.contains(s.id) && a.status != "approved" { unapproved.append("\(s.id) uses \(a.name), which is \(a.status)") } }
+        if assets.contains(where: { !$0.scene.isEmpty }) {
+            out.append(unapproved.isEmpty ? r("assets", "Linked resources approved", .ok, "every linked resource is approved") : r("assets", "Linked resources approved", .tight, unapproved.joined(separator: "; ") + ": the build only uses approved files"))
+        }
+        return out
+    }
+
+    static func reviewRules(_ f: ShowreelFile?) -> [CheckResult] {
+        func r(_ id: String, _ title: String, _ level: CheckLevel, _ detail: String) -> CheckResult { CheckResult(id: "review." + id, block: "scene", title: title, level: level, detail: detail) }
+        guard let f = f else { return [r("any", "Scenes", .pending, "No project data yet.")] }
+        let live = SceneRules.live(f)
+        if live.isEmpty { return [r("any", "Scenes", .pending, "No scene to review yet.")] }
+        var out = live.map { s -> CheckResult in
+            switch s.status {
+            case "ok": return r(s.id, "\(s.id) reviewed", .ok, "OK" + (s.note.isEmpty ? "" : ": " + s.note))
+            case "modify": return r(s.id, "\(s.id) reviewed", .tight, "to modify" + (s.note.isEmpty ? "" : ": " + s.note))
+            default: return r(s.id, "\(s.id) reviewed", .pending, "not reviewed yet")
+            }
+        }
+        let left = live.filter { $0.status != "ok" }
+        out.insert(left.isEmpty ? r("all", "Every scene OK or ditched", .ok, "ready for the Go") : r("all", "Every scene OK or ditched", .pending, "\(left.count) of \(live.count) still to decide"), at: 0)
+        return out
+    }
+
+    // MARK: look: palette contrast, font licences
+
+    static func lookChecks(_ f: ShowreelFile?, _ assets: [AssetRow], _ store: ProjectStore) -> [CheckResult] {
+        var out = Contrast.checks(f?.decisions.palette)
+        let fonts = [("Title font", f?.decisions.fonts?.titles), ("Text font", f?.decisions.fonts?.text)]
+        if fonts.allSatisfy({ ($0.1 ?? "").isEmpty }) {
+            out.append(CheckResult(id: "font.any", block: "look", title: "Fonts", level: .pending, detail: "No font chosen yet."))
+        }
+        for (i, (label, name)) in fonts.enumerated() {
+            guard let n = name, !n.isEmpty else { continue }
+            let a = FontLicense.assess(name: n, assets: assets, store: store)
+            out.append(CheckResult(id: i == 0 ? "font.titles" : "font.text", block: "look", title: "\(label): \(n)", level: a.level, detail: a.message))
+        }
+        let d = f?.decisions
+        out.append(CheckResult(id: "look.background", block: "look", title: "Background", level: (d?.background?.id ?? "").isEmpty ? .pending : .ok,
+                               detail: (d?.background?.id).map { "\($0)" } ?? "No background chosen yet."))
+        out.append(CheckResult(id: "look.effects", block: "look", title: "Effects mood", level: (d?.effectsPack ?? "").isEmpty ? .pending : .ok,
+                               detail: d?.effectsPack ?? "No effects pack chosen yet."))
         return out
     }
 

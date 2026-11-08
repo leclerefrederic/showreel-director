@@ -238,7 +238,7 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     sdir = os.path.join(ROOT, "app-swift")
     if os.path.isdir(sdir):
         import json
-        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "shared/process.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "BlockViews.swift", "EditorViews.swift", "LibraryView.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift", "Assets.swift", "ProjectDocs.swift", "Operations.swift", "Process.swift", "JSONValue.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift", "StudioFileTests.swift", "BlocksTests.swift", "DocsTests.swift", "AssetTests.swift")]
+        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "shared/process.json", "shared/engine-host.js", "shared/look-packages.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "BlockViews.swift", "EditorViews.swift", "LibraryView.swift", "LookViews.swift", "EngineService.swift", "WizardView.swift", "StoryboardViews.swift", "BuildViews.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift", "Assets.swift", "ProjectDocs.swift", "Operations.swift", "Process.swift", "JSONValue.swift", "Engine.swift", "Look.swift", "Checks.swift", "Wizard.swift", "Storyboard.swift", "Build.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift", "StudioFileTests.swift", "BlocksTests.swift", "DocsTests.swift", "AssetTests.swift", "EngineTests.swift", "LookTests.swift", "ChecksTests.swift", "WizardTests.swift", "SceneTests.swift")]
         gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
         ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
         capf = os.path.join(sdir, "shared", "capabilities.json")
@@ -324,6 +324,25 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
             swift_blocks = re.findall(r'"(\w+)"', ids.group(1)) if ids else []
             ok("process.json blocks match the app's block list (%d)" % len(blocks)) if swift_blocks == blocks \
                 else bad("process.json blocks %s vs Blocks.ids %s" % (blocks, swift_blocks))
+    # the look block reads the skill's engine: the page host needs the effects lab's helper block between its two markers, and every
+    # starting look must name a background, fonts and an effects pack that exist in the skill
+    lab = os.path.join(SK, "engine", "effects-lab.html"); lp = os.path.join(sdir, "shared", "look-packages.json")
+    if os.path.exists(lab):
+        t = open(lab, encoding="utf-8").read(); a = t.find("const clamp=(x,a=0,b=1)"); b = t.find("/*__EFFECTS__*/")
+        ok("effects lab keeps the helper block the app's engine host reuses") if 0 <= a < b else bad("engine/effects-lab.html lost 'const clamp=(x,a=0,b=1)' or '/*__EFFECTS__*/': the app's engine host (EngineHost.preamble) needs both, in this order")
+    if os.path.exists(lp):
+        import json
+        bgs = re.findall(r"add\('([a-z0-9-]+)',", open(os.path.join(SK, "engine", "backgrounds.js"), encoding="utf-8").read())
+        fonts = [f["name"] for f in json.load(open(os.path.join(SK, "engine", "fonts-free.json"), encoding="utf-8"))]
+        cat = open(os.path.join(SK, "references", "effects-catalogue.md"), encoding="utf-8").read(); m = re.search(r"## Packs.*?\n\n", cat, re.S)
+        packs = [ln.strip().strip("|").split("|")[0].strip() for ln in (m.group(0).splitlines()[3:] if m else []) if ln.startswith("|")]
+        problems = []
+        for p_ in json.load(open(lp, encoding="utf-8"))["packages"]:
+            if p_["background"] not in bgs: problems.append(p_["id"] + ": background " + p_["background"])
+            if p_["fonts"].get("titles") not in fonts or p_["fonts"].get("text") not in fonts: problems.append(p_["id"] + ": fonts")
+            if p_["pack"] not in packs: problems.append(p_["id"] + ": pack " + p_["pack"])
+            if not (len(p_["palette"]) == 4 and all(re.fullmatch(r"#[0-9A-Fa-f]{6}", c) for c in p_["palette"])): problems.append(p_["id"] + ": palette")
+        ok("look-packages.json: every starting look uses a background, fonts and a pack that exist in the skill") if not problems else bad("look-packages.json: " + "; ".join(problems))
     # the skill's export must keep matching what the app decodes: regenerate the fixture and compare
     fx = os.path.join(ROOT, "app-swift", "Tests", "ShowreelKitTests", "Fixtures", "studio-export")
     exp = os.path.join(SK, "scripts", "export_studio.py")

@@ -141,7 +141,7 @@ struct WizardStepView: View {
         HStack {
             Button("Back") { project.wizardBack() }.disabled(index == 0)
             Spacer()
-            Button { suggest() } label: { Label("Suggest with AI", systemImage: "sparkles") }
+            Button { suggest() } label: { Label(step.kind == .scenes ? "Draft with AI" : "Suggest with AI", systemImage: "sparkles") }
                 .help("Optional. The copilot suggests a value as a card you accept or refuse.")
             Button("Decide later") { project.wizardNext() }
             Button(nextTitle) { next() }
@@ -196,6 +196,16 @@ struct WizardStepView: View {
             }
         case .files:
             WizardFiles(step: step)
+        case .scenes: StoryboardEditor()
+        case .scene(let id): sceneStep(id)
+        case .go: GoPanel()
+        case .build: BuildPanel()
+        case .lookBoard: LookBoardView()
+        case .palette: PaletteEditor()
+        case .font(let k): FontPickerView(roles: [k])
+        case .background: BackgroundPickerView()
+        case .moods: MoodsPickerView()
+        case .effectsPack: EffectsPickerView()
         case .asset(let id):
             if let row = project.assets.first(where: { $0.id == id }) { assetChoices(row) }
         case .summary(let block):
@@ -206,6 +216,19 @@ struct WizardStepView: View {
             }
         case .soon:
             EmptyView()
+        }
+    }
+
+    @ViewBuilder private func sceneStep(_ id: String) -> some View {
+        if let s = project.showreel?.scenes.first(where: { $0.id == id }) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack { Text(s.id).font(.headline.monospaced()); Text(s.timeLabel).foregroundStyle(.secondary) }
+                if !s.text.isEmpty { Text("\u{201C}\(s.text)\u{201D}").font(.title3) }
+                if !s.visual.isEmpty { Text("Seen: \(s.visual)").font(.callout).foregroundStyle(.secondary) }
+                if !s.feeling.isEmpty { Text("Feeling: \(s.feeling)").font(.callout).foregroundStyle(.secondary) }
+                SceneDecision(id: id)
+                DisclosureGroup("Edit this scene") { SceneForm(id: id).padding(.top, 6) }
+            }
         }
     }
 
@@ -319,7 +342,7 @@ struct WizardStepView: View {
     private var canNext: Bool {
         switch step.kind {
         case .single, .multi, .number, .text: return answer != nil || decided
-        case .files, .asset, .summary: return decided
+        case .files, .asset, .summary, .scenes, .scene, .go, .build, .lookBoard, .palette, .font, .background, .moods, .effectsPack: return decided
         case .soon: return false
         }
     }

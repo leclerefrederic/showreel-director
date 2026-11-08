@@ -42,7 +42,8 @@ final class WizardTests: XCTestCase {
         XCTAssertEqual(Array(ids.prefix(8)), ["project.conversationLanguage", "project.reelLanguages", "project.audience", "project.message", "project.tone",
                                               "project.duration", "project.formats", "project.constraints"])
         XCTAssertTrue(ids.contains("project.summary") && ids.contains("resources.files") && ids.contains("resources.summary"))
-        XCTAssertEqual(Array(ids.suffix(5)), ["soon.look", "soon.storyboard", "soon.scene", "soon.build", "soon.deliver"], "blocks not built yet plug in as coming soon")
+        XCTAssertEqual(Array(ids.suffix(1)), ["soon.deliver"], "blocks not built yet plug in as coming soon")
+        XCTAssertFalse(ids.contains("soon.look"), "the look block is built: its steps are real")
         XCTAssertTrue(steps.filter { !$0.isBuilt }.allSatisfy { $0.id.hasPrefix("soon.") })
         XCTAssertTrue(steps.prefix(3).allSatisfy { !$0.title.isEmpty && !$0.help.isEmpty }, "every step has the question as its title and a help")
         XCTAssertEqual(steps[0].title, "Which language should we use together for this project?")
@@ -136,7 +137,8 @@ final class ProcessAndVersionTests: XCTestCase {
         let spec = try XCTUnwrap(ProcessSpec.load())
         XCTAssertTrue(spec.blocks.allSatisfy { ["none", "optional", "required"].contains($0.ai) })
         XCTAssertEqual(spec.blocks.filter { $0.ai == "required" }.map { $0.id }, ["build"])
-        XCTAssertNotEqual(spec.block("build")?.built, true, "the only block that needs generation is not built yet and says so")
+        XCTAssertEqual(spec.block("build")?.built, true, "the build block exists; without a key it explains what it needs")
+        XCTAssertEqual(spec.block("deliver")?.ai, "none")
     }
 
     func testSkillVersionIsReadAndAgreesWithTheRelease() throws {

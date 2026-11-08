@@ -181,6 +181,7 @@ final class ChecksTests: XCTestCase {
         XCTAssertEqual(Checks.run(block: "project", store: store).first { $0.id == "gate.interview" }?.level, .ok)
         XCTAssertEqual(Checks.run(block: "resources", store: store).first { $0.id == "gate.assets" }?.level, .pending)
         let build = Checks.run(block: "build", store: store).map { $0.id }
-        XCTAssertEqual(build, ["gate.build", "gate.verify"], "a block with two gates reports both")
+        XCTAssertEqual(build.filter { $0.hasPrefix("gate.") }, ["gate.build", "gate.verify"], "a block with two gates reports both")
+        XCTAssertTrue(build.contains("build.go"), "and the build block reports whether the Go was given")
     }
 }

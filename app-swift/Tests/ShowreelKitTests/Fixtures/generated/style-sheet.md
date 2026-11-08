@@ -3,7 +3,7 @@
 # Style sheet: Demo
 
 1. Intended feeling and emotional arc: warm, confident
-2. Palette: #101820, #F2AA4C, #FFFFFF
+2. Palette (background, text, accent, accent 2): #101820, #F2AA4C, #FFFFFF
 3. Type: titles Anton, text Inter
 4. Motion vocabulary: Kinetic punch; background aurora (cinematic)
 5. Energy curve: (to decide)

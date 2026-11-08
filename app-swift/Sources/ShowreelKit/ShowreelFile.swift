@@ -7,7 +7,7 @@ public struct ShowreelFile: Codable, Equatable {
     public static let currentSchema = 1
     public static let gateKeys = ["interview", "assets", "style", "storyboard", "review", "build", "verify", "publish"]
 
-    public struct Fonts: Codable, Equatable {
+    public struct Fonts: Codable, Equatable, Sendable {
         public var titles: String?
         public var text: String?
         public var unknown: [String: JSONValue] = [:]

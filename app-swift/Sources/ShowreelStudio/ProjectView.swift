@@ -354,6 +354,10 @@ struct BlockHost: View {
         switch id {
         case "project": ProjectBlockView()
         case "resources": ResourcesBlockView()
+        case "look": LookBlockView()
+        case "storyboard": StoryboardBlockView()
+        case "scene": SceneEditorBlockView()
+        case "build": BuildBlockView()
         default: ComingSoonView(block: project.spec?.block(id))
         }
     }

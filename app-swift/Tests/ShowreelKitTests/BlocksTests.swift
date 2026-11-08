@@ -12,15 +12,13 @@ final class BlocksTests: XCTestCase {
         XCTAssertEqual(spec.blocks.map { $0.id }, Blocks.ids)
         XCTAssertTrue(spec.steps.allSatisfy { s in spec.block(s.block) != nil })
         XCTAssertEqual(Set(spec.steps.compactMap { $0.gateKey }), Set(ShowreelFile.gateKeys))
-        XCTAssertEqual(spec.blocks.filter { $0.built }.map { $0.id }, ["project", "resources"])
+        XCTAssertEqual(spec.blocks.filter { $0.built }.map { $0.id }, ["project", "look", "resources", "storyboard", "scene", "build"])
     }
 
     func testStatusesFollowTheProject() throws {
         let spec = try XCTUnwrap(ProcessSpec.load())
         func st(_ id: String) -> BlockStatus { Blocks.status(id, spec: spec, showreel: store.loadShowreel(), assets: Assets.load(store)) }
         XCTAssertEqual(st("project"), .todo, "no showreel.json yet")
-        XCTAssertEqual(st("look"), .soon)
-        XCTAssertEqual(st("build"), .soon)
         var f = try store.create(name: "S", conversationLanguage: nil, reelLanguages: [])
         XCTAssertEqual(st("project"), .todo)
         XCTAssertEqual(st("resources"), .todo)
@@ -34,7 +32,7 @@ final class BlocksTests: XCTestCase {
         XCTAssertEqual(st("resources"), .inProgress)
         try store.apply(.gate("assets", passed: true))
         XCTAssertEqual(st("resources"), .validated)
-        XCTAssertEqual(st("storyboard"), .soon, "an unbuilt block stays coming soon whatever the data says")
+        XCTAssertEqual(st("deliver"), .soon, "an unbuilt block stays coming soon whatever the data says")
     }
 
     func testOperationsAreTypedAndChecked() throws {

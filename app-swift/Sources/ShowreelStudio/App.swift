@@ -9,7 +9,20 @@ struct ShowreelStudioApp: App {
 
     init() {
         if CommandLine.arguments.contains("--selftest") { exit(SelfCheck.run()) }
+        // The Library is the one window at launch: the project windows of the last session are not reopened (a project opens when asked).
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
         NSApplication.shared.setActivationPolicy(.regular)
+        if let path = ProcessInfo.processInfo.environment["SHOWREEL_LAUNCH_LOG"] { Self.writeLaunchLog(to: path) }
+    }
+
+    /// For checking the launch without looking at the screen: SHOWREEL_LAUNCH_LOG=<file> makes the app write the windows it shows two seconds after it started.
+    private static func writeLaunchLog(to path: String) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            let visible = NSApplication.shared.windows.filter { $0.isVisible && !($0 is NSPanel) }
+            var lines = ["visible windows: \(visible.count)"]
+            for w in visible { lines.append("window: \(w.title.isEmpty ? "(untitled)" : w.title) | sheets: \(w.sheets.count)") }
+            try? lines.joined(separator: "\n").appending("\n").write(toFile: path, atomically: true, encoding: .utf8)
+        }
     }
 
     var body: some Scene {

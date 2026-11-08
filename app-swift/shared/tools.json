@@ -166,7 +166,7 @@
  },
  {
   "name": "get_state",
-  "description": "Read the project's state: showreel.json (parameters, decisions, gates, step, scenes), the assets (id, type, status, scenes, note), the blocks of the sidebar with their status, the block and file the user has in front of them, and the top-level files. Call it before you propose anything, so you do not ask what the app already holds.",
+  "description": "Read the project's state: showreel.json (parameters, decisions including the look, gates, step, scenes), the assets (id, type, status, scenes, note), the blocks of the sidebar with their status, the block and file the user has in front of them, and the top-level files. Call it before you propose anything, so you do not ask what the app already holds.",
   "input_schema": {
    "type": "object",
    "properties": {}
@@ -282,6 +282,160 @@
    },
    "required": [
     "block"
+   ]
+  }
+ },
+ {
+  "name": "update_decision",
+  "description": "Change one decision of the Look block. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Keys: palette (colours as #RRGGBB, comma-separated, in the order background, text, accent, accent 2; at most 6), titleFont and textFont (a font name; prefer the free list of the skill, a font that is not in it is flagged for its licence), background (an id of the engine's backgrounds), backgroundMood (punch, playful, tech, clean, cinematic or deadpan: how an animated background reacts to music), moods (one or two mood packs of the effects catalogue, comma-separated) and effectsPack (one pack). An empty value clears the decision. Unknown ids are refused with the list of valid ones.",
+  "input_schema": {
+   "type": "object",
+   "properties": {
+    "key": {
+     "type": "string",
+     "enum": [
+      "palette",
+      "titleFont",
+      "textFont",
+      "background",
+      "backgroundMood",
+      "moods",
+      "effectsPack"
+     ]
+    },
+    "value": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "key",
+    "value"
+   ]
+  }
+ },
+ {
+  "name": "add_scene",
+  "description": "Add a scene to the storyboard, with the next free ID (or the ID you give, S04b style, if it is free). Propose one scene per call, in order, with a start and an end and a line short enough for the reading budget (about 3 s for a line of six to eight words). The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, a ditched scene stays in the list marked ditched. Changing the text, timing or look of a scene the user already marked OK sends it back to review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
+  "input_schema": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "optional, for example S04b"
+    },
+    "start": {
+     "type": "number",
+     "description": "start time in seconds"
+    },
+    "end": {
+     "type": "number",
+     "description": "end time in seconds, after the start"
+    },
+    "text": {
+     "type": "string",
+     "description": "the on-screen text"
+    },
+    "visual": {
+     "type": "string",
+     "description": "image and motion"
+    },
+    "feeling": {
+     "type": "string",
+     "description": "feeling and tension level"
+    },
+    "handoff": {
+     "type": "string",
+     "description": "what hands over to the next scene"
+    },
+    "in_cuts": {
+     "type": "string",
+     "description": "the cut-downs this scene belongs to, for example 15s, 45s"
+    },
+    "note": {
+     "type": "string"
+    },
+    "status": {
+     "type": "string",
+     "enum": [
+      "open",
+      "ok",
+      "modify",
+      "ditched"
+     ],
+     "description": "only the user decides OK in the app; ditched keeps the ID marked"
+    },
+    "assets": {
+     "type": "string",
+     "description": "ids of the linked assets (from get_state), comma-separated: replaces the links of this scene"
+    },
+    "after": {
+     "type": "string",
+     "description": "position: put the scene after this scene ID, or 'start'. A move never changes an ID."
+    }
+   }
+  }
+ },
+ {
+  "name": "update_scene",
+  "description": "Change one scene by its ID (from get_state): times, text, image and motion, feeling, handoff, cuts, note, status, linked assets, or position. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, a ditched scene stays in the list marked ditched. Changing the text, timing or look of a scene the user already marked OK sends it back to review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
+  "input_schema": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "start": {
+     "type": "number",
+     "description": "start time in seconds"
+    },
+    "end": {
+     "type": "number",
+     "description": "end time in seconds, after the start"
+    },
+    "text": {
+     "type": "string",
+     "description": "the on-screen text"
+    },
+    "visual": {
+     "type": "string",
+     "description": "image and motion"
+    },
+    "feeling": {
+     "type": "string",
+     "description": "feeling and tension level"
+    },
+    "handoff": {
+     "type": "string",
+     "description": "what hands over to the next scene"
+    },
+    "in_cuts": {
+     "type": "string",
+     "description": "the cut-downs this scene belongs to, for example 15s, 45s"
+    },
+    "note": {
+     "type": "string"
+    },
+    "status": {
+     "type": "string",
+     "enum": [
+      "open",
+      "ok",
+      "modify",
+      "ditched"
+     ],
+     "description": "only the user decides OK in the app; ditched keeps the ID marked"
+    },
+    "assets": {
+     "type": "string",
+     "description": "ids of the linked assets (from get_state), comma-separated: replaces the links of this scene"
+    },
+    "after": {
+     "type": "string",
+     "description": "position: put the scene after this scene ID, or 'start'. A move never changes an ID."
+    }
+   },
+   "required": [
+    "id"
    ]
   }
  }

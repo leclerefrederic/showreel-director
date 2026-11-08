@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import ShowreelKit
 
@@ -20,6 +21,29 @@ private final class NullUI: AgentUI {
 private final class Box<T> {
     var value: T
     init(_ v: T) { value = v }
+}
+
+/// Runs an async job on the main actor while keeping the main run loop turning (the engine's web view needs it).
+private func awaitMain<T>(timeout: TimeInterval = 60, _ job: @escaping @MainActor () async throws -> T) -> Result<T, Error> {
+    var result: Result<T, Error>?
+    Task { @MainActor in do { result = .success(try await job()) } catch { result = .failure(error) } }
+    let end = Date(timeIntervalSinceNow: timeout)
+    while result == nil && Date() < end { RunLoop.main.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05)) }
+    return result ?? .failure(AgentError.msg("timeout"))
+}
+
+/// Counts the colours of an image and how much of it is a given colour (raw values, no colour management).
+private func pixelStats(_ data: Data, background hex: String) -> (distinct: Int, shareOfBackground: Double) {
+    guard let rep = NSBitmapImageRep(data: data) else { return (0, 0) }
+    let t = EnginePalette.rgb(hex).map { Int($0) }
+    var seen = Set<Int>(), near = 0, total = 0
+    for y in 0..<rep.pixelsHigh { for x in 0..<rep.pixelsWide {
+        guard let c = rep.colorAt(x: x, y: y) else { continue }
+        let r = Int((c.redComponent * 255).rounded()), g = Int((c.greenComponent * 255).rounded()), b = Int((c.blueComponent * 255).rounded())
+        seen.insert((r / 16) << 8 | (g / 16) << 4 | (b / 16)); total += 1
+        if abs(r - t[0]) <= 10 && abs(g - t[1]) <= 10 && abs(b - t[2]) <= 10 { near += 1 }
+    } }
+    return (seen.count, Double(near) / Double(max(total, 1)))
 }
 
 /// `ShowreelStudio --selftest`: checks, without any window or network, that the app finds everything it needs
@@ -122,6 +146,51 @@ enum SelfCheck {
             check(Checks.run(block: "project", store: store).first?.level == .pending && !Checks.run(block: "resources", store: store).isEmpty, "deterministic checks run without AI")
             check(spec?.blocks.filter { $0.ai == "required" }.map { $0.id } == ["build"], "only build requires generation")
             check(Skill.version()?.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil, "skill version is read (\(Skill.version() ?? "none"))")
+        }
+        // the engine: the skill's own JavaScript, run from the skill folder (the app bundle when packaged), draws an effect and a background
+        _ = NSApplication.shared
+        let engineScript = shared?.appendingPathComponent("engine-host.js")
+        check(engineScript != nil && fm.fileExists(atPath: engineScript!.path) && inside(engineScript), "engine host script found" + (bundled ? " inside the app" : ""))
+        check(shared?.appendingPathComponent("look-packages.json").path.isEmpty == false && LookPackages.all().count >= 6, "starting looks load (\(LookPackages.all().count))")
+        let pal = EnginePalette(bg: "#101820", fg: "#FFFFFF", accent: "#F2AA4C", accent2: "#4CC2F2")
+        let drawn = awaitMain { () -> (Int, Int, Data, Data, [String]) in
+            let e = EngineRenderer()
+            try await e.start()
+            let fx = try await e.renderEffect("Pop", palette: pal, font: "Helvetica", t: 0.9)
+            let bgd = try await e.renderBackground("duotone", palette: pal, t: 0)
+            return (e.catalogue?.effects.count ?? 0, e.catalogue?.backgrounds.count ?? 0, fx, bgd, try await e.errors())
+        }
+        switch drawn {
+        case .success(let (nfx, nbg, fx, bgd, errs)):
+            check(nfx >= 240 && nbg >= 20, "engine catalogue loads (\(nfx) effects, \(nbg) backgrounds)")
+            let a = pixelStats(fx, background: pal.bg), b = pixelStats(bgd, background: pal.bg)
+            check(a.distinct > 3 && a.shareOfBackground > 0.5, "an effect renders: not empty, drawn in the palette (\(a.distinct) colours)")
+            check(b.distinct > 1 && b.shareOfBackground > 0.4, "a background renders: not empty, drawn in the palette (\(b.distinct) colours)")
+            check(errs.isEmpty, "the engine raised no error while drawing")
+        case .failure(let err):
+            check(false, "engine renders an effect and a background (\(err.localizedDescription))")
+        }
+        // storyboard, the Go and the build, from the bundle: the Go is never deduced, and a version builds into the project folder
+        let sb = fm.temporaryDirectory.appendingPathComponent("showreel-selftest-build-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: sb) }
+        let bs = ProjectStore(root: sb)
+        if (try? bs.create(name: "Selftest", conversationLanguage: "en", reelLanguages: ["en"])) != nil, let r = Skill.root() {
+            try? bs.apply(.addScene(id: "", SceneEdit(start: "0", end: "4", text: "Hello", status: "ok")))
+            try? bs.apply(.gate("storyboard", passed: true))
+            check(bs.loadShowreel()?.scenes.first?.id == "S01" && bs.loadShowreel()?.gates["review"] == nil && !BuildRunner.canBuild(bs), "scenes are added with stable IDs, and the Go is never deduced")
+            check((try? bs.apply(.gate("review", passed: true))) != nil && BuildRunner.canBuild(bs), "the Go is given by an explicit operation")
+            let vd = sb.appendingPathComponent("v1")
+            try? fm.createDirectory(at: vd, withIntermediateDirectories: true)
+            try? "{\"title\": \"Selftest\", \"main\": \"main.js\", \"duration\": 8, \"tokens\": {\"--page\": \"#000\", \"--bar-bg\": \"#111\", \"--bar-fg\": \"#eee\", \"--btn-bg\": \"#ddd\", \"--btn-fg\": \"#111\", \"--accent\": \"#fff\", \"--ov-bg\": \"rgba(0,0,0,.85)\", \"--ov-fg\": \"#fff\", \"--font-ui\": \"sans-serif\", \"--font-title\": \"sans-serif\"}, \"weight_budget_mb\": 20}".write(to: vd.appendingPathComponent("project.json"), atomically: true, encoding: .utf8)
+            if let tpl = try? String(contentsOf: r.appendingPathComponent("engine/main.template.js"), encoding: .utf8) { try? tpl.write(to: vd.appendingPathComponent("main.js"), atomically: true, encoding: .utf8) }
+            let tools = awaitMain(timeout: 120) { await Shell.run("command -v python3 && command -v node && node -e \"require('jsdom')\"", in: sb, timeout: 30)?.status ?? 1 }
+            if case .success(0) = tools {
+                let rep = awaitMain(timeout: 240) { await BuildRunner.run(version: "v1", store: bs, skill: r) }
+                if case .success(let report) = rep {
+                    check(report.ok, "a version builds, tests clean and lands in the project folder (" + report.steps.map { "\($0.id.dropFirst(6)) \($0.level.rawValue)" }.joined(separator: ", ") + ")")
+                    check(Versions.hasDist(bs, "v1") && inside(r) && !fm.fileExists(atPath: r.appendingPathComponent("dist").path), "the output is v1/dist in the project, nothing written into the skill")
+                } else { check(false, "the build runner finished") }
+            } else { print("SKIP build run (python3, node or jsdom missing: run the setup check)") }
         }
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1

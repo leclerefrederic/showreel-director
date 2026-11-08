@@ -17,6 +17,16 @@ public struct WizardStep: Identifiable, Equatable, Sendable {
         case text(ParameterKey, examples: [String], optional: Bool)
         case number(ParameterKey, presets: [Option])
         case files
+        case scenes
+        case scene(String)
+        case go
+        case build
+        case lookBoard
+        case palette
+        case font(DecisionKey)
+        case background
+        case moods
+        case effectsPack
         case asset(String)
         case summary(block: String)
         case soon(block: String)
@@ -39,7 +49,7 @@ public enum Wizard {
 
     /// Every step of the wizard, in the order of the process. The asset steps follow the manifest; blocks that are not built
     /// appear as "coming soon" steps, so later blocks plug in here.
-    public static func steps(assets: [AssetRow], spec: ProcessSpec?, systemLanguage: String? = nil) -> [WizardStep] {
+    public static func steps(assets: [AssetRow], spec: ProcessSpec?, systemLanguage: String? = nil, file: ShowreelFile? = nil) -> [WizardStep] {
         func p(_ k: ParameterKey, _ title: String, _ kind: WizardStep.Kind) -> WizardStep {
             WizardStep(id: "project." + k.rawValue, block: "project", title: title, help: k.help, kind: kind)
         }
@@ -71,6 +81,37 @@ public enum Wizard {
         }
         out.append(WizardStep(id: "resources.summary", block: "resources", title: "Are your files ready?",
                               help: "The asset rules, checked without AI. Validate when every file is decided.", kind: .summary(block: "resources")))
+        if spec?.block("look")?.built == true {
+            func l(_ id: String, _ title: String, _ help: String, _ kind: WizardStep.Kind) -> WizardStep { WizardStep(id: "look." + id, block: "look", title: title, help: help, kind: kind) }
+            out += [
+                l("board", "Which of these looks feels right?", "Three complete looks to compare, each a palette, a background, a font pair and a motion mood. Pick one to start from, or decide later and choose each part yourself.", .lookBoard),
+                l("palette", "Which colours should the film use?", "A background, a text colour and an accent, in that order. The contrast check runs as you choose.", .palette),
+                l("titleFont", "Which font for the titles?", "Real samples of free fonts. Titles carry the message, so they can be bolder than the text.", .font(.titleFont)),
+                l("textFont", "Which font for the text?", "The font for lines and details. It should stay readable small.", .font(.textFont)),
+                l("background", "Which background should sit behind the scenes?", "Animated thumbnails from the engine, in your palette. Calm ones keep the text readable.", .background),
+                l("moods", "Which mood should the motion have?", "Pick one or two. The mood decides which effects you see next.", .moods),
+                l("effectsPack", "Which effects pack fits?", "The pack gives the film a consistent set of text and transition effects.", .effectsPack),
+                WizardStep(id: "look.summary", block: "look", title: "Is the look settled?", help: "Here is what you decided, with the checks that need no AI. Validate it when you are happy, or come back later.", kind: .summary(block: "look")),
+            ]
+        }
+        if spec?.block("storyboard")?.built == true {
+            out.append(WizardStep(id: "storyboard.scenes", block: "storyboard", title: "What happens, scene by scene?",
+                                  help: "Write the scenes in order: when each starts and ends, what is said, what is seen. Scene IDs stay the same for good. The reading budget is checked as you go.", kind: .scenes))
+            out.append(WizardStep(id: "storyboard.summary", block: "storyboard", title: "Is the storyboard complete?",
+                                  help: "Here is the film as you wrote it, with the checks that need no AI. Validate it when you are happy.", kind: .summary(block: "storyboard")))
+        }
+        if spec?.block("scene")?.built == true {
+            for s in file.map({ SceneRules.live($0) }) ?? [] {
+                out.append(WizardStep(id: "scene." + s.id, block: "scene", title: "Is \(s.id) right as it is?",
+                                      help: s.text.isEmpty ? "Mark it OK, to modify, or ditch it. A ditched scene keeps its ID." : "\"\(s.text)\"", kind: .scene(s.id)))
+            }
+            out.append(WizardStep(id: "scene.go", block: "scene", title: "Ready to give the Go?",
+                                  help: "The build never starts without it, and the app never gives it for you. Every scene must be OK or ditched.", kind: .go))
+        }
+        if spec?.block("build")?.built == true {
+            out.append(WizardStep(id: "build.run", block: "build", title: "Build the film",
+                                  help: "The copilot writes the version from your storyboard and your decisions, then the app builds it, tests it and plays it. This is the one step that needs an AI.", kind: .build))
+        }
         for b in spec?.blocks ?? [] where !b.built {
             out.append(WizardStep(id: "soon." + b.id, block: b.id, title: b.name, help: "Coming soon (phase \(b.phase ?? "later")). Until then the copilot carries this step in the chat.", kind: .soon(block: b.id)))
         }
@@ -85,6 +126,18 @@ public enum Wizard {
             guard let f = file else { return false }
             return !k.current(f).isEmpty
         case .files: return !assets.isEmpty
+        case .scenes: return !(file?.scenes.isEmpty ?? true)
+        case .scene(let id): return ["ok", "ditched"].contains(file?.scenes.first { $0.id == id }?.status ?? "")
+        case .go: return file?.gates["review"] == "passed"
+        case .build: return file?.gates["build"] == "passed"
+        case .lookBoard:
+            guard let d = file?.decisions else { return false }
+            return d.palette != nil && !(d.fonts?.titles ?? "").isEmpty && !(d.background?.id ?? "").isEmpty && !(d.effectsPack ?? "").isEmpty
+        case .palette: return (file?.decisions.palette?.count ?? 0) >= 2
+        case .font(let k): return file.map { !k.current($0).isEmpty } ?? false
+        case .background: return file.map { !DecisionKey.background.current($0).isEmpty } ?? false
+        case .moods: return file.map { !DecisionKey.moods.current($0).isEmpty } ?? false
+        case .effectsPack: return file.map { !DecisionKey.effectsPack.current($0).isEmpty } ?? false
         case .asset(let id): return ["approved", "excluded", "placeholder"].contains(assets.first { $0.id == id }?.status ?? "")
         case .summary(let b):
             let keys = spec?.gateKeys(of: b) ?? []
@@ -112,6 +165,26 @@ public enum Wizard {
             return "I am answering the question \"\(s.title)\" in the wizard. Look at what the project already holds (get_state) and suggest a value for \(k.title.lowercased()). Propose it with update_parameter (key \(k.rawValue)) so I can accept or refuse it, and say in one line why."
         case .asset(let id):
             return "I am deciding whether to use the asset \(id) in the film. Look at the project (get_state) and tell me in two lines whether you would approve, exclude or hold it, and why. Do not change it; I will decide."
+        case .lookBoard:
+            return "I am choosing the look of the film in the wizard. From what the project holds (get_state: audience, message, tone), suggest one complete look and propose it with update_decision calls for palette (background, text, accent, accent 2), titleFont, textFont, background, moods and effectsPack, so I can accept or refuse each card. Say in two lines why it fits."
+        case .palette:
+            return "I am choosing the colours. From the project (get_state), suggest a palette of background, text, accent and accent 2 with a good contrast, and propose it with update_decision (key palette) so I can accept or refuse it."
+        case .font(let k):
+            return "I am choosing the \(k == .titleFont ? "title" : "text") font. From the project (get_state), suggest one from the free list that fits the tone, and propose it with update_decision (key \(k.rawValue)) so I can accept or refuse it."
+        case .background:
+            return "I am choosing the background. From the project (get_state), suggest one background id of the engine that keeps text readable, and propose it with update_decision (key background)."
+        case .moods:
+            return "I am choosing the motion mood. From the project (get_state), suggest one or two of the mood packs and propose them with update_decision (key moods)."
+        case .effectsPack:
+            return "I am choosing the effects pack. From the chosen moods and the project (get_state), suggest one pack and propose it with update_decision (key effectsPack)."
+        case .scenes:
+            return "I am writing the storyboard in the wizard. From the project (get_state: audience, message, tone, duration, look, assets), draft the scenes in order and propose each one with add_scene so I can accept or refuse each card. Keep to the duration, give every scene a start and an end, keep lines short enough for the reading budget, and link only approved assets."
+        case .scene(let id):
+            return "I am reviewing scene \(id). Look at it (get_state) and tell me in two lines what you would improve. Do not change it and do not mark it OK: I decide."
+        case .go:
+            return "Tell me in two lines what is still missing before the Go. Never give the Go yourself: only I can, with the button."
+        case .build:
+            return "Tell me in two lines what the build will do with my storyboard and decisions. Do not start it: I press the button."
         case .files:
             return "I am choosing the files the film is made from. From what the project says (get_state), list in a few lines which kinds of files would help (logos, screenshots, music...). Do not change anything."
         case .summary(let b):

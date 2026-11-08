@@ -94,8 +94,57 @@ final class ProjectModel: ObservableObject {
         assets = Assets.load(store)
         docIssues = DocSync.pending(store).filter { !dismissedDocs.contains($0.file) }
         decided = store.settings.decided
-        wizardSteps = Wizard.steps(assets: assets, spec: spec, systemLanguage: Locale.current.language.languageCode?.identifier)
-        for b in ["project", "resources"] { checks[b] = Checks.run(block: b, store: store) }
+        versions = Versions.list(store)
+        if playVersion == nil, let last = versions.last, Versions.hasDist(store, last) { playVersion = last }
+        wizardSteps = Wizard.steps(assets: assets, spec: spec, systemLanguage: Locale.current.language.languageCode?.identifier, file: showreel)
+        for b in ["project", "resources", "look", "storyboard", "scene", "build"] { checks[b] = Checks.run(block: b, store: store) }
+    }
+
+    // MARK: build and preview
+
+    @Published var buildReport: BuildReport?
+    @Published var generating = false        // the copilot is writing the version folder
+    @Published var testing = false           // the app is building and testing it
+    @Published var buildVersion: String?     // the version in progress, or the last one
+    @Published var playVersion: String?      // the version shown in the player
+    @Published var playNonce = 0
+    @Published private(set) var versions: [String] = []
+
+    var buildBusy: Bool { generating || testing }
+
+    /// The Go is given and nothing is running: the copilot may write the next version. Needs a key (this is the one step that does).
+    func startBuild(with chat: ChatModel) {
+        guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it in the Scene editor first."; return }
+        guard !buildBusy else { return }
+        let v = Versions.next(store)
+        buildVersion = v
+        generating = true
+        buildReport = nil
+        let sent = chat.ask(prompt: BuildRunner.prompt(version: v, store: store)) { [weak self] in self?.finishGeneration(v) }
+        if !sent { generating = false }
+    }
+
+    private func finishGeneration(_ v: String) {
+        generating = false
+        guard Versions.list(store).contains(v) else {
+            error = "The copilot did not write \(v) (project.json and main.js). See what it said in the chat, then try again."
+            refresh(); return
+        }
+        runChecks(v)
+    }
+
+    /// Builds the version with the skill's scripts and tests it. No AI: usable on a version that already exists.
+    func runChecks(_ v: String) {
+        guard !buildBusy, let skill = Skill.root() else { return }
+        testing = true; buildVersion = v
+        Task { @MainActor in
+            let report = await BuildRunner.run(version: v, store: store, skill: skill)
+            try? store.record(report)
+            buildReport = report
+            testing = false
+            if report.built { playVersion = v; playNonce += 1 }
+            refresh(); reloadTree()
+        }
     }
 
     // MARK: wizard (Beginner mode): the same data and operations as the blocks

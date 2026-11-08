@@ -1,0 +1,23 @@
+{
+ "note": "Starting points for the look board, not defaults: the app shows three at a time, none pre-selected. Palette order is background, text, accent, accent 2. Every id must exist in the skill (backgrounds.js, fonts-free.json, the Packs table); tools/check.py and the tests verify it.",
+ "packages": [
+  { "id": "clean-signal", "name": "Clean signal", "why": "Clear and reassuring: a calm dark base, one warm accent, crisp wipes.",
+    "tags": ["modern", "clear", "reassuring", "simple", "easy", "robust", "corporate", "product"],
+    "palette": ["#0B1020", "#F5F7FF", "#F5C518", "#6C8CFF"], "background": "mesh", "fonts": { "titles": "Poppins", "text": "Inter" }, "pack": "Clean product" },
+  { "id": "loud-and-fast", "name": "Loud and fast", "why": "Beat-driven and punchy: heavy condensed type, hard contrast, big hits.",
+    "tags": ["bold", "punchy", "energetic", "fast", "loud", "fun", "launch"],
+    "palette": ["#111111", "#FFFFFF", "#FF3B30", "#FFD60A"], "background": "bars", "fonts": { "titles": "Anton", "text": "Inter" }, "pack": "Kinetic punch" },
+  { "id": "slow-film", "name": "Slow film", "why": "Dramatic and unhurried: deep dark, soft light, long holds.",
+    "tags": ["premium", "dramatic", "cinematic", "slow", "cool", "elegant", "serious"],
+    "palette": ["#0A0A0F", "#EDE8DF", "#C9A24D", "#7D8DA6"], "background": "spotlight", "fonts": { "titles": "Cormorant Garamond", "text": "Lora" }, "pack": "Cinematic" },
+  { "id": "quiet-precision", "name": "Quiet precision", "why": "Calm and exact, with room for dry humour: paper tones, one red accent.",
+    "tags": ["calm", "sober", "deadpan", "precise", "minimal", "human", "warm"],
+    "palette": ["#F4F1EA", "#1B1B1B", "#C8442F", "#5B6B7A"], "background": "grain", "fonts": { "titles": "DM Serif Display", "text": "Inter" }, "pack": "Deadpan" },
+  { "id": "toy-box", "name": "Toy box", "why": "Bouncy and colourful: warm paper, bright accents, round friendly type.",
+    "tags": ["playful", "fun", "friendly", "kids", "colourful", "human", "easy"],
+    "palette": ["#FFF4E0", "#2D2A4A", "#E8505B", "#1E88A8"], "background": "dots", "fonts": { "titles": "Fredoka", "text": "Nunito" }, "pack": "Playful toy" },
+  { "id": "decode", "name": "Decode", "why": "Digital and quick: near-black green, terminal accents, a grid behind.",
+    "tags": ["tech", "digital", "fast", "secure", "cool", "developer", "data"],
+    "palette": ["#06120F", "#D7FFE9", "#3DFFA0", "#4CC2F2"], "background": "grid", "fonts": { "titles": "Space Grotesk", "text": "IBM Plex Mono" }, "pack": "Tech decode" }
+ ]
+}

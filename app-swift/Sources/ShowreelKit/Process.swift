@@ -61,6 +61,7 @@ public enum Blocks {
         case "resources": return !assets.isEmpty
         case "look": return f.decisions.palette != nil || f.decisions.fonts != nil || f.decisions.background != nil
         case "storyboard", "scene": return !f.scenes.isEmpty
+        case "build": return f.gates["review"] == "passed"
         default: return false
         }
     }

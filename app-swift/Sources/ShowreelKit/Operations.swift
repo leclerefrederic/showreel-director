@@ -94,11 +94,91 @@ public enum ParameterKey: String, CaseIterable, Sendable {
     }
 }
 
+/// The decisions of the Look block, by the name the copilot uses (update_decision).
+public enum DecisionKey: String, CaseIterable, Sendable {
+    case palette, titleFont, textFont, background, backgroundMood, moods, effectsPack
+
+    public var title: String {
+        switch self {
+        case .palette: return "Palette"
+        case .titleFont: return "Title font"
+        case .textFont: return "Text font"
+        case .background: return "Background"
+        case .backgroundMood: return "Background mood"
+        case .moods: return "Moods"
+        case .effectsPack: return "Effects pack"
+        }
+    }
+
+    public func current(_ f: ShowreelFile) -> String {
+        let d = f.decisions
+        switch self {
+        case .palette: return (d.palette ?? []).joined(separator: ", ")
+        case .titleFont: return d.fonts?.titles ?? ""
+        case .textFont: return d.fonts?.text ?? ""
+        case .background: return d.background?.id ?? ""
+        case .backgroundMood: return d.background?.mood ?? ""
+        case .moods: return (d.moods ?? []).joined(separator: ", ")
+        case .effectsPack: return d.effectsPack ?? ""
+        }
+    }
+
+    /// Sets the value, refusing what the skill's engine does not know (an unknown background, mood or pack).
+    public func set(_ value: String, in f: inout ShowreelFile) throws {
+        let v = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        func one(_ allowed: [String], _ what: String) throws {
+            if !v.isEmpty, !allowed.contains(v) { throw AgentError.msg("unknown \(what) \"\(v)\": use one of " + allowed.joined(separator: ", ")) }
+        }
+        switch self {
+        case .palette:
+            let l = ParameterKey.list(v, lowercase: false).map { $0.uppercased() }
+            if let bad = l.first(where: { !EnginePalette.isHex($0) }) { throw AgentError.msg("\"\(bad)\" is not a #RRGGBB colour") }
+            if l.count > 6 { throw AgentError.msg("a palette has at most 6 colours (background, text, accent, accent 2, then extras)") }
+            f.decisions.palette = l.isEmpty ? nil : l
+        case .titleFont, .textFont:
+            var fonts = f.decisions.fonts ?? ShowreelFile.Fonts()
+            if self == .titleFont { fonts.titles = v.isEmpty ? nil : v } else { fonts.text = v.isEmpty ? nil : v }
+            f.decisions.fonts = (fonts.titles == nil && fonts.text == nil && fonts.unknown.isEmpty) ? nil : fonts
+        case .background:
+            try one(Look.backgroundIDs(), "background")
+            var b = f.decisions.background ?? ShowreelFile.Background()
+            b.id = v.isEmpty ? nil : v
+            f.decisions.background = (b.id == nil && b.mood == nil && b.unknown.isEmpty) ? nil : b
+        case .backgroundMood:
+            try one(Look.backgroundMoods(), "background mood")
+            var b = f.decisions.background ?? ShowreelFile.Background()
+            b.mood = v.isEmpty ? nil : v
+            f.decisions.background = (b.id == nil && b.mood == nil && b.unknown.isEmpty) ? nil : b
+        case .moods:
+            let names = Look.packs().map { $0.name }
+            let l = ParameterKey.list(v, lowercase: false)
+            if let bad = l.first(where: { !names.contains($0) }) { throw AgentError.msg("unknown mood \"\(bad)\": use " + names.joined(separator: ", ")) }
+            if l.count > 2 { throw AgentError.msg("choose one or two moods") }
+            f.decisions.moods = l.isEmpty ? nil : l
+        case .effectsPack:
+            try one(Look.packs().map { $0.name }, "effects pack")
+            f.decisions.effectsPack = v.isEmpty ? nil : v
+        }
+    }
+}
+
+public struct DecisionChange: Equatable, Sendable {
+    public let key: DecisionKey
+    public let value: String
+    public init(_ key: DecisionKey, _ value: String) { self.key = key; self.value = value }
+}
+
 /// A typed change to a project, made by the user in a block or proposed by the copilot.
 public enum ProjectOperation: Equatable, Sendable {
     case parameter(ParameterKey, String)
+    /// One or more decisions of the Look block as one card (a design package changes several at once).
+    case decisions([DecisionChange], title: String?)
     case asset(id: String, status: AssetStatus?, note: String?, licence: String?, scenes: String?)
     case gate(String, passed: Bool)
+    /// A change to one scene (fields, status with note, linked assets, position).
+    case scene(id: String, SceneEdit)
+    /// A new scene. `id` empty means the next free one.
+    case addScene(id: String, SceneEdit)
 }
 
 public enum Operations {
@@ -144,6 +224,18 @@ extension ProjectStore {
             let before = key.current(f), after = key.current(g)
             guard before != after else { throw AgentError.msg("no change: \(key.title) already is \(Operations.shown(before))") }
             return OperationCard(title: "Set \(key.title.lowercased())", changes: [Change(key.title, Operations.shown(before), Operations.shown(after))])
+        case .decisions(let list, let title):
+            let f = try needShowreel()
+            var g = f
+            var ch: [Change] = []
+            for d in list {
+                let before = d.key.current(g)
+                try d.key.set(d.value, in: &g)
+                let after = d.key.current(g)
+                if before != after { ch.append(Change(d.key.title, Operations.shown(before), Operations.shown(after))) }
+            }
+            guard !ch.isEmpty else { throw AgentError.msg("no change: the look already is that") }
+            return OperationCard(title: title ?? (ch.count == 1 ? "Set " + ch[0].label.lowercased() : "Change the look"), changes: ch)
         case .asset(let id, let status, let note, let licence, let scenes):
             let rows = Assets.load(self)
             guard let r = rows.first(where: { $0.id == id }) else { throw AgentError.msg("unknown asset \(id)") }
@@ -156,9 +248,13 @@ extension ProjectStore {
             guard !ch.isEmpty else { throw AgentError.msg("no change for \(id)") }
             let verb = status.map { $0 == .approved ? "Approve" : $0 == .excluded ? "Exclude" : $0 == .hold ? "Hold" : "Mark \($0.rawValue)" } ?? "Update"
             return OperationCard(title: "\(verb) \(r.name)", changes: ch)
+        case .scene(let id, let edit): return try planScene(id, edit, adding: false).card
+        case .addScene(let id, let edit): return try planScene(id, edit, adding: true).card
         case .gate(let key, let passed):
             let f = try needShowreel()
             guard ShowreelFile.gateKeys.contains(key) else { throw AgentError.msg("unknown gate \(key)") }
+            if passed, key == "storyboard", SceneRules.live(f).isEmpty { throw AgentError.msg("the storyboard has no scene yet") }
+            if passed, key == "review", let why = goBlocker(f) { throw AgentError.msg("the Go cannot be given: \(why)") }
             let before = f.gates[key] ?? "open", after = passed ? "passed" : "open"
             guard before != after else { throw AgentError.msg("no change: gate \(key) already is \(before)") }
             return OperationCard(title: passed ? "Validate \(key)" : "Reopen \(key)", changes: [Change("Gate \(key)", before, after)])
@@ -174,8 +270,14 @@ extension ProjectStore {
             var f = try needShowreel()
             try key.set(value, in: &f)
             try save(f)
+        case .decisions(let list, _):
+            var f = try needShowreel()
+            for d in list { try d.key.set(d.value, in: &f) }
+            try save(f)
         case .asset(let id, let status, let note, let licence, let scenes):
             try Assets.update(id, status: status, note: note, licence: licence, scenes: scenes, in: self)
+        case .scene(let id, let edit): try planScene(id, edit, adding: false).run()
+        case .addScene(let id, let edit): try planScene(id, edit, adding: true).run()
         case .gate(let key, let passed):
             var f = try needShowreel()
             f.gates[key] = passed ? "passed" : "open"

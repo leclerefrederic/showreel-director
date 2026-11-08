@@ -36,12 +36,13 @@ The built `.app` must not depend on the repository: the skill, `shared/`, `setup
 
 - `showreel-director/`: SKILL.md (router), `references/` (one file per step), `engine/` (browser player, effects, backgrounds, pickers), `scripts/` (Python and Node plumbing), `evals/`.
 - `docs/studio-spec.md`: proposed design of Showreel Studio v2 (the app as a workspace, the assistant as a copilot). Read it before building anything about projects, native pickers or the copilot; validated by the owner (section 11, recommended choices). Build phase by phase, A first, and stop after each phase for the owner to test.
+- `docs/ux-notes.md`: the owner's UX remarks per block, input for the per-block rework after phase T. Views stay free of business logic (they call typed operations).
 - `tools/`: `check.py`, `package.py`, `verify.sh`, `fetch_font_previews.py`.
 - `app-swift/`: SwiftPM package with three targets: `ShowreelKit` (library: agent loop, tools, project model, no window), `ShowreelStudio` (SwiftUI executable) and tests (`swift test`). the window is SwiftUI (`App.swift`, `ContentView.swift`, `ChatView.swift` with question cards, `PreviewPane.swift` where a `WKWebView` shows the HTML pages, `SettingsView.swift`, `ChatModel.swift` for the state); `shared/` holds `tools.json` (tool definitions) and `addendum.md` (prompt addendum), read by the Swift code at run time; `Agent.swift`, `Tools.swift` and `Keychain.swift` are the agent loop, the tools and the key storage; the interface reaches them through the `AgentUI` protocol. `make-app.sh` builds the `.app`.
 
 ## Open work
 
-1. Studio v2 (`docs/studio-spec.md`): phases A, A2 and A3 are built (ShowreelKit library, project model, block shell, Project and Resources blocks, generated documents, typed copilot operations, `process.json`). Beginner wizard, Expert mode, no-key start and native checks included. Next: phase B (Look and technique block: palette, fonts, look board, background and effects pickers, `update_decision`; start with the engine preview spike). Stop after each phase for the owner to test.
+1. Studio v2 (`docs/studio-spec.md`): phases A, A2 and A3 are built (ShowreelKit library, project model, block shell, Project and Resources blocks, generated documents, typed copilot operations, `process.json`). Beginner wizard, Expert mode, no-key start and native checks included. Phase B is built (EnginePreview, palette, fonts, look board, background and effects pickers, `update_decision`, `style-sheet.md` generation). Next: the thin slice T of the spec (Library window opens at launch by default; minimal Storyboard and Scene editor by hand with the explicit Go; then Build and preview with AI generation); then the rest of C and D. Stop after each phase for the owner to test.
 2. Warnings left: `isLoading` and `evaluateJavaScript` in `ChatModel`, `self` capture in `EnvModel`.
 3. Update `ROADMAP.md` when a limit is lifted.
 

@@ -76,6 +76,8 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     private var pendingOperations: [UUID: CheckedContinuation<Bool, Never>] = [:]
     private var assistantIdx: Int?
     private var stepsIdx: Int?
+    /// Called once when the message sent with ask(prompt:onDone:) has been fully answered (the agent's turn is over).
+    private var onDone: (() -> Void)?
 
     init(project: ProjectModel) {
         self.project = project
@@ -115,9 +117,14 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     }
 
     /// Sends a message on the user's behalf (the wizard's "Suggest with AI"). The copilot answers with a card to accept or refuse.
-    func ask(prompt: String) {
+    @discardableResult
+    func ask(prompt: String, onDone: (() -> Void)? = nil) -> Bool {
+        guard !running else { notice("The copilot is busy: wait for it to finish."); return false }
+        guard settings.hasKey else { notice("Connect an AI to talk to the copilot. Everything else works without one."); return false }
         draft = prompt
+        self.onDone = onDone
         send()
+        return running
     }
 
     func stop() {
@@ -193,7 +200,13 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         assistantIdx = nil
     }
 
-    private func finish() { DispatchQueue.main.async { self.flushAssistant(); self.running = false } }
+    private func finish() {
+        DispatchQueue.main.async {
+            self.flushAssistant(); self.running = false
+            let done = self.onDone; self.onDone = nil
+            done?()
+        }
+    }
 
     // MARK: AgentUI (called from any thread)
 

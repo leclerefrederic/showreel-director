@@ -242,8 +242,8 @@ final class OperationToolTests: XCTestCase {
     func testOpenBlock() async throws {
         let a = await run("open_block", ["block": "resources"])
         XCTAssertEqual(ui.openedBlocks, ["resources"]); XCTAssertTrue(a.hasPrefix("opened"))
-        let b = await run("open_block", ["block": "look"])
-        XCTAssertTrue(b.contains("not built yet") && b.contains("phase B"), b)
+        let b = await run("open_block", ["block": "deliver"])
+        XCTAssertTrue(b.contains("not built yet") && b.contains("phase D"), b)
         XCTAssertEqual(ui.openedBlocks, ["resources"], "an unbuilt block is not opened")
         let c = await run("open_block", ["block": "nope"])
         XCTAssertTrue(c.hasPrefix("unknown block"))
@@ -258,7 +258,7 @@ final class OperationToolTests: XCTestCase {
         let o = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(state.utf8)) as? [String: Any])
         let blocks = try XCTUnwrap(o["blocks"] as? [[String: String]])
         XCTAssertEqual(blocks.first { $0["id"] == "project" }?["status"], "inProgress")
-        XCTAssertEqual(blocks.first { $0["id"] == "storyboard" }?["status"], "soon")
+        XCTAssertEqual(blocks.first { $0["id"] == "deliver" }?["status"], "soon")
         XCTAssertEqual((o["assets"] as? [[String: String]])?.first?["id"], "audio-01")
         XCTAssertEqual(o["foregroundBlock"] as? String, "project")
         XCTAssertEqual((o["showreel"] as? [String: Any])?["origin"] as? [String: String], ["tool": "studio"])
@@ -365,5 +365,63 @@ final class AgentLoopTests: XCTestCase {
             let out = await tools.run(name, [:]).text
             XCTAssertFalse(out.hasPrefix("unknown tool"), "\(name) is defined in tools.json but not implemented")
         }
+    }
+}
+
+final class DecisionToolTests: XCTestCase {
+    var dir: URL!
+    var ui: ScriptedUI!
+    var tools: Tools!
+    var store: ProjectStore!
+    override func setUpWithError() throws {
+        dir = makeTempDir("dectools"); ui = ScriptedUI()
+        tools = Tools(project: dir, skill: try XCTUnwrap(Skill.root()), ui: ui); store = ProjectStore(root: dir)
+        try store.create(name: "D", conversationLanguage: "en", reelLanguages: ["en"])
+    }
+    override func tearDown() { try? FileManager.default.removeItem(at: dir) }
+    func run(_ n: String, _ i: [String: Any]) async -> String { await tools.run(n, i).text }
+
+    func testUpdateDecisionShowsACardAndAppliesOnAccept() async throws {
+        let r = await run("update_decision", ["key": "palette", "value": "#101820, #FFFFFF, #F2AA4C"])
+        XCTAssertTrue(r.hasPrefix("accepted and applied"), r)
+        XCTAssertEqual(ui.cards.first?.title, "Set palette")
+        XCTAssertEqual(ui.cards.first?.changes, [Change("Palette", "(empty)", "#101820, #FFFFFF, #F2AA4C")])
+        XCTAssertEqual(store.loadShowreel()?.decisions.palette, ["#101820", "#FFFFFF", "#F2AA4C"])
+        XCTAssertTrue(ui.proposals.isEmpty, "no file diff")
+    }
+
+    func testRefusalApplyDirectlyAndStale() async throws {
+        ui.accept = false
+        let refused = await run("update_decision", ["key": "titleFont", "value": "Anton"])
+        XCTAssertTrue(refused.hasPrefix("refused by the user"))
+        XCTAssertNil(store.loadShowreel()?.decisions.fonts)
+        ui.accept = true
+        ui.beforeAnswer = { try? self.store.apply(.decisions([DecisionChange(.titleFont, "Poppins")], title: nil)) }
+        let stale = await run("update_decision", ["key": "titleFont", "value": "Anton"])
+        XCTAssertTrue(stale.contains("changed since the proposal"), stale)
+        XCTAssertEqual(store.loadShowreel()?.decisions.fonts?.titles, "Poppins")
+        ui.beforeAnswer = nil
+        store.settings = StudioSettings(applyDirectly: true)
+        let cardsBefore = ui.cards.count
+        let direct = await run("update_decision", ["key": "effectsPack", "value": "Cinematic"])
+        XCTAssertTrue(direct.hasPrefix("applied directly"))
+        XCTAssertEqual(ui.cards.count, cardsBefore)
+        XCTAssertEqual(store.loadShowreel()?.decisions.effectsPack, "Cinematic")
+    }
+
+    func testBadKeysAndValuesAreRefusedWithoutACard() async throws {
+        let a = await run("update_decision", ["key": "colour", "value": "red"])
+        let b = await run("update_decision", ["key": "background", "value": "sparkles"])
+        let c = await run("update_decision", ["key": "palette", "value": "red, blue"])
+        let d = await run("update_decision", ["key": "moods", "value": "Cinematic, Deadpan, Clean product"])
+        XCTAssertTrue(a.hasPrefix("unknown decision") && b.hasPrefix("refused") && c.hasPrefix("refused") && d.hasPrefix("refused"), "\(a) | \(b) | \(c) | \(d)")
+        XCTAssertTrue(b.contains("aurora"), "the refusal lists the ids the engine knows")
+        XCTAssertTrue(ui.cards.isEmpty)
+    }
+
+    func testOpenBlockLookNowOpens() async throws {
+        let r = await run("open_block", ["block": "look"])
+        XCTAssertTrue(r.hasPrefix("opened"), r)
+        XCTAssertEqual(ui.openedBlocks, ["look"])
     }
 }

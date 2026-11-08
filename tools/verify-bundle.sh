@@ -6,7 +6,7 @@ R="$APP/Contents/Resources"
 fail=0
 [ -d "$APP" ] || { echo "no app at $APP"; exit 1; }
 for f in skill/SKILL.md skill/engine skill/scripts skill/references shared/tools.json shared/addendum.md \
-         shared/capabilities.json setup-env.sh AppIcon.icns skill.hash; do
+         shared/capabilities.json shared/process.json shared/engine-host.js shared/look-packages.json skill/engine/fonts-preview setup-env.sh AppIcon.icns skill.hash; do
   [ -e "$R/$f" ] || { echo "MISSING in the bundle: $f"; fail=1; }
 done
 # only system libraries: nothing may point back to a build folder

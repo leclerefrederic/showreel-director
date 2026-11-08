@@ -22,6 +22,21 @@
    "via": "the Project block (audience, message, tone, languages, formats, duration, constraints) and the Resources block (files, statuses, notes, scenes) are screens in the sidebar (Expert mode), or one question per screen in a wizard (Beginner mode); update_parameter and update_asset change them as plain cards the user accepts or refuses"
   },
   {
+   "need": "Pick the look on screens",
+   "provided": true,
+   "via": "the Look block: a look board of three complete looks, a palette editor with a contrast check, a font picker with real samples and licence warnings, background and effects pickers with thumbnails drawn by the same engine as the reel; update_decision changes them as plain cards the user accepts or refuses"
+  },
+  {
+   "need": "Write the storyboard, review each scene and give the go on screens",
+   "provided": true,
+   "via": "the Storyboard block (a list of scenes: add, edit, reorder, ditch, with stable IDs, linked resources and native reading-budget and feasibility checks) and the Scene editor (OK, MODIFY or DITCH with a note, then a Go button that only the user can press); add_scene and update_scene propose changes as plain cards the user accepts or refuses"
+  },
+  {
+   "need": "Build the reel, test it and play it",
+   "provided": true,
+   "via": "the Build and preview block: after the Go, you write the vN folder (project.json and main.js); the app runs build.py, harness.js and smoke_player.js, shows each result in green or red, and plays vN/dist/index.html in the window; outputs stay in the project folder"
+  },
+  {
    "need": "Let the user read and edit the project files next to the assistant",
    "provided": true,
    "via": "an Advanced panel (off by default) shows the project's files with editors and a per-file history; propose_edit offers a change to a file as a diff the user accepts or refuses; get_state reads the project's state"

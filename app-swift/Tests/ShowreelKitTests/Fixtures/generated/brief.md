@@ -23,7 +23,7 @@ warm, confident
 
 ## Look and motion
 
-- Palette: #101820, #F2AA4C, #FFFFFF
+- Palette (background, text, accent, accent 2): #101820, #F2AA4C, #FFFFFF
 - Title font: Anton
 - Text font: Inter
 - Background: aurora, mood cinematic

@@ -41,7 +41,7 @@ public enum ProjectDocs {
         let langs = [line("Conversation language", f.conversationLanguage), line("Reel languages", f.reelLanguages.joined(separator: ", "))]
         if !story.isEmpty || langs.contains(where: { $0 != nil }) { out += ["## Story and voice", ""] + langs.compactMap { $0 } + (langs.contains { $0 != nil } ? [""] : []) + story }
         block("Look and motion", [
-            line("Palette", d.palette?.joined(separator: ", ")), line("Title font", d.fonts?.titles), line("Text font", d.fonts?.text),
+            line("Palette (background, text, accent, accent 2)", d.palette?.joined(separator: ", ")), line("Title font", d.fonts?.titles), line("Text font", d.fonts?.text),
             line("Background", [d.background?.id, d.background?.mood.map { "mood \($0)" }].compactMap { $0 }.joined(separator: ", ")),
             line("Moods", d.moods?.joined(separator: ", ")), line("Effects pack", d.effectsPack),
         ])
@@ -72,7 +72,7 @@ public enum ProjectDocs {
         let music = [d.track?.file, d.track?.bpm.map { "\(Int($0.rounded())) BPM" }].compactMap { $0 }.joined(separator: ", ")
         return [header, "", "# Style sheet: \(f.name)", "",
                 "1. Intended feeling and emotional arc: " + v(f.parameters.tone),
-                "2. Palette: " + v(d.palette?.joined(separator: ", ")),
+                "2. Palette (background, text, accent, accent 2): " + v(d.palette?.joined(separator: ", ")),
                 "3. Type: " + v(type),
                 "4. Motion vocabulary: " + v(motion),
                 "5. Energy curve: (to decide)",

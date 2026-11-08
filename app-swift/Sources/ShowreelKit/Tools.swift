@@ -85,6 +85,15 @@ public final class Tools {
                 return "unknown parameter: use one of " + ParameterKey.allCases.map { $0.rawValue }.joined(separator: ", ")
             }
             return await operate(.parameter(key, input["value"] as? String ?? ""))
+        case "update_decision":
+            guard let key = DecisionKey(rawValue: input["key"] as? String ?? "") else {
+                return "unknown decision: use one of " + DecisionKey.allCases.map { $0.rawValue }.joined(separator: ", ")
+            }
+            return await operate(.decisions([DecisionChange(key, input["value"] as? String ?? "")], title: nil))
+        case "add_scene":
+            return await operate(.addScene(id: (input["id"] as? String) ?? "", Self.sceneEdit(input)))
+        case "update_scene":
+            return await operate(.scene(id: input["id"] as? String ?? "", Self.sceneEdit(input)))
         case "update_asset":
             let st = (input["status"] as? String).flatMap { AssetStatus(rawValue: $0) }
             if input["status"] is String, st == nil { return "unknown status: use " + AssetStatus.allCases.map { $0.rawValue }.joined(separator: ", ") }
@@ -167,6 +176,18 @@ public final class Tools {
         return commit(rel, content).replacingOccurrences(of: "wrote", with: "accepted and applied:")
     }
 
+    /// The fields of a scene tool call. Numbers are accepted for the times.
+    static func sceneEdit(_ i: [String: Any]) -> SceneEdit {
+        func str(_ k: String) -> String? {
+            if let s = i[k] as? String { return s }
+            if let n = i[k] as? Double { return ProjectDocs.seconds(n) }
+            if let n = i[k] as? Int { return String(n) }
+            return nil
+        }
+        return SceneEdit(start: str("start"), end: str("end"), text: str("text"), visual: str("visual"), feeling: str("feeling"), handoff: str("handoff"),
+                         inCuts: str("in_cuts"), note: str("note"), status: str("status"), assets: str("assets"), after: str("after"))
+    }
+
     /// showreel.json and the manifest hold the project's data: they change through typed operations, which the user can read.
     private func modeledFile(_ rel: String) -> String? {
         if rel == ShowreelFile.fileName {
@@ -198,6 +219,8 @@ public final class Tools {
         }
         if let fg = await ui.foregroundFile() { state["foregroundFile"] = fg }
         if let b = await ui.foregroundBlock() { state["foregroundBlock"] = b }
+        state["versions"] = Versions.list(store)
+        state["go"] = (store.loadShowreel()?.gates["review"] == "passed") ? "given by the user" : "not given: only the user can give it, with the Go button"
         let assets = Assets.load(store)
         state["assets"] = assets.map { ["id": $0.id, "name": $0.name, "type": $0.type, "status": $0.status, "scenes": $0.scene, "note": $0.notes, "licenceNote": $0.licenceNote] }
         if let spec = ProcessSpec.load() {
@@ -224,12 +247,23 @@ public final class Tools {
 
     private func bash(_ cmd: String, _ timeoutMs: Int) async -> String {
         let seconds = Double(min(timeoutMs, 600000)) / 1000
-        return await withCheckedContinuation { (cont: CheckedContinuation<String, Never>) in
+        guard let r = await Shell.run(cmd, in: project, timeout: seconds) else { return "spawn error" }
+        let extra = r.timedOut ? "\n[timeout after \(Int(seconds)) s]" : ""
+        return clip("exit \(r.status)\n--- stdout\n\(r.out)\n--- stderr\n\(r.err)\(extra)")
+    }
+}
+
+/// Runs a command in a login zsh that also sources ~/.zshrc, so PATH and the corporate trust settings match the user's terminal,
+/// with the app's own Python venv and node modules first when they exist. Used by the bash tool and by the build runner.
+public enum Shell {
+    public struct Result: Sendable { public let status: Int32; public let out: String; public let err: String; public let timedOut: Bool }
+
+    public static func run(_ cmd: String, in dir: URL, timeout seconds: Double) async -> Result? {
+        await withCheckedContinuation { (cont: CheckedContinuation<Result?, Never>) in
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            // a login shell plus ~/.zshrc, so PATH and the corporate certificate settings match the user's terminal
             p.arguments = ["-l", "-c", "[ -f \"$HOME/.zshrc\" ] && source \"$HOME/.zshrc\" >/dev/null 2>&1; " + Tools.envSetup + cmd]
-            p.currentDirectoryURL = project
+            p.currentDirectoryURL = dir
             var env = ProcessInfo.processInfo.environment
             env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")
             p.environment = env
@@ -250,13 +284,9 @@ public final class Tools {
                 buf.add(outPipe.fileHandleForReading.readDataToEndOfFile(), isErr: false)
                 buf.add(errPipe.fileHandleForReading.readDataToEndOfFile(), isErr: true)
                 let (o, e) = buf.text()
-                let extra = buf.timedOut ? "\n[timeout after \(Int(seconds)) s]" : ""
-                cont.resume(returning: clip("exit \(proc.terminationStatus)\n--- stdout\n\(o)\n--- stderr\n\(e)\(extra)"))
+                cont.resume(returning: Result(status: proc.terminationStatus, out: o, err: e, timedOut: buf.timedOut))
             }
-            do { try p.run() } catch {
-                cont.resume(returning: "spawn error: \(error.localizedDescription)")
-                return
-            }
+            do { try p.run() } catch { cont.resume(returning: nil); return }
             DispatchQueue.global().asyncAfter(deadline: .now() + seconds) {
                 if p.isRunning { buf.timedOut = true; p.terminate() }
             }
