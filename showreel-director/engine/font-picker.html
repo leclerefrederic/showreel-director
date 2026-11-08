@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Font picker</title>
+<style>
+:root{--bg:__BG__;--fg:__FG__;--acc:__ACCENT__;--acc2:__ACCENT2__;--panel:#ffffff12;--line:#ffffff2e;--mute:#ffffff99}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+header h1{font-size:15px;margin:0 8px 0 0}label{color:var(--mute);font-size:12px;display:flex;align-items:center;gap:6px}
+input[type=text]{background:#00000055;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:220px}
+button{background:#ffffff1c;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;font:inherit}
+button.on{background:var(--acc);color:#111;border-color:var(--acc)}
+#hint{padding:10px 16px 0;color:var(--mute)}
+nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px 0}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;padding:12px 16px 90px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}.card.t{border-color:var(--acc)}.card.b{border-color:var(--acc2)}
+.spec{padding:18px 16px 10px;min-height:128px;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden}
+.spec span{display:block;max-width:100%;overflow-wrap:anywhere}
+.meta{padding:8px 12px 12px;border-top:1px solid var(--line)}.meta b{font-size:14px}.meta small{display:block;color:var(--mute);margin-top:2px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.tag{font-size:10px;border:1px solid var(--line);border-radius:10px;padding:1px 7px;color:var(--mute)}
+.row{display:flex;gap:8px;align-items:center;margin-top:8px}.row a{color:var(--mute);font-size:12px;margin-left:auto}
+footer{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center}
+#picks{flex:1;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style></head><body>
+<header><h1>Font picker</h1>
+<label>Sample text <input type="text" id="txt" value="Simple. Fast. Yours." maxlength="40"></label>
+<label>Search <input type="text" id="q" placeholder="name or idea" style="width:140px"></label></header>
+<div id="hint">Free fonts (open licence, allowed in a reel). Pick one font for titles and one for text; they can be the same. Previews load the real fonts from Google Fonts when this page is online (or use them if installed); offline, a card says so and shows a system font instead.</div>
+<nav id="moods"></nav><nav id="cats"></nav><div id="grid"></div>
+<footer><button id="copy">Copy my picks</button><span id="picks">Click Titles or Text on the fonts you like, then copy your picks and paste them in the chat.</span></footer>
+<script>
+const FONTS=__FONTS__;const GT={titles:'Titles',text:'Text',exact:'Exact preview',approx:'No preview (offline): shown in a system font',specimen:'Specimen',all:'All',hint:'Click Titles or Text on the fonts you like, then copy your picks and paste them in the chat.',copied:'Copied',copy:'Copy my picks',lt:'Titles',lb:'Text'};/*__GT__*/
+const $=id=>document.getElementById(id);
+const FB={Sans:'system-ui,"Segoe UI",Helvetica,Arial,sans-serif',Condensed:'"Arial Narrow","Helvetica Neue Condensed",Impact,sans-serif',Display:'"Arial Black","Helvetica Neue",system-ui,sans-serif',Serif:'Georgia,"Times New Roman",serif',Mono:'ui-monospace,Menlo,Consolas,monospace',Handwriting:'"Segoe Print","Bradley Hand","Comic Sans MS",cursive'};
+const cv=document.createElement('canvas').getContext('2d');
+function has(n){try{for(const b of['monospace','serif','sans-serif']){cv.font='40px '+b;const w0=cv.measureText('mmmmWWiil').width;cv.font='40px "'+n+'",'+b;if(cv.measureText('mmmmWWiil').width!==w0)return true}}catch(e){}return false}
+const LOADED=new Set();
+FONTS.forEach(f=>{const l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family='+encodeURIComponent(f.name).replace(/%20/g,'+')+'&display=swap';
+ l.onload=()=>{(document.fonts?document.fonts.load('34px "'+f.name+'"'):Promise.resolve()).then(()=>{LOADED.add(f.name);render()},()=>{})};document.head.appendChild(l)});
+const state={q:'',mood:'All',cat:'All',t:null,b:null};
+const moods=['All',...new Set(FONTS.flatMap(f=>f.moods))],cats=['All',...new Set(FONTS.map(f=>f.cat))];
+function chips(el,list,key){list.forEach(n=>{const b=document.createElement('button');b.textContent=n==='All'?GT.all:n;b.className=n===state[key]?'on':'';b.onclick=()=>{state[key]=n;[...el.children].forEach(x=>x.classList.toggle('on',x===b));render()};el.appendChild(b)})}
+chips($('moods'),moods,'mood');chips($('cats'),cats,'cat');
+$('q').oninput=e=>{state.q=e.target.value.toLowerCase();render()};$('txt').oninput=()=>render();
+function render(){const g=$('grid');g.innerHTML='';const txt=$('txt').value||'Simple. Fast. Yours.';
+ FONTS.forEach(f=>{if(state.mood!=='All'&&!f.moods.includes(state.mood))return;if(state.cat!=='All'&&f.cat!==state.cat)return;if(state.q&&!(f.name+' '+f.note+' '+f.cat+' '+f.moods.join(' ')).toLowerCase().includes(state.q))return;
+  const ex=LOADED.has(f.name)||has(f.name),d=document.createElement('div');d.className='card'+(state.t===f.name?' t':'')+(state.b===f.name?' b':'');
+  d.innerHTML=`<div class="spec" style="font-family:'${f.name}',${FB[f.cat]||FB.Sans};font-size:34px;font-weight:400"><span></span></div><div class="meta"><b>${f.name}</b><small>${f.note}</small><div class="tags"><span class="tag">${f.cat}</span>${f.moods.map(m=>`<span class="tag">${m}</span>`).join('')}<span class="tag">${ex?GT.exact:GT.approx}</span></div><div class="row"><button class="bt${state.t===f.name?' on':''}">${GT.lt}</button><button class="bb${state.b===f.name?' on':''}">${GT.lb}</button><a href="https://fonts.google.com/specimen/${encodeURIComponent(f.name).replace(/%20/g,'+')}" target="_blank" rel="noopener">${GT.specimen}</a></div></div>`;
+  d.querySelector('.spec span').textContent=txt;
+  d.querySelector('.bt').onclick=()=>{state.t=state.t===f.name?null:f.name;render();upd()};d.querySelector('.bb').onclick=()=>{state.b=state.b===f.name?null:f.name;render();upd()};g.appendChild(d)})}
+function sum(){const p=[];if(state.t)p.push(GT.lt+': '+state.t);if(state.b)p.push(GT.lb+': '+state.b);return p.join(' | ')}
+function upd(){$('picks').textContent=sum()||GT.hint}
+$('copy').onclick=()=>{const s=sum();if(!s)return;const fb=()=>{const t=document.createElement('textarea');t.value=s;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(x){}t.remove()};try{navigator.clipboard.writeText(s).catch(fb)}catch(x){fb()}const o=$('copy');o.textContent=GT.copied;setTimeout(()=>o.textContent=GT.copy,1400)};
+render();upd();
+</script></body></html>

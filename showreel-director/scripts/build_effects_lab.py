@@ -2,7 +2,7 @@
 """Build a self-contained effects lab page: every effect of the catalogue animated, in the user's palette and font.
 
 Usage: python3 build_effects_lab.py --out PROJECT/qa/lab-effects.html [--ui ui.json --lang fr]
-  --ui: JSON with translated page texts (keys: title sample bg fg accent accent2 search speed pause resume copy copied hint); effect names stay in English.
+  --ui: JSON with translated page texts (keys: title sample bg fg accent accent2 search speed pause resume copy copied hint, and for the guided choice g_title g_hint g_show g_all g_change g_packs g_back); effect names stay in English.
          [--bg #151515 --fg #f2f2f2 --accent #ffd166 --accent2 #6c8cff] [--font path/to/font.ttf --family "Brand Sans"]
 Neutral palette by default. Present the file to the user, who clicks the hearts on the effects they like and pastes
 "Copy my picks" back in the chat; each card also has a GIF button that saves that effect as a looping GIF. Effects are drawn with plain canvas code: they show the idea, not your final render.
@@ -14,11 +14,26 @@ import _common as C
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
+def load_packs():
+    """Moods come from the Packs table of references/effects-catalogue.md (one definition); names in parentheses are dropped."""
+    import re
+    cat = open(os.path.join(HERE, "..", "references", "effects-catalogue.md"), encoding="utf-8").read()
+    m = re.search(r"## Packs.*?\n\n", cat, re.S)
+    packs = []
+    for ln in (m.group(0).splitlines()[3:] if m else []):
+        if ln.startswith("|"):
+            c = [x.strip() for x in ln.strip().strip("|").split("|")]
+            effs = [e.strip() for e in re.sub(r"\([^)]*\)", "", c[2]).split(",") if e.strip()]
+            packs.append({"name": c[0], "feel": c[1], "effects": effs})
+    return packs
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     C.add_brand_args(ap, "#151515", "#f2f2f2", "#ffd166", "#6c8cff", "LabFont")
     ap.add_argument("--mute", default="#8a8a8a")
+    ap.add_argument("--full", action="store_true", help="open on the full list of effects instead of the guided choice of moods")
     a = ap.parse_args()
     C.require_colors(a.bg, a.fg, a.accent, a.accent2, a.mute)
     html = open(os.path.join(HERE, "..", "engine", "effects-lab.html"), encoding="utf-8").read()
@@ -36,6 +51,10 @@ def main():
             if key in u and old in html: html = html.replace(old, new % u[key].replace("'", "\\'") if "'" in new else new % u[key])
         html = html.replace('<html lang="en">', '<html lang="%s">' % a.lang.replace('"', ''), 1)
     html = html.replace("/*__EFFECTS__*/", effects)
+    packs = load_packs()
+    html = html.replace("__PACKS__", json.dumps(packs)).replace("__GUIDED__", "false" if a.full else "true")
+    gt = {k: u[k] for k in ("g_title", "g_hint", "g_show", "g_all", "g_change", "g_packs", "g_back") if a.ui and k in u} if a.ui else {}
+    html = html.replace("/*__GT__*/", "Object.assign(GT,%s);" % json.dumps({k[2:].replace("title", "title"): v for k, v in gt.items()}) if gt else "")
     html = html.replace("/*__GIF__*/", open(os.path.join(HERE, "..", "engine", "gif.js"), encoding="utf-8").read())
     css, family = "", "system-ui,sans-serif"
     if a.font:

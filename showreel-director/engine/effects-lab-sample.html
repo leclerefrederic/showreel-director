@@ -20,6 +20,12 @@ nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px}
 .heart{font-size:16px;line-height:1;padding:4px 8px}.heart.on{background:var(--acc);color:#111}
 .gifb{font-size:11px;padding:4px 7px;margin-left:auto}
 h2{margin:18px 16px 4px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+#guide{padding:6px 16px}#guide h3{margin:10px 0 2px;font-size:16px}#guide p{color:var(--mute);margin:2px 0 12px}
+#tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.tile{background:var(--panel);border:2px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer}.tile.on{border-color:var(--acc)}
+.tile canvas{display:block;width:100%;aspect-ratio:16/9;background:#000}.tile .meta b{font-size:15px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}.bar .chip{border:1px solid var(--line);border-radius:12px;padding:3px 10px;color:var(--mute)}
+button.go{background:var(--acc);color:#111;border-color:var(--acc)}button:disabled{opacity:.4;cursor:default}
 footer{position:fixed;left:0;right:0;bottom:0;background:#101010f2;border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center}
 #picks{flex:1;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style></head><body>
@@ -27,10 +33,11 @@ footer{position:fixed;left:0;right:0;bottom:0;background:#101010f2;border-top:1p
 <label>Sample text <input type="text" id="txt" value="Simple. Fast. Yours." maxlength="28"></label>
 <label>Background<input type="color" id="c1"></label><label>Text<input type="color" id="c2"></label><label>Accent<input type="color" id="c3"></label><label>Accent 2<input type="color" id="c4"></label>
 <label>Search <input type="text" id="q" placeholder="name or idea" style="width:130px"></label><label>Speed <input type="range" id="spd" min="0.4" max="2" step="0.1" value="1"></label><button id="pause">Pause</button></header>
-<nav id="nav"></nav><div id="grid"></div>
+<div id="guide"></div><nav id="nav"></nav><div id="grid"></div>
 <footer><span id="count" style="color:var(--mute);font-size:12px"></span><button id="copy">Copy my picks</button><span id="picks">Click ♥ on the effects you like, then copy your picks and paste them in the chat.</span></footer>
 <script>
-const PAL={"bg": "#151515", "fg": "#f2f2f2", "accent": "#ffd166", "accent2": "#6c8cff", "mute": "#8a8a8a"}; const FONT="system-ui,sans-serif";
+const PAL={"bg": "#151515", "fg": "#f2f2f2", "accent": "#ffd166", "accent2": "#6c8cff", "mute": "#8a8a8a"}; const FONT="system-ui,sans-serif"; const PACKS=[{"name": "Deadpan", "feel": "Calm, precise, comic by contrast", "effects": ["Fade", "Rise", "Stamp", "Wind exit", "Scale one word", "Flash cut"]}, {"name": "Kinetic punch", "feel": "Loud, beat-driven", "effects": ["Slam", "Zoom punch", "Letter stagger", "Shake", "Whip pan", "Particle burst"]}, {"name": "Clean product", "feel": "Corporate, clear, reassuring", "effects": ["Mask wipe", "Line mask rise", "Push", "Count-up", "Underline draw", "Fade to logo"]}, {"name": "Playful toy", "feel": "Bouncy, colourful", "effects": ["Pop", "Elastic", "Bounce", "Squash and stretch", "Domino", "Confetti cannon"]}, {"name": "Cinematic", "feel": "Slow, dramatic", "effects": ["Blur in", "Slow push-in", "Spotlight", "Silence then hit", "Curtain"]}, {"name": "Tech decode", "feel": "Digital, fast", "effects": ["Scramble decode", "Slot roll", "Hard wipe", "Grid reflow", "Marquee"]}]; const GUIDED=true;
+const GT={title:'Pick the feel first',hint:'Choose one or two moods. You will then see only their effects, not all of them.',show:'Show these effects',all:'Browse every effect',change:'Change mood',packs:'Mood',back:'Back to the moods',tiles:'effects'};
 const $=id=>document.getElementById(id);
 const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),lerp=(a,b,t)=>a+(b-a)*t;
 const e={lin:t=>t,out2:t=>1-(1-t)*(1-t),in2:t=>t*t,io2:t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2,out4:t=>1-Math.pow(1-t,4),io4:t=>t<.5?8*t*t*t*t:1-Math.pow(-2*t+2,4)/2,in4:t=>t*t*t*t,out3:t=>1-Math.pow(1-t,3),in3:t=>t*t*t,io3:t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2,expo:t=>t>=1?1:1-Math.pow(2,-10*t),
@@ -423,19 +430,31 @@ fx(CL,'Social handles','Handles slide in one by one with icons.','low',2.6,(g,p,
 })(typeof window !== 'undefined' ? window : globalThis);
 
 /* ---------- UI ---------- */
-const state={q:'',txt:$('txt'),speed:1,paused:false,picks:new Set(),cat:'All',P:Object.assign({},PAL)};
+const state={mode:GUIDED&&PACKS.length?'packs':'all',packSel:new Set(),q:'',txt:$('txt'),speed:1,paused:false,picks:new Set(),cat:'All',P:Object.assign({},PAL)};
 ['c1','c2','c3','c4'].forEach((id,i)=>{const k=['bg','fg','accent','accent2'][i];$(id).value=PAL[k];$(id).oninput=ev=>{state.P[k]=ev.target.value}});
 $('q').oninput=ev=>{state.q=ev.target.value.toLowerCase();render()};$('spd').oninput=ev=>state.speed=+ev.target.value;$('pause').onclick=()=>{state.paused=!state.paused;$('pause').classList.toggle('on',state.paused);$('pause').textContent=state.paused?'Resume':'Pause'};
 const cats=['All',...new Set(E.map(x=>x.cat))];
 cats.forEach(cn=>{const b=document.createElement('button');b.textContent=cn;b.className=cn==='All'?'on':'';b.onclick=()=>{state.cat=cn;[...$('nav').children].forEach(x=>x.classList.toggle('on',x===b));render()};$('nav').appendChild(b)});
-let cards=[];
-function render(){const gr=$('grid');gr.innerHTML='';cards=[];let last='';E.forEach(ef=>{if(state.cat!=='All'&&ef.cat!==state.cat)return;if(state.q&&!(ef.name+' '+ef.desc+' '+ef.cat).toLowerCase().includes(state.q))return;if(state.cat==='All'&&ef.cat!==last){const h=document.createElement('h2');h.textContent=ef.cat;h.style.gridColumn='1/-1';gr.appendChild(h);last=ef.cat}
+let cards=[],tiles=[];
+function renderGuide(){const g=$('guide');g.innerHTML='';tiles=[];
+ if(state.mode==='packs'){g.innerHTML=`<h3>${GT.title}</h3><p>${GT.hint}</p><div id="tiles"></div><div class="bar"><button class="go" id="gogo" disabled>${GT.show}</button><button id="goall">${GT.all}</button></div>`;
+  const t=$('tiles');PACKS.forEach(pk=>{const ef=E.find(x=>x.name===pk.effects[0])||E[0];const d=document.createElement('div');d.className='tile'+(state.packSel.has(pk.name)?' on':'');
+   d.innerHTML=`<canvas width="640" height="360"></canvas><div class="meta"><div><b>${pk.name}</b><small>${pk.feel}</small><small>${pk.effects.join(' · ')}</small></div></div>`;
+   d.onclick=()=>{state.packSel.has(pk.name)?state.packSel.delete(pk.name):state.packSel.add(pk.name);d.classList.toggle('on');$('gogo').disabled=!state.packSel.size};t.appendChild(d);
+   const cv=d.querySelector('canvas');tiles.push({ef,cv,g:cv.getContext('2d'),vis:true})});
+  $('gogo').disabled=!state.packSel.size;$('gogo').onclick=()=>{state.mode='pack';render()};$('goall').onclick=()=>{state.mode='all';render()};
+  if('IntersectionObserver'in window){const io=new IntersectionObserver(es=>es.forEach(en=>{const c=tiles.find(x=>x.cv===en.target);if(c)c.vis=en.isIntersecting}));tiles.forEach(c=>io.observe(c.cv))}}
+ else if(state.mode==='pack'){g.innerHTML=`<div class="bar"><span class="chip">${GT.packs}: ${[...state.packSel].join(', ')}</span><button id="chg">${GT.change}</button><button id="goall">${GT.all}</button></div>`;
+  $('chg').onclick=()=>{state.mode='packs';render()};$('goall').onclick=()=>{state.mode='all';render()}}
+ else if(PACKS.length){g.innerHTML=`<div class="bar"><button id="chg">${GT.back}</button></div>`;$('chg').onclick=()=>{state.mode='packs';render()}}}
+function packNames(){const n=new Set();PACKS.forEach(p=>{if(state.packSel.has(p.name))p.effects.forEach(x=>n.add(x))});return n}
+function render(){const gr=$('grid');gr.innerHTML='';cards=[];let last='';$('nav').style.display=state.mode==='all'?'flex':'none';gr.style.display=state.mode==='packs'?'none':'grid';if(state.mode==='packs'){renderGuide();$('count').textContent='';return}renderGuide();const allowed=state.mode==='pack'?packNames():null;E.forEach(ef=>{if(allowed&&!allowed.has(ef.name))return;if(state.cat!=='All'&&ef.cat!==state.cat)return;if(state.q&&!(ef.name+' '+ef.desc+' '+ef.cat).toLowerCase().includes(state.q))return;if(state.cat==='All'&&ef.cat!==last){const h=document.createElement('h2');h.textContent=ef.cat;h.style.gridColumn='1/-1';gr.appendChild(h);last=ef.cat}
  const key=ef.cat+' › '+ef.name;const d=document.createElement('div');d.className='card';d.innerHTML=`<canvas width="640" height="360"></canvas><div class="meta"><div><b>${ef.name}</b><small>${ef.desc}</small></div><span class="tag">${ef.energy}</span><button class="gifb" title="Save this effect as a looping GIF">GIF</button><button class="heart${state.picks.has(key)?' on':''}">♥</button></div>`;
  d.querySelector('.gifb').onclick=ev=>saveGif(ef,ev.target);
  d.querySelector('.heart').onclick=ev=>{state.picks.has(key)?state.picks.delete(key):state.picks.add(key);ev.target.classList.toggle('on');upd()};gr.appendChild(d);
  const cv=d.querySelector('canvas');cards.push({ef,cv,g:cv.getContext('2d'),vis:true});});
  if('IntersectionObserver'in window){const io=new IntersectionObserver(es=>es.forEach(en=>{const c=cards.find(x=>x.cv===en.target);if(c)c.vis=en.isIntersecting}));cards.forEach(c=>io.observe(c.cv))}}
-function upd(){const by={};state.picks.forEach(k=>{const[c,n]=k.split(' › ');(by[c]=by[c]||[]).push(n)});const s=Object.entries(by).map(([c,n])=>c+': '+n.join(', ')).join(' | ');$('picks').textContent=s||'Click ♥ on the effects you like, then copy your picks and paste them in the chat.';return s}
+function upd(){const by={};state.picks.forEach(k=>{const[c,n]=k.split(' › ');(by[c]=by[c]||[]).push(n)});const s0=Object.entries(by).map(([c,n])=>c+': '+n.join(', ')).join(' | ');const s=s0&&state.packSel.size?'Moods: '+[...state.packSel].join(', ')+' | '+s0:s0;$('picks').textContent=s||'Click ♥ on the effects you like, then copy your picks and paste them in the chat.';return s}
 $('copy').onclick=()=>{const s=upd();if(!state.picks.size)return;const fallback=()=>{const t=document.createElement('textarea');t.value=s;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(x){}t.remove()};try{navigator.clipboard.writeText(s).catch(fallback)}catch(x){fallback()}$('copy').textContent='Copied';setTimeout(()=>$('copy').textContent='Copy my picks',1200)};
 function saveGif(ef,btn){if(!window.GifLab)return;btn.disabled=true;const old=btn.textContent;btn.textContent='…';
  setTimeout(()=>{try{const words=(state.txt.value||'Simple. Fast. Yours.').trim().split(/\s+/),ctxo={P:state.P,txt:state.txt.value||'Simple. Fast. Yours.',w1:words[0],w2:words[1]||words[0]};
@@ -447,8 +466,8 @@ function saveGif(ef,btn){if(!window.GifLab)return;btn.disabled=true;const old=bt
 let clock=0,lastT=performance.now();
 function loop(now){const dt=Math.min(.05,(now-lastT)/1000);lastT=now;if(!state.paused)clock+=dt*state.speed;
  const words=(state.txt.value||'Simple. Fast. Yours.').trim().split(/\s+/);const ctxo={P:state.P,txt:state.txt.value||'Simple. Fast. Yours.',w1:words[0],w2:words[1]||words[0]};
- cards.forEach(c=>{if(!c.vis)return;const cyc=c.ef.dur+1,t=clock%cyc,p=clamp(t/c.ef.dur);c.g.save();c.g.clearRect(0,0,W,H);try{c.ef.draw(c.g,p,ctxo)}catch(x){window.__ERR__=(window.__ERR__||[]).concat(c.ef.name+': '+x.message)}c.g.restore()});
+ tiles.concat(cards).forEach(c=>{if(!c.vis)return;const cyc=c.ef.dur+1,t=clock%cyc,p=clamp(t/c.ef.dur);c.g.save();c.g.clearRect(0,0,W,H);try{c.ef.draw(c.g,p,ctxo)}catch(x){window.__ERR__=(window.__ERR__||[]).concat(c.ef.name+': '+x.message)}c.g.restore()});
  requestAnimationFrame(loop)}
-render();upd();requestAnimationFrame(loop);$('count').textContent=E.length+' effects';
+render();upd();requestAnimationFrame(loop);$('count').textContent=state.mode==='packs'?'':E.length+' effects';
 window.__EFFECTS__=E;window.__DRAW__=(i,p,ctx)=>E[i].draw(ctx.g,p,ctx.c);
 </script></body></html>

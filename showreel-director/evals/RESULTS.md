@@ -74,3 +74,6 @@ Left as is: the decision sheet embeds one font only; text measurement stays an e
 
 ## SKILL.md refactor (router + per-step references)
 SKILL.md went from about 32 KB to about 14 KB: rules that never bend, gates table, layout and a short summary per step stay; the detail moved verbatim into `references/step-0-start.md`, `step-1-interview.md`, `step-2-storyboard.md`, `steps-3-to-6.md`. First-turn evals rerun with the new layout: waive-gates 4/4, untrusted-brief 3/3, existing-project 4/4, scene-by-scene 5/5, vocabulary 6/6, capability 5/5, infeasible 5/5, effects-list 4/4, express 7/7 after the first-reply contents and the depth timing were stated in SKILL.md (first pass 6/8 because the summary did not say what the first express reply holds). Not rerun: a full multi-turn end-to-end run.
+
+## Guided lab and font picker
+Checked with jsdom (moods, pack filter, picks copy, back/all navigation; font picker filters and Copy in EN and FR) and by screenshot. `fetch_font.py` only tested offline (network blocked in the build sandbox): its download path still needs a run on a machine with network.

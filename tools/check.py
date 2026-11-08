@@ -108,6 +108,13 @@ def main():
     r1 = run([sys.executable, os.path.join(SK, "scripts", "build_decision_sheet.py"), good, "--out", os.path.join(td, "o.html")])
     r2 = run([sys.executable, os.path.join(SK, "scripts", "build_decision_sheet.py"), badf, "--out", os.path.join(td, "o2.html")])
     ok("decision sheet builder: good spec builds, bad spec refused") if r1.returncode == 0 and r2.returncode != 0 else bad("decision sheet builder self-test failed")
+    # font picker and guided lab: the curated list is well formed, both pages build, the lab opens on the moods
+    fl = _json.load(open(os.path.join(SK, "engine", "fonts-free.json"), encoding="utf-8")); fnames = [x["name"] for x in fl]
+    flist_ok = len(fnames) == len(set(fnames)) and all(x.get("dir") and x.get("cat") and x.get("moods") and x.get("note") for x in fl)
+    rp = run([sys.executable, os.path.join(SK, "scripts", "build_font_picker.py"), "--out", os.path.join(td, "fp.html")])
+    rl = run([sys.executable, os.path.join(SK, "scripts", "build_effects_lab.py"), "--out", os.path.join(td, "lab.html")])
+    lab_ok = rl.returncode == 0 and "const GUIDED=true" in open(os.path.join(td, "lab.html"), encoding="utf-8").read() and '"effects": [' in open(os.path.join(td, "lab.html"), encoding="utf-8").read()
+    ok("font picker builds from a well-formed curated list; effects lab opens on the moods") if flist_ok and rp.returncode == 0 and lab_ok else bad("font picker or guided lab self-test failed: " + (rp.stderr + rl.stderr)[-200:])
     # organiser self-test on the eval assets: plan, apply, held files, check
     import shutil as _sh
     pj = os.path.join(td, "proj"); fx = os.path.join(SK, "evals", "ploma-full-interview", "files", "assets")

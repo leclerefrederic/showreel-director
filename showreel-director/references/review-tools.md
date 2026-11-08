@@ -6,7 +6,8 @@ Rule: the user never approves a block of text. A decision goes through the quest
 |---|---|---|
 | 1 to 4 decisions, plain choices | question tool | max 4 questions per round, 2 to 4 options, recommended first, one short sentence of context |
 | 5 or more decisions at once, or any decision that needs to be seen (colours, type, structure options, cut-downs, brief sections, release gate) | **decision sheet** | `python3 scripts/build_decision_sheet.py spec.json --out qa/decision-<name>.html --bg … --fg … --accent …` |
-| Effects the user likes | effects lab | `scripts/build_effects_lab.py` (hearts, "Copy my picks") |
+| Effects the user likes | effects lab | `scripts/build_effects_lab.py` (moods first, then hearts, "Copy my picks") |
+| Fonts for titles and text | font picker | `scripts/build_font_picker.py` (free fonts by mood, "Copy my picks") |
 | Scenes of the storyboard | **scene cards** | `scripts/build_scene_cards.py storyboard.md --out qa/cards-scenes.html …` (timeline strip, reading-speed warning per scene, OK / MODIFY / DITCH) |
 | Look of the first frames | look test build | see "Look test" in `build-guide.md`: a build of 2 or 3 scenes, opened in the player |
 | Held assets (real data, unconfirmed rights, forbidden font) | decision sheet | one item per held file: Exclude (recommended) / Provide a redacted copy or confirm rights (note required); then `organize_assets.py --set` or `--redacted` |
