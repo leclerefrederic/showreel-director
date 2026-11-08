@@ -6,10 +6,9 @@ Per file: type, size, pixel size (images), duration (audio/video via ffprobe), l
 and flags: heavy, small, personal-data keywords in text-like files, no licence note, proprietary/unknown font licence.
 Read only; never modifies files. Treat flags as questions for the user, not verdicts.
 """
-import argparse, json, os, re, subprocess, sys
+import argparse, json, os, re, subprocess
 
 PII = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+|(?<!\d)(?:\+\d{1,3}[ .-]?)?(?:\d[ .-]?){9,}\d(?!\d)|\b[A-Z]{2}\d{2}[ ]?(?:\d{4}[ ]?){3,}|\b(?:iban|passport|ssn|password|secret|api[_-]?key)\b", re.I)
-NOTE = re.compile(r"(licen[cs]e|consent|rights|permission|copyright|usage)", re.I)
 
 def probe(path):
     try:

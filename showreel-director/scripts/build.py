@@ -6,29 +6,18 @@ Inlines: CSS tokens, fonts (woff2 base64, falls back to the raw file), the track
 envelopes (from analysis_dir/beats.json + env.json), core.js + kit.js (window.SR, window.SRK), main.js, player.js. Prints a weight report and
 fails if the budget in project.json is exceeded. No track: omit "track" (the reel then runs silent).
 """
-import argparse, base64, io, json, os, sys
+import argparse, base64, json, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _common as C
 
 ENGINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine")
-
-def b64(path): return base64.b64encode(open(path, "rb").read()).decode()
 
 def font_css(fonts, root):
     css, report = [], []
     for f in fonts:
         p = os.path.join(root, f["path"])
-        data, mime, fmt = open(p, "rb").read(), "font/ttf", "truetype"
-        if p.lower().endswith(".ttf") or p.lower().endswith(".otf"):
-            try:
-                import importlib.util
-                from fontTools.ttLib import TTFont
-                flavor = "woff2" if importlib.util.find_spec("brotli") else "woff"  # woff2 needs the brotli package
-                tt = TTFont(p); tt.flavor = flavor; buf = io.BytesIO(); tt.save(buf)
-                data, mime, fmt = buf.getvalue(), "font/" + flavor, flavor
-            except Exception:
-                pass  # fontTools missing: embed the raw font file
-        elif p.lower().endswith(".woff2"): mime, fmt = "font/woff2", "woff2"
-        css.append('@font-face{font-family:"%s";font-weight:%s;font-style:%s;src:url(data:%s;base64,%s) format("%s")}'
-                   % (f["family"], f.get("weight", 400), f.get("style", "normal"), mime, base64.b64encode(data).decode(), fmt))
+        data, mime, fmt = C.font_blob(p, flavor="auto", only_sfnt=True)  # woff2 needs the brotli package, else woff, else the raw file
+        css.append(C.font_face(f["family"], data, mime, fmt, weight=f.get("weight", 400), style=f.get("style", "normal")))
         report.append((f["path"], len(data)))
     return "\n".join(css), report
 
@@ -70,7 +59,9 @@ def main():
     data = {"beats": [], "dur": 60, "env": None, "downbeat_offset": 0}
     track_tag = ""
     if cfg.get("track"):
-        tp = os.path.join(root, cfg["track"]); raw = open(tp, "rb").read()
+        tp = os.path.join(root, cfg["track"])
+        if not os.path.exists(tp): sys.exit(f"track file not found: {cfg['track']}. For a silent film, remove the \"track\" key (and \"analysis_dir\") from project.json and set \"duration\".")
+        raw = open(tp, "rb").read()
         ad0 = os.path.join(root, cfg.get("analysis_dir", "analysis")); tdur = json.load(open(os.path.join(ad0, "beats.json")))["duration"]
         want = cfg.get("duration"); sbar = cfg.get("track_start_bar"); tstart = 0.0
         bt0 = json.load(open(os.path.join(ad0, "beats.json")))
@@ -89,6 +80,7 @@ def main():
             elif tstart > 0: sys.exit("track_start_bar needs ffmpeg to cut the track")
             else: print(f"warning: the track ({tdur:.0f}s) is much longer than the reel ({want}s) and ffmpeg is missing to trim it: the whole track will be embedded")
         elif not want and tdur: print(f"note: no \"duration\" in project.json, the reel lasts as long as the track ({tdur:.1f}s)")
+        track_tag = '<script type="text/plain" id="trackdata">data:audio/mpeg;base64,%s</script>' % base64.b64encode(raw).decode()
         report.append((cfg["track"], len(raw) * 4 // 3))
         ad = os.path.join(root, cfg.get("analysis_dir", "analysis"))
         bt = json.load(open(os.path.join(ad, "beats.json"))); ev = json.load(open(os.path.join(ad, "env.json")))
@@ -105,6 +97,7 @@ def main():
     imgs = {}
     for key, rel in (cfg.get("images") or {}).items():
         ip = os.path.join(root, rel); ext = rel.lower().rsplit(".", 1)[-1]
+        if not os.path.exists(ip): sys.exit(f"images.{key}: file not found: {rel}")
         mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "svg": "image/svg+xml", "webp": "image/webp", "gif": "image/gif"}.get(ext)
         if not mime: sys.exit(f"images.{key}: unsupported type .{ext}")
         raw_i = open(ip, "rb").read(); imgs[key] = "data:%s;base64,%s" % (mime, base64.b64encode(raw_i).decode()); report.append((f"image {key}", len(raw_i) * 4 // 3))

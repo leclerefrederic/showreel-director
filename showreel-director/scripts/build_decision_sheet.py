@@ -21,9 +21,11 @@ separate explicit button; "Copy decisions" refuses (and outlines the open cards)
 the copied text is a draft that the skill still confirms in the conversation. Text is never interpreted as HTML.
 No look is assumed: pass the brand colours.
 """
-import argparse, base64, html, json, os, re, sys
+import argparse, html, json, os, re, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _common as C
 
-HEX = re.compile(r"^#[0-9a-fA-F]{3,8}$")
+HEX = C.HEX
 
 def check(spec):
     errs = []
@@ -51,24 +53,16 @@ def check(spec):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("spec"); ap.add_argument("--out", default="qa/decision-sheet.html")
-    ap.add_argument("--bg", default="#111111"); ap.add_argument("--fg", default="#f4f4f0"); ap.add_argument("--accent", default="#e6ff00"); ap.add_argument("--accent2", default="#8a8a84")
-    ap.add_argument("--font"); ap.add_argument("--family", default="Reel Font"); ap.add_argument("--ui"); ap.add_argument("--lang", default="en")
+    C.add_brand_args(ap, "#111111", "#f4f4f0", "#e6ff00", "#8a8a84", "Reel Font")
     a = ap.parse_args()
     spec = json.load(open(a.spec, encoding="utf-8")); errs = check(spec)
     if errs: sys.exit("spec problems:\n  " + "\n  ".join(errs))
-    for c in (a.bg, a.fg, a.accent, a.accent2):
-        if not HEX.match(c): sys.exit("bad colour " + c)
-    face = ""
-    if a.font:
-        mime = "font/woff2" if a.font.lower().endswith(".woff2") else "font/woff" if a.font.lower().endswith(".woff") else "font/ttf"
-        face = '@font-face{font-family:"%s";src:url(data:%s;base64,%s)}' % (a.family, mime, base64.b64encode(open(a.font, "rb").read()).decode())
-    ui = dict(UI)
-    if a.ui: ui.update(json.load(open(a.ui, encoding="utf-8")))
-    page = PAGE.replace("__UI__", json.dumps(ui, ensure_ascii=False).replace("</", "<\\/")).replace("__LANG__", html.escape(a.lang)).replace("__DATA__", json.dumps(spec, ensure_ascii=False).replace("</", "<\\/")) \
-               .replace("__TITLE__", html.escape(spec.get("title", "Decisions"))).replace("__BG__", a.bg).replace("__FG__", a.fg) \
-               .replace("__ACC__", a.accent).replace("__ACC2__", a.accent2).replace("__FACE__", face).replace("__FAMILY__", a.family.replace('"', ""))
-    os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
-    open(a.out, "w", encoding="utf-8").write(page)
+    C.require_colors(a.bg, a.fg, a.accent, a.accent2)
+    face = C.font_face(a.family, *C.font_blob(a.font)[:2]) if a.font else ""
+    page = C.fill(PAGE, [("__UI__", C.js_json(C.load_ui(UI, a.ui))), ("__LANG__", html.escape(a.lang)), ("__DATA__", C.js_json(spec)),
+                         ("__TITLE__", html.escape(spec.get("title", "Decisions"))), ("__BG__", a.bg), ("__FG__", a.fg), ("__ACC__", a.accent), ("__ACC2__", a.accent2),
+                         ("__FACE__", face), ("__FAMILY__", a.family.replace('"', ""))])
+    C.write_text(a.out, page)
     print(f"wrote {a.out}: {len(spec['items'])} items")
 
 UI = {"accept": "Accept all recommended", "copy": "Copy decisions", "rec": "(recommended)", "several": "Several can be ticked.", "noteReq": "Required: say what, or why",

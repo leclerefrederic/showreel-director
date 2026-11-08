@@ -28,12 +28,12 @@ A JSON file with `title`, `intro` and up to 30 `items`. Each item has `id`, `tit
       "options": [ {"label": "Resolve first", "recommended": true}, {"label": "Waive and accept the risk", "needs_note": true} ] } ] }
 ```
 
-Built-in guardrails (do not remove them): nothing is pre-selected, the recommended option is only highlighted; "Accept all recommended" is a separate button and never accepts an option that needs a note; "Copy decisions" refuses (and outlines the open cards) until every item is decided and every required note is written; text is escaped, never interpreted as HTML; the builder refuses a spec with fewer than 2 or more than 4 options, duplicate ids, bad colours or an over-long body. Pass the brand colours once known; before that, use the defaults.
+Built-in guardrails (do not remove them): nothing is pre-selected, the recommended option is only highlighted; "Accept all recommended" is a separate button and never accepts an option that needs a note; "Copy decisions" refuses (and outlines the open cards) until every item is decided and every required note is written; text is escaped, never interpreted as HTML; the builder refuses a spec with fewer than 2 or more than 4 options, duplicate ids, bad colours or an over-long body. Pass the brand colours once known; before that, use the defaults. The page embeds a single font (`--font`): a Bold + Regular pairing cannot be shown faithfully, so show the pairing in the type specimen with the heavier file and name the second font in the card text.
 
 ## Typical sheets
 - **Brief review** (Step 1): one item per section of the brief that carries a decision (message and audience, feeling and look, sound, delivery, assets), options Keep / Change (needs a note). The assets item is where proposed assets become `approved`.
 - **Style sheet** (Step 2): one item per line with real alternatives; palette items carry swatches, type items carry a specimen with the line of the message in the chosen font.
 - **Structure options** (feasibility): two or three workable structures as options (sections, seconds, scenes, words), recommended first.
 - **Cut-downs**: which cuts to build (full, short), what each drops.
-- **Release gate** (Step 5): one item per open point (placeholder, unvalidated figure, pending authorisation); options Resolve first (recommended) / Waive and accept the risk (needs a note). Waivers are written to the decisions log of `brief.md` with the note.
+- **Release gate** (Step 5): one item per open point (placeholder, unvalidated figure, pending authorisation); options Resolve first (recommended) / Waive and accept the risk (needs a note) / Not an open point (needs a note: for example a value chosen on purpose, such as a fictional URL). Waivers are written to the decisions log of `brief.md` with the note.
 - **Audio check**: confirm tempo, first beat and the moments the music sheet proposes (drop, breakdown return, ending).

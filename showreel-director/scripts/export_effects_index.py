@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate references/effects-index.md from the fx(...) registry in engine/effects/*.js."""
-import re, glob, os, sys, collections
+import re, glob, os, collections
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 consts = {}; rows = collections.OrderedDict()
 pat = re.compile(r"(?:^|[;\s])(?:fx|tr|trk|dots|ring)\(\s*([A-Za-z_]\w*|'[^']*'|\"[^\"]*\")\s*,\s*'((?:[^'\\]|\\.)*)'\s*,\s*'((?:[^'\\]|\\.)*)'\s*,\s*'(\w+)'\s*,\s*([\d.]+)")

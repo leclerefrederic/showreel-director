@@ -7,7 +7,7 @@ const { JSDOM, VirtualConsole } = require('jsdom'); const fs = require('fs');
 const errors = []; const vc = new VirtualConsole(); vc.on('jsdomError', e => errors.push(e.message)); vc.on('error', e => errors.push(String(e)));
 const dom = new JSDOM(fs.readFileSync(process.argv[2], 'utf8'), { runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: vc,
   beforeParse(w) {
-    const ctx = new Proxy({}, { get: (t, k) => k in t ? t[k] : (k === 'measureText' ? s => ({ width: String(s).length * 8 }) : () => undefined), set: (t, k, v) => (t[k] = v, true) });
+    const ctx = new Proxy({}, { get: (t, k) => k in t ? t[k] : (k === 'measureText' ? s => ({ width: String(s).length * 8 }) : /^create(Linear|Radial|Conic)Gradient$|^createPattern$/.test(String(k)) ? () => ({ addColorStop() {} }) : () => undefined), set: (t, k, v) => (t[k] = v, true) });
     w.HTMLCanvasElement.prototype.getContext = () => ctx;
     w.HTMLCanvasElement.prototype.getBoundingClientRect = () => ({ width: 800, height: 450 });
     w.matchMedia = () => ({ matches: false });
@@ -23,8 +23,8 @@ const w = dom.window, $ = id => w.document.getElementById(id); const sleep = ms 
   ok('time label advances', /^0:0[0-9] \//.test($('tm').textContent) && $('tm').textContent !== '0:00 / 0:00');
   $('pp').click(); const t1 = $('tm').textContent; await sleep(500);
   ok('pause freezes the clock', $('tm').textContent === t1);
-  $('seek').value = 100; $('seek').dispatchEvent(new w.Event('input')); await sleep(100);
-  ok('seek moves the clock', /0:10/.test($('tm').textContent));
+  const dur = w.SR.data.dur, seekTo = Math.max(1, Math.floor(dur / 2)); $('seek').value = seekTo * 10; $('seek').dispatchEvent(new w.Event('input')); await sleep(100);
+  ok('seek moves the clock', new RegExp('^0:0?' + seekTo + '(?![0-9])|^0:' + String(seekTo).padStart(2, '0')).test($('tm').textContent));
   if ($('rm') && $('rm').style.display !== 'none') {
     let seen = null; const r0 = w.SHOWREEL.render; w.SHOWREEL.render = (g, t, c) => { seen = c.reduced; return r0(g, t, c); };
     const before = $('rm').textContent; $('rm').click(); await sleep(120);
@@ -32,14 +32,15 @@ const w = dom.window, $ = id => w.document.getElementById(id); const sleep = ms 
     ok('ctx.reduced reaches render()', seen === true);
     $('rm').click(); await sleep(120); w.SHOWREEL.render = r0;
   }
+  ok('sound controls hidden when there is no track', !!w.document.getElementById('trackdata') || ($('ov1').style.display === 'none' && $('mu').style.display === 'none'));
   if (process.argv.includes('--release')) ok('release build has no notes pad', !$('nt'));
   if ($('nt')) {
     $('nt').click(); await sleep(80);
     ok('notes pad opens and pauses', !!$('pad') && $('pad').style.display !== 'none');
     $('padtx').value = 'test note'; $('padadd').click();
     ok('note is recorded with time, scene and format', /\[\d+:\d\d\.\d · .+ · \w+\/\w+\] test note/.test($('padls').textContent));
-    $('seek').value = 100; $('seek').dispatchEvent(new w.Event('input')); await sleep(60);
-    ok('pad stamp follows a seek while open', /0:10\.0/.test($('padhd').textContent));
+    $('seek').value = seekTo * 10; $('seek').dispatchEvent(new w.Event('input')); await sleep(60);
+    ok('pad stamp follows a seek while open', new RegExp('0:' + String(seekTo).padStart(2, '0') + '\\.0').test($('padhd').textContent));
     $('padx').click(); $('nt').click(); await sleep(60);
     ok('reopening the pad refreshes the stamp', !!$('padhd').textContent && $('pad').style.display !== 'none');
     $('padx').click();

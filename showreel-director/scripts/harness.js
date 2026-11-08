@@ -6,24 +6,19 @@
    skips rotated text), text collisions (two texts overlapping for 3+ consecutive samples; widths are estimated, so treat as leads),
    strings drawn per scene (spot untranslated text), near-empty frames.
    It cannot judge looks: still look at contact sheets. */
-const fs = require('fs'), vm = require('vm');
-const args = process.argv.slice(2), file = args[0];
-const opt = (n, d) => { const i = args.indexOf(n); return i > -1 ? args[i + 1] : d; };
+const { makeOpt, loadReel, registerFonts, stubImage } = require('./_reel');
+const args = process.argv.slice(2), file = args[0], opt = makeOpt(args);
 const step = parseFloat(opt('--step', '0.25'));
-const html = fs.readFileSync(file, 'utf8');
-const sandbox = { console, atob: s => Buffer.from(s, 'base64').toString('binary'), Math, Uint8Array, Array, JSON };
-sandbox.window = sandbox; sandbox.globalThis = sandbox;
-// images: a stub with the real pixel size (PNG header) or 100x100, so code that draws embedded images is exercised
-sandbox.SR_IMG_LOADER = uri => { const b = Buffer.from(uri.split(',')[1] || '', 'base64'); let w = 100, h = 100;
-  if (b.length > 24 && b.toString('latin1', 1, 4) === 'PNG') { w = b.readUInt32BE(16); h = b.readUInt32BE(20); }
-  return { width: w, height: h, naturalWidth: w, naturalHeight: h, complete: true }; };
-vm.createContext(sandbox);
-for (const id of ['sr-data', 'sr-core', 'sr-main']) {
-  const m = new RegExp(`<script id="${id}">([\\s\\S]*?)</script>`).exec(html);
-  if (!m) { console.error('missing script ' + id); process.exit(2); }
-  vm.runInContext(m[1], sandbox);
-}
-const S = sandbox.SHOWREEL, SR = sandbox.SR, DUR = SR.data.dur;
+const { html, S, SR, DUR } = loadReel(file, stubImage);
+// Text measurement: with @napi-rs/canvas available (NODE_PATH) the embedded fonts are registered and measureText is real, so wrapping
+// and collision checks run on the layout that ships; otherwise widths are estimated (0.55 em per character) and the report says so.
+let realMeasure = null;
+try {
+  const cl = require('@napi-rs/canvas'); let nf = 0;
+  nf = registerFonts(html, cl.GlobalFonts);
+  const mc = cl.createCanvas(10, 10).getContext('2d'); realMeasure = (font, s) => { mc.font = font; return mc.measureText(String(s)).width; };
+  console.log('text measured with real fonts (' + nf + ' embedded font(s) registered)');
+} catch (e) { console.log('text widths are estimated (install @napi-rs/canvas and set NODE_PATH for real measurements)'); }
 const modes = opt('--modes', Object.keys(S.formats).join(',')).split(','), langs = opt('--langs', S.languages.map(l => l.id).join(',')).split(',');
 const overlapRun = {}; let issues = [], strings = {}, empty = 0, frames = 0, cur = '', seen = new Set(), stageRect = null;
 const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
@@ -32,7 +27,7 @@ function mkCtx() {
   const target = { globalAlpha: 1, font: '10px sans-serif', textAlign: 'left' };
   const p = new Proxy(target, {
     get(_, k) {
-      if (k === 'measureText') return s => { const m = /(\d+(?:\.\d+)?)px/.exec(target.font || ''); return { width: String(s).length * (m ? +m[1] : 16) * .55 }; };
+      if (k === 'measureText') return s => { if (realMeasure) { try { return { width: realMeasure(target.font || '10px sans-serif', s) }; } catch (e) {} } const m = /(\d+(?:\.\d+)?)px/.exec(target.font || ''); return { width: String(s).length * (m ? +m[1] : 16) * .55 }; };
       if (k === 'canvas') return { width: 1600, height: 900 };
       if (k === '__ops') return ops;
       if (k === '__texts') return texts;
@@ -52,7 +47,7 @@ function mkCtx() {
           (strings[sc] = strings[sc] || new Set()).add(`${key}: ${a[0]}`);
           const al = target.globalAlpha, fs0 = /(\d+(?:\.\d+)?)px/.exec(target.font || ''), sx = Math.hypot(M[0], M[1]);
           if (al > .08 && Math.abs(M[1]) < 1e-6 && Math.abs(M[2]) < 1e-6 && stageRect && sx > 0) {
-            const w = String(a[0]).length * (fs0 ? +fs0[1] : 16) * .55 * sx;
+            const w = realMeasure ? realMeasure(target.font || '16px sans-serif', a[0]) * sx : String(a[0]).length * (fs0 ? +fs0[1] : 16) * .55 * sx;
             const x = M[0] * a[1] + M[4]; const left = target.textAlign === 'center' ? x - w / 2 : target.textAlign === 'right' ? x - w : x;
             const fsz = (fs0 ? +fs0[1] : 16) * Math.abs(M[3]), yy = M[3] * a[2] + M[5], bl = target.textBaseline || 'alphabetic';
             const top = bl === 'middle' ? yy - fsz * .375 : bl === 'top' ? yy : bl === 'bottom' ? yy - fsz * .75 : yy - fsz * .75;

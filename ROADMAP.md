@@ -9,9 +9,12 @@
 - GIF download per effect in the effects lab (`engine/gif.js`).
 - Process hardening: gates table, decision sheets, look test, notes pad, waiver and existing-project routes, untrusted-content rule (second eval run in `evals/RESULTS.md`).
 - Asset layout and naming convention, manifest, organiser and build guard (`references/assets.md`).
-- Two end-to-end simulations with a scripted user (31 and 21 issues found, fixed; see `evals/RESULTS.md`), cut-downs with their own build, audio analysis overrides.
+- Three end-to-end simulations with a scripted user (31, 21 and 22 issues found, fixed; see `evals/RESULTS.md`), cut-downs with their own build, audio analysis overrides.
 - Evals run with and without the skill (first round, `evals/RESULTS.md`).
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
 
 ## On hold
 - Next eval round: several runs per case, multi-turn cases (brief writing, scene review loop, build and release gate), and a test of triggering from the skill description in a fresh conversation. First results: `showreel-director/evals/RESULTS.md`.
+
+## Refactoring (done)
+Dead code removed; shared helpers `scripts/_common.py` (Python page builders) and `scripts/_reel.js` (harness and exporter); engine.md layout block now points to SKILL.md. Output of every generator verified byte-identical before and after (snapshot compare).

@@ -44,10 +44,10 @@ def main():
     def add(name, ok, required, used_for, fallback, hint, detail=""):
         res.append({"tool": name, "ok": bool(ok), "required": required, "used_for": used_for, "fallback": fallback, "install": hint, "detail": detail})
     add("python3 >= 3.8", sys.version_info >= (3, 8), True, "all scripts", "none", "install Python 3", f"found {sys.version.split()[0]}")
-    add("numpy", have_py("numpy"), True, "analyze_audio.py (tempo, beats, drops)",
+    add("numpy", have_py("numpy"), False, "analyze_audio.py (tempo, beats, drops): required only when the reel has a track",
         "ask the user for BPM and drop positions and build the beat grid by hand, then check by ear", "pip install numpy --break-system-packages")
     ff = shutil.which("ffmpeg"); fp = shutil.which("ffprobe")
-    add("ffmpeg", ff, True, "analyze_audio.py (decode the track)", "ask the user for BPM and track length", "install ffmpeg (brew install ffmpeg)")
+    add("ffmpeg", ff, False, "analyze_audio.py (decode the track), trimming the embedded track, MP4 export: required only when the reel has a track or an MP4 is wanted", "ask the user for BPM and track length", "install ffmpeg (brew install ffmpeg)")
     add("ffprobe", fp, False, "audit_assets.py (image/audio/video sizes and durations)", "audit by eye and from file names", "comes with ffmpeg")
     node = shutil.which("node"); ver = ""
     if node:
@@ -63,7 +63,7 @@ def main():
     browsers = [b for b in ("chromium", "chromium-browser", "google-chrome", "chrome") if shutil.which(b)]
     pw = have_py("playwright")
     add("headless browser", browsers or pw, False, "taking screenshots of contact sheets",
-        "use the artifact screenshot tool if the session has one, or ask the user to open qa/contact-sheet.html", "install Chromium or `pip install playwright`", ", ".join(browsers) + (" playwright" if pw else ""))
+        "use the artifact screenshot tool if the session has one, or ask the user to open qa/contact-<vN>.html", "install Chromium or `pip install playwright`", ", ".join(browsers) + (" playwright" if pw else ""))
     if "--json" in sys.argv:
         print(json.dumps(res, indent=2)); sys.exit(1 if any(r["required"] and not r["ok"] for r in res) else 0)
     for r in res:

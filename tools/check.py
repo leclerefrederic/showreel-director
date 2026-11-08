@@ -8,6 +8,7 @@ SKILL.md exists, no accented or stray non-ASCII text in the skill's text files (
 """
 import argparse, hashlib, os, re, subprocess, sys, zipfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"; sys.dont_write_bytecode = True
 import package
 
 ROOT = package.ROOT; SK = os.path.join(ROOT, package.SKILL); fails = []; notes = []
@@ -43,7 +44,7 @@ def main():
     orphan = [f for f in texts if f != "SKILL.md" and "references/" + f not in s]
     ok("every reference file is linked from SKILL.md") if not orphan else bad("reference not linked from SKILL.md: " + ", ".join(orphan))
     docs = s + texts.get("engine.md", "")
-    unused = [f for f in sorted(os.listdir(os.path.join(SK, "scripts"))) if f.endswith((".py", ".js")) and "scripts/" + f not in docs]
+    unused = [f for f in sorted(os.listdir(os.path.join(SK, "scripts"))) if f.endswith((".py", ".js")) and "scripts/" + f not in docs]  # helpers (_name) are documented as a group
     ok("every script is documented in SKILL.md or engine.md") if not unused else bad("script not documented: " + ", ".join(unused))
     rules = []
     if "Gates (guardrails)" not in s: rules.append("gates table missing in SKILL.md")
@@ -86,8 +87,19 @@ def main():
     rh = run(["node", os.path.join(SK, "scripts", "harness.js"), built, "--step", "0.5"]) if os.path.exists(built) else None
     _json.dump({"title": "T", "main": "main.js", "duration": 6, "fonts": [], "tokens": {}, "images": {"shot-01": "../assets/source/x.png"}}, open(os.path.join(bp, "v1", "project.json"), "w"))
     rg = run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(bp, "v1")])
-    good = rb.returncode == 0 and rh is not None and rh.returncode == 0 and '"images"' in open(built, encoding="utf-8").read() and rg.returncode != 0
-    ok("build self-test: image embedded, harness passes, guard refuses assets/source") if good else bad("build self-test failed: " + (rb.stdout + rb.stderr + (rh.stdout if rh else ""))[-300:])
+    # a project with a track must carry it (regression guard): tiny silent mp3 made with ffmpeg when available
+    trk_ok = True
+    if _sh.which("ffmpeg"):
+        tp2 = os.path.join(td, "tp"); os.makedirs(os.path.join(tp2, "v1")); os.makedirs(os.path.join(tp2, "assets", "prepared")); os.makedirs(os.path.join(tp2, "analysis"))
+        mp3 = os.path.join(tp2, "assets", "prepared", "audio-01-test.mp3")
+        run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=110:duration=6", mp3])
+        run([sys.executable, os.path.join(SK, "scripts", "analyze_audio.py"), mp3, "--out", os.path.join(tp2, "analysis")])
+        _json.dump({"title": "T", "main": "main.js", "track": "../assets/prepared/audio-01-test.mp3", "analysis_dir": "../analysis", "duration": 5, "fonts": [], "tokens": {}}, open(os.path.join(tp2, "v1", "project.json"), "w"))
+        _sh.copy(os.path.join(SK, "engine", "main.template.js"), os.path.join(tp2, "v1", "main.js"))
+        rt = run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(tp2, "v1")]); out2 = os.path.join(tp2, "v1", "dist", "index.html")
+        trk_ok = rt.returncode == 0 and os.path.exists(out2) and 'id="trackdata"' in open(out2, encoding="utf-8").read()
+    good = trk_ok and rb.returncode == 0 and rh is not None and rh.returncode == 0 and '"images"' in open(built, encoding="utf-8").read() and rg.returncode != 0
+    ok("build self-test: track and image embedded, harness passes, guard refuses assets/source") if good else bad("build self-test failed: " + (rb.stdout + rb.stderr + (rh.stdout if rh else ""))[-300:])
     # tools self-test: decision sheet builder accepts a good spec and refuses a bad one; scene cards build
     import tempfile, json as _json
     td = tempfile.mkdtemp(); good = os.path.join(td, "g.json"); badf = os.path.join(td, "b.json")

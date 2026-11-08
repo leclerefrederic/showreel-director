@@ -3,7 +3,7 @@
 
 Usage: python3 build_scene_cards.py STORYBOARD.md --out qa/cards-scenes.html [--title "Reel name"]
          [--bg #111 --fg #f4f4f0 --accent #e6ff00 --accent2 #888 --font path/to/font.ttf --family "Name"]
-Reads the first Markdown table of the storyboard (one row per scene). Columns are matched by name: an ID column
+Reads the first Markdown table of the storyboard (one row per scene). With several languages use one text column per language ("Text EN", "Text FR"); with cuts use one time column per cut ("Time", "Time (short)"): a single cell holding all languages gives a false reading-speed warning. Columns are matched by name: an ID column
 ("#", "ID", "Scene"), a time column ("Time"), a text column ("text"), "image"/"motion", "feeling"/"tension",
 "gag"/"handoff"; any other column is shown as a labelled line. The page is one self-contained HTML file with, per
 scene, OK / MODIFY / DITCH buttons (MODIFY opens a note field), "OK for all remaining", running totals (kept,
@@ -11,7 +11,9 @@ ditched, time left when times are numeric) and a "Copy decisions" button that pu
 so the user can paste it in the chat. The decisions are only a draft: the skill still confirms every MODIFY and
 DITCH in the conversation (see references/scene-review.md). No palette or look is assumed: pass the brand colours.
 """
-import argparse, base64, html, json, os, re, sys, unicodedata
+import argparse, html, json, os, re, sys, unicodedata
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _common as C
 
 def split_row(line):
     cells = [c.strip() for c in line.strip().strip("|").split("|")]
@@ -45,8 +47,8 @@ def seconds(s):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("storyboard"); ap.add_argument("--out", default="qa/cards-scenes.html"); ap.add_argument("--title", default="Storyboard")
-    ap.add_argument("--bg", default="#111111"); ap.add_argument("--fg", default="#f4f4f0"); ap.add_argument("--accent", default="#e6ff00"); ap.add_argument("--accent2", default="#8a8a84")
-    ap.add_argument("--font"); ap.add_argument("--family", default="Reel Font"); ap.add_argument("--ui"); ap.add_argument("--lang", default="en")
+    C.add_brand_args(ap, "#111111", "#f4f4f0", "#e6ff00", "#8a8a84", "Reel Font")
+    ap.add_argument("--decisions", help="text copied from an earlier sheet (lines like \"S03: OK\" or \"S02: MODIFY - note\"): those scenes open already decided, so a refreshed sheet shows what is locked")
     a = ap.parse_args()
     head, rows = parse_table(open(a.storyboard, encoding="utf-8").read())
     if not rows: sys.exit("no Markdown table found in " + a.storyboard)
@@ -56,12 +58,13 @@ def main():
     if not ctime:
         ctime = next((h for h in head if rows and sum(1 for r in rows if seconds(r.get(h, "")) is not None) >= max(1, len(rows) // 2)), None)
     ctext = find(head, "text", "texte", "texto", "titre", "line")
+    xtext = [h for h in head if h != ctext and any(k in norm(h) for k in ("text", "texte", "texto", "titre"))]  # text columns of other languages: also checked for reading speed
     cimg = find(head, "image", "motion", "visuel", "mouvement", "imagen", "bild")
     cfeel = find(head, "feeling", "tension", "ressenti", "emotion", "gefuhl")
     cgag = find(head, "gag", "handoff", "jeu", "passage", "transition")
     tkeys = ("time", "temps", "duree", "duration", "tiempo", "zeit")
     tcols = [h for h in head if h != ctime and any(k in norm(h) for k in tkeys)]  # more time columns = one per cut (for example "Time (short)")
-    used = {cid, ctime, ctext, cimg, cfeel, cgag, *tcols}; extra = [h for h in head if h not in used]
+    used = {cid, ctime, ctext, cimg, cfeel, cgag, *tcols, *xtext}; extra = [h for h in head if h not in used]
     scenes = []
     for k, r in enumerate(rows):
         sid = clean(r.get(cid, "")).strip() or str(k + 1)
@@ -69,20 +72,22 @@ def main():
         scenes.append({"id": sid, "time": clean(r.get(ctime, "")) if ctime else "", "dur": seconds(r.get(ctime, "")) if ctime else None,
                        "text": clean(r.get(ctext, "")) if ctext else "", "image": clean(r.get(cimg, "")) if cimg else "",
                        "feel": clean(r.get(cfeel, "")) if cfeel else "", "gag": clean(r.get(cgag, "")) if cgag else "",
+                       "xtext": [(h, clean(r.get(h, ""))) for h in xtext if r.get(h, "").strip()],
                        "cuts": [(h, clean(r.get(h, "")), seconds(r.get(h, ""))) for h in tcols if r.get(h, "").strip() and r.get(h, "").strip() not in ("-", "")],
                        "extra": [(h, clean(r.get(h, ""))) for h in extra if r.get(h, "").strip()]})
-    face = ""
-    if a.font:
-        mime = "font/woff2" if a.font.lower().endswith(".woff2") else "font/woff" if a.font.lower().endswith(".woff") else "font/ttf"
-        face = '@font-face{font-family:"%s";src:url(data:%s;base64,%s)}' % (a.family, mime, base64.b64encode(open(a.font, "rb").read()).decode())
+    C.require_colors(a.bg, a.fg, a.accent, a.accent2)
+    face = C.font_face(a.family, *C.font_blob(a.font)[:2]) if a.font else ""
     total = sum(s["dur"] or 0 for s in scenes)
-    ui = dict(UI)
-    if a.ui: ui.update(json.load(open(a.ui, encoding="utf-8")))
-    page = PAGE.replace("__UI__", json.dumps(ui, ensure_ascii=False).replace("</", "<\\/")).replace("__LANG__", html.escape(a.lang)).replace("__DATA__", json.dumps({"scenes": scenes, "total": round(total, 1), "title": a.title}, ensure_ascii=False).replace("</", "<\\/")) \
-               .replace("__TITLE__", html.escape(a.title)).replace("__BG__", a.bg).replace("__FG__", a.fg).replace("__ACC__", a.accent).replace("__ACC2__", a.accent2) \
-               .replace("__FACE__", face).replace("__FAMILY__", a.family.replace('"', ''))
-    os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
-    open(a.out, "w", encoding="utf-8").write(page)
+    pre = {}
+    if a.decisions:
+        for ln in open(a.decisions, encoding="utf-8"):
+            m = re.match(r"^\s*(S\d+\w*)\s*:\s*(OK|MODIFY|DITCH)\b\s*(?:-\s*(.*))?$", ln)
+            if m: pre[m.group(1)] = [m.group(2), (m.group(3) or "").strip()]
+    page = C.fill(PAGE, [("__PRE__", json.dumps(pre, ensure_ascii=False)), ("__UI__", C.js_json(C.load_ui(UI, a.ui))), ("__LANG__", html.escape(a.lang)),
+                         ("__DATA__", C.js_json({"scenes": scenes, "total": round(total, 1), "title": a.title})),
+                         ("__TITLE__", html.escape(a.title)), ("__BG__", a.bg), ("__FG__", a.fg), ("__ACC__", a.accent), ("__ACC2__", a.accent2),
+                         ("__FACE__", face), ("__FAMILY__", a.family.replace('"', ''))])
+    C.write_text(a.out, page)
     print(f"wrote {a.out}: {len(scenes)} scene cards, {total:.1f} s of timed scenes")
 
 UI = {"allok": "OK for all remaining", "copy": "Copy decisions", "copied": "Copied. Paste it in the chat.", "image": "Image and motion", "feel": "Feeling and tension",
@@ -110,12 +115,13 @@ main{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:
 </style></head><body><header><h1>__TITLE__</h1><span id="tot"></span><button id="allok"></button><button class="p" id="copy"></button></header>
 <div id="tl"></div><main id="m"></main><div id="out"></div>
 <script>
-const D=__DATA__,U=__UI__,st={},note={};const m=document.getElementById('m');
+const D=__DATA__,U=__UI__,PRE=__PRE__,st={},note={};Object.keys(PRE).forEach(k=>{st[k]=PRE[k][0];if(PRE[k][1])note[k]=PRE[k][1]});const m=document.getElementById('m');
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function draw(){m.innerHTML='';D.scenes.forEach(s=>{const c=document.createElement('div');c.className='card '+(st[s.id]||'');
 let h='<div class="top"><span class="id">'+esc(s.id)+'</span><span class="tm">'+esc(s.time)+'</span></div>';
 if(s.text)h+='<div class="txt">'+esc(s.text)+'</div>';
 const rd=s.dur&&s.text?s.text.length/s.dur:0;if(rd>17)h+='<div class="warn">'+esc(U.reading.replace('{cps}',rd.toFixed(0)))+'</div>';
+(s.xtext||[]).forEach(x=>{h+='<div><span class="l">'+esc(x[0])+'</span><br>'+esc(x[1])+'</div>';const r3=s.dur?x[1].length/s.dur:0;if(r3>17)h+='<div class="warn">'+esc(x[0])+' - '+esc(U.reading.replace('{cps}',r3.toFixed(0)))+'</div>'});
 (s.cuts||[]).forEach(c=>{h+='<div class="tm">'+esc(c[0])+': '+esc(c[1])+'</div>';const r2=c[2]&&s.text?s.text.length/c[2]:0;if(r2>17)h+='<div class="warn">'+esc(c[0])+' - '+esc(U.reading.replace('{cps}',r2.toFixed(0)))+'</div>'});
 const L=(k,v)=>v?'<div><span class="l">'+k+'</span><br>'+esc(v)+'</div>':'';
 h+=L(U.image,s.image)+L(U.feel,s.feel)+L(U.gag,s.gag)+s.extra.map(e=>L(e[0],e[1])).join('');

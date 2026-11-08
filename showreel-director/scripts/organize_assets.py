@@ -21,6 +21,7 @@ Usage:
   python3 organize_assets.py PROJECT --from DIR       take supplied files from DIR (uploads folder, connected folder)
   python3 organize_assets.py PROJECT --set logo-01=approved,shot-04=excluded     record decisions (status: proposed approved excluded placeholder hold)
   python3 organize_assets.py PROJECT --redacted shot-04=PATH     add a redacted copy (pixels painted over) of a held sensitive file; then approve it with --set
+  python3 organize_assets.py PROJECT --scene "logo-01=S01,S07;shot-01=S03"   fill the scene column once the storyboard exists
   python3 organize_assets.py PROJECT --register                  add the files the skill put in generated/ to the manifest (names must follow the convention)
   python3 organize_assets.py PROJECT --md             print the manifest as a Markdown table for brief.md
   python3 organize_assets.py PROJECT --check          verify names, manifest, stray files, held files and version paths (tracks, fonts, images); exit 1 on problems
@@ -38,11 +39,23 @@ except Exception:
 
 EMBED = {"logo", "icon", "shot", "photo", "illus", "img", "font", "audio", "voice", "sfx", "video", "frames"}
 NAME = re.compile(r"^(logo|icon|shot|photo|illus|img|font|audio|voice|sfx|video|frames)-(\d{2})-([a-z0-9]+(?:-[a-z0-9]+)*)(?:_([a-z0-9]+(?:-[a-z0-9]+)*))?(\.[a-z0-9]+)?$")
-SENSITIVE = re.compile(r"real[-_ ]?data|customer|client|personal|confidential|internal|secret|password|api[-_]?key|token", re.I)
+SENSITIVE = re.compile(r"real[-_ ]?data|customer|client|personal|confidential|internal|secret|password|api[-_]?key|token(?!s)", re.I)
 NOTE_FILE = re.compile(r"licen|consent|info|readme|rights|notice", re.I)
 COLS = ["id", "file", "original", "origin", "type", "status", "licence_note", "scene", "notes"]
 STATUS = {"proposed", "approved", "excluded", "placeholder", "hold"}
 ORIGINS = ("source", "prepared", "generated")
+
+SECRET_TEXT = re.compile(r"api[-_ ]?key|secret|passw(or)?d|BEGIN [A-Z ]*PRIVATE KEY|\bsk_(live|test)_|bearer [a-z0-9._-]{12,}|[\w.+-]+@[\w-]+\.[\w.]+.*\+?\d[\d ]{7,}", re.I)
+
+def sensitive_file(path, rel):
+    """Non-embedded files (data, notes, exports) are held when the name or the first 20 KB of text looks like secrets or personal data."""
+    if SENSITIVE.search(os.path.basename(rel)): return "name suggests real or confidential data: decide first"
+    if path.lower().endswith((".env", ".pem", ".key", ".p12", ".pfx")): return "name suggests real or confidential data: decide first (credentials file)"
+    if path.lower().endswith((".txt", ".csv", ".json", ".md", ".tsv", ".yaml", ".yml", ".ini", ".cfg")):
+        try:
+            if SECRET_TEXT.search(open(path, encoding="utf-8", errors="ignore").read(20000)): return "name suggests real or confidential data: decide first (content looks like credentials or personal data)"
+        except OSError: pass
+    return ""
 
 def classify(rel):
     f = os.path.basename(rel).lower(); ext = f.rsplit(".", 1)[-1] if "." in f else ""; d = rel.lower()
@@ -129,7 +142,12 @@ def plan(root, extra):
             items.append(dict(src=path, rel=rel, loose=loose, type=typ, id=f"{typ}-{counters[typ]:02d}", name=nm, status=status, reason=reason,
                               note=notes[0][0] if notes else ""))
         else:
-            items.append(dict(src=path, rel=rel, loose=loose, type=typ, id="", name="", status="source-only", reason="not embedded", note=""))
+            why = sensitive_file(path, rel)
+            if why:  # held and NOT copied: the file stays where it is until the user decides (exclude, or redact then --redacted)
+                counters[typ] = counters.get(typ, 0) + 1
+                items.append(dict(src=path, rel=rel, loose=loose, type=typ, id=f"{typ}-{counters[typ]:02d}", name="", status="hold", reason=why, note="", nocopy=True))
+            else:
+                items.append(dict(src=path, rel=rel, loose=loose, type=typ, id="", name="", status="source-only", reason="not embedded", note=""))
     return assets, rows, items
 
 def cmd_plan(a, apply):
@@ -143,7 +161,10 @@ def cmd_plan(a, apply):
     if not apply: print("\nplan only. Run again with --apply to do it."); return 0
     for d in ORIGINS: os.makedirs(os.path.join(assets, d), exist_ok=True)
     for it in items:
-        dst = os.path.join(assets, "source", it["rel"]); os.makedirs(os.path.dirname(dst), exist_ok=True)
+        dst = os.path.join(assets, "source", it["rel"])
+        if it.get("nocopy"):
+            rows.append(dict(id=it["id"], file="", original=it["rel"], origin="not copied", type=it["type"], status="hold", licence_note="", scene="", notes=it["reason"] + " (left where it is, not copied into the project)")); continue
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
         if not os.path.exists(dst):
             (shutil.move if it["loose"] else shutil.copy2)(it["src"], dst)
         if it["name"] and it["status"] != "hold":
@@ -179,6 +200,7 @@ def cmd_set(a):
             if os.path.exists(fp): os.remove(fp)
             r["file"] = ""; r["origin"] = "source"
         r["status"] = st
+        if st != "hold" and "decide first" in r["notes"] or st != "hold" and r["notes"].startswith(("low resolution", "logo bitmap", "heavy", "font licence", "rights or consent")): r["notes"] = ""  # the reason for the hold no longer applies once decided
     save(man, rows); print("manifest updated" if ok else "manifest updated for the valid entries"); return 0 if ok else 1
 
 def cmd_redacted(a):
@@ -189,6 +211,15 @@ def cmd_redacted(a):
     os.makedirs(os.path.join(a.project, "assets", "prepared"), exist_ok=True); shutil.copy2(path, os.path.join(a.project, "assets", "prepared", nm))
     r["file"] = "prepared/" + nm; r["origin"] = "prepared"; r["status"] = "proposed"; r["notes"] = "redacted copy; check the pixels before approving"
     save(man, rows); print(f"{nm} added; open it, check that nothing sensitive is left, then --set {i}=approved"); return 0
+
+def cmd_scene(a):
+    man = os.path.join(a.project, "assets", "MANIFEST.csv"); rows = load(man); ok = True
+    for pair in a.scene.split(";"):
+        i, _, sc = pair.partition("=")
+        r = next((x for x in rows if x["id"] == i.strip()), None)
+        if not r: print(f"unknown id {i}"); ok = False; continue
+        r["scene"] = sc.strip()
+    save(man, rows); print("scene column updated" if ok else "scene column updated for the valid ids"); return 0 if ok else 1
 
 def cmd_register(a):
     assets = os.path.join(a.project, "assets"); man = os.path.join(assets, "MANIFEST.csv"); rows = load(man); known = {r["file"] for r in rows}; added = 0; bad = []
@@ -234,7 +265,7 @@ def cmd_check(a):
             if f not in ORIGINS and f != "MANIFEST.csv" and not f.startswith("."): bad.append(f"assets/{f}: stray, run the organiser (plan, then --apply)")
     for v in sorted(os.listdir(a.project)) if os.path.isdir(a.project) else []:
         pj = os.path.join(a.project, v, "project.json")
-        if re.fullmatch(r"v\d+", v) and os.path.exists(pj):
+        if re.fullmatch(r"(v|lt)\d+", v) and os.path.exists(pj):
             cfg = json.load(open(pj))
             paths = [cfg.get("track")] + [x.get("path") for x in cfg.get("fonts", [])] + list((cfg.get("images") or {}).values())
             for p in filter(None, paths):
@@ -245,10 +276,11 @@ def cmd_check(a):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("project"); ap.add_argument("--from", dest="src"); ap.add_argument("--apply", action="store_true")
-    ap.add_argument("--set"); ap.add_argument("--register", action="store_true"); ap.add_argument("--redacted"); ap.add_argument("--md", action="store_true"); ap.add_argument("--check", action="store_true"); ap.add_argument("--allow-hold", action="store_true")
+    ap.add_argument("--set"); ap.add_argument("--scene", help="fill the scene column: logo-01=S01,S07;shot-01=S03"); ap.add_argument("--register", action="store_true"); ap.add_argument("--redacted"); ap.add_argument("--md", action="store_true"); ap.add_argument("--check", action="store_true"); ap.add_argument("--allow-hold", action="store_true")
     a = ap.parse_args()
     if not os.path.isdir(a.project): sys.exit("project folder not found")
     if a.check: sys.exit(cmd_check(a))
+    if a.scene: sys.exit(cmd_scene(a))
     if a.register: sys.exit(cmd_register(a))
     if a.redacted: sys.exit(cmd_redacted(a))
     if a.md: sys.exit(cmd_md(a))

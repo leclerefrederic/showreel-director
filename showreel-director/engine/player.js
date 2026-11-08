@@ -94,7 +94,7 @@
   $('rp').style.display = 'none'; $('rp').onclick = () => play(0);
   $('pp').onclick = () => { if (ended) play(0); else playing ? pause() : play(pos); };
   $('seek').max = Math.round(DUR * 10);
-  $('seek').oninput = e => { const v = e.target.value / 10; if (playing) play(v); else pos = v; if (padEl && padEl.style.display !== 'none') { padEl._t = v; padEl._head(); } };
+  $('seek').oninput = e => { const v = e.target.value / 10; if (ended) { ended = false; $('rp').style.display = 'none'; } if (playing) play(v); else pos = v; if (padEl && padEl.style.display !== 'none') { padEl._t = v; padEl._head(); } };
   $('mu').onclick = () => { muted = !muted; applyVol(); };
   $('vl').oninput = e => { vol = e.target.value / 100; applyVol(); };
   $('lp').onclick = () => { loop = !loop; $('lp').classList.toggle('off', !loop); };

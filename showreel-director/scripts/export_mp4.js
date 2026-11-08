@@ -11,29 +11,19 @@
    Output size = the stage size of the chosen mode times --scale (even numbers are enforced for H.264).
    Limits: the canvas is Skia, not a browser, so rare canvas features can differ (CSS filters, some text shaping);
    compare one frame with the browser before delivering. Fonts embedded in the HTML are registered automatically. */
-const fs = require('fs'), os = require('os'), path = require('path'), vm = require('vm'), { spawn, spawnSync } = require('child_process');
-const args = process.argv.slice(2), file = args[0];
-const opt = (n, d) => { const i = args.indexOf(n); return i > -1 ? args[i + 1] : d; };
+const fs = require('fs'), os = require('os'), path = require('path'), { spawn, spawnSync } = require('child_process');
+const { makeOpt, loadReel, registerFonts } = require('./_reel');
+const args = process.argv.slice(2), file = args[0], opt = makeOpt(args);
 if (!file || file.startsWith('--')) { console.error('usage: export_mp4.js BUILT_HTML [--out FILE] [--mode d] [--lang en] [--fps 30] [--start 0] [--end S] [--crf 18] [--scale 1] [--no-audio] [--reduced] | --stills t1,t2,...'); process.exit(2); }
 let canvasLib;
 try { canvasLib = require('@napi-rs/canvas'); } catch (e) { console.error('Missing @napi-rs/canvas. In a scratch folder run: npm install @napi-rs/canvas, then set NODE_PATH to its node_modules.'); process.exit(2); }
 const { createCanvas, GlobalFonts } = canvasLib;
 if (!args.includes('--stills') && spawnSync('ffmpeg', ['-version']).status !== 0) { console.error('ffmpeg not found on the PATH.'); process.exit(2); }
 
-const html = fs.readFileSync(file, 'utf8');
-const sandbox = { console, atob: s => Buffer.from(s, 'base64').toString('binary'), Math, Uint8Array, Array, JSON };
-sandbox.window = sandbox; sandbox.globalThis = sandbox;
 // embedded images (project.json "images") are decoded with the canvas library, so MP4 frames match the browser
 // (decoding is asynchronous in the canvas library, so every image is preloaded before the first frame)
 const PRE = new Map();
-sandbox.SR_IMG_LOADER = uri => PRE.get(uri) || null;
-vm.createContext(sandbox);
-for (const id of ['sr-data', 'sr-core', 'sr-main']) {
-  const m = new RegExp(`<script id="${id}">([\\s\\S]*?)</script>`).exec(html);
-  if (!m) { console.error('missing script ' + id + ' (is this a built player page, not a contact sheet?)'); process.exit(2); }
-  vm.runInContext(m[1], sandbox);
-}
-const S = sandbox.SHOWREEL, SR = sandbox.SR, DUR = SR.data.dur;
+const { html, S, SR, DUR } = loadReel(file, uri => PRE.get(uri) || null);
 const mode = opt('--mode', Object.keys(S.formats)[0]), lang = opt('--lang', S.languages[0].id);
 if (!S.formats[mode]) { console.error('unknown mode ' + mode + '; available: ' + Object.keys(S.formats)); process.exit(2); }
 const fps = parseFloat(opt('--fps', '30')), start = parseFloat(opt('--start', '0')), end = Math.min(DUR, parseFloat(opt('--end', String(DUR))));
@@ -41,15 +31,12 @@ const crf = opt('--crf', '18'), scale = parseFloat(opt('--scale', '1'));
 // default name: <slug>_<vN>_<mode>_<lang>.mp4 next to the built page (slug from the reel title, vN from the version folder)
 const slug = String(S.slug || ((S.title && (S.title[lang] || S.title.en)) || 'reel')).normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40).replace(/-$/, '') || 'reel';
 const ver = (path.resolve(file).split(path.sep).slice(-3, -2)[0] || 'v1') + (SR.data.cut ? '-' + SR.data.cut : '');
-const out = opt('--out', path.join(path.dirname(path.resolve(file)), `${slug}_${ver}_${mode}_${lang}${(args.includes('--start') || args.includes('--end')) ? '_' + start + '-' + end + 's' : ''}.mp4`));
+const out = opt('--out', path.join(path.dirname(path.resolve(file)), `${slug}_${ver}_${mode}_${lang}${(args.includes('--start') || args.includes('--end')) ? '_' + start + '-' + end + 's' : ''}${args.includes('--reduced') ? '_reduced' : ''}.mp4`));
 const [SW, SH] = S.formats[mode], W = Math.round(SW * scale / 2) * 2, H = Math.round(SH * scale / 2) * 2;
 const frames = Math.round((end - start) * fps);
 
 // fonts embedded as data: URLs in @font-face rules
-let fonts = 0;
-for (const m of html.matchAll(/@font-face\{font-family:"([^"]+)";font-weight:(\d+);[^}]*?base64,([A-Za-z0-9+/=]+)\)/g)) {
-  try { if (GlobalFonts.register(Buffer.from(m[3], 'base64'), m[1])) fonts++; } catch (e) { console.warn('font not registered: ' + m[1] + ' (' + e.message + ')'); }
-}
+const fonts = registerFonts(html, GlobalFonts);
 const preload = async () => { for (const uri of Object.values((SR.data && SR.data.images) || {})) PRE.set(uri, await canvasLib.loadImage(Buffer.from(uri.split(',')[1] || '', 'base64'))); };
 // stills: a PNG grid of frames at chosen times, to look at a reel without a browser (also finds overflow the harness cannot see)
 if (opt('--stills', null)) { (async () => {
@@ -65,7 +52,8 @@ if (opt('--stills', null)) { (async () => {
   });
   if (args.includes('--stills-report')) {  // objective numbers for each tile, for sessions that cannot look at the PNG
     times.forEach(t => { const c = createCanvas(tw, th), g2 = c.getContext('2d'); SR.drawFrame(g2, tw, th, t, { mode, lang, reduced: args.includes('--reduced') });
-      const d = g2.getImageData(0, 0, tw, th).data, bg = [d[0], d[1], d[2]]; let ink = 0, x0 = tw, y0 = th, x1 = -1, y1 = -1, edge = 0;
+      const d = g2.getImageData(0, 0, tw, th).data; const cs = [[4, 4], [tw - 5, 4], [4, th - 5], [tw - 5, th - 5]].map(([x, y]) => { const i = (y * tw + x) * 4; return [d[i], d[i + 1], d[i + 2]]; }); const bg = cs.sort((p, q) => cs.filter(r => r.join() === q.join()).length - cs.filter(r => r.join() === p.join()).length)[0];  // background = most common colour of the four inner corners (the 1 px letterbox strip is ignored)
+       let ink = 0, x0 = tw, y0 = th, x1 = -1, y1 = -1, edge = 0;
       for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) { const i = (y * tw + x) * 4; if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 40) { ink++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (x < 2 || y < 2 || x >= tw - 2 || y >= th - 2) edge++; } }
       const a = SR.sceneAt(t); console.log(`t=${t.toFixed(1)} ${a && a.scene ? (a.scene.id || a.scene.name || '') : ''}: content ${(100 * ink / (tw * th)).toFixed(1)}% of the frame, box x ${(x1 < 0 ? '-' : (x0 / tw).toFixed(2) + '..' + (x1 / tw).toFixed(2))} y ${(y1 < 0 ? '-' : (y0 / th).toFixed(2) + '..' + (y1 / th).toFixed(2))}${x1 < 0 ? ' EMPTY FRAME' : ''}${edge > 0 ? ' content touches the frame edge (' + edge + ' px)' : ''}`); });
   }

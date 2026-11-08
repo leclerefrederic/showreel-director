@@ -10,7 +10,7 @@ Every file a project contains has one home and a name that says what it is. The 
 | `generated/` | everything the skill makes itself: procedural images, rendered icons, frame sequences, synthetic voice, cut audio | convention names; registered in the manifest |
 | `MANIFEST.csv` | one row per file | columns: id, file, original, origin, type, status, licence_note, scene, notes |
 
-Other project files: `brief.md`, `style-sheet.md`, `storyboard.md` at the root (replaced versions go to `archive/` as `storyboard_v1.md`); builds in `vN/`; temporary pages in `qa/` named by kind (`contact-sheet.html`, `cards-scenes.html`, `decision-<name>.html`, `lab-effects.html`); exports in `vN/dist/` named `<slug>_<vN>_<mode>_<lang>.<ext>` (slug from the reel title, mode `d` or `m`).
+Other project files: `brief.md`, `style-sheet.md`, `storyboard.md` at the root (replaced versions go to `archive/` as `storyboard_v1.md`); builds in `vN/`; temporary pages in `qa/` named by kind (`contact-<vN>.html`, `cards-scenes.html`, `decision-<name>.html`, `lab-effects.html`); exports in `vN/dist/` named `<slug>_<vN>_<mode>_<lang>.<ext>` (slug from the reel title, mode `d` or `m`).
 
 ## Naming convention (prepared/ and generated/)
 `<type>-<nn>-<slug>[_<variant>].<ext>`

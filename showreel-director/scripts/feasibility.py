@@ -18,6 +18,7 @@ def main():
     ap.add_argument("--expansion", type=float, default=1.3, help="translated text length factor (default 1.3)")
     ap.add_argument("--bpm", type=float)
     ap.add_argument("--portrait", action="store_true")
+    ap.add_argument("--words-per-lang", help="real word counts per language, e.g. en=30,fr=33 (the longest one is used instead of --words x --expansion)")
     ap.add_argument("--narration-words", type=int)
     ap.add_argument("--transition", type=float, default=0.4, help="seconds per transition")
     a = ap.parse_args(); D = a.duration; rows = []; bad = False
@@ -30,8 +31,6 @@ def main():
         ts = a.text_scenes if a.text_scenes is not None else a.scenes
         vs = a.scenes - ts
         per = D / a.scenes
-        # budget: transitions eat time
-        usable = D - a.scenes * a.transition * 0.5  # half of each transition overlaps the neighbours
         if per < 0.5:
             add("scene count", "NOT FEASIBLE", f"{a.scenes} scenes in {D:g} s = {per:.2f} s each: below 0.5 s they are flashes, not scenes (and flashes must stay under 3 per second)")
         elif ts > math.floor(stretch) and ts > 0:
@@ -44,8 +43,9 @@ def main():
             add("visual beats", "NOT FEASIBLE", f"{vs} visual-only beats do not fit in the {max(D - ts*3, 0):.1f} s left after text scenes")
         if a.transition * a.scenes > D * 0.4:
             add("transitions", "TIGHT", f"{a.scenes} transitions of {a.transition:g} s take {a.transition*a.scenes:.1f} s ({100*a.transition*a.scenes/D:.0f}% of the film): shorten them or cut scenes")
-    if a.words is not None:
-        eff = a.words * (a.expansion if a.langs > 1 else 1)
+    if a.words is not None or a.words_per_lang:
+        eff = (a.words or 0) * (a.expansion if a.langs > 1 else 1)
+        if a.words_per_lang: eff = max(int(x.split('=')[1]) for x in a.words_per_lang.split(','))
         wps = eff / D; limit = 2.0
         if a.portrait: limit = 1.6
         add("words on screen", "OK" if wps <= limit else "TIGHT" if wps <= limit * 1.5 else "NOT FEASIBLE",
