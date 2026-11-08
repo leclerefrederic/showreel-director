@@ -74,6 +74,8 @@ public enum DropTarget: Hashable, Sendable {
     case assetSlot(before: String?)
     case marker(from: String)
     case resourceList
+    /// The music lane under the reel: an audio resource, or a file, becomes the film's music.
+    case musicLane
 
     /// A position in a list (the gap that opens while dragging), as opposed to a thing.
     public var isSlot: Bool {
@@ -105,7 +107,7 @@ public enum Drops {
         let t = normalized(item, target)
         switch item {
         case .resource:
-            switch t { case .scene, .contentItem, .contentSlot, .assetSlot: return nil; default: return "A resource goes on a scene, in a scene's content list or in the resources list" }
+            switch t { case .scene, .contentItem, .contentSlot, .assetSlot, .musicLane: return nil; default: return "A resource goes on a scene, in a scene's content list or in the resources list" }
         case .background, .look, .palette:
             if case .scene = t { return nil }
             return "A background or a look goes on a scene"
@@ -122,7 +124,7 @@ public enum Drops {
             if case .contentSlot = t { return nil }
             return "An item moves inside its scene's content list"
         case .files:
-            switch t { case .scene, .contentSlot, .resourceList, .assetSlot: return nil; default: return "Files go on a scene, in a scene's content list or in the resources list" }
+            switch t { case .scene, .contentSlot, .resourceList, .assetSlot, .musicLane: return nil; default: return "Files go on a scene, in a scene's content list or in the resources list" }
         }
     }
 
@@ -220,6 +222,12 @@ public enum Drops {
             try op(.moveAsset(id: id, after: a))
             return DropResult(title: "Move \(r.name)", notice: nil, scene: nil, item: nil)
 
+        case (.resource(let id), .musicLane):
+            let r = try asset(id)
+            guard r.type == "audio" else { throw AgentError.msg("\(r.name) is a \(r.type), not music: the music is an audio file") }
+            try op(.track(asset: id))
+            return DropResult(title: "Use \(r.name) as the music", notice: nil, scene: nil, item: nil)
+
         case (.background(let id), .scene(let sid)):
             _ = try sceneNamed(sid)
             try op(Catalogue.operation(.background, choice: id, target: .scene(sid)))
@@ -282,6 +290,22 @@ public enum Drops {
     }
 
     private static func dropFiles(_ urls: [URL], _ target: DropTarget, store: ProjectStore, execute: Bool, file f: ShowreelFile) throws -> DropResult {
+        if case .musicLane = target {
+            let title = urls.count == 1 ? "Use \(urls[0].lastPathComponent) as the music" : "Use the file as the music"
+            guard execute else { return DropResult(title: title, notice: nil, scene: nil, item: nil) }
+            guard let first = urls.first else { throw AgentError.msg("nothing to add") }
+            var used = ""
+            try store.transaction(title) {
+                let added = try Assets.add([first], to: store)
+                guard let a = added.first else { throw AgentError.msg("nothing to add: folders and hidden files are skipped") }
+                guard a.type == "audio" else { throw AgentError.msg("\(a.name) is a \(a.type), not music: the music is an audio file") }
+                if a.status == "hold" { throw AgentError.msg("\(a.name) needs attention first (\(a.notes)): it was added to the resources, not used as the music") }
+                try store.apply(.asset(id: a.id, status: .approved, note: nil, licence: nil, scenes: nil))     // dropped as the music: that is the user's choice
+                try store.apply(.track(asset: a.id))
+                used = a.name
+            }
+            return DropResult(title: "Use \(used) as the music", notice: nil, scene: nil, item: nil)
+        }
         var sceneID: String?
         var slot: String??
         switch target {

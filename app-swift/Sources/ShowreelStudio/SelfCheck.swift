@@ -249,6 +249,12 @@ enum SelfCheck {
             check(!board.sampleText.isEmpty && !board.sampleEffect.isEmpty && locked && groups == [.composition, .effects, .look] && Drops.confirmation(.background("duotone"), on: .scene(sc.id)) != nil,
                   "the design board reads the project, a scene's look is locked until its switch, and the tree is Composition, Effects, Look")
         }
+        // phase S: the timeline's scale and layout rules
+        let fitPPS = TimelineScale.fit(duration: 30, viewport: 1032)
+        let sz = TimelineLayout.sizes(panelHeight: 300, hasMusic: true)
+        check(abs(TimelineScale.x(30, pps: fitPPS) + TimelineScale.pad - 1032) < 0.001 && sz.total <= 300.001 && sz.frame >= 44
+              && FrameLayout.mode(width: 30, hasName: true) == .shortID && TimelineRuler.ticks(pps: 60, from: 0, to: 30).contains { $0.label == "0:00" },
+              "the timeline fits the film to the width, sizes its lanes to the panel and keeps the ID at any zoom")
         // phases P2 and P3: the base configuration, the format revision, the Library's states and the checks' groups
         let lifeDir = fm.temporaryDirectory.appendingPathComponent("showreel-selftest-life-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: lifeDir) }

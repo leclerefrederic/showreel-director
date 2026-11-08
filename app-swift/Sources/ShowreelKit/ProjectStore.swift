@@ -3,8 +3,8 @@ import Foundation
 /// The sizes of the workspace's panels (library width, inspector width, storyboard height), remembered per project. A panel has a floor, so its
 /// content stays usable, and no ceiling: the window is the only limit. Absent sizes mean the standard layout.
 public struct PanelLayout: Codable, Equatable, Sendable {
-    public static let minLibrary = 200.0, minInspector = 280.0, minStrip = 130.0, minSettings = 380.0
-    public static let standardLibrary = 290.0, standardInspector = 390.0, standardStrip = 210.0, standardSettings = 560.0
+    public static let minLibrary = 200.0, minInspector = 280.0, minStrip = 200.0, minSettings = 380.0
+    public static let standardLibrary = 290.0, standardInspector = 390.0, standardStrip = 300.0, standardSettings = 560.0
 
     public var library: Double?
     public var inspector: Double?
@@ -36,6 +36,15 @@ public struct PanelLayout: Codable, Equatable, Sendable {
     public var isStandard: Bool { library == nil && inspector == nil && strip == nil && settings == nil }
 }
 
+/// How the storyboard strip was left: the time scale, how far it is scrolled, and whether it follows the width (the whole film in view).
+public struct TimelineMemory: Codable, Equatable, Sendable {
+    public var pps: Double?
+    public var scroll: Double?
+    /// True (or absent): the strip shows the whole film and refits when its panel is resized. False: the user chose a scale.
+    public var fitAll: Bool?
+    public init(pps: Double? = nil, scroll: Double? = nil, fitAll: Bool? = nil) { self.pps = pps; self.scroll = scroll; self.fitAll = fitAll }
+}
+
 /// App-private settings of one project, kept in `.studio/ui.json`.
 public struct StudioSettings: Codable, Equatable {
     public static let beginner = "beginner", expert = "expert"
@@ -52,9 +61,11 @@ public struct StudioSettings: Codable, Equatable {
     /// A project made by the app starts with its base configuration to fill in; the workspace opens when that is done. A folder that has no such flag
     /// (made earlier, or opened from elsewhere) is never blocked.
     public var setupRequired: Bool
+    /// The strip's time scale and scroll; nil: it opens showing the whole film.
+    public var timeline: TimelineMemory?
 
-    public init(applyDirectly: Bool = false, mode: String = StudioSettings.expert, decided: [String] = [], layout: PanelLayout? = nil, setupRequired: Bool = false) {
-        self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided; self.layout = layout; self.setupRequired = setupRequired
+    public init(applyDirectly: Bool = false, mode: String = StudioSettings.expert, decided: [String] = [], layout: PanelLayout? = nil, setupRequired: Bool = false, timeline: TimelineMemory? = nil) {
+        self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided; self.layout = layout; self.setupRequired = setupRequired; self.timeline = timeline
     }
 
     public init(from decoder: Decoder) throws {
@@ -65,6 +76,7 @@ public struct StudioSettings: Codable, Equatable {
         decided = try c.decodeIfPresent([String].self, forKey: .decided) ?? []
         layout = try c.decodeIfPresent(PanelLayout.self, forKey: .layout)
         setupRequired = try c.decodeIfPresent(Bool.self, forKey: .setupRequired) ?? false
+        timeline = try c.decodeIfPresent(TimelineMemory.self, forKey: .timeline)
     }
 }
 

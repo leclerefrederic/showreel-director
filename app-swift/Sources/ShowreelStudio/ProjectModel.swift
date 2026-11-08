@@ -122,9 +122,19 @@ final class ProjectModel: ObservableObject {
     lazy var player = ReelPlayer()
     /// The sizes of the workspace's panels, remembered in .studio/ui.json.
     @Published private(set) var layout: PanelLayout
-    /// The playhead of the reel, in seconds, and the zoom of the reel (pixels per second).
+    /// The playhead of the reel, in seconds.
     @Published var playhead = 0.0
-    @Published var pps = 60.0
+    /// The time scale of the strip and how far it is scrolled. `fitAll`: it shows the whole film and refits when its panel is resized.
+    @Published private(set) var timeline = TimelineScale.Viewport(pps: 60, scroll: 0)
+    @Published private(set) var fitAll = true
+    /// Bumps when the strip must scroll to `timeline.scroll` (the user's own scrolling does not).
+    @Published private(set) var scrollRequest = 0
+    @Published private(set) var viewportWidth = 0.0
+    var pointerX: Double?                    // the pointer over the strip, in the strip's own coordinates (not published: it moves all the time)
+    var stripHovered = false
+    @Published private(set) var draftPlaying = false
+    private var draftTimer: Timer?
+    private var saveTimeline: DispatchWorkItem?
     /// The analysis of the project's track (analysis/beats.json), its waveform, and what the app has to say about it.
     @Published private(set) var music: MusicAnalysis?
     @Published private(set) var waveform: [Float] = []
@@ -204,6 +214,7 @@ final class ProjectModel: ObservableObject {
         showCopilot = s.mode == StudioSettings.expert
         decided = s.decided
         layout = s.layout ?? PanelLayout()
+        if let m = s.timeline, m.fitAll == false { timeline = TimelineScale.Viewport(pps: TimelineScale.clamp(m.pps ?? 60), scroll: max(0, m.scroll ?? 0)); fitAll = false }
         dnd.onRefused = { [weak self] why in self?.showToast(why, error: true) }
     }
 
@@ -215,7 +226,7 @@ final class ProjectModel: ObservableObject {
 
     func resetLayout() { setLayout(PanelLayout()) }
 
-    deinit { let p = root.path; DispatchQueue.main.async { LibraryModel.shared.markClosed(p) } }
+    deinit { draftTimer?.invalidate(); let p = root.path; DispatchQueue.main.async { LibraryModel.shared.markClosed(p) } }
 
     var title: String { showreel.flatMap { $0.name.isEmpty ? nil : $0.name } ?? root.lastPathComponent }
 
@@ -257,6 +268,7 @@ final class ProjectModel: ObservableObject {
         // in the guided path the workspace follows the wizard: once the base configuration is complete there is nothing left to wait for
         if store.needsSetup, mode == StudioSettings.beginner, let f = showreel, ProjectSetup.isComplete(f) { try? store.finishSetup() }
         needsSetup = store.needsSetup
+        if fitAll, viewportWidth > 1 { fitFilm(remember: false) }          // the film got longer or shorter: the strip still shows all of it
     }
 
     // MARK: build and preview
@@ -519,6 +531,147 @@ final class ProjectModel: ObservableObject {
 
     func restoreScene(_ id: String) { perform(.scene(id: id, SceneEdit(status: "open", archived: false))) }
 
+    // MARK: the timeline (phase S): the rules are ShowreelKit's `TimelineScale` and `TimelineNav`
+
+    /// How long the timeline extends, for its width.
+    var timelineLength: Double { showreel.map { TimelineNav.contentLength($0, music: max(trackDuration, music?.duration ?? 0)) } ?? 1 }
+    private var fitLength: Double { showreel.map { TimelineNav.filmLength($0) } ?? 1 }
+
+    /// The width the strip has now. While it follows the width, the whole film stays in view as the panel is resized.
+    func setViewportWidth(_ w: Double) {
+        guard w > 1, abs(w - viewportWidth) > 0.5 else { return }
+        viewportWidth = w
+        if fitAll { fitFilm(remember: false) } else { setViewport(TimelineScale.Viewport(pps: timeline.pps, scroll: timeline.scroll), scroll: false) }
+    }
+
+    private func setViewport(_ v: TimelineScale.Viewport, scroll request: Bool) {
+        var n = v
+        n.scroll = TimelineScale.clampScroll(v.scroll, duration: timelineLength, pps: v.pps, viewport: viewportWidth)
+        guard n != timeline else { return }
+        timeline = n
+        if request { scrollRequest += 1 }
+    }
+
+    /// The whole film in the width (Cmd+0). The strip then follows its panel.
+    func fitFilm(remember: Bool = true) {
+        fitAll = true
+        setViewport(TimelineScale.fitAll(duration: fitLength, viewport: viewportWidth), scroll: true)
+        if remember { rememberTimeline() }
+    }
+
+    /// The selected scene (or the two scenes of the selected transition) fills the width.
+    func fitSelection() {
+        guard let f = showreel else { return }
+        var span: (start: Double, end: Double)?
+        switch selection {
+        case .transition(let id): span = TimelineNav.span(of: id, transition: true, in: f)
+        default: if let id = selection.sceneID { span = TimelineNav.span(of: id, transition: false, in: f) }
+        }
+        guard let s = span else { fitFilm(); return }
+        fitAll = false
+        setViewport(TimelineScale.fitSelection(start: s.start, end: s.end, duration: timelineLength, viewport: viewportWidth), scroll: true)
+        rememberTimeline()
+    }
+
+    /// A zoom by a factor (a button, a key, a pinch), anchored on the pointer when it is over the strip, else on the playhead.
+    func zoom(by factor: Double) {
+        guard viewportWidth > 1 else { return }
+        let playheadX = TimelineScale.x(playhead, pps: timeline.pps) - timeline.scroll
+        let anchor = TimelineScale.anchorX(pointerX: stripHovered ? pointerX : nil, playheadX: playheadX, viewport: viewportWidth)
+        fitAll = false
+        setViewport(TimelineScale.zoom(timeline, factor: factor, anchorX: anchor, duration: timelineLength, viewport: viewportWidth), scroll: true)
+        rememberTimeline()
+    }
+
+    func zoomIn() { zoom(by: TimelineScale.stepFactor) }
+    func zoomOut() { zoom(by: 1 / TimelineScale.stepFactor) }
+
+    /// The slider: an absolute scale, anchored the same way.
+    func setScale(_ pps: Double) { zoom(by: TimelineScale.clamp(pps) / timeline.pps) }
+
+    /// The view was scrolled by the user.
+    func scrolled(to x: Double) {
+        guard abs(x - timeline.scroll) > 0.5 else { return }
+        timeline.scroll = max(0, x)
+        rememberTimeline()
+    }
+
+    private func rememberTimeline() {
+        saveTimeline?.cancel()
+        let w = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            var s = self.store.settings
+            s.timeline = self.fitAll ? nil : TimelineMemory(pps: self.timeline.pps, scroll: self.timeline.scroll, fitAll: false)
+            self.store.settings = s
+        }
+        saveTimeline = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: w)
+    }
+
+    /// The scene under the playhead.
+    var sceneUnderPlayhead: ShowreelFile.Scene? { showreel.flatMap { TimelineNav.scene(at: playhead, in: $0) } }
+
+    /// Arrow keys: the previous or next scene of the film becomes the selection and the playhead goes to its start.
+    func stepScene(by delta: Int) {
+        guard let f = showreel, let n = TimelineNav.step(from: selection.sceneID, by: delta, playhead: playhead, in: f) else { return }
+        select(.scene(n.id)); playhead = n.start
+        setViewport(TimelineScale.follow(timeline, playhead: n.start, duration: timelineLength, viewport: viewportWidth), scroll: true)
+    }
+
+    // MARK: the transport of the strip
+
+    /// The built film plays in the viewer when the viewer shows it; otherwise the playhead runs by itself over the thumbnails.
+    var playsBuiltFilm: Bool {
+        viewerFilmVersion != nil && !viewerShowsDraft && centerMode == .viewer && !(showProjectSettings && settingsTab == .look) && player.loaded != nil
+    }
+
+    var isPlaying: Bool { playsBuiltFilm ? player.playing : draftPlaying }
+
+    func togglePlay() {
+        if playsBuiltFilm { player.toggle(); return }
+        if draftPlaying { stopDraft(); return }
+        guard let f = showreel else { return }
+        let end = TimelineNav.filmLength(f)
+        if playhead >= end - 0.05 { playhead = 0 }
+        draftPlaying = true
+        var last = Date()
+        draftTimer?.invalidate()
+        let t = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            let now = Date(), dt = now.timeIntervalSince(last); last = now
+            let r = TimelineNav.advance(self.playhead, by: dt, end: end)
+            self.playhead = r.time
+            self.setViewport(TimelineScale.follow(self.timeline, playhead: r.time, duration: self.timelineLength, viewport: self.viewportWidth), scroll: true)
+            if r.ended { self.stopDraft() }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        draftTimer = t
+    }
+
+    func stopDraft() { draftTimer?.invalidate(); draftTimer = nil; draftPlaying = false }
+
+    /// What the viewer plays for the selection: the built version, for a selection that belongs to the film (nothing, a scene, a node that is not a resource, a transition).
+    var viewerFilmVersion: String? {
+        switch selection {
+        case .none, .scene, .transition: return playableVersion
+        case .sceneNode(let sid, _, let n): return nodeAsset(sid, n) != nil ? nil : playableVersion
+        default: return nil
+        }
+    }
+
+    /// The resource a node of a scene's tree stands for (a resource element, or a linked resource), if any.
+    func nodeAsset(_ scene: String, _ node: String?) -> AssetRow? {
+        guard let n = node else { return nil }
+        if n.hasPrefix("raw.") { return assets.first { $0.id == String(n.dropFirst(4)) } }
+        if n.hasPrefix("item.") { return itemAsset(scene, String(n.dropFirst(5))) }
+        return nil
+    }
+
+    func itemAsset(_ scene: String, _ item: String) -> AssetRow? {
+        let r = showreel?.scenes.first { $0.id == scene }?.content.first { $0.id == item }?.resource
+        return assets.first { $0.id == r }
+    }
+
     // MARK: setup, update, checks (phases P2 and P3): the rules are ShowreelKit's
 
     /// The user opens the workspace: only when the base configuration is complete (the form enables its button on that).
@@ -601,6 +754,11 @@ final class ProjectModel: ObservableObject {
             let r = try Drops.drop(item, on: target, store: store)
             refresh(); reloadTree()
             if let s = r.scene, case .files = item { select(.scene(s)); if let i = r.item { contentItem = i } }
+            if case .musicLane = target {                    // a new track: its analysis was for the other file
+                for p in [MusicAnalysis.beatsPath, MusicAnalysis.envPath] { try? FileManager.default.removeItem(at: root.appendingPathComponent(p)) }
+                music = nil; musicNotice = nil
+                analyseTrack()
+            }
             showToast([r.title, r.notice].compactMap { $0 }.joined(separator: "\n"), undoable: true)
             return true
         } catch {

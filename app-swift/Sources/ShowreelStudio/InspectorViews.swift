@@ -37,22 +37,13 @@ struct ViewerPane: View {
     @EnvironmentObject var project: ProjectModel
     @ObservedObject private var engine = EngineService.shared
 
-    /// The built version the viewer plays for a selection that belongs to the film (nothing, a scene, a node that is not a resource, a transition).
-    private var filmVersion: String? {
-        switch project.selection {
-        case .none, .scene, .transition: return project.playableVersion
-        case .sceneNode(let sid, _, let n): return nodeAsset(sid, n) != nil ? nil : project.playableVersion
-        default: return nil
-        }
-    }
-
     var body: some View {
         VStack(spacing: 12) {
-            if let v = filmVersion, !project.viewerShowsDraft {
+            if let v = project.viewerFilmVersion, !project.viewerShowsDraft {
                 FilmViewer(version: v, player: project.player)
             } else {
                 Spacer(minLength: 0)
-                if filmVersion != nil { Button("Show the built film (\(filmVersion!))") { project.viewerShowsDraft = false }.buttonStyle(.borderless).font(.caption) }
+                if let fv = project.viewerFilmVersion { Button("Show the built film (\(fv))") { project.viewerShowsDraft = false }.buttonStyle(.borderless).font(.caption) }
                 content
                 Spacer(minLength: 0)
             }
@@ -65,8 +56,8 @@ struct ViewerPane: View {
     @ViewBuilder private var content: some View {
         let f = project.showreel
         switch project.selection {
-        case .sceneNode(let sid, _, let n) where nodeAsset(sid, n) != nil:
-            assetView(nodeAsset(sid, n)!)
+        case .sceneNode(let sid, _, let n) where project.nodeAsset(sid, n) != nil:
+            assetView(project.nodeAsset(sid, n)!)
         case .scene(let id), .sceneNode(let id, _, _):
             if let s = f?.scenes.first(where: { $0.id == id }) {
                 SceneThumb(scene: s, size: EngineService.viewerSize).frame(maxWidth: 760).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -78,6 +69,11 @@ struct ViewerPane: View {
             LookViewer(kind: kind, id: id)
         case .transition(let id):
             TransitionPreview(from: id)
+        case .none where project.sceneUnderPlayhead != nil:
+            // nothing selected and nothing built: the viewer follows the playhead of the strip and shows the scene under it
+            let s = project.sceneUnderPlayhead!
+            SceneThumb(scene: s, size: EngineService.viewerSize).frame(maxWidth: 760).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            caption("\(s.label) \u{00B7} \(TimelineNav.timecode(project.playhead))", s.text.isEmpty ? "The scene under the playhead of the strip." : s.text)
         default:
             VStack(spacing: 8) {
                 Image(systemName: "rectangle.on.rectangle").font(.system(size: 44, weight: .light)).foregroundStyle(.secondary)
@@ -86,19 +82,6 @@ struct ViewerPane: View {
                     .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 420)
             }
         }
-    }
-
-    /// The resource a node of a scene's tree stands for (a resource element, or a linked resource), if any.
-    private func nodeAsset(_ scene: String, _ node: String?) -> AssetRow? {
-        guard let n = node else { return nil }
-        if n.hasPrefix("raw.") { return project.assets.first { $0.id == String(n.dropFirst(4)) } }
-        if n.hasPrefix("item.") { return itemAsset(scene, String(n.dropFirst(5))) }
-        return nil
-    }
-
-    private func itemAsset(_ scene: String, _ item: String) -> AssetRow? {
-        let r = project.showreel?.scenes.first { $0.id == scene }?.content.first { $0.id == item }?.resource
-        return project.assets.first { $0.id == r }
     }
 
     @ViewBuilder private func assetView(_ a: AssetRow) -> some View {
