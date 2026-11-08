@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ShowreelKit
 import WebKit
 
 struct ChoiceOption: Identifiable {
@@ -25,25 +26,32 @@ struct ChoiceQuestion: Identifiable {
     }
 }
 
+struct ProposalState {
+    enum Status { case pending, accepted, refused }
+    let proposal: Proposal
+    let rows: [LineDiff.Row]
+    var status: Status = .pending
+}
+
 struct ChatItem: Identifiable {
-    enum Kind { case user, assistant, steps, question, notice }
+    enum Kind { case user, assistant, steps, question, notice, proposal }
     let id = UUID()
     var kind: Kind
     var text = ""
     var steps: [String] = []
     var questions: [ChoiceQuestion] = []
     var answers: [String]? = nil
+    var proposal: ProposalState? = nil
 }
 
-/// State of the window. Every mutation happens on the main thread; the agent calls in from other threads
-/// through the `AgentUI` methods, which hop to the main queue.
-final class ChatModel: ObservableObject, AgentUI {
+/// The copilot of one project window: chat items, the agent, the preview pane's state.
+/// @unchecked Sendable: every mutation of the published state happens on the main queue; the agent calls in from other threads
+/// through the `AgentUI` methods, which hop to the main queue first.
+final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     @Published var items: [ChatItem] = []
     @Published var draft = ""
     @Published var running = false
     @Published var scrollTick = 0
-    @Published var project: String?
-    @Published var hasKey = false
     @Published var showSettings = false
     @Published var previewURL: URL?
     @Published var previewTitle = "Preview"
@@ -51,63 +59,50 @@ final class ChatModel: ObservableObject, AgentUI {
 
     /// The preview pane's web view, set when it is created; used for screenshots.
     var previewWebView: WKWebView?
+    let project: ProjectModel
+    private let settings = AppSettings.shared
+    private let history: ChatStore
+    private var records: [ChatRecord]
     private var agent: Agent?
+    private var agentGeneration = -1
     private var pending: CheckedContinuation<[String], Never>?
+    private var pendingProposals: [UUID: CheckedContinuation<Bool, Never>] = [:]
     private var assistantIdx: Int?
     private var stepsIdx: Int?
-    private let defaults = UserDefaults.standard
-    private var cachedKey: String? // the Keychain is read once per launch, at the first message
 
-    var modelName: String { defaults.string(forKey: "model") ?? "claude-sonnet-5-5" }
-    var baseURL: String { defaults.string(forKey: "baseURL") ?? ProcessInfo.processInfo.environment["ANTHROPIC_BASE_URL"] ?? "" }
-    var bearer: Bool { defaults.bool(forKey: "bearer") }
-    var projectName: String { project.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "Choose a folder" }
-
-    init() {
-        project = defaults.string(forKey: "project")
-        hasKey = keyExists()
+    init(project: ProjectModel) {
+        self.project = project
+        history = ChatStore(root: project.root)
+        records = history.load()
+        items = records.map { ChatItem(kind: $0.role == "user" ? .user : .assistant, text: $0.text) }
     }
 
-    private func envKey() -> String? {
-        let env = ProcessInfo.processInfo.environment
-        for name in ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"] {
-            if let v = env[name], !v.isEmpty { return v }
-        }
-        return nil
-    }
-
-    /// Whether a key is available, without reading the Keychain secret (no prompt).
-    private func keyExists() -> Bool { cachedKey != nil || Keychain.exists() || envKey() != nil }
-
-    /// The key itself: the first call may show the Keychain prompt, later calls use the cached value.
-    private func apiKey() -> String? {
-        if let k = cachedKey { return k }
-        if let k = Keychain.get(), !k.isEmpty { cachedKey = k; return k }
-        return envKey()
-    }
+    var hasKey: Bool { settings.hasKey }
 
     // MARK: user actions (main thread)
 
     func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !running else { return }
-        guard let key = apiKey() else { notice("Add your API key in Settings to start."); showSettings = true; return }
-        guard let proj = project else { notice("Choose a project folder first."); pickProject(); return }
+        guard let key = settings.apiKey() else { notice("Add your API key in Settings to start."); showSettings = true; return }
         draft = ""
         items.append(ChatItem(kind: .user, text: text))
+        remember(ChatRecord(role: "user", text: text))
         assistantIdx = nil; stepsIdx = nil
         running = true; scrollTick += 1
         do {
-            if agent == nil {
-                agent = try Agent(apiKey: key, model: modelName, baseURL: baseURL, bearer: bearer,
-                                  project: URL(fileURLWithPath: proj), ui: self)
+            if agent == nil || agentGeneration != settings.generation {
+                agent = try Agent(apiKey: key, model: settings.modelName, baseURL: settings.baseURL, bearer: settings.bearer,
+                                  project: project.root, ui: self, history: ChatStore.seed(from: records))
+                agentGeneration = settings.generation
             }
         } catch {
             notice("Error: \(error.localizedDescription)"); running = false; return
         }
         guard let a = agent else { return }
+        let context = project.contextLine
         Task { [weak self] in
-            do { try await a.send(text) } catch { self?.postNotice("Error: \(error.localizedDescription)") }
+            do { try await a.send(text, context: context) } catch { self?.postNotice("Error: \(error.localizedDescription)") }
             self?.finish()
         }
     }
@@ -115,46 +110,31 @@ final class ChatModel: ObservableObject, AgentUI {
     func stop() {
         agent?.abort()
         resumePending([])
+        resolveAllProposals(false)
     }
 
+    /// Starts a new session: the old one stays in `.studio/chat/`.
     func reset() {
         agent?.abort()
         resumePending([])
+        resolveAllProposals(false)
         agent = nil
         items = []
+        records = []
+        history.startNewSession()
         assistantIdx = nil; stepsIdx = nil
         running = false
-    }
-
-    func pickProject() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.prompt = "Choose"
-        panel.begin { [weak self] r in
-            guard r == .OK, let u = panel.url, let self = self else { return }
-            self.defaults.set(u.path, forKey: "project")
-            self.project = u.path
-            self.agent = nil
-        }
-    }
-
-    func saveSettings(key: String, url: String, bearer: Bool, modelName: String) {
-        if !key.isEmpty { Keychain.set(key); cachedKey = key }
-        var u = url.trimmingCharacters(in: .whitespaces)
-        while u.hasSuffix("/") { u.removeLast() }
-        defaults.set(u, forKey: "baseURL")
-        defaults.set(bearer, forKey: "bearer")
-        let m = modelName.trimmingCharacters(in: .whitespaces)
-        defaults.set(m.isEmpty ? "claude-sonnet-5-5" : m, forKey: "model")
-        hasKey = keyExists()
-        agent = nil
     }
 
     func submit(_ itemID: UUID, answers: [String]) {
         if let i = items.firstIndex(where: { $0.id == itemID }) { items[i].answers = answers }
         resumePending(answers)
+        scrollTick += 1
+    }
+
+    func resolveProposal(_ itemID: UUID, accept: Bool) {
+        if let i = items.firstIndex(where: { $0.id == itemID }) { items[i].proposal?.status = accept ? .accepted : .refused }
+        pendingProposals.removeValue(forKey: itemID)?.resume(returning: accept)
         scrollTick += 1
     }
 
@@ -169,10 +149,16 @@ final class ChatModel: ObservableObject, AgentUI {
 
     // MARK: helpers (main thread)
 
+    private func remember(_ r: ChatRecord) { records.append(r); history.append(r) }
+
     private func resumePending(_ answers: [String]) {
         let c = pending
         pending = nil
         c?.resume(returning: answers)
+    }
+
+    private func resolveAllProposals(_ accept: Bool) {
+        for id in Array(pendingProposals.keys) { resolveProposal(id, accept: accept) }
     }
 
     private func notice(_ t: String) {
@@ -180,7 +166,14 @@ final class ChatModel: ObservableObject, AgentUI {
     }
 
     private func postNotice(_ t: String) { DispatchQueue.main.async { self.notice(t) } }
-    private func finish() { DispatchQueue.main.async { self.running = false; self.assistantIdx = nil } }
+
+    /// Writes the assistant text being streamed to the history, once it is complete.
+    private func flushAssistant() {
+        if let i = assistantIdx, i < items.count, !items[i].text.isEmpty { remember(ChatRecord(role: "assistant", text: items[i].text)) }
+        assistantIdx = nil
+    }
+
+    private func finish() { DispatchQueue.main.async { self.flushAssistant(); self.running = false } }
 
     // MARK: AgentUI (called from any thread)
 
@@ -197,14 +190,14 @@ final class ChatModel: ObservableObject, AgentUI {
         }
     }
 
-    func endText() { DispatchQueue.main.async { self.assistantIdx = nil } }
+    func endText() { DispatchQueue.main.async { self.flushAssistant() } }
 
     func tool(_ name: String, _ input: [String: Any]) {
         var d = name
         if name == "bash" { d += ": " + String((input["command"] as? String ?? "").prefix(200)) }
-        else if let p = input["path"] as? String { d += ": " + p }
+        else if let p = input["path"] as? String ?? input["file"] as? String { d += ": " + p }
         DispatchQueue.main.async {
-            self.assistantIdx = nil
+            self.flushAssistant()
             if let i = self.stepsIdx {
                 self.items[i].steps.append(d)
             } else {
@@ -220,6 +213,22 @@ final class ChatModel: ObservableObject, AgentUI {
             self.previewURL = URL(string: url)
             self.previewTitle = title
             self.previewNonce += 1
+            self.project.selected = .preview
+        }
+    }
+
+    func foregroundFile() async -> String? { await onMain { self.project.foreground } }
+
+    func propose(_ p: Proposal) async -> Bool {
+        await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
+            DispatchQueue.main.async {
+                self.stepsIdx = nil; self.flushAssistant()
+                let rows = LineDiff.collapse(LineDiff.diff(p.original ?? "", p.proposed))
+                let item = ChatItem(kind: .proposal, proposal: ProposalState(proposal: p, rows: rows))
+                self.items.append(item)
+                self.pendingProposals[item.id] = c
+                self.scrollTick += 1
+            }
         }
     }
 
@@ -268,7 +277,7 @@ final class ChatModel: ObservableObject, AgentUI {
     func ask(_ questions: [[String: Any]]) async -> [String] {
         await withCheckedContinuation { (c: CheckedContinuation<[String], Never>) in
             DispatchQueue.main.async {
-                self.stepsIdx = nil; self.assistantIdx = nil
+                self.stepsIdx = nil; self.flushAssistant()
                 self.pending = c
                 let qs = questions.enumerated().map { ChoiceQuestion($0.element, index: $0.offset) }
                 self.items.append(ChatItem(kind: .question, questions: qs))

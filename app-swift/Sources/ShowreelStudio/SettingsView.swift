@@ -1,7 +1,8 @@
+import ShowreelKit
 import SwiftUI
 
 struct SettingsView: View {
-    @EnvironmentObject var model: ChatModel
+    @EnvironmentObject var model: AppSettings
     @Environment(\.dismiss) private var dismiss
     @State private var key = ""
     @State private var url = ""
@@ -32,7 +33,7 @@ struct SettingsView: View {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Save") {
-                    model.saveSettings(key: key, url: url, bearer: bearer, modelName: modelName)
+                    model.save(key: key, url: url, bearer: bearer, modelName: modelName)
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)

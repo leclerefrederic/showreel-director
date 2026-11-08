@@ -1,6 +1,12 @@
 import Foundation
+import ShowreelKit
 
+/// A UI with no window: answers proposals with a fixed choice and records what it was shown.
 private final class NullUI: AgentUI {
+    var accept = false
+    var proposals: [Proposal] = []
+    func propose(_ p: Proposal) async -> Bool { proposals.append(p); return accept }
+    func foregroundFile() async -> String? { "storyboard.md" }
     func text(_ t: String) {}
     func endText() {}
     func tool(_ name: String, _ input: [String: Any]) {}
@@ -52,7 +58,8 @@ enum SelfCheck {
         }
 
         if let r = root {
-            let tools = Tools(project: tmp, skill: r, ui: NullUI())
+            let ui = NullUI()
+            let tools = Tools(project: tmp, skill: r, ui: ui)
             func call(_ name: String, _ input: [String: Any]) -> String {
                 let sem = DispatchSemaphore(value: 0)
                 let out = Box("")
@@ -67,6 +74,24 @@ enum SelfCheck {
             check(call("bash", ["command": "echo selftest-ok"]).contains("selftest-ok"), "bash runs in a login shell")
             check(call("bash", ["command": "pwd"]).contains(tmp.lastPathComponent), "bash starts in the project folder")
             check(call("no_such_tool", [:]).hasPrefix("unknown tool"), "unknown tool is reported")
+
+            // project model: showreel.json, the copilot's edits as proposals, history
+            let store = ProjectStore(root: tmp)
+            check((try? store.create(name: "Selftest", conversationLanguage: "en", reelLanguages: ["en"])) != nil
+                  && store.loadShowreel()?.name == "Selftest", "showreel.json is created and read back")
+            check(call("get_state", [:]).contains("\"name\" : \"Selftest\"") && call("get_state", [:]).contains("storyboard.md"),
+                  "get_state returns the showreel and the file in front of the user")
+            _ = call("write_file", ["path": "notes.md", "content": "one\n"])
+            ui.accept = false
+            check(call("propose_edit", ["file": "notes.md", "content": "two\n"]).hasPrefix("refused by the user")
+                  && store.read("notes.md") == "one\n", "a refused proposal leaves the file alone")
+            ui.accept = true
+            check(call("propose_edit", ["file": "notes.md", "content": "two\n"]).hasPrefix("accepted")
+                  && store.read("notes.md") == "two\n", "an accepted proposal is written")
+            check(call("write_file", ["path": "notes.md", "content": "three\n"]).hasPrefix("accepted")
+                  && ui.proposals.count == 3, "write_file on an existing markdown file becomes a proposal")
+            check(store.snapshots("notes.md").count == 2, "each write keeps the previous version in the history")
+            check(call("write_file", ["path": ".studio/x.txt", "content": "no"]).hasPrefix("refused"), ".studio stays private to the app")
         }
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1

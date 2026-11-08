@@ -1,4 +1,5 @@
 import Foundation
+import ShowreelKit
 
 struct EnvItem: Identifiable {
     let id: String

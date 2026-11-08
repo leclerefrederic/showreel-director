@@ -2,38 +2,42 @@ import Foundation
 
 /// Thread-safe output buffer for a child process.
 /// @unchecked Sendable: every stored property is only touched under `lock`.
-final class OutputBuffer: @unchecked Sendable {
+public final class OutputBuffer: @unchecked Sendable {
+    public init() {}
     private let lock = NSLock()
     private var out = Data(), err = Data()
     private var _timedOut = false
-    var timedOut: Bool {
+    public var timedOut: Bool {
         get { lock.lock(); defer { lock.unlock() }; return _timedOut }
         set { lock.lock(); _timedOut = newValue; lock.unlock() }
     }
-    func add(_ d: Data, isErr: Bool) { lock.lock(); if isErr { err.append(d) } else { out.append(d) }; lock.unlock() }
-    func text() -> (String, String) {
+    public func add(_ d: Data, isErr: Bool) { lock.lock(); if isErr { err.append(d) } else { out.append(d) }; lock.unlock() }
+    public func text() -> (String, String) {
         lock.lock(); defer { lock.unlock() }
         return (String(decoding: out, as: UTF8.self), String(decoding: err, as: UTF8.self))
     }
 }
 
 /// What a tool hands back to the model: text, and optionally an image (a screenshot).
-struct ToolResult {
-    var text: String
-    var image: Data? = nil
+public struct ToolResult {
+    public var text: String
+    public var image: Data? = nil
+    public init(text: String, image: Data? = nil) { self.text = text; self.image = image }
 }
 
-final class Tools {
-    let project: URL
-    let skill: URL
-    let ui: AgentUI
+public final class Tools {
+    public let project: URL
+    public let skill: URL
+    public let ui: AgentUI
+    public let store: ProjectStore
 
-    init(project: URL, skill: URL, ui: AgentUI) {
+    public init(project: URL, skill: URL, ui: AgentUI) {
         self.project = project; self.skill = skill; self.ui = ui
+        self.store = ProjectStore(root: project)
     }
 
     /// Tool definitions shared with the Electron app (app-swift/shared/tools.json).
-    static let definitions: [[String: Any]] = {
+    public static let definitions: [[String: Any]] = {
         guard let u = resource("shared", dev: "app-swift/shared")?.appendingPathComponent("tools.json"),
               let d = try? Data(contentsOf: u),
               let a = try? JSONSerialization.jsonObject(with: d) as? [[String: Any]] else { return [] }
@@ -41,7 +45,7 @@ final class Tools {
     }()
 
     /// Keeps Python from writing .pyc files into the (signed, read-only) skill folder, then puts the app's own Python venv and node modules (made by tools/setup-env.sh) first, when they exist.
-    static let envSetup = "export PYTHONDONTWRITEBYTECODE=1; ENVDIR=\"$HOME/Library/Application Support/ShowreelStudio/env\"; [ -d \"$ENVDIR/venv/bin\" ] && export PATH=\"$ENVDIR/venv/bin:$PATH\"; [ -d \"$ENVDIR/node/node_modules\" ] && export NODE_PATH=\"$ENVDIR/node/node_modules${NODE_PATH:+:$NODE_PATH}\"; "
+    public static let envSetup = "export PYTHONDONTWRITEBYTECODE=1; ENVDIR=\"$HOME/Library/Application Support/ShowreelStudio/env\"; [ -d \"$ENVDIR/venv/bin\" ] && export PATH=\"$ENVDIR/venv/bin:$PATH\"; [ -d \"$ENVDIR/node/node_modules\" ] && export NODE_PATH=\"$ENVDIR/node/node_modules${NODE_PATH:+:$NODE_PATH}\"; "
 
     private func abs(_ p: String) -> URL {
         if p.hasPrefix("/") { return URL(fileURLWithPath: p).standardizedFileURL }
@@ -53,7 +57,7 @@ final class Tools {
     }
     private func readable(_ u: URL) -> Bool { u.isInside(project) || u.isInside(skill) }
 
-    func run(_ name: String, _ input: [String: Any]) async -> ToolResult {
+    public func run(_ name: String, _ input: [String: Any]) async -> ToolResult {
         if name == "screenshot_preview" {
             let wait = min(max(input["wait_ms"] as? Int ?? 600, 0), 5000)
             guard let jpeg = await ui.screenshot(javascript: input["javascript"] as? String, waitMs: wait) else {
@@ -71,7 +75,11 @@ final class Tools {
         case "read_file":
             return readFile(input["path"] as? String ?? "", input["offset"] as? Int ?? 0, input["limit"] as? Int ?? 2000)
         case "write_file":
-            return writeFile(input["path"] as? String ?? "", input["content"] as? String ?? "")
+            return await writeFile(input["path"] as? String ?? "", input["content"] as? String ?? "")
+        case "get_state":
+            return await getState()
+        case "propose_edit":
+            return await proposeEdit(input["file"] as? String ?? "", input["content"] as? String ?? "", input["note"] as? String ?? "")
         case "list_dir":
             return listDir(input["path"] as? String ?? "")
         case "ask_user":
@@ -104,14 +112,55 @@ final class Tools {
         return clip(slice.enumerated().map { "\(offset + $0.offset + 1)\t\($0.element)" }.joined(separator: "\n"))
     }
 
-    private func writeFile(_ p: String, _ content: String) -> String {
+    /// Prose and data files a person may be editing: the copilot's writes to them become proposals.
+    private static let reviewedExtensions: Set<String> = ["md", "markdown", "json", "csv", "txt"]
+
+    private func writeFile(_ p: String, _ content: String) async -> String {
         let f = abs(p)
-        guard f.isInside(project) else { return "refused: writes stay inside the project folder" }
+        guard f.isInside(project), let rel = store.relativePath(of: f) else { return "refused: writes stay inside the project folder" }
+        guard !store.isPrivate(rel) else { return "refused: .studio is private to the app" }
+        let exists = FileManager.default.fileExists(atPath: f.path)
+        let reviewed = Tools.reviewedExtensions.contains((rel as NSString).pathExtension.lowercased())
+        if exists && reviewed { return await proposeEdit(rel, content, "") }
+        return commit(rel, content)
+    }
+
+    private func commit(_ rel: String, _ content: String) -> String {
         do {
-            try FileManager.default.createDirectory(at: f.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try content.write(to: f, atomically: true, encoding: .utf8)
-            return "wrote \(p) (\(content.count) chars)"
+            try store.write(rel, content, source: .copilot)
+            return "wrote \(rel) (\(content.count) chars)"
         } catch { return "error: \(error.localizedDescription)" }
+    }
+
+    /// The edit goes to the user as a diff. It is written only if the user accepts and the file is still the one it was based on.
+    private func proposeEdit(_ p: String, _ content: String, _ note: String) async -> String {
+        let f = abs(p)
+        guard f.isInside(project), let rel = store.relativePath(of: f), !rel.isEmpty else { return "refused: edits stay inside the project folder" }
+        guard !store.isPrivate(rel) else { return "refused: .studio is private to the app" }
+        let original = store.read(rel)
+        if original == content { return "no change: \(rel) already has this content" }
+        if store.settings.applyDirectly { return commit(rel, content).replacingOccurrences(of: "wrote", with: "applied directly (the user chose this for the project):") }
+        let accepted = await ui.propose(Proposal(file: rel, original: original, proposed: content, note: note))
+        guard accepted else { return "refused by the user: \(rel) was not changed. Ask what they want instead." }
+        guard store.read(rel) == original else {
+            return "not applied: \(rel) changed since the proposal was made. Read it again and propose a new edit."
+        }
+        return commit(rel, content).replacingOccurrences(of: "wrote", with: "accepted and applied:")
+    }
+
+    private func getState() async -> String {
+        var state: [String: Any] = ["project": project.path, "applyDirectly": store.settings.applyDirectly]
+        if let t = store.read(ShowreelFile.fileName), let o = try? JSONSerialization.jsonObject(with: Data(t.utf8)) {
+            state["showreel"] = o
+        } else {
+            state["showreel"] = NSNull()
+            state["note"] = "no readable showreel.json yet: the project has only what is in its files"
+        }
+        if let fg = await ui.foregroundFile() { state["foregroundFile"] = fg }
+        let top = (try? FileManager.default.contentsOfDirectory(atPath: project.path)) ?? []
+        state["files"] = top.filter { !$0.hasPrefix(".") }.sorted()
+        let o = (try? JSONSerialization.data(withJSONObject: state, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])) ?? Data("{}".utf8)
+        return String(decoding: o, as: UTF8.self)
     }
 
     private func listDir(_ p: String) -> String {

@@ -1,7 +1,7 @@
 import Foundation
 
-enum Skill {
-    static func root() -> URL? {
+public enum Skill {
+    public static func root() -> URL? {
         let fm = FileManager.default
         if let e = ProcessInfo.processInfo.environment["SHOWREEL_SKILL_DIR"], fm.fileExists(atPath: e + "/SKILL.md") {
             return URL(fileURLWithPath: e)
@@ -14,14 +14,14 @@ enum Skill {
     }
 
     /// Fingerprint of the skill folder written at build time (tools/skill_hash.py); shown in Settings.
-    static func fingerprint() -> String {
+    public static func fingerprint() -> String {
         guard let r = Bundle.main.resourceURL?.appendingPathComponent("skill.hash"),
               let t = try? String(contentsOf: r, encoding: .utf8) else { return "dev build (skill read from the repository)" }
         return t.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// The capabilities of this app against the skill's portability table (app-swift/shared/capabilities.json).
-    static func capabilitiesText() -> String {
+    public static func capabilitiesText() -> String {
         guard let u = resource("shared", dev: "app-swift/shared")?.appendingPathComponent("capabilities.json"),
               let d = try? Data(contentsOf: u),
               let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
@@ -41,7 +41,7 @@ enum Skill {
     }
 
     /// SKILL.md without its frontmatter, plus the shared addendum (app/shared/addendum.md).
-    static func systemPrompt(project: URL, lang: String?) throws -> (root: URL, text: String) {
+    public static func systemPrompt(project: URL, lang: String?) throws -> (root: URL, text: String) {
         guard let root = root() else { throw AgentError.msg("Skill folder not found") }
         var skill = try String(contentsOf: root.appendingPathComponent("SKILL.md"), encoding: .utf8)
         if skill.hasPrefix("---") {

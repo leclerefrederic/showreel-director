@@ -1,3 +1,4 @@
+import ShowreelKit
 import SwiftUI
 
 struct ChatView: View {
@@ -5,6 +6,8 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            CopilotHeader()
+            Divider()
             if model.items.isEmpty {
                 WelcomeView()
             } else {
@@ -29,8 +32,30 @@ struct ChatView: View {
     }
 }
 
+struct CopilotHeader: View {
+    @EnvironmentObject var model: ChatModel
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Label("Copilot", systemImage: "sparkles").font(.headline)
+            Spacer()
+            Toggle("Apply directly", isOn: $project.applyDirectly)
+                .toggleStyle(.checkbox)
+                .help("Off: the copilot's edits to your files wait for your OK as a diff. On: they are written at once (the history keeps the old version).")
+            Button { model.reset() } label: { Image(systemName: "square.and.pencil") }
+                .help("New conversation (the old one stays in .studio/chat)")
+                .buttonStyle(.borderless)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.bar)
+    }
+}
+
 struct WelcomeView: View {
     @EnvironmentObject var model: ChatModel
+    @EnvironmentObject var settings: AppSettings
 
     var body: some View {
         VStack(spacing: 10) {
@@ -38,19 +63,16 @@ struct WelcomeView: View {
             Image(systemName: "film.stack")
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.secondary)
-            Text("What do we make?")
+            Text("Your copilot")
                 .font(.title2.weight(.semibold))
-            Text("Describe the reel you have in mind. Pickers, boards and the reel itself open on the right.")
+            Text("Ask for a draft, an explanation or a fix. Edits to your files come as a diff you accept or refuse.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 320)
-            if !model.hasKey || model.project == nil {
+            if !settings.hasKey {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label(model.hasKey ? "API key set" : "Add your API key in Settings",
-                          systemImage: model.hasKey ? "checkmark.circle.fill" : "circle")
-                    Label(model.project == nil ? "Choose a project folder (top left)" : "Project folder set",
-                          systemImage: model.project == nil ? "circle" : "checkmark.circle.fill")
+                    Label("Add your API key in Settings", systemImage: "circle")
                 }
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -67,7 +89,7 @@ struct Composer: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            TextField("Describe the reel you want...", text: $model.draft, axis: .vertical)
+            TextField("Ask the copilot...", text: $model.draft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...6)
                 .padding(.vertical, 8)
@@ -127,6 +149,8 @@ struct ItemView: View {
             }
         case .question:
             QuestionCard(item: item)
+        case .proposal:
+            ProposalCard(item: item)
         case .notice:
             Label(item.text, systemImage: "info.circle")
                 .font(.callout)
@@ -210,5 +234,77 @@ struct QuestionCard: View {
             (selection[qi] ?? []).sorted().map { q.options[$0].label }.joined(separator: ", ")
         }
         model.submit(item.id, answers: answers)
+    }
+}
+
+/// A copilot edit waiting for the user: the diff, then Accept or Refuse.
+struct ProposalCard: View {
+    let item: ChatItem
+    @EnvironmentObject var model: ChatModel
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        if let p = item.proposal {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label(p.proposal.original == nil ? "New file" : "Proposed edit", systemImage: "doc.badge.gearshape")
+                        .font(.headline)
+                    Spacer()
+                    Button(p.proposal.file) { project.open(p.proposal.file) }
+                        .buttonStyle(.link).font(.caption.monospaced())
+                        .help("Open the file")
+                }
+                if !p.proposal.note.isEmpty { Text(p.proposal.note).font(.callout) }
+                DiffView(rows: p.rows).frame(maxHeight: 260)
+                switch p.status {
+                case .pending:
+                    HStack {
+                        Spacer()
+                        Button("Refuse") { model.resolveProposal(item.id, accept: false) }
+                        Button("Accept") { model.resolveProposal(item.id, accept: true) }
+                            .buttonStyle(.borderedProminent)
+                    }
+                case .accepted:
+                    Label("Accepted", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.secondary)
+                case .refused:
+                    Label("Refused", systemImage: "xmark.circle").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(14)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.primary.opacity(0.08)))
+        }
+    }
+}
+
+/// Added lines in green, removed lines in red, long unchanged runs folded.
+struct DiffView: View {
+    let rows: [LineDiff.Row]
+
+    var body: some View {
+        ScrollView([.vertical, .horizontal]) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    switch row {
+                    case .gap(let n):
+                        Text("  ... \(n) unchanged line\(n == 1 ? "" : "s")")
+                            .foregroundStyle(.tertiary)
+                    case .line(let l):
+                        Text(prefix(l) + l.text)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(color(l))
+                    }
+                }
+            }
+            .font(.system(size: 11, design: .monospaced))
+            .textSelection(.enabled)
+            .padding(6)
+        }
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func prefix(_ l: DiffLine) -> String { l.kind == .added ? "+ " : l.kind == .removed ? "- " : "  " }
+    private func color(_ l: DiffLine) -> Color {
+        l.kind == .added ? Color.green.opacity(0.18) : l.kind == .removed ? Color.red.opacity(0.18) : .clear
     }
 }

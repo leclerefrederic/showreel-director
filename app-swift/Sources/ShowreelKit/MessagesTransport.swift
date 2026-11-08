@@ -1,84 +1,28 @@
 import Foundation
 
-/// Agent loop on the Messages API: streams text, runs tools, repeats until the model stops.
-final class Agent {
-    private let apiKey: String
-    private let model: String
-    private let baseURL: String
-    private let bearer: Bool
-    private let tools: Tools
-    private let ui: AgentUI
-    private let system: [[String: Any]]
-    private var messages: [[String: Any]] = []
-    private var aborted = false
-    private let lock = NSLock()
+/// One streamed call to the Messages API. The agent loop only knows this protocol, so tests can script the model.
+public protocol MessagesTransport {
+    /// Streams text through `onText` and returns the content blocks and the stop reason.
+    func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]],
+                onText: (String) -> Void) async throws -> (content: [[String: Any]], stop: String)
+}
 
-    init(apiKey: String, model: String, baseURL: String = "", bearer: Bool = false, project: URL, ui: AgentUI) throws {
-        let sp = try Skill.systemPrompt(project: project, lang: nil)
+/// The real transport: the Messages API over URLSession, server-sent events.
+public struct AnthropicTransport: MessagesTransport {
+    let apiKey: String
+    let model: String
+    let baseURL: String
+    let bearer: Bool
+
+    public init(apiKey: String, model: String, baseURL: String = "", bearer: Bool = false) {
         self.apiKey = apiKey
         self.model = model
         self.baseURL = baseURL.isEmpty ? "https://api.anthropic.com" : baseURL
         self.bearer = bearer
-        self.ui = ui
-        self.tools = Tools(project: project, skill: sp.root, ui: ui)
-        self.system = [["type": "text", "text": sp.text, "cache_control": ["type": "ephemeral"]]]
     }
 
-    func abort() { lock.lock(); aborted = true; lock.unlock() }
-    private var isAborted: Bool { lock.lock(); defer { lock.unlock() }; return aborted }
-    private func resetAbort() { lock.lock(); aborted = false; lock.unlock() }
-
-    func send(_ text: String) async throws {
-        resetAbort()
-        messages.append(["role": "user", "content": text])
-        var turn = 0
-        while turn < 60 && !isAborted {
-            turn += 1
-            pruneImages(keep: 3)
-            let (content, stop) = try await streamOnce()
-            if !content.isEmpty { messages.append(["role": "assistant", "content": content]) }
-            ui.endText()
-            let uses = content.filter { ($0["type"] as? String) == "tool_use" }
-            if stop != "tool_use" || uses.isEmpty { return }
-            var results: [[String: Any]] = []
-            for u in uses {
-                let name = u["name"] as? String ?? ""
-                let input = u["input"] as? [String: Any] ?? [:]
-                ui.tool(name, input)
-                let out = await tools.run(name, input)
-                var content: Any = out.text
-                if let img = out.image {
-                    let blocks: [[String: Any]] = [
-                        ["type": "image", "source": ["type": "base64", "media_type": "image/jpeg", "data": img.base64EncodedString()]],
-                        ["type": "text", "text": out.text],
-                    ]
-                    content = blocks
-                }
-                results.append(["type": "tool_result", "tool_use_id": u["id"] as? String ?? "", "content": content])
-            }
-            messages.append(["role": "user", "content": results])
-        }
-        ui.text("\n[stopped]")
-        ui.endText()
-    }
-
-    /// Screenshots are heavy: keep the last few in the history and replace older ones by a short note.
-    private func pruneImages(keep: Int) {
-        var spots: [(Int, Int)] = []
-        for (i, m) in messages.enumerated() {
-            guard let arr = m["content"] as? [[String: Any]] else { continue }
-            for (j, b) in arr.enumerated() {
-                if (b["type"] as? String) == "tool_result", b["content"] is [[String: Any]] { spots.append((i, j)) }
-            }
-        }
-        for (i, j) in spots.dropLast(keep) {
-            guard var arr = messages[i]["content"] as? [[String: Any]] else { continue }
-            arr[j]["content"] = "[earlier screenshot removed to save space]"
-            messages[i]["content"] = arr
-        }
-    }
-
-    private func streamOnce() async throws -> ([[String: Any]], String) {
+    public func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]],
+                       onText: (String) -> Void) async throws -> (content: [[String: Any]], stop: String) {
         guard let url = URL(string: baseURL + "/v1/messages") else { throw AgentError.msg("Invalid endpoint URL: \(baseURL)") }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -89,7 +33,7 @@ final class Agent {
         req.timeoutInterval = 300
         let body: [String: Any] = [
             "model": model, "max_tokens": 8000, "stream": true,
-            "system": system, "tools": Tools.definitions, "messages": messages,
+            "system": system, "tools": tools, "messages": messages,
         ]
         req.httpBody = jsonData(body)
 
@@ -124,7 +68,7 @@ final class Agent {
                     var b = blocks[i] ?? ["type": "text"]
                     b["text"] = (b["text"] as? String ?? "") + t
                     blocks[i] = b
-                    ui.text(t)
+                    onText(t)
                 } else if dt == "input_json_delta", let pj = delta["partial_json"] as? String {
                     partial[i] = (partial[i] ?? "") + pj
                 }
