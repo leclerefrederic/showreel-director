@@ -23,11 +23,20 @@ public protocol AgentUI: AnyObject {
     func ask(_ questions: [[String: Any]]) async -> [String]
     /// Shows the diff and waits for the answer: true = accepted. The caller writes the file.
     func propose(_ p: Proposal) async -> Bool
+    /// A typed change shown as a plain card (before and after): true = accepted. The caller applies it.
+    func proposeOperation(_ card: OperationCard) async -> Bool
     /// The project file the user has in front of them, if any (relative path).
     func foregroundFile() async -> String?
+    /// The block of the sidebar the user is in (project, resources, ...), if any.
+    func foregroundBlock() async -> String?
+    /// Switches the window to a block.
+    func openBlock(_ id: String) async
 }
 
 public extension AgentUI {
     func propose(_ p: Proposal) async -> Bool { false }
+    func proposeOperation(_ card: OperationCard) async -> Bool { false }
     func foregroundFile() async -> String? { nil }
+    func foregroundBlock() async -> String? { nil }
+    func openBlock(_ id: String) async {}
 }

@@ -8,6 +8,9 @@ final class ScriptedUI: AgentUI, @unchecked Sendable {
     private(set) var texts: [String] = []
     private(set) var tools: [String] = []
     private(set) var proposals: [Proposal] = []
+    private(set) var cards: [OperationCard] = []
+    private(set) var openedBlocks: [String] = []
+    var block: String? = "project"
     /// Called when a proposal is shown, before the answer: lets a test change the file in between.
     var beforeAnswer: (() -> Void)?
     /// Called when the agent announces a tool, before it runs.
@@ -20,6 +23,9 @@ final class ScriptedUI: AgentUI, @unchecked Sendable {
     func screenshot(javascript: String?, waitMs: Int) async -> Data? { nil }
     func ask(_ questions: [[String: Any]]) async -> [String] { [] }
     func propose(_ p: Proposal) async -> Bool { proposals.append(p); beforeAnswer?(); return accept }
+    func proposeOperation(_ card: OperationCard) async -> Bool { cards.append(card); beforeAnswer?(); return accept }
+    func foregroundBlock() async -> String? { block }
+    func openBlock(_ id: String) async { openedBlocks.append(id) }
     func foregroundFile() async -> String? { foreground }
 }
 
@@ -150,6 +156,128 @@ final class ToolsTests: XCTestCase {
     }
 }
 
+final class OperationToolTests: XCTestCase {
+    var dir: URL!
+    var ui: ScriptedUI!
+    var tools: Tools!
+    var store: ProjectStore!
+
+    override func setUpWithError() throws {
+        dir = makeTempDir("optools")
+        ui = ScriptedUI()
+        tools = Tools(project: dir, skill: try XCTUnwrap(Skill.root()), ui: ui)
+        store = ProjectStore(root: dir)
+        try store.create(name: "Ops", conversationLanguage: "en", reelLanguages: ["en"])
+    }
+    override func tearDown() { try? FileManager.default.removeItem(at: dir) }
+
+    func run(_ name: String, _ input: [String: Any]) async -> String { await tools.run(name, input).text }
+
+    func testUpdateParameterShowsAPlainCardAndAppliesOnAccept() async throws {
+        let r = await run("update_parameter", ["key": "audience", "value": "Product teams"])
+        XCTAssertTrue(r.hasPrefix("accepted and applied"), r)
+        XCTAssertEqual(ui.cards.first?.title, "Set audience")
+        XCTAssertEqual(ui.cards.first?.changes, [Change("Audience", "(empty)", "Product teams")])
+        XCTAssertEqual(store.loadShowreel()?.parameters.audience, "Product teams")
+        XCTAssertTrue(ui.proposals.isEmpty, "no file diff for modelled data")
+    }
+
+    func testRefusalLeavesTheProject() async throws {
+        ui.accept = false
+        let r = await run("update_parameter", ["key": "tone", "value": "bold"])
+        XCTAssertTrue(r.hasPrefix("refused by the user"))
+        XCTAssertNil(store.loadShowreel()?.parameters.tone)
+    }
+
+    func testApplyDirectlySkipsTheCard() async throws {
+        store.settings = StudioSettings(applyDirectly: true)
+        let r = await run("update_parameter", ["key": "message", "value": "Calm notes"])
+        XCTAssertTrue(r.hasPrefix("applied directly"), r)
+        XCTAssertTrue(ui.cards.isEmpty)
+        XCTAssertEqual(store.loadShowreel()?.parameters.message, "Calm notes")
+    }
+
+    func testAChangeMadeMeanwhileMakesTheCardStale() async throws {
+        ui.beforeAnswer = { try? self.store.apply(.parameter(.tone, "someone else's tone")) }
+        let r = await run("update_parameter", ["key": "tone", "value": "mine"])
+        XCTAssertTrue(r.contains("changed since the proposal"), r)
+        XCTAssertEqual(store.loadShowreel()?.parameters.tone, "someone else's tone")
+    }
+
+    func testBadKeysAndValuesAreRefusedWithoutACard() async throws {
+        let a = await run("update_parameter", ["key": "colour", "value": "red"])
+        let b = await run("update_parameter", ["key": "duration", "value": "soon"])
+        let c = await run("update_parameter", ["key": "audience", "value": ""])
+        XCTAssertTrue(a.hasPrefix("unknown parameter") && b.hasPrefix("refused") && c.hasPrefix("refused"), "\(a) | \(b) | \(c)")
+        XCTAssertTrue(ui.cards.isEmpty)
+    }
+
+    func testUpdateAssetByIDWithItsGuards() async throws {
+        let inbox = makeTempDir("inbox2"); defer { try? FileManager.default.removeItem(at: inbox) }
+        let logo = inbox.appendingPathComponent("Acme Logo.svg"); try "<svg/>".write(to: logo, atomically: true, encoding: .utf8)
+        let secret = inbox.appendingPathComponent("customers-real-data.csv"); try "a,b\n".write(to: secret, atomically: true, encoding: .utf8)
+        try Assets.add([logo, secret], to: store)
+        let ok = await run("update_asset", ["id": "logo-01", "status": "approved", "scenes": "S01"])
+        XCTAssertTrue(ok.hasPrefix("accepted and applied"), ok)
+        XCTAssertEqual(ui.cards.last?.title, "Approve Acme Logo.svg")
+        XCTAssertEqual(Assets.load(store).first?.status, "approved")
+        let held = await run("update_asset", ["id": "logo-01", "status": "hold"])
+        XCTAssertTrue(held.hasPrefix("refused") && held.contains("note"), held)
+        let risky = await run("update_asset", ["id": "data-01", "status": "approved"])
+        XCTAssertTrue(risky.hasPrefix("refused"), risky)
+        let bad = await run("update_asset", ["id": "logo-01", "status": "great"])
+        XCTAssertTrue(bad.hasPrefix("unknown status"))
+        XCTAssertEqual(ui.cards.count, 1, "only the valid change was shown to the user")
+    }
+
+    func testShowreelJSONAndTheManifestRefuseFileWrites() async throws {
+        let a = await run("write_file", ["path": "showreel.json", "content": "{}"])
+        let b = await run("propose_edit", ["file": "showreel.json", "content": "{}"])
+        let c = await run("write_file", ["path": "assets/MANIFEST.csv", "content": "x"])
+        XCTAssertTrue(a.hasPrefix("refused") && b.hasPrefix("refused") && c.hasPrefix("refused"))
+        XCTAssertTrue(ui.proposals.isEmpty)
+        XCTAssertEqual(store.loadShowreel()?.name, "Ops")
+    }
+
+    func testOpenBlock() async throws {
+        let a = await run("open_block", ["block": "resources"])
+        XCTAssertEqual(ui.openedBlocks, ["resources"]); XCTAssertTrue(a.hasPrefix("opened"))
+        let b = await run("open_block", ["block": "look"])
+        XCTAssertTrue(b.contains("not built yet") && b.contains("phase B"), b)
+        XCTAssertEqual(ui.openedBlocks, ["resources"], "an unbuilt block is not opened")
+        let c = await run("open_block", ["block": "nope"])
+        XCTAssertTrue(c.hasPrefix("unknown block"))
+    }
+
+    func testGetStateListsBlocksAndAssets() async throws {
+        try store.apply(.parameter(.audience, "Teams"))
+        let inbox = makeTempDir("inbox3"); defer { try? FileManager.default.removeItem(at: inbox) }
+        let f = inbox.appendingPathComponent("theme.mp3"); try "x".write(to: f, atomically: true, encoding: .utf8)
+        try Assets.add([f], to: store)
+        let state = await run("get_state", [:])
+        let o = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(state.utf8)) as? [String: Any])
+        let blocks = try XCTUnwrap(o["blocks"] as? [[String: String]])
+        XCTAssertEqual(blocks.first { $0["id"] == "project" }?["status"], "inProgress")
+        XCTAssertEqual(blocks.first { $0["id"] == "storyboard" }?["status"], "soon")
+        XCTAssertEqual((o["assets"] as? [[String: String]])?.first?["id"], "audio-01")
+        XCTAssertEqual(o["foregroundBlock"] as? String, "project")
+        XCTAssertEqual((o["showreel"] as? [String: Any])?["origin"] as? [String: String], ["tool": "studio"])
+    }
+
+    func testAgentLoopWithATypedOperation() async throws {
+        let t = ScriptedTransport([
+            ([toolUse("t1", "get_state", [:]), toolUse("t2", "update_parameter", ["key": "tone", "value": "warm"])], "tool_use"),
+            ([textBlock("Set.")], "end_turn"),
+        ])
+        let agent = try Agent(apiKey: "test", model: "test", project: dir, ui: ui, transport: t)
+        try await agent.send("make the tone warm", context: "block: project")
+        XCTAssertEqual(store.loadShowreel()?.parameters.tone, "warm")
+        XCTAssertEqual(ui.cards.map { $0.title }, ["Set tone"])
+        let results = try XCTUnwrap(t.received[1].last?["content"] as? [[String: Any]])
+        XCTAssertTrue((results[1]["content"] as? String ?? "").hasPrefix("accepted and applied"))
+    }
+}
+
 final class AgentLoopTests: XCTestCase {
     var dir: URL!
     override func setUp() { dir = makeTempDir("agent") }
@@ -226,7 +354,7 @@ final class AgentLoopTests: XCTestCase {
     func testSystemPromptHasTheCopilotAddendumAndNoPlaceholders() throws {
         let sp = try Skill.systemPrompt(project: dir, lang: nil)
         XCTAssertFalse(sp.text.contains("{{"))
-        XCTAssertTrue(sp.text.contains("propose_edit") && sp.text.contains("get_state"))
+        XCTAssertTrue(["propose_edit", "get_state", "update_parameter", "update_asset", "open_block"].allSatisfy { sp.text.contains($0) })
     }
 
     func testEveryDefinedToolHasAnImplementation() async throws {

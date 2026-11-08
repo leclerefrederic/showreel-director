@@ -1,0 +1,8 @@
+{
+  "created": "2026-11-09",
+  "origin": { "exportedAt": "2026-11-09" },
+  "parameters": { "audience": "Product teams at mid-size companies", "message": "Notes that stay calm", "tone": "warm, confident" },
+  "decisions": { "formats": ["16:9", "9:16"], "background": { "id": "aurora", "mood": "cinematic" }, "moods": ["Kinetic punch"], "effectsPack": "Kinetic punch" },
+  "gates": { "interview": "passed", "assets": "open", "style": "passed" },
+  "futureKey": { "kept": true }
+}

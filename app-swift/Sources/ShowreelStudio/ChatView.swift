@@ -151,6 +151,8 @@ struct ItemView: View {
             QuestionCard(item: item)
         case .proposal:
             ProposalCard(item: item)
+        case .operation:
+            OperationCardView(item: item)
         case .notice:
             Label(item.text, systemImage: "info.circle")
                 .font(.callout)
@@ -242,6 +244,7 @@ struct ProposalCard: View {
     let item: ChatItem
     @EnvironmentObject var model: ChatModel
     @EnvironmentObject var project: ProjectModel
+    @EnvironmentObject var settings: AppSettings
 
     var body: some View {
         if let p = item.proposal {
@@ -250,9 +253,13 @@ struct ProposalCard: View {
                     Label(p.proposal.original == nil ? "New file" : "Proposed edit", systemImage: "doc.badge.gearshape")
                         .font(.headline)
                     Spacer()
-                    Button(p.proposal.file) { project.open(p.proposal.file) }
-                        .buttonStyle(.link).font(.caption.monospaced())
-                        .help("Open the file")
+                    if settings.advanced {
+                        Button(p.proposal.file) { project.open(p.proposal.file) }
+                            .buttonStyle(.link).font(.caption.monospaced())
+                            .help("Open the file")
+                    } else {
+                        Text(p.proposal.file).font(.caption.monospaced()).foregroundStyle(.secondary)
+                    }
                 }
                 if !p.proposal.note.isEmpty { Text(p.proposal.note).font(.callout) }
                 DiffView(rows: p.rows).frame(maxHeight: 260)
@@ -306,5 +313,38 @@ struct DiffView: View {
     private func prefix(_ l: DiffLine) -> String { l.kind == .added ? "+ " : l.kind == .removed ? "- " : "  " }
     private func color(_ l: DiffLine) -> Color {
         l.kind == .added ? Color.green.opacity(0.18) : l.kind == .removed ? Color.red.opacity(0.18) : .clear
+    }
+}
+
+/// A typed change as a plain card: what changes, from what, to what. Accept or refuse.
+struct OperationCardView: View {
+    let item: ChatItem
+    @EnvironmentObject var model: ChatModel
+
+    var body: some View {
+        if let o = item.operation {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(o.card.title, systemImage: "slider.horizontal.3").font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(o.card.changes.enumerated()), id: \.offset) { _, c in ChangeRow(change: c) }
+                }
+                switch o.status {
+                case .pending:
+                    HStack {
+                        Spacer()
+                        Button("Refuse") { model.resolveOperation(item.id, accept: false) }
+                        Button("Accept") { model.resolveOperation(item.id, accept: true) }
+                            .buttonStyle(.borderedProminent)
+                    }
+                case .accepted:
+                    Label("Accepted", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.secondary)
+                case .refused:
+                    Label("Refused", systemImage: "xmark.circle").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(14)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.primary.opacity(0.08)))
+        }
     }
 }

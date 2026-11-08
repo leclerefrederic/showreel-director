@@ -18,11 +18,17 @@ public final class ChatStore {
         session = ChatStore.latest(in: dir) ?? ChatStore.newURL(in: dir)
     }
 
-    private static func newURL(in dir: URL) -> URL {
+    /// A session file name made from the time, always after `after` (the latest session, on disk or not yet written),
+    /// so sessions sort by name even when two start within the same millisecond.
+    private static func newURL(in dir: URL, after: String = "") -> URL {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyyMMdd-HHmmss-SSS"
-        return dir.appendingPathComponent(f.string(from: Date()) + ".jsonl")
+        let last = max(latest(in: dir)?.lastPathComponent ?? "", after)
+        var d = Date()
+        var name: String
+        repeat { name = f.string(from: d) + ".jsonl"; d = d.addingTimeInterval(0.001) } while name <= last
+        return dir.appendingPathComponent(name)
     }
 
     private static func latest(in dir: URL) -> URL? {
@@ -31,7 +37,7 @@ public final class ChatStore {
     }
 
     /// Starts a new session. The file appears with the first record.
-    public func startNewSession() { session = ChatStore.newURL(in: dir) }
+    public func startNewSession() { session = ChatStore.newURL(in: dir, after: session.lastPathComponent) }
 
     public var sessions: [URL] {
         (((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []).filter { $0.hasSuffix(".jsonl") }).sorted()

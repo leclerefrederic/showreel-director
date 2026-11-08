@@ -11,6 +11,6 @@ let package = Package(
         // Everything that does not need a window: tools, agent loop, project model, history, parsers.
         .target(name: "ShowreelKit", path: "Sources/ShowreelKit"),
         .executableTarget(name: "ShowreelStudio", dependencies: ["ShowreelKit"], path: "Sources/ShowreelStudio"),
-        .testTarget(name: "ShowreelKitTests", dependencies: ["ShowreelKit"], path: "Tests/ShowreelKitTests"),
+        .testTarget(name: "ShowreelKitTests", dependencies: ["ShowreelKit"], path: "Tests/ShowreelKitTests", exclude: ["Fixtures"]),
     ]
 )

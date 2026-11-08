@@ -17,9 +17,14 @@
    "via": "show_page opens an HTML or video file of the project or the skill in the preview pane"
   },
   {
+   "need": "Fill in the project questions and decide on assets on screens",
+   "provided": true,
+   "via": "the Project block (audience, message, tone, languages, formats, duration, constraints) and the Resources block (files, statuses, notes, scenes) are screens in the sidebar; update_parameter and update_asset change them as plain cards the user accepts or refuses"
+  },
+  {
    "need": "Let the user read and edit the project files next to the assistant",
    "provided": true,
-   "via": "a file tree with editors (markdown, JSON, CSV) and a per-file history sit beside the chat; get_state reads the project's state and propose_edit offers a change as a diff the user accepts or refuses"
+   "via": "an Advanced panel (off by default) shows the project's files with editors and a per-file history; propose_edit offers a change to a file as a diff the user accepts or refuses; get_state reads the project's state"
   },
   {
    "need": "Look at the result (contact sheets)",

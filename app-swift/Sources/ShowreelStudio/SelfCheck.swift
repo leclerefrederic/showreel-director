@@ -5,6 +5,8 @@ import ShowreelKit
 private final class NullUI: AgentUI {
     var accept = false
     var proposals: [Proposal] = []
+    var cards: [OperationCard] = []
+    func proposeOperation(_ card: OperationCard) async -> Bool { cards.append(card); return accept }
     func propose(_ p: Proposal) async -> Bool { proposals.append(p); return accept }
     func foregroundFile() async -> String? { "storyboard.md" }
     func text(_ t: String) {}
@@ -92,6 +94,24 @@ enum SelfCheck {
                   && ui.proposals.count == 3, "write_file on an existing markdown file becomes a proposal")
             check(store.snapshots("notes.md").count == 2, "each write keeps the previous version in the history")
             check(call("write_file", ["path": ".studio/x.txt", "content": "no"]).hasPrefix("refused"), ".studio stays private to the app")
+
+            // blocks: process.json, typed operations as cards, assets, the app owns showreel.json
+            let spec = ProcessSpec.load()
+            check(spec?.blocks.map { $0.id } == Blocks.ids, "process.json blocks match the app (\(spec?.blocks.count ?? 0))")
+            check(store.loadShowreel()?.isStudioOwned == true, "the first save marks origin.tool as studio")
+            ui.accept = false
+            check(call("update_parameter", ["key": "audience", "value": "Teams"]).hasPrefix("refused by the user") && store.loadShowreel()?.parameters.audience == nil,
+                  "a refused card changes nothing")
+            ui.accept = true
+            check(call("update_parameter", ["key": "audience", "value": "Teams"]).hasPrefix("accepted") && store.loadShowreel()?.parameters.audience == "Teams"
+                  && ui.cards.last?.changes == [Change("Audience", "(empty)", "Teams")], "an accepted card applies a typed change")
+            check(call("write_file", ["path": "showreel.json", "content": "{}"]).hasPrefix("refused"), "showreel.json refuses file writes")
+            let src = tmp.appendingPathComponent("incoming-logo.svg")
+            try? "<svg/>".write(to: src, atomically: true, encoding: .utf8)
+            let added = (try? Assets.add([src], to: store)) ?? []
+            check(added.first?.id == "logo-01" && Assets.load(store).count == 1
+                  && fm.fileExists(atPath: tmp.appendingPathComponent("assets/prepared/logo-01-incoming.svg").path), "a dropped file is copied and listed in MANIFEST.csv")
+            check(store.read("brief.md")?.contains("Teams") == true, "brief.md is generated from showreel.json")
         }
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1

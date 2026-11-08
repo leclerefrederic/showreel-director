@@ -1,0 +1,110 @@
+{
+  "conversationLanguage": "fr",
+  "created": "2026-11-09",
+  "decisions": {
+    "background": {
+      "id": "aurora",
+      "mood": "cinematic"
+    },
+    "duration": 45.0,
+    "effectsPack": "Kinetic punch",
+    "fonts": {
+      "text": "Inter",
+      "titles": "Anton"
+    },
+    "formats": [
+      "16:9",
+      "9:16"
+    ],
+    "moods": [
+      "Kinetic punch"
+    ],
+    "palette": [
+      "#101820",
+      "#F2AA4C",
+      "#FFFFFF"
+    ]
+  },
+  "futureKey": {
+    "kept": true
+  },
+  "gates": {
+    "assets": "open",
+    "interview": "passed",
+    "style": "passed"
+  },
+  "name": "export-sample",
+  "origin": {
+    "exportedAt": "2026-11-09",
+    "files": [
+      "brief.md",
+      "style-sheet.md",
+      "storyboard.md"
+    ],
+    "tool": "skill"
+  },
+  "parameters": {
+    "audience": "Product teams at mid-size companies",
+    "message": "Notes that stay calm",
+    "tone": "warm, confident"
+  },
+  "reelLanguages": [
+    "en",
+    "fr"
+  ],
+  "scenes": [
+    {
+      "end": 4.0,
+      "extra": {
+        "Sound": "soft pad"
+      },
+      "feeling": "calm, 1/5",
+      "handoff": "wipe left",
+      "id": "S01",
+      "inCuts": "15s, 45s",
+      "note": "",
+      "start": 0.0,
+      "status": "open",
+      "text": "Notes, finally calm",
+      "texts": {
+        "Text FR": "Des notes enfin sereines"
+      },
+      "visual": "Logo rises from ink"
+    },
+    {
+      "end": 9.0,
+      "extra": {
+        "Sound": "tick"
+      },
+      "feeling": "curious, 2/5",
+      "handoff": "cut",
+      "id": "S02",
+      "inCuts": "45s",
+      "note": "",
+      "start": 4.0,
+      "status": "open",
+      "text": "Capture anything",
+      "texts": {
+        "Text FR": "Tout capturer"
+      },
+      "visual": "Cards fly in"
+    },
+    {
+      "end": 12.0,
+      "extra": {},
+      "feeling": "",
+      "handoff": "",
+      "id": "S03",
+      "inCuts": "",
+      "note": "",
+      "start": 9.0,
+      "status": "ditched",
+      "text": "Ditched: old claim",
+      "texts": {},
+      "visual": ""
+    }
+  ],
+  "schema": 1,
+  "step": "storyboard"
+}
+

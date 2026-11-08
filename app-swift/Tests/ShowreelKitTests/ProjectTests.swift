@@ -23,7 +23,8 @@ final class ProjectTests: XCTestCase {
         f.decisions.duration = 45
         f.decisions.track = .init(file: "assets/prepared/audio-01-theme.mp3", bpm: 120)
         f.gates = ["interview": "passed", "assets": "open", "release": "open"]
-        f.scenes = ["S01": .init(status: "ok", note: ""), "S02": .init(status: "modify", note: "shorter")]
+        f.parameters.audience = "Product teams"
+        f.scenes = [.init(id: "S01", start: 0, end: 4, text: "Hello", status: "ok"), .init(id: "S02", start: 4, end: 9, text: "Next", status: "modify", note: "shorter")]
         return f
     }
 
@@ -32,11 +33,13 @@ final class ProjectTests: XCTestCase {
         let text = try f.encoded()
         XCTAssertEqual(try ShowreelFile.decode(text), f)
         XCTAssertTrue(text.contains("\"schema\" : 1"))
+        XCTAssertEqual(f.origin?.tool, nil, "a file in memory has no origin until the app saves it")
         XCTAssertTrue(text.contains("\"duration\" : 45"), "whole durations stay whole numbers")
         let store = ProjectStore(root: dir)
         try store.save(f)
-        XCTAssertEqual(store.loadShowreel(), f)
-        XCTAssertEqual(try store.read(ShowreelFile.fileName).map { try ShowreelFile.decode($0) }, f)
+        var saved = f; saved.origin = .init(tool: "studio")
+        XCTAssertEqual(store.loadShowreel(), saved, "the first save marks the app as the owner of the file")
+        XCTAssertTrue(store.loadShowreel()?.isStudioOwned == true)
     }
 
     func testHandWrittenFileWithMissingKeysLoads() throws {
@@ -44,24 +47,7 @@ final class ProjectTests: XCTestCase {
         XCTAssertEqual(f.name, "Hand")
         XCTAssertEqual(f.step, "start")
         XCTAssertTrue(f.reelLanguages.isEmpty && f.gates.isEmpty && f.scenes.isEmpty)
-    }
-
-    func testDecisionsSectionIsWrittenToBriefAndIsIdempotent() throws {
-        let store = ProjectStore(root: dir)
-        try store.write("brief.md", "# Brief\n\nMission: show the product.\n")
-        try store.save(fullFile())
-        let brief = try XCTUnwrap(store.read("brief.md"))
-        XCTAssertTrue(brief.hasPrefix("# Brief\n\nMission: show the product."), "prose is untouched")
-        XCTAssertTrue(brief.contains("- Palette: #101820, #F2AA4C, #FFFFFF"))
-        XCTAssertTrue(brief.contains("- Title font: Anton"))
-        XCTAssertEqual(brief.components(separatedBy: ShowreelFile.sectionStart).count, 2, "one section")
-        try store.syncDecisions()
-        XCTAssertEqual(store.read("brief.md"), brief, "syncing again changes nothing")
-        var f = fullFile(); f.decisions.palette = ["#000000"]
-        try store.save(f)
-        let next = try XCTUnwrap(store.read("brief.md"))
-        XCTAssertTrue(next.contains("- Palette: #000000") && !next.contains("#F2AA4C"))
-        XCTAssertEqual(next.components(separatedBy: ShowreelFile.sectionStart).count, 2, "section replaced, not duplicated")
+        XCTAssertNil(f.parameters.audience)
     }
 
     func testImportOfAMarkdownOnlyProject() throws {
@@ -91,9 +77,8 @@ final class ProjectTests: XCTestCase {
         let before = try XCTUnwrap(store.read("brief.md"))
         try ProjectImporter.confirm(r, in: dir)
         XCTAssertEqual(store.loadShowreel()?.decisions.palette, r.file.decisions.palette)
-        let after = try XCTUnwrap(store.read("brief.md"))
-        XCTAssertTrue(after.hasPrefix(before), "the brief only gains the generated section")
-        XCTAssertEqual(store.snapshots("brief.md").count, 1, "the old brief is in the history")
+        XCTAssertEqual(store.read("brief.md"), before, "the chat's brief is foreign: confirming the import never rewrites it")
+        XCTAssertEqual(DocSync.sync(store).first { $0.file == "brief.md" }?.state, .foreign)
     }
 
     func testImportOfAnEmptyFolderFindsNothing() {
@@ -198,6 +183,14 @@ final class ProjectTests: XCTestCase {
         XCTAssertEqual(ChatStore(root: dir).load().map { $0.text }, ["again"], "the latest session opens")
         let other = makeTempDir("other"); defer { try? FileManager.default.removeItem(at: other) }
         XCTAssertTrue(ChatStore(root: other).load().isEmpty, "projects never share a history")
+    }
+
+    func testManySessionsInARowGetDistinctOrderedNames() {
+        let c = ChatStore(root: dir)
+        for i in 0..<25 { c.append(ChatRecord(role: "user", text: "q\(i)")); c.startNewSession() }
+        c.append(ChatRecord(role: "user", text: "last"))
+        XCTAssertEqual(c.sessions.count, 26, "no two sessions share a file, even within one millisecond")
+        XCTAssertEqual(ChatStore(root: dir).load().map { $0.text }, ["last"])
     }
 
     func testSeedAlternatesRolesAndDropsTheLastUserTurn() {

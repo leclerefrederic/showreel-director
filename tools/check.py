@@ -238,7 +238,7 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     sdir = os.path.join(ROOT, "app-swift")
     if os.path.isdir(sdir):
         import json
-        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "EditorViews.swift", "LibraryView.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift")]
+        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "shared/process.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "BlockViews.swift", "EditorViews.swift", "LibraryView.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift", "Assets.swift", "ProjectDocs.swift", "Operations.swift", "Process.swift", "JSONValue.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift", "StudioFileTests.swift", "BlocksTests.swift", "DocsTests.swift", "AssetTests.swift")]
         gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
         ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
         capf = os.path.join(sdir, "shared", "capabilities.json")
@@ -292,6 +292,42 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
             code = open(sw).read()
             missing = [n for n in names if '"%s"' % n not in code]
             ok("swift app implements every shared tool") if not missing else bad("Tools.swift lacks tools: " + ", ".join(missing))
+    # process contract: app-swift/shared/process.json against the Gates table of SKILL.md, and the studio export against the app's schema
+    pj = os.path.join(ROOT, "app-swift", "shared", "process.json")
+    skill_md = os.path.join(SK, "SKILL.md")
+    if os.path.exists(pj) and os.path.exists(skill_md):
+        import json
+        proc = json.load(open(pj))
+        gates, inside = [], False
+        for ln in open(skill_md, encoding="utf-8").read().splitlines():
+            if ln.startswith("| Step | Exit check"): inside = True; continue
+            if inside and ln.startswith("|---"): continue
+            if inside and ln.startswith("|"): gates.append(ln.split("|")[1].strip())
+            elif inside: break
+        steps = [x["gate"] for x in proc["steps"]]
+        miss = [g for g in gates if g not in steps]; extra = [g for g in steps if g not in gates]
+        ok("process.json has a step for every gate of SKILL.md (%d)" % len(gates)) if gates and not miss and not extra and steps == gates \
+            else bad("process.json out of step with the Gates table of SKILL.md: no step for %s, unknown %s, order %s" % (miss, extra, "same" if steps == gates else "differs"))
+        gk = [x["gateKey"] for x in proc["steps"] if x.get("gateKey")]
+        blocks = [b["id"] for b in proc["blocks"]]
+        wrong = [x["id"] for x in proc["steps"] if x["block"] not in blocks]
+        keys_ok = sorted(gk) == sorted(["interview", "assets", "style", "storyboard", "review", "build", "verify", "publish"])
+        ok("process.json: every step sits in a block, gate keys are the eight of showreel.json") if not wrong and keys_ok \
+            else bad("process.json: steps in unknown blocks %s; gate keys %s" % (wrong, sorted(gk)))
+        kit = os.path.join(sdir, "Sources", "ShowreelKit", "Process.swift")
+        if os.path.exists(kit):
+            ids = re.search(r"static let ids = \[([^\]]*)\]", open(kit).read())
+            swift_blocks = re.findall(r'"(\w+)"', ids.group(1)) if ids else []
+            ok("process.json blocks match the app's block list (%d)" % len(blocks)) if swift_blocks == blocks \
+                else bad("process.json blocks %s vs Blocks.ids %s" % (blocks, swift_blocks))
+    # the skill's export must keep matching what the app decodes: regenerate the fixture and compare
+    fx = os.path.join(ROOT, "app-swift", "Tests", "ShowreelKitTests", "Fixtures", "studio-export")
+    exp = os.path.join(SK, "scripts", "export_studio.py")
+    if os.path.isdir(fx) and os.path.exists(exp):
+        r = run(["python3", exp, os.path.join(fx, "export-sample"), "--facts", os.path.join(fx, "facts.json"), "--dry-run"])
+        want = open(os.path.join(fx, "showreel.json"), encoding="utf-8").read()
+        ok("export_studio.py output equals the committed fixture the app tests decode") if r.returncode == 0 and r.stdout == want \
+            else bad("export_studio.py output differs from Tests/ShowreelKitTests/Fixtures/studio-export/showreel.json: regenerate the fixture and run swift test")
     print("\n" + ("all checks passed" if not fails else f"{len(fails)} check(s) failed"))
     sys.exit(1 if fails else 0)
 

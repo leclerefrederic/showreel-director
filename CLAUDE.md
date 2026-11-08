@@ -41,7 +41,7 @@ The built `.app` must not depend on the repository: the skill, `shared/`, `setup
 
 ## Open work
 
-1. Studio v2 (`docs/studio-spec.md`): phase A is built (ShowreelKit library, project model, file editors, copilot panel). Next: phase B (step navigator with gates, `process.json` check, Brief form, Assets table, palette, fonts, look board). Stop after each phase for the owner to test.
+1. Studio v2 (`docs/studio-spec.md`): phases A and A2 are built (ShowreelKit library, project model, block shell, Project and Resources blocks, generated documents, typed copilot operations, `process.json`). Next: phase B (Look and technique block: palette, fonts, look board, background and effects pickers, `update_decision`; start with the engine preview spike). Stop after each phase for the owner to test.
 2. Warnings left: `isLoading` and `evaluateJavaScript` in `ChatModel`, `self` capture in `EnvModel`.
 3. Update `ROADMAP.md` when a limit is lifted.
 

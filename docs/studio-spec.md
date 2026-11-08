@@ -1,6 +1,6 @@
 # Showreel Studio v2: a workspace with a copilot
 
-Status: VALIDATED (revision 1 of 2026-11-09 awaiting validation: sections 5 and 10, source of truth in 5.1) by the owner on 2026-11-08 with the recommended choice for every point of section 11 (showreel.json plus markdown; copilot edits as proposals; one window per project; skill fully usable alone in Cowork; phases A to D in order). Build phase A first.
+Status: VALIDATED (revision 1 validated; revision 2 of 2026-11-09 awaiting validation: section 5.3 modes and role of the AI, phase A3) by the owner on 2026-11-08 with the recommended choice for every point of section 11 (showreel.json plus markdown; copilot edits as proposals; one window per project; skill fully usable alone in Cowork; phases A to D in order). Build phase A first.
 
 ## 1. Idea
 
@@ -114,7 +114,7 @@ Everything the user can edit in a block is stored as structured data in `showree
 
 The skill can export a chat-made project to the app: `scripts/export_studio.py <project> [--facts facts.json]` writes `showreel.json` from `brief.md`, `style-sheet.md`, the storyboard table and the manifest, with `origin.tool = "skill"` (see `references/studio-export.md`). The app owns the file once it saves it (`origin.tool = "studio"`) and the script then refuses to overwrite it. Schema contract shared by both sides (phase A2 implements it in `ShowreelFile`; `check.py` must verify that the script's output decodes):
 
-- `parameters`: `{audience, message, tone}` (free text, all optional).
+- `parameters`: `{audience, message, tone, constraints}` (free text, all optional; `constraints` was added by the app in A2).
 - `scenes`: an ordered array of `{id, start, end, text, texts{column: text}, visual, feeling, handoff, inCuts, extra{}, status (open|ok|modify|ditched), note}`. This replaces the phase A dictionary of review states; the app reads the old form too.
 - `gates` keys: `interview, assets, style, storyboard, review, build, verify, publish`, values `passed` or `open`.
 - `origin`: `{tool, exportedAt, files}`. Unknown keys must survive a load and save by the app (keep them in a catch-all), so a newer skill never loses data.
@@ -122,6 +122,29 @@ The skill can export a chat-made project to the app: `scripts/export_studio.py <
 ### 5.2 Copilot changes are readable
 
 Changes are typed operations shown as plain cards, not file diffs: "Set palette accent to #F2AA4C", "Rewrite text of S03: before / after", "Add scene S07 after S06", "Mark asset logo.svg approved". Each card has Accept and Refuse (and "apply directly" per project). Tools: `get_state`, `update_parameter`, `update_decision`, `update_scene`, `add_scene`, `update_asset`, `open_block`. `propose_edit(file, content)` remains for files the app does not model, shown as a diff only in Advanced.
+
+### 5.3 Modes, and the role of the AI (revision 2)
+
+Principle: a project can be made from start to finish by hand, without a key and without any AI call. The AI has two jobs that need it, and one optional helper job:
+
+| Role | AI needed | Examples |
+|---|---|---|
+| **Generation** | yes | write `main.js` from the storyboard and decisions, translate lines, draft a storyboard or a style line on request |
+| **Judgement** (verification) | optional, explicit button | consistency review, claims against sources, brand rules, "does this storyboard match the brief" |
+| **Copilot** | optional | answer questions, suggest values, change things on request |
+
+Everything deterministic runs natively with no AI: feasibility numbers, the readability budget per scene, `organize_assets.py --check`-style asset rules, the release gate list, gate status, the harness, the player smoke test, contact sheets. These are the "checks" the user sees as green or red in every block.
+
+**Two modes per project** (a switch in the toolbar, stored in `.studio/ui.json`, new projects start in Beginner):
+
+- **Beginner (wizard).** A guided path through the same blocks in the order of the process: one question or choice per screen, the interview's question as the title, short help, a "Next" button, "Decide later" on every step, a progress bar and a summary at the end of each block. Choices are offered as options with a recommended one, never recorded unless the user picks (the skill's rule: nothing pre-accepted). Each step has an optional "Suggest with AI" button; without a key the button explains how to connect one and the wizard continues by hand. The wizard writes the same data as the blocks: no separate model.
+- **Expert.** The sidebar of blocks with free navigation, all fields at once, the copilot panel open, Advanced files available.
+
+Switching mode never loses data; the wizard resumes at the first undecided step.
+
+**No forced AI between steps.** No block waits for an AI answer to continue. The app starts and works without a key (Settings is not shown at launch; the copilot panel offers "Connect AI"). The only step that needs generation is Build: until a key is present, the Build block explains that and keeps everything else usable (a project can be built later, or on another machine).
+
+`process.json` gets an `ai` field per block: `none`, `optional` or `required`; `check.py` verifies that every block has it and that only Build (generation) is `required`.
 
 ## 6. Embedded engine
 
@@ -156,6 +179,7 @@ Library file with paths, last opened, pinned. One agent and one chat history per
 |---|---|---|
 | A (built) | ShowreelKit library, project model, library window, file editors, history, copilot panel with diffs | done; file tree and editors move to Advanced in A2 |
 | A2 | App shell with the sidebar of blocks and statuses; Project block (parameters form); Resources block (drag and drop, statuses, MANIFEST.csv); file tree and editors hidden behind Advanced; typed copilot operations (`get_state`, `update_parameter`, `update_asset`, `open_block`) with readable cards; markdown regenerated from `showreel.json`; `process.json` and its check | A project can be created, parameterised and fed with resources without seeing a file |
+| A3 | Mode switch (Beginner wizard, Expert), wizard framework with Project and Resources steps (later blocks plug in as they are built), "Decide later", progress; the app runs without a key (no Settings at launch, copilot shows "Connect AI"); native deterministic checks per block (feasibility, readability budget, asset rules, gate status) with green/red display; `ai` field in `process.json` and its check | A project can be parameterised and fed with resources through the wizard with no key configured |
 | B | Look and technique block: palette, fonts, look board, background and effects pickers (engine preview spike first) | A validated look without a chat message |
 | C | Storyboard timeline and Scene editor with live preview, scene review and the explicit Go | Storyboard validated and Go given from the app |
 | D | Build and preview, Deliver, release gate | A full reel built, checked and exported from the app |

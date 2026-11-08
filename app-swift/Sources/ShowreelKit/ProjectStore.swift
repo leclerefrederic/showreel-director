@@ -55,7 +55,7 @@ public final class ProjectStore {
 
     /// Writes a text file. The previous content is saved in the history first; a write that changes nothing is skipped.
     @discardableResult
-    public func write(_ path: String, _ content: String, source: WriteSource = .user) throws -> String {
+    public func write(_ path: String, _ content: String, source: WriteSource = .user, syncDocs: Bool = true) throws -> String {
         let u = try resolve(path)
         guard let rel = relativePath(of: u) else { throw AgentError.msg("refused: writes stay inside the project folder") }
         guard !isPrivate(rel) else { throw AgentError.msg("refused: .studio is private to the app") }
@@ -64,7 +64,8 @@ public final class ProjectStore {
         if let p = previous { try snapshot(rel, content: p) }
         try fm.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true)
         try content.write(to: u, atomically: true, encoding: .utf8)
-        if rel == ShowreelFile.fileName { try? syncDecisions() }
+        // the documents the app generates follow showreel.json and the manifest; a file changed outside the app is never overwritten
+        if syncDocs, rel == ShowreelFile.fileName || rel == Assets.manifestPath { DocSync.sync(self) }
         return rel
     }
 
@@ -131,9 +132,16 @@ public final class ProjectStore {
 
     // MARK: showreel.json
 
+    /// nil when there is no showreel.json or it cannot be read; see `showreelProblem` to tell the two apart.
     public func loadShowreel() -> ShowreelFile? {
         guard let t = read(ShowreelFile.fileName) else { return nil }
         return try? ShowreelFile.decode(t)
+    }
+
+    /// Why an existing showreel.json cannot be read, or nil when it is fine or absent. An unreadable file is never replaced.
+    public var showreelProblem: String? {
+        guard let t = read(ShowreelFile.fileName) else { return hasShowreel ? "showreel.json is not a text file" : nil }
+        do { _ = try ShowreelFile.decode(t); return nil } catch { return "showreel.json cannot be read: \(error.localizedDescription)" }
     }
 
     public var hasShowreel: Bool { fm.fileExists(atPath: root.appendingPathComponent(ShowreelFile.fileName).path) }
@@ -147,15 +155,13 @@ public final class ProjectStore {
         return f
     }
 
+    /// Saves showreel.json. From the first save the app owns the file: `origin.tool` becomes "studio" (the skill's export then refuses
+    /// to overwrite it). The generated documents follow.
     public func save(_ f: ShowreelFile) throws {
-        try write(ShowreelFile.fileName, try f.encoded(), source: .user)
-    }
-
-    /// Rewrites the generated Decisions section of brief.md so that it matches showreel.json. Creates brief.md when absent.
-    public func syncDecisions() throws {
-        guard let f = loadShowreel() else { return }
-        let brief = read("brief.md") ?? ""
-        let next = f.applyDecisionsSection(to: brief)
-        if next != brief { try write("brief.md", next, source: .user) }
+        var g = f
+        var o = g.origin ?? ShowreelFile.Origin()
+        o.tool = "studio"
+        g.origin = o
+        try write(ShowreelFile.fileName, try g.encoded(), source: .user)
     }
 }

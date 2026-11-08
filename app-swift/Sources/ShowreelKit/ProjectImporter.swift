@@ -73,10 +73,19 @@ public enum ProjectImporter {
         let store = ProjectStore(root: root)
         let brief = store.read("brief.md") ?? ""
         let style = store.read("style-sheet.md") ?? ""
-        var file = ShowreelFile(name: root.lastPathComponent)
-        var found: [String] = [], sources: [String] = []
-        if !brief.isEmpty { sources.append("brief.md") }
-        if !style.isEmpty { sources.append("style-sheet.md") }
+        var r = readResult(brief: brief, style: style, name: root.lastPathComponent)
+        if !brief.isEmpty { r.sources.append("brief.md") }
+        if !style.isEmpty { r.sources.append("style-sheet.md") }
+        return r
+    }
+
+    /// What the colours, fonts, languages and duration of a brief and a style sheet say, as a showreel.
+    static func read(brief: String, style: String, name: String) -> ShowreelFile { readResult(brief: brief, style: style, name: name).file }
+
+    static func readResult(brief: String, style: String, name: String) -> ImportResult {
+        var file = ShowreelFile(name: name)
+        var found: [String] = []
+        let sources: [String] = []
 
         // Colours: the Look and motion section of the brief first, then the style sheet.
         let look = section(brief, titled: "look") ?? ""

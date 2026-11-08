@@ -24,6 +24,7 @@ final class EditorTab: ObservableObject, Identifiable {
 }
 
 enum CenterTab: Hashable {
+    case block(String)
     case preview
     case file(String)
 }
@@ -34,8 +35,13 @@ final class ProjectModel: ObservableObject {
     let store: ProjectStore
     @Published var tree: [FileNode] = []
     @Published var tabs: [EditorTab] = []
-    @Published var selected: CenterTab = .preview
+    @Published var selected: CenterTab = .block("project")
     @Published var showreel: ShowreelFile?
+    @Published var assets: [AssetRow] = []
+    @Published var docIssues: [DocReport] = []
+    @Published var reimport: (proposed: ShowreelFile, changes: [Change], files: [String])?
+    private var dismissedDocs: Set<String> = []
+    let spec = ProcessSpec.load()
     @Published var importOffer: ImportResult?
     @Published var historyFor: EditorTab?
     @Published var error: String?
@@ -56,17 +62,85 @@ final class ProjectModel: ObservableObject {
     /// Loads the project, offers to create or import `showreel.json`, and starts watching the folder.
     func start() {
         reloadTree()
-        loadShowreel()
-        if showreel == nil { importOffer = ProjectImporter.importMarkdown(from: root) }
+        if let problem = store.showreelProblem {
+            error = problem + ". The file was left as it is."      // an unreadable showreel.json is never replaced
+        } else if store.hasShowreel {
+            refresh()                                                // showreel.json exists: it is the source, the regex importer stays out
+        } else {
+            importOffer = ProjectImporter.importMarkdown(from: root)
+        }
         LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step)
         watcher = FileWatcher(root: root) { [weak self] paths in self?.filesChanged(paths) }
     }
 
-    func loadShowreel() {
+    /// Reads showreel.json, the manifest and the state of the generated documents again.
+    func refresh() {
         showreel = store.loadShowreel()
+        assets = Assets.load(store)
+        docIssues = DocSync.pending(store).filter { !dismissedDocs.contains($0.file) }
+    }
+
+    func loadShowreel() { refresh() }
+
+    // MARK: operations (the blocks and the copilot use the same ones)
+
+    /// Applies a change the user made in a block. Errors are shown, never swallowed.
+    @discardableResult
+    func perform(_ op: ProjectOperation) -> Bool {
+        do { try store.apply(op); refresh(); LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step); return true }
+        catch { self.error = error.localizedDescription; refresh(); return false }
+    }
+
+    func addAssets(_ urls: [URL]) {
+        do { try Assets.add(urls, to: store); refresh(); reloadTree() } catch { self.error = error.localizedDescription }
+    }
+
+    func status(_ block: String) -> BlockStatus {
+        guard let spec = spec else { return .soon }
+        return Blocks.status(block, spec: spec, showreel: showreel, assets: assets)
+    }
+
+    // MARK: generated documents
+
+    static func friendly(_ file: String) -> String {
+        switch file {
+        case "brief.md": return "the brief"
+        case "style-sheet.md": return "the style sheet"
+        case "storyboard.md": return "the storyboard"
+        default: return file
+        }
+    }
+
+    /// Reads the changed documents back into a proposal the user reviews. Nothing is saved yet.
+    func reviewReimport() {
+        let files = docIssues.map { $0.file }
+        guard let r = DocSync.reimport(store, files: files) else { return }
+        reimport = (r.proposed, r.changes, files)
+    }
+
+    func acceptReimport() {
+        guard let r = reimport else { return }
+        do { try DocSync.acceptReimport(store, files: r.files, proposed: r.proposed); reimport = nil; refresh() }
+        catch { self.error = error.localizedDescription }
+    }
+
+    /// The user chose the app's version: the documents are rewritten, the old content stays in the history.
+    func replaceDocs() {
+        for d in docIssues { try? DocSync.overwrite(store, d.file) }
+        reimport = nil; refresh(); reloadTree()
+    }
+
+    func leaveDocs() {
+        dismissedDocs.formUnion(docIssues.map { $0.file })
+        reimport = nil; refresh()
     }
 
     func reloadTree() { tree = ProjectTree.scan(root) }
+
+    /// The last block the user was in, for the way back from a file in the Advanced panel.
+    private(set) var lastBlock = "project"
+
+    func selectBlock(_ id: String) { lastBlock = id; selected = .block(id) }
 
     // MARK: import
 
@@ -111,7 +185,7 @@ final class ProjectModel: ObservableObject {
 
     func close(_ tab: EditorTab) {
         tabs.removeAll { $0.id == tab.id }
-        if selected == .file(tab.path) { selected = tabs.last.map { .file($0.path) } ?? .preview }
+        if selected == .file(tab.path) { selected = tabs.last.map { .file($0.path) } ?? .block("project") }
     }
 
     func tab(_ id: String) -> EditorTab? { tabs.first { $0.id == id } }
@@ -122,13 +196,18 @@ final class ProjectModel: ObservableObject {
         return nil
     }
 
+    var foregroundBlock: String? {
+        if case .block(let b) = selected { return b }
+        return nil
+    }
+
     // MARK: save, reload, restore
 
     func save(_ tab: EditorTab) {
         do {
             try store.write(tab.path, tab.text, source: .user)
             tab.markSaved(tab.text)
-            if tab.path == ShowreelFile.fileName { loadShowreel(); refreshTab("brief.md") }
+            refresh(); if tab.path == ShowreelFile.fileName { refreshTab("brief.md") }
             reloadTree()
         } catch { self.error = error.localizedDescription }
     }
@@ -141,7 +220,7 @@ final class ProjectModel: ObservableObject {
         do {
             try store.restore(tab.path, s)
             reloadFromDisk(tab)
-            if tab.path == ShowreelFile.fileName { loadShowreel() }
+            refresh()
         } catch { self.error = error.localizedDescription }
     }
 
@@ -153,8 +232,10 @@ final class ProjectModel: ObservableObject {
     /// The watcher saw these files change (the user, the copilot, a script).
     private func filesChanged(_ paths: [String]) {
         reloadTree()
+        let before = dismissedDocs
+        dismissedDocs.subtract(paths)                      // a file edited again asks again
+        if paths.contains(where: { $0 == ShowreelFile.fileName || $0 == Assets.manifestPath || ProjectDocs.files.contains($0) }) || before != dismissedDocs { refresh() }
         for p in paths {
-            if p == ShowreelFile.fileName { loadShowreel() }
             guard let t = tab(p) else { continue }
             guard let disk = store.read(p) else { continue }
             if disk == t.saved { continue }          // our own save
@@ -167,6 +248,7 @@ final class ProjectModel: ObservableObject {
     /// One line sent with every message: step, open gates, file in front of the user.
     var contextLine: String {
         var parts: [String] = []
+        if case .block(let b) = selected { parts.append("block in front of the user: \(b)") }
         if let s = showreel {
             parts.append("step: \(s.step)")
             let open = s.gates.filter { $0.value != "passed" }.keys.sorted()

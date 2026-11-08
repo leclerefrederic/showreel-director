@@ -9,6 +9,10 @@ final class AppSettings: ObservableObject {
     /// Bumps when the settings change, so each window rebuilds its agent at the next message.
     @Published private(set) var generation = 0
     private let defaults = UserDefaults.standard
+    /// The Advanced panel (file tree and editors) is off until the user turns it on.
+    @Published var advanced = UserDefaults.standard.bool(forKey: "advancedPanel") {
+        didSet { UserDefaults.standard.set(advanced, forKey: "advancedPanel") }
+    }
     private var cachedKey: String? // the Keychain is read once per launch, at the first message
 
     var modelName: String { defaults.string(forKey: "model") ?? "claude-sonnet-5-5" }

@@ -80,6 +80,23 @@ public final class Tools {
             return await getState()
         case "propose_edit":
             return await proposeEdit(input["file"] as? String ?? "", input["content"] as? String ?? "", input["note"] as? String ?? "")
+        case "update_parameter":
+            guard let key = ParameterKey(rawValue: input["key"] as? String ?? "") else {
+                return "unknown parameter: use one of " + ParameterKey.allCases.map { $0.rawValue }.joined(separator: ", ")
+            }
+            return await operate(.parameter(key, input["value"] as? String ?? ""))
+        case "update_asset":
+            let st = (input["status"] as? String).flatMap { AssetStatus(rawValue: $0) }
+            if input["status"] is String, st == nil { return "unknown status: use " + AssetStatus.allCases.map { $0.rawValue }.joined(separator: ", ") }
+            return await operate(.asset(id: input["id"] as? String ?? "", status: st, note: input["note"] as? String,
+                                        licence: input["licence_note"] as? String, scenes: input["scenes"] as? String))
+        case "open_block":
+            let id = input["block"] as? String ?? ""
+            guard let spec = ProcessSpec.load(), let b = spec.block(id) else { return "unknown block: use one of " + Blocks.ids.joined(separator: ", ") }
+            guard b.built else { return "the \(b.name) block is not built yet (coming in phase \(b.phase ?? "later")): say so to the user and carry on in the chat" }
+            await ui.openBlock(id)
+            return "opened the \(b.name) block"
+
         case "list_dir":
             return listDir(input["path"] as? String ?? "")
         case "ask_user":
@@ -119,6 +136,7 @@ public final class Tools {
         let f = abs(p)
         guard f.isInside(project), let rel = store.relativePath(of: f) else { return "refused: writes stay inside the project folder" }
         guard !store.isPrivate(rel) else { return "refused: .studio is private to the app" }
+        if let why = modeledFile(rel) { return why }
         let exists = FileManager.default.fileExists(atPath: f.path)
         let reviewed = Tools.reviewedExtensions.contains((rel as NSString).pathExtension.lowercased())
         if exists && reviewed { return await proposeEdit(rel, content, "") }
@@ -137,6 +155,7 @@ public final class Tools {
         let f = abs(p)
         guard f.isInside(project), let rel = store.relativePath(of: f), !rel.isEmpty else { return "refused: edits stay inside the project folder" }
         guard !store.isPrivate(rel) else { return "refused: .studio is private to the app" }
+        if let why = modeledFile(rel) { return why }
         let original = store.read(rel)
         if original == content { return "no change: \(rel) already has this content" }
         if store.settings.applyDirectly { return commit(rel, content).replacingOccurrences(of: "wrote", with: "applied directly (the user chose this for the project):") }
@@ -148,6 +167,27 @@ public final class Tools {
         return commit(rel, content).replacingOccurrences(of: "wrote", with: "accepted and applied:")
     }
 
+    /// showreel.json and the manifest hold the project's data: they change through typed operations, which the user can read.
+    private func modeledFile(_ rel: String) -> String? {
+        if rel == ShowreelFile.fileName {
+            return "refused: showreel.json changes through update_parameter (and the app's blocks), not through file writes"
+        }
+        if rel == Assets.manifestPath { return "refused: the asset manifest changes through update_asset, not through file writes" }
+        return nil
+    }
+
+    /// A typed change: shown as a card, applied only if the user accepts (or chose apply-directly) and the project did not change meanwhile.
+    private func operate(_ op: ProjectOperation) async -> String {
+        let card: OperationCard
+        do { card = try store.plan(op) } catch { return "refused: \(error.localizedDescription)" }
+        let summary = card.title + ": " + card.changes.map { "\($0.label) \($0.before) -> \($0.after)" }.joined(separator: "; ")
+        if store.settings.applyDirectly {
+            do { try store.apply(op); return "applied directly (the user chose this for the project): \(summary)" } catch { return "error: \(error.localizedDescription)" }
+        }
+        guard await ui.proposeOperation(card) else { return "refused by the user: \(card.title) was not applied. Ask what they want instead." }
+        do { try store.apply(op, expecting: card); return "accepted and applied: \(summary)" } catch { return error.localizedDescription }
+    }
+
     private func getState() async -> String {
         var state: [String: Any] = ["project": project.path, "applyDirectly": store.settings.applyDirectly]
         if let t = store.read(ShowreelFile.fileName), let o = try? JSONSerialization.jsonObject(with: Data(t.utf8)) {
@@ -157,6 +197,13 @@ public final class Tools {
             state["note"] = "no readable showreel.json yet: the project has only what is in its files"
         }
         if let fg = await ui.foregroundFile() { state["foregroundFile"] = fg }
+        if let b = await ui.foregroundBlock() { state["foregroundBlock"] = b }
+        let assets = Assets.load(store)
+        state["assets"] = assets.map { ["id": $0.id, "name": $0.name, "type": $0.type, "status": $0.status, "scenes": $0.scene, "note": $0.notes, "licenceNote": $0.licenceNote] }
+        if let spec = ProcessSpec.load() {
+            let f = store.loadShowreel()
+            state["blocks"] = spec.blocks.map { ["id": $0.id, "name": $0.name, "status": Blocks.status($0.id, spec: spec, showreel: f, assets: assets).rawValue] }
+        }
         let top = (try? FileManager.default.contentsOfDirectory(atPath: project.path)) ?? []
         state["files"] = top.filter { !$0.hasPrefix(".") }.sorted()
         let o = (try? JSONSerialization.data(withJSONObject: state, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])) ?? Data("{}".utf8)

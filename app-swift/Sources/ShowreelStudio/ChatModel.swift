@@ -33,8 +33,13 @@ struct ProposalState {
     var status: Status = .pending
 }
 
+struct OperationState {
+    let card: OperationCard
+    var status: ProposalState.Status = .pending
+}
+
 struct ChatItem: Identifiable {
-    enum Kind { case user, assistant, steps, question, notice, proposal }
+    enum Kind { case user, assistant, steps, question, notice, proposal, operation }
     let id = UUID()
     var kind: Kind
     var text = ""
@@ -42,6 +47,7 @@ struct ChatItem: Identifiable {
     var questions: [ChoiceQuestion] = []
     var answers: [String]? = nil
     var proposal: ProposalState? = nil
+    var operation: OperationState? = nil
 }
 
 /// The copilot of one project window: chat items, the agent, the preview pane's state.
@@ -67,6 +73,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     private var agentGeneration = -1
     private var pending: CheckedContinuation<[String], Never>?
     private var pendingProposals: [UUID: CheckedContinuation<Bool, Never>] = [:]
+    private var pendingOperations: [UUID: CheckedContinuation<Bool, Never>] = [:]
     private var assistantIdx: Int?
     private var stepsIdx: Int?
 
@@ -159,6 +166,13 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     private func resolveAllProposals(_ accept: Bool) {
         for id in Array(pendingProposals.keys) { resolveProposal(id, accept: accept) }
+        for id in Array(pendingOperations.keys) { resolveOperation(id, accept: accept) }
+    }
+
+    func resolveOperation(_ itemID: UUID, accept: Bool) {
+        if let i = items.firstIndex(where: { $0.id == itemID }) { items[i].operation?.status = accept ? .accepted : .refused }
+        pendingOperations.removeValue(forKey: itemID)?.resume(returning: accept)
+        scrollTick += 1
     }
 
     private func notice(_ t: String) {
@@ -218,6 +232,23 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     }
 
     func foregroundFile() async -> String? { await onMain { self.project.foreground } }
+    func foregroundBlock() async -> String? { await onMain { self.project.foregroundBlock } }
+
+    func openBlock(_ id: String) async {
+        await onMain { self.project.selectBlock(id) }
+    }
+
+    func proposeOperation(_ card: OperationCard) async -> Bool {
+        await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
+            DispatchQueue.main.async {
+                self.stepsIdx = nil; self.flushAssistant()
+                let item = ChatItem(kind: .operation, operation: OperationState(card: card))
+                self.items.append(item)
+                self.pendingOperations[item.id] = c
+                self.scrollTick += 1
+            }
+        }
+    }
 
     func propose(_ p: Proposal) async -> Bool {
         await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
