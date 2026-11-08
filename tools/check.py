@@ -25,9 +25,19 @@ def main():
         print("regenerated effects index and sample lab")
     # frontmatter
     s = open(os.path.join(SK, "SKILL.md"), encoding="utf-8").read()
-    m = re.match(r"---\nname: \"?([\w-]+)\"?\ndescription: \"(.+)\"\n---\n", s, re.S)
+    m = re.match(r"---\nname: \"?([\w-]+)\"?\ndescription: \"(.+?)\"\nmetadata:\n  version: \"(\d+\.\d+\.\d+)\"\n---\n", s, re.S)
     if m and m.group(1) == package.SKILL and 100 < len(m.group(2)) <= 1024: ok("SKILL.md frontmatter (description %d of 1024 characters)" % len(m.group(2)))
-    else: bad("SKILL.md frontmatter (name must be showreel-director, description present and at most 1024 characters)")
+    else: bad("SKILL.md frontmatter (name must be showreel-director, description present and at most 1024 characters, then metadata: version: \"X.Y.Z\")")
+    # version, changelog, released fingerprint (tools/bump.py ships a release)
+    if m:
+        import skill_hash, json as _jv
+        ver = m.group(3); cl = open(os.path.join(package.ROOT, "CHANGELOG.md"), encoding="utf-8").read() if os.path.exists(os.path.join(package.ROOT, "CHANGELOG.md")) else ""
+        top = re.search(r"^## (\d+\.\d+\.\d+)", cl, re.M)
+        rp = os.path.join(package.ROOT, "tools", "released.json"); rel = _jv.load(open(rp)) if os.path.exists(rp) else {}
+        if not top or top.group(1) != ver: bad("CHANGELOG.md: the first entry must be ## %s (run tools/bump.py)" % ver)
+        elif rel.get("version") != ver: bad("tools/released.json does not match version %s (run tools/bump.py)" % ver)
+        elif rel.get("fingerprint") != skill_hash.fingerprint(): print("  WARN skill changed since %s was released: run tools/bump.py when you ship it" % ver)
+        else: ok("version %s: changelog and release record match the skill" % ver)
     # files named in SKILL.md
     names = set(re.findall(r"`((?:references|engine|scripts|demo)/[\w./-]+)`", s))
     missing = sorted(n for n in names if not os.path.exists(os.path.join(SK, n)) and "<" not in n and "*" not in n and not n.startswith("demo/"))  # demo/ is optional, outside the package
@@ -167,6 +177,15 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     if os.path.exists(sb):
         r3 = run([sys.executable, os.path.join(SK, "scripts", "build_scene_cards.py"), sb, "--out", os.path.join(td, "c.html")])
         ok("scene cards build from the eval storyboard") if r3.returncode == 0 else bad("scene cards failed on the eval storyboard: " + r3.stderr[-200:])
+    if os.path.exists(sb):
+        ep = os.path.join(td, "expproj"); os.makedirs(ep); _sh.copy(sb, os.path.join(ep, "storyboard.md"))
+        open(os.path.join(ep, "brief.md"), "w").write("# Brief\n\n## Look and motion\nPalette: #101820, #F2AA4C, #FFFFFF\nReel languages: English, French\n")
+        re1 = run([sys.executable, os.path.join(SK, "scripts", "export_studio.py"), ep]); ej = os.path.join(ep, "showreel.json")
+        try:
+            d = _json.load(open(ej, encoding="utf-8")); good = d["schema"] == 1 and len(d["scenes"]) >= 5 and all(s["id"].startswith("S") for s in d["scenes"]) and d["decisions"]["palette"][0] == "#101820" and d["reelLanguages"] == ["en", "fr"]
+        except Exception: good = False
+        d["origin"]["tool"] = "studio"; _json.dump(d, open(ej, "w", encoding="utf-8")); re2 = run([sys.executable, os.path.join(SK, "scripts", "export_studio.py"), ep])
+        ok("studio export: showreel.json from brief and storyboard, app-written file protected") if re1.returncode == 0 and good and re2.returncode != 0 else bad("studio export self-test failed: " + (re1.stdout + re1.stderr)[-300:])
     # syntax
     for f in package.skill_files():
         if f.endswith(".py"):
@@ -219,7 +238,7 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     sdir = os.path.join(ROOT, "app-swift")
     if os.path.isdir(sdir):
         import json
-        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "Agent.swift", "Tools.swift")]
+        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "EditorViews.swift", "LibraryView.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift")]
         gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
         ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
         capf = os.path.join(sdir, "shared", "capabilities.json")
@@ -264,9 +283,9 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
             sized = good and all(entries.get(k) == (v, v) for k, v in want.items())
             ok("app icon .icns is complete (%d sizes)" % len(want)) if sized else bad("Icon/AppIcon.icns is not a valid icon with all sizes (run python3 tools/make_icon.py)")
         else: bad("app-swift/Icon/AppIcon.icns missing (run python3 tools/make_icon.py)")
-        import skill_hash
+        import skill_hash, json as _jv
         ok("skill fingerprint is stable (" + skill_hash.fingerprint() + ")") if skill_hash.fingerprint() == skill_hash.fingerprint() else bad("skill fingerprint not deterministic")
-        sw = os.path.join(sdir, "Sources", "ShowreelStudio", "Tools.swift")
+        sw = os.path.join(sdir, "Sources", "ShowreelKit", "Tools.swift")
         tj = os.path.join(sdir, "shared", "tools.json")
         if os.path.exists(sw) and os.path.exists(tj):
             names = [d["name"] for d in json.load(open(tj))]

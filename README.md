@@ -26,6 +26,7 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 - `tools/` repo tooling (`package.py`, `check.py`), `.github/workflows/check.yml`
 - `demo/` demo reel (HTML) and its notes, kept outside the packaged skill
 - `ROADMAP.md` ideas on hold
+- `CHANGELOG.md` and `tools/bump.py`: skill versions (ship with `python3 tools/bump.py patch|minor|major "note"`)
 - `showreel-director.skill` packaged skill (zip of the folder, `evals/` excluded)
 - `showreel-director/engine/effects-lab-sample.html` neutral effects lab, open it in a browser
 

@@ -17,6 +17,11 @@
    "via": "show_page opens an HTML or video file of the project or the skill in the preview pane"
   },
   {
+   "need": "Let the user read and edit the project files next to the assistant",
+   "provided": true,
+   "via": "a file tree with editors (markdown, JSON, CSV) and a per-file history sit beside the chat; get_state reads the project's state and propose_edit offers a change as a diff the user accepts or refuses"
+  },
+  {
    "need": "Look at the result (contact sheets)",
    "provided": true,
    "via": "screenshot_preview captures the preview pane (a page, a contact sheet or the reel, after show_page) as an image the model can look at"

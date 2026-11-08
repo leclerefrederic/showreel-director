@@ -10,6 +10,8 @@ python3 tools/check.py || status=1
 if [ "$(uname)" = "Darwin" ] && [ -d app-swift ]; then
   step "swift build (app-swift)"
   swift build --package-path app-swift --scratch-path "$HOME/Library/Developer/ShowreelStudio/build" || status=1
+  step "swift test (ShowreelKit: parsers, project model, history, tools, agent loop)"
+  swift test --package-path app-swift --scratch-path "$HOME/Library/Developer/ShowreelStudio/build" || status=1
   if grep -rq -- "--selftest" app-swift/Sources 2>/dev/null; then
     step "swift app self-test"
     bin=$(swift build --package-path app-swift --scratch-path "$HOME/Library/Developer/ShowreelStudio/build" --show-bin-path 2>/dev/null)/ShowreelStudio

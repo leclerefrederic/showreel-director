@@ -20,7 +20,7 @@ struct SettingsView: View {
                     TextField("Model", text: $modelName)
                 }
                 Section("Skill") {
-                    LabeledContent("Version", value: Skill.fingerprint())
+                    LabeledContent("Version", value: (Skill.version().map { $0 + " " } ?? "") + "(" + Skill.fingerprint() + ")")
                 }
                 Section {
                     Text("The key is stored in the macOS Keychain, never in a file. The base URL has no /v1/messages at the end.")

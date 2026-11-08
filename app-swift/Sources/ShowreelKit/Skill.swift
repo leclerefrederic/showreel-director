@@ -20,6 +20,13 @@ public enum Skill {
         return t.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Version of the skill (metadata.version in SKILL.md), or nil when it cannot be read.
+    public static func version() -> String? {
+        guard let r = root(), let s = try? String(contentsOf: r.appendingPathComponent("SKILL.md"), encoding: .utf8),
+              let m = s.range(of: #"version: "(\d+\.\d+\.\d+)""#, options: .regularExpression) else { return nil }
+        return String(s[m]).replacingOccurrences(of: "version: ", with: "").replacingOccurrences(of: "\"", with: "")
+    }
+
     /// The capabilities of this app against the skill's portability table (app-swift/shared/capabilities.json).
     public static func capabilitiesText() -> String {
         guard let u = resource("shared", dev: "app-swift/shared")?.appendingPathComponent("capabilities.json"),

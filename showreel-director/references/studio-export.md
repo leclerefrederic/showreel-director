@@ -1,0 +1,7 @@
+# Export to Showreel Studio
+
+Showreel Studio is a Mac app that drives the same method with native screens. A project made in a chat can be opened there: run `python3 scripts/export_studio.py <project>` and tell the user to open the project folder in the app. Offer it once, after the storyboard is validated or whenever the user asks; never as a requirement.
+
+The script reads `brief.md`, `style-sheet.md`, the first table of `storyboard.md`, `assets/MANIFEST.csv` and `analysis/beats.json`, and writes `showreel.json`. It reads colours, fonts, languages, duration and the scene table itself. Pass what files cannot say reliably with `--facts facts.json` (only the keys you know, same shape as the output): `parameters` (audience, message, tone), `decisions` (fonts, formats, background `{id, mood}`, moods, effectsPack, track `{file, bpm}`), `gates` (`interview`, `assets`, `style`, `storyboard`, `review`, `build`, `verify`, `publish`: `passed` or `open`) and `conversationLanguage`. Say which of these come from the user's decisions and which are assumptions; export only what was decided. Report what the script says it did not find.
+
+Rules: the script never touches the other files, and never overwrites a `showreel.json` written by the app (`origin.tool` is `studio`): in that case the app is the source and the chat reads the generated Decisions section of `brief.md`. Scene IDs are copied as they are (stable, never renumbered). Personal data stays out of `facts.json`, as everywhere else. Do not edit `showreel.json` by hand in a chat session.

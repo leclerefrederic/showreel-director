@@ -1,6 +1,6 @@
 # Showreel Studio v2: a workspace with a copilot
 
-Status: VALIDATED by the owner on 2026-11-08 with the recommended choice for every point of section 11 (showreel.json plus markdown; copilot edits as proposals; one window per project; skill fully usable alone in Cowork; phases A to D in order). Build phase A first.
+Status: VALIDATED (revision 1 of 2026-11-09 awaiting validation: sections 5 and 10, source of truth in 5.1) by the owner on 2026-11-08 with the recommended choice for every point of section 11 (showreel.json plus markdown; copilot edits as proposals; one window per project; skill fully usable alone in Cowork; phases A to D in order). Build phase A first.
 
 ## 1. Idea
 
@@ -82,34 +82,46 @@ Rules:
 
 `tools/check.py` fails when a gate named in the `Gates` table of `SKILL.md` has no step here, or the reverse, the same way it checks `capabilities.json`. A new capability, "The app drives the process with native screens", is added to `portability.md` and `capabilities.json`, so the skill knows that "pages the user operates" are screens in this mode.
 
-## 5. Screens
+## 5. Screens (revision 1: functional blocks, no files)
 
-One window per project (`WindowGroup(for: ProjectID)`), plus the project library window.
+Principle: the user works with the film, never with files. Markdown, JSON and CSV are the assistant's working material. They stay in the project folder but are not shown in the interface, except in an "Advanced" panel (off by default) for debugging, and "Show in Finder".
 
-```
-+-----------------------------------------------------------------------------+
-| Library | name of the project                          [Run checks] [Deliver] |
-+-----------+-----------------------------------------------+-----------------+
-| STEPS     |                                               |  COPILOT        |
-| o Start   |   screen of the selected step, or a file      |  chat           |
-| o Brief   |   editor in a tab                             |  proposals      |
-| o Assets  |                                               |  (accept /      |
-| > Look    |   (palette, fonts, backgrounds, effects,      |   refuse)       |
-| o Story   |    storyboard cards, preview, player)         |                 |
-| FILES     |                                               |  [ message... ] |
-| tree...   |                                               |                 |
-+-----------+-----------------------------------------------+-----------------+
-```
+Window per project. Left sidebar = the functional blocks, in the order of the process, each with a status (to do, in progress, validated):
 
-- **Library:** list of projects with last opened date and step; New project (name, folder, languages), Open folder, Duplicate as new version, Archive. Stored in `~/Library/Application Support/ShowreelStudio/projects.json`.
-- **Brief:** a form per brief section (mission, message, emotion, story, look, sound, delivery); each field has the interview's question as its help text; an inline feasibility result from `scripts/feasibility.py`.
-- **Assets:** table of `MANIFEST.csv` (status, licence note, scene), approve, exclude, hold with a required note, drop files in; replaces the organiser's decision sheet.
-- **Look:** look board (three design packages), palette editor (colour wells, contrast check), font picker (native, `fonts-free.json`, bundled previews registered with CoreText so samples are real `Text`), background picker and effects picker (use the embedded engine, section 6). Every choice writes to `showreel.json`.
-- **Storyboard:** the table from `storyboard.md` as editable scene cards (text, timing, feeling, effects); reordering changes time order, never an ID; "Next version" archives the file to `archive/`.
-- **Scene review:** OK / MODIFY / DITCH on each card, notes, the global pass, an explicit Go button (the skill's rule: its own explicit step).
-- **Build and Verify:** buttons that run `build.py`, `harness.js`, `smoke_player.js`, show issues and contact sheets, play the reel in the embedded player, take stills.
-- **Deliver:** HTML, MP4, cuts, languages; the release gate list with Resolve or Waive and a required note.
-- **Files:** a tree of the whole project folder; text files open in an editor tab (markdown with preview, JSON, CSV as a table); binary files open with the system viewer.
+| Block | What the user does | Stored in |
+|---|---|---|
+| **Project** | Name, audience, message, languages, formats, duration, tone, sound choice, constraints. Form with the interview's questions as help text, feasibility result shown inline. | `showreel.json` (`parameters`) |
+| **Look and technique** | Palette (colour wells, contrast check), fonts (real specimens), background, motion mood, effects pack, music and beat grid. Native pickers with live thumbnails from the engine. | `showreel.json` (`decisions`) |
+| **Resources** | All attached assets as a grid or list: drag and drop files in, status (approved, excluded, hold + note), licence note, which scenes use it, replace, remove. | `assets/` + `MANIFEST.csv` |
+| **Storyboard** | The film as a timeline of scenes: add, reorder, split, ditch; text, timing, feeling; gate "Storyboard validated". | `showreel.json` (`scenes`) |
+| **Scene editor** | One scene at a time: on-screen text, image/asset, motion, effects, timing, live preview, OK / MODIFY / DITCH with note. | `showreel.json` (`scenes`) |
+| **Build and preview** | Build, issues from the checks, play the reel, stills. | `vN/` |
+| **Deliver** | HTML, MP4, cuts, languages; release gate with resolve or waive and a note. | `exports/` |
+
+The copilot is a panel on the right in every block. It sees the block in the foreground and the selection.
+
+Library window unchanged: list of projects, new, open folder, duplicate as new version, archive.
+
+### 5.1 Source of truth (revises decision 1)
+
+Everything the user can edit in a block is stored as structured data in `showreel.json` (parameters, decisions, scenes with stable IDs, gate states). The app regenerates `brief.md`, `style-sheet.md` and `storyboard.md` from it after each change, so the skill, in a chat or when the copilot reads files, sees the same facts. Resources keep `MANIFEST.csv` (the skill's format).
+
+- A project made in Cowork (markdown only) is imported once into `showreel.json`; the user confirms what was found.
+- If the markdown files were changed outside the app (Cowork session), the app detects it (hash in `.studio/`) and offers to re-import; it never overwrites silently.
+- Scene IDs are stable and never renumbered; the storyboard is archived to `archive/` before a new version.
+
+### 5.1b Export from the skill
+
+The skill can export a chat-made project to the app: `scripts/export_studio.py <project> [--facts facts.json]` writes `showreel.json` from `brief.md`, `style-sheet.md`, the storyboard table and the manifest, with `origin.tool = "skill"` (see `references/studio-export.md`). The app owns the file once it saves it (`origin.tool = "studio"`) and the script then refuses to overwrite it. Schema contract shared by both sides (phase A2 implements it in `ShowreelFile`; `check.py` must verify that the script's output decodes):
+
+- `parameters`: `{audience, message, tone}` (free text, all optional).
+- `scenes`: an ordered array of `{id, start, end, text, texts{column: text}, visual, feeling, handoff, inCuts, extra{}, status (open|ok|modify|ditched), note}`. This replaces the phase A dictionary of review states; the app reads the old form too.
+- `gates` keys: `interview, assets, style, storyboard, review, build, verify, publish`, values `passed` or `open`.
+- `origin`: `{tool, exportedAt, files}`. Unknown keys must survive a load and save by the app (keep them in a catch-all), so a newer skill never loses data.
+
+### 5.2 Copilot changes are readable
+
+Changes are typed operations shown as plain cards, not file diffs: "Set palette accent to #F2AA4C", "Rewrite text of S03: before / after", "Add scene S07 after S06", "Mark asset logo.svg approved". Each card has Accept and Refuse (and "apply directly" per project). Tools: `get_state`, `update_parameter`, `update_decision`, `update_scene`, `add_scene`, `update_asset`, `open_block`. `propose_edit(file, content)` remains for files the app does not model, shown as a diff only in Advanced.
 
 ## 6. Embedded engine
 
@@ -138,16 +150,17 @@ Thumbnails are cached under `.studio/`. Native screens own lists, filters, selec
 
 Library file with paths, last opened, pinned. One agent and one chat history per project (`.studio/chat/`); switching projects never mixes histories. No App Sandbox, so plain paths are enough.
 
-## 10. Phases
+## 10. Phases (revision 1)
 
 | Phase | Content | Done when |
 |---|---|---|
-| A | Library and project model (`showreel.json`, importer), file tree and editors (markdown, JSON, CSV), chat moved to the copilot panel with history per project, `get_state`/`propose_edit`, library split (`ShowreelKit` target) and `swift test` in CI | A project can be created, closed, reopened; files edit by hand and by the copilot with diffs; `swift test` green |
-| B | Step navigator with gates and `process.json` check, Brief form, Assets table, native palette editor, font picker, look board | A project goes from start to a validated style sheet without a chat message |
-| C | `EnginePreview`, native effects and background pickers, storyboard cards and scene review | Storyboard validated and the Go given from the app |
-| D | Build, Verify and Deliver screens, release gate | A full reel is built, checked and exported from the app |
+| A (built) | ShowreelKit library, project model, library window, file editors, history, copilot panel with diffs | done; file tree and editors move to Advanced in A2 |
+| A2 | App shell with the sidebar of blocks and statuses; Project block (parameters form); Resources block (drag and drop, statuses, MANIFEST.csv); file tree and editors hidden behind Advanced; typed copilot operations (`get_state`, `update_parameter`, `update_asset`, `open_block`) with readable cards; markdown regenerated from `showreel.json`; `process.json` and its check | A project can be created, parameterised and fed with resources without seeing a file |
+| B | Look and technique block: palette, fonts, look board, background and effects pickers (engine preview spike first) | A validated look without a chat message |
+| C | Storyboard timeline and Scene editor with live preview, scene review and the explicit Go | Storyboard validated and Go given from the app |
+| D | Build and preview, Deliver, release gate | A full reel built, checked and exported from the app |
 
-Tests per phase: golden files for the markdown table parser and writer, `showreel.json` load, save and import round trips, `process.json` against `SKILL.md` in `check.py`, extended `--selftest`. Each phase is committed and usable on its own.
+Tests per phase: round trips of `showreel.json`, golden files for the generated markdown, import of markdown-only projects, typed operations against a scripted agent, `process.json` against `SKILL.md` in `check.py`, extended `--selftest`.
 
 ## 11. Decisions to validate
 

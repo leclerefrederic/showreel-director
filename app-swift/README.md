@@ -2,16 +2,19 @@
 
 A chat plus a preview pane that run the `showreel-director` skill with its own agent loop, so the look board, the pickers, the effects lab and the scene cards open next to the conversation.
 
-Pieces: a native SwiftUI window (chat with question cards, a composer, settings, a toolbar to pick the project folder); the preview pane is a `WKWebView` because the pickers and boards are HTML. `Agent.swift` streams the Messages API over `URLSession`; `Tools.swift` runs the tools (`bash`, `read_file`, `write_file`, `list_dir`, `ask_user`, `show_page`); `ChatModel.swift` connects them to the interface through the `AgentUI` protocol; the API key lives in the Keychain. The system prompt is the skill's `SKILL.md` plus `shared/addendum.md`; the tools are defined in `shared/tools.json`. HTTPS uses the macOS trust store.
+Pieces: the package has two targets. `ShowreelKit` (a library, no window) holds the agent loop (`Agent.swift`, a `MessagesTransport` protocol so tests can script the model), the tools (`Tools.swift`: `bash`, `read_file`, `write_file`, `list_dir`, `ask_user`, `show_page`, `screenshot_preview`, `get_state`, `propose_edit`), the `AgentUI` protocol, the project model (`ProjectStore`, `ShowreelFile` for `showreel.json` schema 1, `ProjectImporter` for markdown-only projects, history in `.studio/history`, chat history in `.studio/chat`, `ProjectLibrary`, `FileWatcher`) and the parsers (markdown tables, CSV, line diff). `ShowreelStudio` (the executable) is the SwiftUI shell: a library window, one window per project (files on the left, preview and editors in the middle, the copilot chat on the right), settings, setup screen. The preview pane is a `WKWebView` because the pickers and boards are HTML. The API key lives in the Keychain. The system prompt is the skill's `SKILL.md` plus `shared/addendum.md`; the tools are defined in `shared/tools.json`. HTTPS uses the macOS trust store.
+
+The copilot's edits to existing prose and data files (markdown, JSON, CSV, text) arrive as a diff the user accepts or refuses; a project can switch on "Apply directly". Every save, by the user or the copilot, keeps the previous version in `.studio/history/<file>/` (last 50), with diff and restore.
 
 ```
 cd app-swift
 swift build                 # compile
 swift run                   # run from the source tree (resources found by walking up)
+swift test                  # ShowreelKit tests: parsers, project model, history, tools, agent loop
 ./make-app.sh               # build/ShowreelStudio.app, ad-hoc signed
 ```
 
-In the app: the folder button (top left) picks the project; the gear opens Settings (API key in the Keychain, gateway base URL and Bearer or x-api-key, model; `ANTHROPIC_BASE_URL` is also read); then describe the reel. `python3`, `node` and `ffmpeg` must be on the PATH (`bash` runs in a login zsh that also sources `~/.zshrc`).
+In the app: the library window lists the projects (New project, Open folder, pin, archive); each project opens in its own window; the gear opens Settings (API key in the Keychain, gateway base URL and Bearer or x-api-key, model; `ANTHROPIC_BASE_URL` is also read); then describe the reel. `python3`, `node` and `ffmpeg` must be on the PATH (`bash` runs in a login zsh that also sources `~/.zshrc`).
 
 Environment: at launch the app runs `setup-env.sh --check` (bundled in the app) and shows a setup screen until Python 3, the Python packages (numpy, fonttools), Node.js, npm, jsdom, canvas and ffmpeg are present; **Install missing** runs `setup-env.sh --install` (a Python venv and the node modules under `~/Library/Application Support/ShowreelStudio/env`, node and ffmpeg through Homebrew when it is installed, never Homebrew itself). Python 3 comes from the Command Line Tools (`xcode-select --install`). A link lets the user continue without, in reduced mode. The script also runs from a terminal: `bash tools/setup-env.sh --check` or `--install`.
 

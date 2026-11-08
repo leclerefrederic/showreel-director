@@ -163,5 +163,38 @@
     }
    }
   }
+ },
+ {
+  "name": "get_state",
+  "description": "Read the project's state: showreel.json (decisions, gates, step, scene review), the file the user has in front of them and the top-level files. Call it before you propose anything, so you do not ask what the app already holds.",
+  "input_schema": {
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "name": "propose_edit",
+  "description": "Offer a change to a project file (replaces its whole content). The user sees a diff and accepts or refuses; nothing is written before that, unless they switched on apply-directly for the project. Use it for prose and data files the user may be editing (brief.md, style-sheet.md, storyboard.md, showreel.json, CSV). If the answer says the file changed since, read it again and propose a new edit. Creating a new file or writing code can use write_file.",
+  "input_schema": {
+   "type": "object",
+   "properties": {
+    "file": {
+     "type": "string",
+     "description": "path inside the project folder"
+    },
+    "content": {
+     "type": "string",
+     "description": "the complete new content of the file"
+    },
+    "note": {
+     "type": "string",
+     "description": "one short line saying what changes and why, shown above the diff"
+    }
+   },
+   "required": [
+    "file",
+    "content"
+   ]
+  }
  }
 ]

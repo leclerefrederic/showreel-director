@@ -1,7 +1,7 @@
 import Foundation
 
 /// An edit the copilot offers on a file. The user accepts or refuses it; nothing is written before that.
-public struct Proposal: Identifiable, Equatable {
+public struct Proposal: Identifiable, Equatable, Sendable {
     public let id = UUID()
     public let file: String          // path relative to the project folder
     public let original: String?     // content the proposal was based on; nil when the file does not exist yet

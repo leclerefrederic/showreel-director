@@ -30,7 +30,7 @@ public enum ProjectImporter {
     }
 
     static func capture(_ pattern: String, in text: String) -> String? {
-        guard let re = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
+        guard let re = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive, .anchorsMatchLines]) else { return nil }
         let ns = text as NSString
         guard let m = re.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)), m.numberOfRanges > 1,
               m.range(at: 1).location != NSNotFound else { return nil }
@@ -48,7 +48,7 @@ public enum ProjectImporter {
     }
 
     static func languages(in text: String) -> [String] {
-        guard let line = capture(#"(?:reel\s+)?languages?\s*[:=]\s*([^\n]+)"#, in: text) else { return [] }
+        guard let line = capture(#"^[\s\-*]*(?:reel\s+)?languages?\s*[:=]\s*([^\n]+)"#, in: text) else { return [] }
         var out: [String] = []
         for part in line.split(whereSeparator: { ",;/&".contains($0) }) {
             let w = part.trimmingCharacters(in: .whitespaces).lowercased()

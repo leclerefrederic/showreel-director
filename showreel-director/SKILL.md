@@ -1,6 +1,8 @@
 ---
 name: "showreel-director"
 description: "Produce a motion-design showreel or short animated video for a product, brand or story. Starts with an interview (conversation language and on-screen language first, English by default) that settles purpose, audience, story, voice, look, motion, music, length, formats, languages and assets before any production. Use whenever the user asks for a showreel, reel, animated video, motion graphics, kinetic typography, animated logo or intro, explainer or promo video, lyric video or product teaser, with or without a style, music, script or format in mind. Not for PowerPoint or slide decks, static graphics or editing existing footage. Also use it to iterate on an existing reel (restyle, new track, other format, translation, timing feedback) and when the user asks what this skill can do, how it works, or which text, transition or other effects it knows."
+metadata:
+  version: "0.9.0"
 ---
 
 # Showreel director
@@ -64,6 +66,8 @@ Other files: `engine/effects-lab-sample.html` (neutral ready-made lab: open it a
   v1/ v2/ ...      one folder per build: project.json, main.js, dist/ (index.html and exports named <slug>_<vN>_<mode>_<lang>.<ext>)
   qa/              temporary pages named by kind: contact-*, cards-*, decision-*, lab-*
 ```
+
+To open a project in the Showreel Studio app, export it once with `scripts/export_studio.py` (`references/studio-export.md`); offer it, never require it.
 
 Paths in each `vN/project.json` point only to `../assets/prepared/...` or `../assets/generated/...` and `../analysis`; `build.py` refuses `assets/source` and anything the manifest marks excluded or hold.
 

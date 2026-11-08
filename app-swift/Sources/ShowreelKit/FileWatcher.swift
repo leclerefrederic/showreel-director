@@ -9,7 +9,9 @@ public final class FileWatcher {
 
     /// `onChange` receives paths relative to the folder, on the main queue.
     public init?(root: URL, onChange: @escaping ([String]) -> Void) {
-        self.root = root.resolvingSymlinksInPath().standardizedFileURL.path
+        // FSEvents reports real paths (/private/var/...); URL.resolvingSymlinksInPath would turn them back into /var/...
+        var buf = [CChar](repeating: 0, count: Int(PATH_MAX))
+        self.root = realpath(root.path, &buf) != nil ? String(cString: buf) : root.standardizedFileURL.path
         self.onChange = onChange
         var ctx = FSEventStreamContext(version: 0, info: Unmanaged.passUnretained(self).toOpaque(), retain: nil, release: nil, copyDescription: nil)
         let cb: FSEventStreamCallback = { _, info, count, paths, _, _ in
