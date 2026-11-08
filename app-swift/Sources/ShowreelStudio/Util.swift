@@ -28,11 +28,13 @@ extension URL {
     }
 }
 
-/// Finds a folder shipped inside the .app (Resources/<name>) or, when run from the source tree,
+/// Finds a folder or file shipped inside the .app (Resources/<name>) or, when run from the source tree (swift run),
 /// by walking up from the current directory looking for `dev` (for example "app/src-ui").
 func resource(_ name: String, dev: String) -> URL? {
     let fm = FileManager.default
     if let r = Bundle.main.resourceURL?.appendingPathComponent(name), fm.fileExists(atPath: r.path) { return r }
+    // A packaged app never looks outside its bundle: a missing resource is an error, not a reason to read the repository.
+    if Bundle.main.bundlePath.hasSuffix(".app") { return nil }
     var d = URL(fileURLWithPath: fm.currentDirectoryPath)
     for _ in 0..<6 {
         let c = d.appendingPathComponent(dev)

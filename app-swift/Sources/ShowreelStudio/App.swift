@@ -7,6 +7,7 @@ struct ShowreelStudioApp: App {
     @StateObject private var env = EnvModel()
 
     init() {
+        if CommandLine.arguments.contains("--selftest") { exit(SelfCheck.run()) }
         NSApplication.shared.setActivationPolicy(.regular)
     }
 

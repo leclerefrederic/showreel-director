@@ -40,8 +40,8 @@ final class Tools {
         return a
     }()
 
-    /// Puts the app's own Python venv and node modules (made by tools/setup-env.sh) first, when they exist.
-    static let envSetup = "ENVDIR=\"$HOME/Library/Application Support/ShowreelStudio/env\"; [ -d \"$ENVDIR/venv/bin\" ] && export PATH=\"$ENVDIR/venv/bin:$PATH\"; [ -d \"$ENVDIR/node/node_modules\" ] && export NODE_PATH=\"$ENVDIR/node/node_modules${NODE_PATH:+:$NODE_PATH}\"; "
+    /// Keeps Python from writing .pyc files into the (signed, read-only) skill folder, then puts the app's own Python venv and node modules (made by tools/setup-env.sh) first, when they exist.
+    static let envSetup = "export PYTHONDONTWRITEBYTECODE=1; ENVDIR=\"$HOME/Library/Application Support/ShowreelStudio/env\"; [ -d \"$ENVDIR/venv/bin\" ] && export PATH=\"$ENVDIR/venv/bin:$PATH\"; [ -d \"$ENVDIR/node/node_modules\" ] && export NODE_PATH=\"$ENVDIR/node/node_modules${NODE_PATH:+:$NODE_PATH}\"; "
 
     private func abs(_ p: String) -> URL {
         if p.hasPrefix("/") { return URL(fileURLWithPath: p).standardizedFileURL }

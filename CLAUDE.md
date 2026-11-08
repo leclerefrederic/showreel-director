@@ -19,17 +19,22 @@ This repo holds a skill that directs motion-design showreels (`showreel-director
 
 `tools/rebuild-app.sh` stops a running copy, runs `app-swift/make-app.sh` (release build outside the repo, stale-binary check, `.app` bundle, ad-hoc signature), opens the app and confirms with `pgrep`. Use `--no-open` to only rebuild. To compile alone: `swift build --package-path app-swift --scratch-path ~/Library/Developer/ShowreelStudio/build`.
 
+## The app is standalone
+
+The built `.app` must not depend on the repository: the skill, `shared/`, `setup-env.sh`, the icon and the skill fingerprint are copied into `Contents/Resources` by `make-app.sh`, and the code never looks outside the bundle when packaged (`resource()` in `Util.swift`). `ShowreelStudio --selftest` checks the lookups, the prompt and the tools; `tools/verify-bundle.sh` (run by `tools/rebuild-app.sh`) copies the app elsewhere, runs the self-test from another working directory and checks the signature seal. Never write into the bundle at run time (Python runs with `PYTHONDONTWRITEBYTECODE`). User data lives outside it: the project folder and `~/Library/Application Support/ShowreelStudio`.
+
 ## Environment for the skill's full mode
 
 `tools/setup-env.sh --check` prints `key=ok|missing` lines; `tools/setup-env.sh --install` installs what is missing (numpy and fonttools in a venv, jsdom and @napi-rs/canvas, and node and ffmpeg through Homebrew when it exists) under `~/Library/Application Support/ShowreelStudio/env`. The app runs `--check` at launch (`EnvModel.swift`), shows `SetupView` until everything is present or the user continues in reduced mode, and runs `--install` on request; `Tools.swift` puts the environment first on PATH and NODE_PATH. The item keys of the script and of `EnvModel` must match (`check.py` verifies). The owner runs the install; do not install packages yourself.
 
 ## One command to verify
 
-`tools/verify.sh` runs everything that can run on this machine: repo checks (`tools/check.py`: skill structure, build self-tests, `.skill` sync, app files and tool coverage), and on macOS the Swift build and, once it exists, the app's `--selftest`. Run it before saying anything is done.
+`tools/verify.sh` runs everything that can run on this machine: repo checks (`tools/check.py`: skill structure, build self-tests, `.skill` sync, app files and tool coverage), and on macOS the Swift build and the app's `--selftest`. Run it before saying anything is done.
 
 ## Layout
 
 - `showreel-director/`: SKILL.md (router), `references/` (one file per step), `engine/` (browser player, effects, backgrounds, pickers), `scripts/` (Python and Node plumbing), `evals/`.
+- `docs/studio-spec.md`: proposed design of Showreel Studio v2 (the app as a workspace, the assistant as a copilot). Read it before building anything about projects, native pickers or the copilot; validated by the owner (section 11, recommended choices). Build phase by phase, A first, and stop after each phase for the owner to test.
 - `tools/`: `check.py`, `package.py`, `verify.sh`, `fetch_font_previews.py`.
 - `app-swift/`: SwiftPM package. the window is SwiftUI (`App.swift`, `ContentView.swift`, `ChatView.swift` with question cards, `PreviewPane.swift` where a `WKWebView` shows the HTML pages, `SettingsView.swift`, `ChatModel.swift` for the state); `shared/` holds `tools.json` (tool definitions) and `addendum.md` (prompt addendum), read by the Swift code at run time; `Agent.swift`, `Tools.swift` and `Keychain.swift` are the agent loop, the tools and the key storage; the interface reaches them through the `AgentUI` protocol. `make-app.sh` builds the `.app`.
 
