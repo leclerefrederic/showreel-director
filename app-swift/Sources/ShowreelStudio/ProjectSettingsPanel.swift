@@ -54,6 +54,7 @@ struct ProjectSettingsPanel: View {
                         switch project.settingsTab {
                         case .project: ProjectSettingsForm()
                         case .look: GlobalLookSettings()
+                        case .history: HistoryPanel()
                         }
                     }
                     .padding(14).frame(maxWidth: .infinity, alignment: .leading)

@@ -227,7 +227,8 @@ final class LifecycleTests: XCTestCase {
         try store.apply(.scene(id: "S01", SceneEdit(note: "later")))
         XCTAssertNotNil(bytes("assets/MANIFEST.csv"))
         try ProjectFormat.restore(store, b, now: Date().addingTimeInterval(5))
-        for rel in tracked { XCTAssertEqual(bytes(rel), before[rel] ?? nil, "restored byte for byte: \(rel)") }
+        for rel in tracked where rel != Journal.path { XCTAssertEqual(bytes(rel), before[rel] ?? nil, "restored byte for byte: \(rel)") }
+        XCTAssertTrue(bytes(Journal.path)!.starts(with: (before[Journal.path] ?? nil) ?? Data()), "the journal came back as it was, and the restore is its last line (the journal only grows)")
         XCTAssertNil(bytes("assets/MANIFEST.csv"), "a file that did not exist then does not exist now")
         XCTAssertEqual(file.revision, 0)
         let ids = ProjectFormat.backups(store)

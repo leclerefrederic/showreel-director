@@ -57,7 +57,11 @@ public final class Tools {
     }
     private func readable(_ u: URL) -> Bool { u.isInside(project) || u.isInside(skill) }
 
+    /// The reason Clap gave for the change it is proposing (the `reason` of a typed tool): it goes in the journal with the operation.
+    private var reason: String?
+
     public func run(_ name: String, _ input: [String: Any]) async -> ToolResult {
+        reason = (input["reason"] as? String).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
         if name == "screenshot_preview" {
             let wait = min(max(input["wait_ms"] as? Int ?? 600, 0), 5000)
             guard let jpeg = await ui.screenshot(javascript: input["javascript"] as? String, waitMs: wait) else {
@@ -128,6 +132,12 @@ public final class Tools {
             if input["status"] is String, st == nil { return "unknown status: use " + AssetStatus.allCases.map { $0.rawValue }.joined(separator: ", ") }
             return await operate(.asset(id: input["id"] as? String ?? "", status: st, note: input["note"] as? String,
                                         licence: input["licence_note"] as? String, scenes: input["scenes"] as? String))
+        case "remember":
+            return await remember(input)
+        case "update_memory":
+            return await updateMemory(input)
+        case "forget":
+            return await forgetMemory(input["id"] as? String ?? "")
         case "open_block":
             let id = input["block"] as? String ?? ""
             guard let spec = ProcessSpec.load(), let b = spec.block(id) else { return "unknown block: use one of " + Blocks.ids.joined(separator: ", ") }
@@ -235,13 +245,47 @@ public final class Tools {
     /// A typed change: shown as a card, applied only if the user accepts (or chose apply-directly) and the project did not change meanwhile.
     private func operate(_ op: ProjectOperation) async -> String {
         let card: OperationCard
-        do { card = try store.plan(op) } catch { return "refused: \(error.localizedDescription)" }
+        do { card = try store.plan(op) } catch {
+            store.noteRefused(op, card: nil, author: "clap", note: "not allowed: \(error.localizedDescription)")
+            return "refused: \(error.localizedDescription)"
+        }
         let summary = card.title + ": " + card.changes.map { "\($0.label) \($0.before) -> \($0.after)" }.joined(separator: "; ")
         if store.settings.applyDirectly {
-            do { try store.apply(op); return "applied directly (the user chose this for the project): \(summary)" } catch { return "error: \(error.localizedDescription)" }
+            do { try store.apply(op, author: "clap", reason: reason); return "applied directly (the user chose this for the project): \(summary)" } catch { return "error: \(error.localizedDescription)" }
         }
-        guard await ui.proposeOperation(card) else { return "refused by the user: \(card.title) was not applied. Ask what they want instead." }
-        do { try store.apply(op, expecting: card); return "accepted and applied: \(summary)" } catch { return error.localizedDescription }
+        guard await ui.proposeOperation(card) else {
+            store.noteRefused(op, card: card, author: "clap", note: "refused by the user" + (reason.map { " (Clap's reason: \($0))" } ?? ""))      // so that it is not proposed again
+            return "refused by the user: \(card.title) was not applied. Ask what they want instead."
+        }
+        do { try store.apply(op, expecting: card, author: "clap", reason: reason); return "accepted and applied: \(summary)" } catch { return error.localizedDescription }
+    }
+
+    // MARK: the project's memory
+
+    private func remember(_ input: [String: Any]) async -> String {
+        let links = (input["links"] as? [String]) ?? []
+        do {
+            let e = try store.remember(kind: input["kind"] as? String ?? "", text: input["text"] as? String ?? "", reason: input["reason"] as? String ?? "", source: "clap", links: links)
+            await ui.memoryNote("Clap remembered (\(e.kind)): \(e.text)")
+            return "remembered as \(e.id) (\(e.kind)): \(e.text). The user can read, edit and delete it in What Clap knows."
+        } catch { return "not remembered: \(error.localizedDescription)" }
+    }
+
+    private func updateMemory(_ input: [String: Any]) async -> String {
+        do {
+            let e = try store.updateMemory(id: input["id"] as? String ?? "", text: input["text"] as? String, reason: input["reason"] as? String, kind: input["kind"] as? String,
+                                           status: input["status"] as? String, links: input["links"] as? [String], source: "clap")
+            await ui.memoryNote("Clap updated a note (\(e.kind)): \(e.text)")
+            return "updated \(e.id): \(e.text)"
+        } catch { return "not updated: \(error.localizedDescription)" }
+    }
+
+    private func forgetMemory(_ id: String) async -> String {
+        do {
+            let e = try store.forget(id: id)
+            await ui.memoryNote("Clap forgot a note: \(e.text)")
+            return "forgotten: \(e.id) is marked deleted"
+        } catch { return "not forgotten: \(error.localizedDescription)" }
     }
 
     private func getState() async -> String {

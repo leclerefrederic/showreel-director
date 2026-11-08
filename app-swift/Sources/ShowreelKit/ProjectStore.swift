@@ -98,8 +98,16 @@ public final class ProjectStore {
     private let fm = FileManager.default
     /// What the typed operations did, to undo and redo them (in memory, per project; see Undo.swift).
     public let undoLog = UndoLog()
+    /// The journal of every typed operation (`.studio/journal.jsonl`, append only), and the session its lines belong to (the chat session's name).
+    public let journal: Journal
+    public var sessionID: String
+    let memoryLock = NSRecursiveLock()
 
-    public init(root: URL) { self.root = root.standardizedFileURL }
+    public init(root: URL) {
+        self.root = root.standardizedFileURL
+        journal = Journal(root: self.root)
+        sessionID = Journal.newSessionID()
+    }
 
     // MARK: paths
 

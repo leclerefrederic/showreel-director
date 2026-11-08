@@ -26,7 +26,7 @@ public enum ProjectFormat {
 
     /// The data files an update touches or may touch, and a backup keeps: showreel.json, the generated documents, the manifest and the record of what
     /// the app last generated.
-    public static let tracked: [String] = [ShowreelFile.fileName] + ProjectDocs.files + [Assets.manifestPath, DocSync.recordPath]
+    public static let tracked: [String] = [ShowreelFile.fileName] + ProjectDocs.files + [Assets.manifestPath, DocSync.recordPath, Journal.path, ProjectStore.memoryPath, Sessions.path]
 
     public static func revision(of store: ProjectStore) -> Int? { store.loadShowreel()?.revision }
 
@@ -113,6 +113,7 @@ public enum ProjectFormat {
         f.formatRevision = current
         try store.save(f)                                                    // the generated documents and their record follow
         store.undoLog.clear()
+        store.noteEvent(author: "app", op: "update", target: "project", title: "Update project to revision \(current)", before: "revision \(plan.from)", after: "revision \(current)", note: "backup \(b.id)")
         return (b, plan)
     }
 
@@ -128,5 +129,6 @@ public enum ProjectFormat {
         }
         for rel in b.absent { if let u = try? store.resolve(rel), fm.fileExists(atPath: u.path) { try fm.removeItem(at: u) } }
         store.undoLog.clear()
+        store.noteEvent(author: "app", op: "restore", target: "project", title: "Restore backup \(b.id)", before: "the files as they were", after: "the files of revision \(b.revision)")      // appended to the journal that came back
     }
 }

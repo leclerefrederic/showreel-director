@@ -92,7 +92,7 @@ enum LibraryTab: String, CaseIterable, Identifiable {
 
 /// The two parts of the project settings panel.
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case project, look
+    case project, look, history
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
 }
@@ -198,6 +198,10 @@ final class ProjectModel: ObservableObject {
     @Published private(set) var outdated = false
     @Published var updateBannerDismissed = false
     @Published var showUpdateSheet = false
+    /// What the project remembers, what was done and the sessions: loaded for the History tab of the project settings.
+    @Published private(set) var memory: [MemoryEntry] = []
+    @Published private(set) var journalEntries: [JournalEntry] = []
+    @Published private(set) var sessionRows: [SessionRow] = []
     /// Every check, with its group and what it points at (the Checks tab of the left panel).
     @Published private(set) var checkEntries: [CheckEntry] = []
     var attentionCount: Int { CheckPanel.attention(checkEntries) }
@@ -269,7 +273,30 @@ final class ProjectModel: ObservableObject {
         if store.needsSetup, mode == StudioSettings.beginner, let f = showreel, ProjectSetup.isComplete(f) { try? store.finishSetup() }
         needsSetup = store.needsSetup
         if fitAll, viewportWidth > 1 { fitFilm(remember: false) }          // the film got longer or shorter: the strip still shows all of it
+        if showProjectSettings && settingsTab == .history { reloadHistory() }
     }
+
+    /// Reads the journal, the memory and the sessions again (when the History tab is in front, and when Clap writes to the memory).
+    func reloadHistory() {
+        memory = store.memoryEntries(); journalEntries = store.journal.entries(); sessionRows = Sessions.rows(store)
+    }
+
+    @discardableResult
+    func addMemory(kind: String, text: String, reason: String) -> String? {
+        do { try store.remember(kind: kind, text: text, reason: reason, source: "user"); reloadHistory(); return nil } catch { return error.localizedDescription }
+    }
+
+    @discardableResult
+    func editMemory(_ id: String, text: String? = nil, reason: String? = nil, kind: String? = nil, status: String? = nil, confirm: Bool = false) -> String? {
+        do { try store.updateMemory(id: id, text: text, reason: reason, kind: kind, status: status, confirm: confirm, source: "user"); reloadHistory(); return nil } catch { return error.localizedDescription }
+    }
+
+    func deleteMemory(_ id: String) { do { try store.forget(id: id); reloadHistory() } catch { self.error = error.localizedDescription } }
+
+    func transcript(of session: String) -> [ChatRecord] { ChatStore.records(root: root, session: session) }
+
+    /// A journal line leads to the element it is about.
+    func openJournal(_ e: JournalEntry) { if let t = JournalLinks.target(of: e) { open(t) } }
 
     // MARK: build and preview
 
@@ -699,8 +726,10 @@ final class ProjectModel: ObservableObject {
     }
 
     /// A click on a check opens the element it is about, on the right section.
-    func openCheck(_ e: CheckEntry) {
-        switch e.target {
+    func openCheck(_ e: CheckEntry) { open(e.target) }
+
+    func open(_ target: CheckTarget) {
+        switch target {
         case .project: openSettings(.project)
         case .look(let s): openSettings(.look, look: s)
         case .resource(let id): libraryTab = .resources; select(.asset(id))

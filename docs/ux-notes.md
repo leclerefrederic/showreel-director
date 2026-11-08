@@ -33,6 +33,11 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 
 ## Library, Scenes tab
 
+- The tick boxes in the scene list are ugly: use an eye icon, open when the scene is visible in the film and crossed or closed when it is not (the reel already uses an eye). A hidden scene is dimmed; the eye has a tooltip and an accessibility label ("In the film" or "Hidden").
+- Seen on the same screenshot: a duration of "0.868 s" after a drag; displayed durations should be rounded to a readable precision (0.1 s, or 0.01 s when zoomed in), and the empty blue circle before the scene ID (review state) has no visible meaning: give each state an icon and a tooltip (to review, approved, to modify).
+
+- Add Transitions to the left column. Proposal: a third tab next to Resources and Scenes (then Checks): the film's transitions as a list, one row per pair of scenes (S01 to S02: Push, 0.6 s), clicking a row selects the transition marker and opens its inspector (type, duration, parameters, instruction for Clap, a preview between the two scene thumbnails); below the list, the catalogue of transitions (with the six preview-only ones marked) as a drag source for the markers of the reel.
+
 - Bug found testing W5: a resource cannot be dragged from the library onto a scene, because Resources and Scenes are separate tabs of the same panel, so the source and the target are never visible together. Fix: the reel frames (always visible) and the selected scene's inspector accept drops, and tabs switch by themselves when a drag hovers over them (spring-loaded tabs). To consider in the feel pass: showing Resources and Scenes together (stacked sections) instead of tabs.
 
 - A scene can be renamed (a name chosen by the user, shown next to its ID). The ID (S01, S02) stays stable and is never renamed or reused; the name is only a label, used in the library, the tree, the reel and the copilot's messages.
@@ -100,6 +105,16 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 ## Storyboard and scene editor
 
 ## Storyboard and music
+
+- Scene state badge (owner): the round badge on a scene is useful if it carries a clear state: a check means the scene is validated, a padlock means it is locked and cannot be modified under any pretext, and another icon means work in progress (WIP). Proposed model: three states, WIP (default; includes "to modify", with its note), Validated (the skill's OK) and Locked (new); a ditched scene is archived. Locked: every edit is refused with a reason, for the user (content, duration, look overrides, composition, drops) and for Clap's tools; the scene's place in the montage stays movable unless the owner decides otherwise; unlocking is explicit; lock and unlock are typed operations, journaled and undoable. The badge opens a small menu to change the state; each state has an icon and a tooltip; the library list, the tree, the reel and the inspector use the same icons.
+
+- Decision (owner): the eye icon on the frames of the reel is useless, because a hidden scene leaves the reel, so the reel only ever shows visible scenes and the eye can only hide. Remove the eye from the reel frames. Hiding from the film is done by the Delete key or the context menu ("Remove from film"), and a hidden scene stays reachable as a dimmed chip under the strip (drag it back, or click it). The eye with both states stays only in the scene list of the library, where hidden scenes remain listed. This replaces the earlier note about the eye on reel frames.
+
+- On a frame of the reel, the eye icon (visible in the film or not) and the round badge (review state) are unexplained, and the eye appears crossed out on a scene that is in the film, so the icon seems to show the action instead of the state. The eye must show the state (open when visible, crossed when hidden) with a tooltip, and the round badge needs one icon per review state with a tooltip. The duration pill is truncated ("0.867...") and must be rounded and never truncated.
+
+- Direct feedback when resizing a scene in the storyboard: the duration changes but the frame does not visibly follow the pointer, which feels wrong. The frame edge must track the cursor continuously during the drag, the following scenes must shift live when ripple is on, a snap indicator must show the grid position the edge will land on, the duration label must update live, and the change must be committed once on release (one undo step; Escape cancels). The same live feedback applies to dragging the cut between two scenes and to reordering.
+
+- Display defects seen on the first screenshot of the new timeline: (1) a long frame repeats the same thumbnail three times (S01 S01 S01), which is meaningless while a scene has a single still; show one thumbnail, repeated frames only once real frames at different times exist (W4). (2) Ruler labels are rounded wrongly: ticks every 0.25 s read 0:00.2, 0:00.5, 0:00.8; the steps must come from a series of round numbers (0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60 s) and labels need the decimals they require. (3) The header counter reads "0:00.0 of 90 s" while the film is 6 s: say "6 s of the 90 s target".
 
 - The viewer is blank when nothing is selected and there is no build (seen on the same screenshot). It should follow the playhead: show the thumbnail of the scene under the playhead.
 

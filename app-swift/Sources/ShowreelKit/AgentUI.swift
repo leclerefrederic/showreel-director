@@ -31,9 +31,12 @@ public protocol AgentUI: AnyObject {
     func foregroundBlock() async -> String?
     /// Switches the window to a block.
     func openBlock(_ id: String) async
+    /// Clap added to, changed or took something out of the project's memory: shown in the conversation in a plain word.
+    func memoryNote(_ text: String) async
 }
 
 public extension AgentUI {
+    func memoryNote(_ text: String) async {}
     func propose(_ p: Proposal) async -> Bool { false }
     func proposeOperation(_ card: OperationCard) async -> Bool { false }
     func foregroundFile() async -> String? { nil }

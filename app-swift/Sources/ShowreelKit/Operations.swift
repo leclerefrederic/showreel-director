@@ -319,12 +319,13 @@ extension ProjectStore {
     }
 
     /// Performs an operation. With `expecting`, it first checks that the project still is what the card was made from.
-    public func apply(_ op: ProjectOperation, expecting card: OperationCard? = nil) throws {
+    public func apply(_ op: ProjectOperation, expecting card: OperationCard? = nil, author: String = "user", reason: String? = nil) throws {
         let now = try plan(op)
         if let c = card, c.changes != now.changes { throw AgentError.msg("not applied: the project changed since the proposal was made. Read the state again and propose again.") }
         try recording(now.title, backup: filesToKeep(op)) {
             try perform(op)
             if linksResources(op) { try completeComposition(reopenGo: true) }     // a linked resource is an element of the scene
+            noteApplied(op, now, author: author, reason: reason)
         }
     }
 

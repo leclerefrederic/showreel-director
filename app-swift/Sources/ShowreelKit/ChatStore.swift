@@ -61,6 +61,22 @@ public final class ChatStore {
         }
     }
 
+    /// The records of any session of a project (the transcripts stay consultable), by the session's name.
+    public static func records(root: URL, session id: String) -> [ChatRecord] {
+        let u = root.appendingPathComponent(ProjectStore.studioDir).appendingPathComponent("chat").appendingPathComponent(id + ".jsonl")
+        guard let t = try? String(contentsOf: u, encoding: .utf8) else { return [] }
+        let dec = JSONDecoder(); dec.dateDecodingStrategy = .iso8601
+        return t.split(separator: "\n").compactMap { try? dec.decode(ChatRecord.self, from: Data($0.utf8)) }
+    }
+
+    /// The name of every session that has a transcript, oldest first.
+    public static func sessionIDs(root: URL) -> [String] {
+        let dir = root.appendingPathComponent(ProjectStore.studioDir).appendingPathComponent("chat")
+        return (((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []).filter { $0.hasSuffix(".jsonl") }).sorted().map { String($0.dropLast(6)) }
+    }
+
+    public var sessionID: String { session.deletingPathExtension().lastPathComponent }
+
     public func load() -> [ChatRecord] {
         guard let t = try? String(contentsOf: session, encoding: .utf8) else { return [] }
         let dec = JSONDecoder(); dec.dateDecodingStrategy = .iso8601

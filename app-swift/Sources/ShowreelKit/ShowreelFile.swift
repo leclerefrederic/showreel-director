@@ -375,11 +375,13 @@ public struct ShowreelFile: Codable, Equatable {
                                           ("gates", gates), ("scenes", scenes), ("storyboards", storyboards), ("origin", origin)], unknown: unknown)
     }
 
-    public static func today() -> String {
+    public static func today() -> String { dayString(Date()) }
+
+    public static func dayString(_ d: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: Date())
+        return f.string(from: d)
     }
 
     /// Stable output (sorted keys, indented) so that diffs in the history stay small.

@@ -77,12 +77,70 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     private var stepsIdx: Int?
     /// Called once when the message sent with ask(prompt:onDone:) has been fully answered (the agent's turn is over).
     private var onDone: (() -> Void)?
+    /// Sessions: a window opened again starts a new one (the old transcript stays, and is summarised), and so does the first message after a long pause.
+    private var lastActivity = Date()
+    private var sessionEnded = false
+    private var summarisedHere: Set<String> = []
+    private var catchUp: Task<Void, Never>?
+    private var idleTimer: Timer?
+    private static let idleSeconds: TimeInterval = 20 * 60
 
     init(project: ProjectModel) {
         self.project = project
         history = ChatStore(root: project.root)
-        records = history.load()
-        items = records.map { ChatItem(kind: $0.role == "user" ? .user : .assistant, text: $0.text) }
+        let prior = history.load()
+        if !prior.isEmpty { history.startNewSession() }       // what was said before is in the transcripts, the summaries and the memory: the prompt is built from those
+        records = []
+        items = prior.isEmpty ? [] : [ChatItem(kind: .notice, text: "Clap remembers what was decided: see History in the project settings. The earlier conversation is there too.")]
+        project.store.sessionID = history.sessionID
+        idleTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.checkIdle() }
+        if let key = settings.keyIfLoaded { catchUpSummaries(key: key) }
+    }
+
+    deinit { idleTimer?.invalidate() }
+
+    // MARK: sessions
+
+    private func checkIdle() {
+        if !running, !sessionEnded, !records.isEmpty, Date().timeIntervalSince(lastActivity) > Self.idleSeconds { endSession() }
+    }
+
+    /// The session is over (the window closed, a new session, a long pause): Clap writes a short summary of it, kept in `.studio/sessions.json`. Without a key
+    /// the session is recorded without one, and the next time a key is there the summary is written then.
+    func endSession() {
+        let id = history.sessionID, recs = records
+        guard !recs.isEmpty, !summarisedHere.contains(id) else { return }
+        summarisedHere.insert(id); sessionEnded = true
+        let store = project.store, project = self.project
+        if let key = settings.keyIfLoaded {
+            let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer
+            Task.detached {
+                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer)
+                let s = await Sessions.summarize(records: recs, journal: store.journal.entries().filter { $0.session == id }, transport: t)
+                _ = try? Sessions.finish(store, id: id, summary: s, messages: recs.count)
+                DispatchQueue.main.async { project.reloadHistory() }
+            }
+        } else {
+            _ = try? Sessions.finish(store, id: id, summary: nil, messages: recs.count)
+        }
+    }
+
+    /// Summarises the earlier sessions that have no summary yet (the app was quit, or there was no key then).
+    private func catchUpSummaries(key: String) {
+        guard catchUp == nil else { return }
+        let store = project.store, root = project.root, current = history.sessionID, project = self.project
+        let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer
+        catchUp = Task.detached { [weak self] in
+            let have = Set(Sessions.load(store).filter { ($0.summary ?? "").isEmpty == false }.map { $0.id })
+            for id in ChatStore.sessionIDs(root: root) where id != current && !have.contains(id) {
+                let recs = ChatStore.records(root: root, session: id)
+                guard recs.contains(where: { $0.role == "user" }) else { continue }
+                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer)
+                let s = await Sessions.summarize(records: recs, journal: store.journal.entries().filter { $0.session == id }, transport: t)
+                _ = try? Sessions.finish(store, id: id, summary: s, messages: recs.count)
+            }
+            DispatchQueue.main.async { project.reloadHistory(); self?.catchUp = nil }
+        }
     }
 
     var hasKey: Bool { settings.hasKey }
@@ -94,24 +152,35 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         guard !text.isEmpty, !running else { return }
         guard let key = settings.apiKey() else { notice("Connect an AI to talk to the copilot. Everything else works without one."); return }
         draft = ""
+        if sessionEnded { history.startNewSession(); records = []; sessionEnded = false; project.store.sessionID = history.sessionID }      // after a long pause: a new session
+        lastActivity = Date()
         items.append(ChatItem(kind: .user, text: text))
         remember(ChatRecord(role: "user", text: text))
         assistantIdx = nil; stepsIdx = nil
         running = true; scrollTick += 1
-        do {
-            if agent == nil || agentGeneration != settings.generation {
-                agent = try Agent(apiKey: key, model: settings.modelName, baseURL: settings.baseURL, bearer: settings.bearer,
-                                  project: project.root, ui: self, history: ChatStore.seed(from: records))
-                agentGeneration = settings.generation
-            }
-        } catch {
-            notice("Error: \(error.localizedDescription)"); running = false; return
-        }
-        guard let a = agent else { return }
+        catchUpSummaries(key: key)
         let context = project.contextLine
+        let generation = settings.generation
         Task { [weak self] in
-            do { try await a.send(text, context: context) } catch { self?.postNotice("Error: \(error.localizedDescription)") }
-            self?.finish()
+            guard let self = self else { return }
+            await self.catchUp?.value               // the summaries of the earlier sessions are in the prompt of this one
+            let built: Result<Agent, Error> = await self.onMain {
+                do {
+                    if self.agent == nil || self.agentGeneration != generation {
+                        // the project's memory, what it refused and the last summaries come from its files, as data: nothing of the old conversation is replayed
+                        self.agent = try Agent(apiKey: key, model: self.settings.modelName, baseURL: self.settings.baseURL, bearer: self.settings.bearer,
+                                               project: self.project.root, ui: self, history: [])
+                        self.agentGeneration = generation
+                    }
+                    return .success(self.agent!)
+                } catch { return .failure(error) }
+            }
+            switch built {
+            case .failure(let e): self.postNotice("Error: \(e.localizedDescription)")
+            case .success(let a):
+                do { try await a.send(text, context: context) } catch { self.postNotice("Error: \(error.localizedDescription)") }
+            }
+            self.finish()
         }
     }
 
@@ -137,10 +206,13 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         agent?.abort()
         resumePending([])
         resolveAllProposals(false)
+        endSession()
         agent = nil
         items = []
         records = []
         history.startNewSession()
+        project.store.sessionID = history.sessionID
+        sessionEnded = false
         assistantIdx = nil; stepsIdx = nil
         running = false
     }
@@ -201,6 +273,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     private func finish() {
         DispatchQueue.main.async {
+            self.lastActivity = Date()
             self.flushAssistant(); self.running = false
             let done = self.onDone; self.onDone = nil
             done?()
@@ -256,6 +329,15 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         await onMain {
             // in the wizard there are no zones to switch to: it goes to the first undecided step of that part; in the workspace the zone is brought forward
             self.project.openZone(id)
+        }
+    }
+
+    /// Clap changed the project's memory: a line in the conversation says what, in plain words.
+    func memoryNote(_ text: String) async {
+        await onMain {
+            self.items.append(ChatItem(kind: .notice, text: text))
+            self.scrollTick += 1
+            self.project.reloadHistory()
         }
     }
 

@@ -12,6 +12,8 @@ struct UndoEntry {
     /// Files the operation deleted, with their bytes; undoing writes them back.
     let removed: [String: Data]
     var kept: [String: Data] = [:]
+    /// The journal lines of the operations this step holds: an undo or a redo of the step is journalled against each of them.
+    var journal: [JournalEntry] = []
 }
 
 /// The undo and redo stacks of one project. In memory only: closing the project forgets them.
@@ -26,6 +28,10 @@ public final class UndoLog {
     var redos: [UndoEntry] { get { lock.lock(); defer { lock.unlock() }; return _redos } set { lock.lock(); _redos = newValue; lock.unlock() } }
     /// Greater than 0 while a transaction runs: the operations inside belong to its single entry.
     var depth = 0
+    private var pending: [JournalEntry] = []
+    func note(_ e: JournalEntry) { lock.lock(); pending.append(e); lock.unlock() }
+    func resetPending() { lock.lock(); pending = []; lock.unlock() }
+    func takePending() -> [JournalEntry] { lock.lock(); defer { lock.unlock() }; let p = pending; pending = []; return p }
 
     public var undoTitle: String? { undos.last?.title }
     public var redoTitle: String? { redos.last?.title }
@@ -73,6 +79,7 @@ extension ProjectStore {
     func recording<T>(_ title: String, backup: [String] = [], _ body: () throws -> T) throws -> T {
         undoLog.lock.lock(); defer { undoLog.lock.unlock() }
         if undoLog.depth > 0 { return try body() }
+        undoLog.resetPending()
         let start = capture(keeping: backup)
         undoLog.depth += 1
         var result: T?, failure: Error?
@@ -85,7 +92,8 @@ extension ProjectStore {
             for n in (start.listing[d] ?? []).subtracting(end.listing[d] ?? []) { if let data = start.blobs[d + "/" + n] { removed[d + "/" + n] = data } }
         }
         let changed = start.texts.contains { end.texts[$0.key] ?? nil != $0.value } || !created.isEmpty || !removed.isEmpty
-        if changed { undoLog.push(UndoEntry(title: title, before: start.texts, after: end.texts, created: created.sorted(), removed: removed)) }
+        let notes = undoLog.takePending()
+        if changed { var u = UndoEntry(title: title, before: start.texts, after: end.texts, created: created.sorted(), removed: removed); u.journal = notes; undoLog.push(u) }
         if let e = failure { throw e }
         return result!
     }
@@ -139,6 +147,7 @@ extension ProjectStore {
         for (rel, data) in e.removed { let u = try resolve(rel); try fm.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true); try data.write(to: u) }
         try writeTexts(e.before)
         undoLog.pushRedo(e)
+        for j in e.journal { journal.append(j.derived("undone", author: "user", session: sessionID, swap: true)) }
         return e.title
     }
 
@@ -154,6 +163,7 @@ extension ProjectStore {
         for rel in e.removed.keys { if let u = try? resolve(rel) { try? fm.removeItem(at: u) } }
         try writeTexts(e.after)
         undoLog.pushUndo(e)
+        for j in e.journal { journal.append(j.derived("redone", author: "user", session: sessionID, swap: false)) }
         return e.title
     }
 }

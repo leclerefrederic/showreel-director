@@ -21,6 +21,7 @@ struct ProjectWindow: View {
         .focusedSceneObject(win.project)          // the Edit menu's Undo and Redo act on the project in front
         .navigationTitle(win.project.title)
         .onAppear { win.project.start() }
+        .onDisappear { win.chat.endSession() }          // the window closed: the session ends, and Clap writes its summary (none without a key)
     }
 }
 

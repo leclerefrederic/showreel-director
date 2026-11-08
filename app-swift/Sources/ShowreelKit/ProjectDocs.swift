@@ -15,16 +15,16 @@ public enum ProjectDocs {
     public static func seconds(_ d: Double) -> String { d == d.rounded() ? String(Int(d)) : String(d) }
 
     /// The generated content of a file, or nil when the project has nothing to say there yet (no empty files are created).
-    public static func content(of file: String, from f: ShowreelFile, assets: [AssetRow]) -> String? {
+    public static func content(of file: String, from f: ShowreelFile, assets: [AssetRow], extras: BriefExtras = .none) -> String? {
         switch file {
-        case "brief.md": return brief(f, assets)
+        case "brief.md": return brief(f, assets, extras)
         case "style-sheet.md": return styleSheet(f)
         case "storyboard.md": return storyboard(f)
         default: return nil
         }
     }
 
-    static func brief(_ f: ShowreelFile, _ assets: [AssetRow]) -> String? {
+    static func brief(_ f: ShowreelFile, _ assets: [AssetRow], _ extras: BriefExtras = .none) -> String? {
         let p = f.parameters, d = f.decisions
         var out = [header, "", "# Brief: \(f.name)", ""]
         func block(_ title: String, _ lines: [String?]) {
@@ -55,6 +55,8 @@ public enum ProjectDocs {
                                      $0.status, $0.licenceNote.isEmpty ? "-" : $0.licenceNote, $0.notes.isEmpty ? "-" : $0.notes] }
             out += ["## Assets manifest", "", MarkdownTable(header: ["file", "role", "scene", "status", "licence note", "notes"], rows: rows).render(), ""]
         }
+        if !extras.decisions.isEmpty { out += ["## Decisions log", ""] + extras.decisions + [""] }
+        if !extras.assumptions.isEmpty { out += ["## Assumptions", ""] + extras.assumptions + [""] }
         let gates = ShowreelFile.gateKeys.compactMap { k in f.gates[k].map { "- \(k): \($0)" } }
         if !gates.isEmpty { out += ["## Gates", ""] + gates + [""] }
         guard out.count > 4 else { return nil }
@@ -160,9 +162,10 @@ public enum DocSync {
         guard let f = store.loadShowreel() else { return [] }
         let assets = Assets.load(store)
         let recorded = hashes(store)
+        let extras = BriefExtras.make(store)
         var out: [DocReport] = []
         for file in ProjectDocs.files {
-            guard let g = ProjectDocs.content(of: file, from: f, assets: assets) else { out.append(DocReport(file: file, state: .notNeeded)); continue }
+            guard let g = ProjectDocs.content(of: file, from: f, assets: assets, extras: extras) else { out.append(DocReport(file: file, state: .notNeeded)); continue }
             let existing = store.read(file)
             func write(_ s: DocState) -> DocReport {
                 if (try? store.write(file, g, source: .user, syncDocs: false)) != nil { setHash(store, file, ProjectDocs.sha256(g)) }
@@ -181,9 +184,10 @@ public enum DocSync {
         guard let f = store.loadShowreel() else { return [] }
         let assets = Assets.load(store)
         let recorded = hashes(store)
+        let extras = BriefExtras.make(store)
         var out: [DocReport] = []
         for file in ProjectDocs.files {
-            guard let g = ProjectDocs.content(of: file, from: f, assets: assets), let e = store.read(file), e != g else { continue }
+            guard let g = ProjectDocs.content(of: file, from: f, assets: assets, extras: extras), let e = store.read(file), e != g else { continue }
             if let h = recorded[file] { if ProjectDocs.sha256(e) != h { out.append(DocReport(file: file, state: .edited)) } }
             else { out.append(DocReport(file: file, state: .foreign)) }
         }
@@ -192,7 +196,7 @@ public enum DocSync {
 
     /// The user's explicit choice: replace the file with the app's version. The old content stays in the history.
     public static func overwrite(_ store: ProjectStore, _ file: String) throws {
-        guard let f = store.loadShowreel(), let g = ProjectDocs.content(of: file, from: f, assets: Assets.load(store)) else { return }
+        guard let f = store.loadShowreel(), let g = ProjectDocs.content(of: file, from: f, assets: Assets.load(store), extras: BriefExtras.make(store)) else { return }
         try store.write(file, g, source: .user, syncDocs: false)
         setHash(store, file, ProjectDocs.sha256(g))
     }
@@ -231,7 +235,10 @@ public enum DocSync {
     /// regenerated in the app's form (the old content stays in the history).
     public static func acceptReimport(_ store: ProjectStore, files: [String], proposed: ShowreelFile) throws {
         for file in files { if let t = store.read(file) { setHash(store, file, ProjectDocs.sha256(t)) } }
+        let changes = Operations.diff(store.loadShowreel() ?? proposed, proposed)
         try store.save(proposed)
+        store.noteEvent(author: "skill", op: "reimport", target: files.joined(separator: ","), title: "Re-import of " + files.joined(separator: ", "),
+                        before: changes.map { "\($0.label): \($0.before)" }.joined(separator: "; "), after: changes.map { "\($0.label): \($0.after)" }.joined(separator: "; "))
     }
 }
 
@@ -317,5 +324,27 @@ enum MarkdownRead {
         f.scenes = scenes
         if f.storyboards.isEmpty { f.storyboards = [ShowreelFile.Montage(format: f.decisions.formats?.first)] }
         f.storyboards[0].items = items
+    }
+}
+
+/// What the generated brief takes from the project's journal and memory: the decisions that were taken (with their reasons) and what is still assumed.
+public struct BriefExtras: Equatable, Sendable {
+    public var decisions: [String]
+    public var assumptions: [String]
+    public static let none = BriefExtras(decisions: [], assumptions: [])
+
+    public static func make(_ store: ProjectStore) -> BriefExtras {
+        var dec: [(Date, String)] = []
+        for e in store.journal.entries() where e.state == "applied" && (e.note ?? "").isEmpty == false && e.author != "app" {
+            let who = e.author == "clap" ? "Clap, accepted by the user" : e.author == "user" ? "the user" : e.author
+            dec.append((e.time, "- \(ShowreelFile.dayString(e.time)), \(who): \(ProjectResume.line(e.title, 160)). Reason: \(ProjectResume.line(e.note ?? "", 300))"))
+        }
+        let mem = store.activeMemory()
+        for m in mem where m.kind == "decision" || m.kind == "rejected" {
+            dec.append((m.updated, "- \(ShowreelFile.dayString(m.updated)), \(m.kind == "rejected" ? "rejected" : "decision"): \(ProjectResume.line(m.text, MemoryRules.maxText))" + (m.reason.isEmpty ? "" : ". Reason: \(ProjectResume.line(m.reason, MemoryRules.maxReason))")))
+        }
+        let ass = mem.filter { $0.kind == "open_question" || ($0.kind == "fact" && !$0.confirmed) }.sorted { $0.updated < $1.updated }
+            .map { "- \($0.kind == "open_question" ? "Open question" : "Not yet confirmed"): \(ProjectResume.line($0.text, MemoryRules.maxText))" }
+        return BriefExtras(decisions: dec.sorted { $0.0 < $1.0 }.suffix(40).map { $0.1 }, assumptions: ass)
     }
 }

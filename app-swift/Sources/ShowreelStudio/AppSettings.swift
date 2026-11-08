@@ -30,6 +30,9 @@ final class AppSettings: ObservableObject {
         return nil
     }
 
+    /// The key when it has already been read in this run (or is in the environment): never prompts. nil otherwise.
+    var keyIfLoaded: String? { cachedKey ?? envKey() }
+
     /// Whether a key is available, without reading the Keychain secret (no prompt).
     private func keyExists() -> Bool { cachedKey != nil || Keychain.exists() || envKey() != nil }
 
