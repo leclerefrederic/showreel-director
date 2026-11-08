@@ -7,7 +7,7 @@ Spec (JSON):
 { "title": "Look board", "intro": "Pick the look that feels right.", "message": "Know where your money goes", "sub": "optional supporting line",
   "packages": [ { "id": "A", "name": "Clean signal", "why": "one line: why this fits the brief",
                   "palette": {"bg": "#0B1020", "fg": "#F5F7FF", "accent": "#F5C518", "accent2": "#2B3A67"},
-                  "background": "solid | gradient | grid | dots | diagonal",
+                  "background": "an id of engine/backgrounds.js: solid, duotone, vignette, linear, radial, conic, mesh, grid, dots, diagonal, checker, waves, hex, bars, grain, halftone, aurora, particles, stars, scanlines, drift, spotlight, waves-flow",
                   "fonts": {"titles": "Poppins", "text": "Inter"},          names from engine/fonts-free.json, or {"name": "Brand Sans", "file": "path.ttf"} for a supplied font
                   "effects_pack": "Clean product" } ] }               one of the packs of references/effects-catalogue.md
 Guardrails: 3 packages recommended (2 to 4 accepted), distinct from each other; each one derived from the brief or the brand, never from habit.
@@ -19,7 +19,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BG = ("solid", "gradient", "grid", "dots", "diagonal")
+ALIAS = {"gradient": "linear"}  # older name kept
+
+
+def bg_ids():
+    """Background ids come from engine/backgrounds.js (single source): add('id', 'Family', ...)."""
+    js = open(os.path.join(HERE, "..", "engine", "backgrounds.js"), encoding="utf-8").read()
+    return re.findall(r"add\('([a-z0-9-]+)',", js)
 
 
 def packs():
@@ -42,7 +48,7 @@ def check(spec, fonts, spec_dir):
         for k in ("bg", "fg", "accent"):
             if not C.HEX.match(str(pal.get(k, ""))): errs.append(f"{i}: palette.{k} must be a hex colour")
         if pal.get("accent2") and not C.HEX.match(str(pal["accent2"])): errs.append(f"{i}: palette.accent2 must be a hex colour")
-        if p.get("background") not in BG: errs.append(f"{i}: background must be one of {', '.join(BG)}")
+        if ALIAS.get(p.get("background"), p.get("background")) not in bg_ids(): errs.append(f"{i}: background must be one of {', '.join(bg_ids())}")
         if p.get("effects_pack") not in valid: errs.append(f"{i}: effects_pack must be one of {', '.join(sorted(valid))}")
         for role in ("titles", "text"):
             f = (p.get("fonts") or {}).get(role)
@@ -78,7 +84,7 @@ def main():
                 if os.path.exists(fp): faces.append(C.font_face(f["name"], open(fp, "rb").read(), "font/woff2", "woff2", weight="100 900"))
                 else: missing.append(f["name"])
     html = open(os.path.join(HERE, "..", "engine", "look-board.html"), encoding="utf-8").read()
-    html = html.replace("__FACES__", "\n".join(faces)).replace("__SPEC__", C.js_json(spec))
+    html = html.replace("__FACES__", "\n".join(faces)).replace("__SPEC__", C.js_json(spec)).replace("__BACKGROUNDS__", open(os.path.join(HERE, "..", "engine", "backgrounds.js"), encoding="utf-8").read())
     if a.ui:
         u = json.load(open(a.ui, encoding="utf-8"))
         keys = ("pick", "mix", "palette", "background", "fonts", "effects", "none", "note", "copy", "copied", "open", "needNote", "needPick", "sub", "why", "yours", "titles", "text")

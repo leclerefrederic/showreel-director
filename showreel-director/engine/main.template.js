@@ -4,7 +4,10 @@
    Contract:
    - Images listed under "images" in project.json are used with SR.img(key), which returns null until ready: const im = SR.img('shot-01'); if (im) g.drawImage(im, x, y, w, h).
    - window.SHOWREEL declares title/languages/formats/controls/ui/footnote and a pure render(g, t, ctx).
-   - ctx = {SW, SH, mode, lang, reduced, env:{kick,hat,energy}, beat:{i,bf}, scene, lt (time in scene), u (0..1 progress)}.
+   - ctx = {SW, SH, mode, lang, reduced, music, env:{kick,hat,energy}, beat:{i,bf}, scene, lt (time in scene), u (0..1 progress)}.
+     ctx.music is true only while a track is audible (there is a track, sound is on, not muted). Anything that reacts to the beat must use SR.signals(ctx), which is null
+     without music or in reduced motion, so a silent or muted reel stays calm. Backgrounds (engine/backgrounds.js, window.SRB, inlined when this file mentions SRB):
+     SRB.draw(id, g, W, H, t, pal, {reduced: c.reduced, sig: SR.signals(c), mood: SRB.moodFor(pack)}), or SRB.sequence(...) for one continuous background with crossfades; draw it with the reel time t, not c.lt.
      ctx.reduced is true when the viewer asked for reduced motion: drop screen shake and flashes, soften big scale jumps and strobing.
    - render draws in the virtual stage 0..SW x 0..SH (already letterboxed and clipped). Never read the clock inside.
    - Scenes start on beats/bars: setScenes([{name, bar:10}, {name, k:48}, {name, t:12.5}]).

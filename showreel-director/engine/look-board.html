@@ -9,7 +9,7 @@ header{padding:14px 16px 4px}header h1{margin:0;font-size:17px}header p{margin:4
 #grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;padding:12px 16px}
 .card{background:var(--panel);border:2px solid var(--line);border-radius:12px;overflow:hidden}.card.sel{border-color:var(--acc)}
 .frame{position:relative;aspect-ratio:16/9;overflow:hidden;display:flex;flex-direction:column;justify-content:center;padding:6% 8%;container-type:inline-size}
-.frame .t{font-size:9cqw;line-height:1.08;font-weight:400;overflow-wrap:anywhere}
+.frame canvas.bgc{position:absolute;inset:0;width:100%;height:100%;z-index:0}.frame>*:not(.bgc){position:relative;z-index:1}.frame .bar,.frame .dot{position:absolute}.frame .t{font-size:9cqw;line-height:1.08;font-weight:400;overflow-wrap:anywhere}
 .frame .s{font-size:3.6cqw;margin-top:3cqw;opacity:.85}
 .frame .bar{position:absolute;left:8%;bottom:9%;height:1.4cqw;width:22%;border-radius:2cqw}
 .frame .dot{position:absolute;right:8%;top:10%;width:9cqw;height:9cqw;border-radius:50%}
@@ -28,37 +28,36 @@ footer{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--
 <div id="mix"></div>
 <footer><button id="copy"></button><span id="status"></span></footer>
 <script>
+__BACKGROUNDS__
 const SPEC=__SPEC__;
 const GT={pick:'Choose this look',mix:'Mix and match',palette:'Palette',background:'Background',fonts:'Fonts',effects:'Effects mood',none:'None of these: new direction',note:'What should change? (required)',copy:'Copy my choice',copied:'Copied',why:'Why',open:'Choose a look, or mix elements, then copy.',needNote:'Add a note for the new direction.',needPick:'Choose a look first.',yours:'Your mix',titles:'Titles',text:'Text',sub:'A supporting line goes here.'};/*__GT__*/
 const $=id=>document.getElementById(id);
 $('ttl').textContent=SPEC.title;$('intro').textContent=SPEC.intro||'';$('copy').textContent=GT.copy;$('status').textContent=GT.open;
 const P=SPEC.packages;const state={pick:null,none:false,mix:{palette:null,background:null,fonts:null,effects:null},note:''};
 const fam=(f)=>"'"+f.name+"',system-ui,sans-serif";
-function bgcss(kind,pal){const a=pal.accent2||pal.accent,f=pal.fg;
- if(kind==='gradient')return `linear-gradient(135deg,${pal.bg},${a}55)`;
- if(kind==='grid')return `linear-gradient(${f}14 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,${f}14 1px,transparent 1px) 0 0/28px 28px,${pal.bg}`;
- if(kind==='dots')return `radial-gradient(${f}26 1.5px,transparent 1.6px) 0 0/22px 22px,${pal.bg}`;
- if(kind==='diagonal')return `repeating-linear-gradient(45deg,${f}10 0 2px,transparent 2px 16px),${pal.bg}`;
- return pal.bg}
-function frame(el,pal,bgk,fonts){el.style.background=bgcss(bgk,pal);el.style.color=pal.fg;
- el.innerHTML='<div class="t"></div><div class="s"></div><div class="bar"></div><div class="dot"></div>';
+const ALIAS={gradient:'linear'};let live=[];
+function frame(el,pal,bgk,fonts){el.style.background=pal.bg;el.style.color=pal.fg;
+ el.innerHTML='<canvas class="bgc" width="640" height="360"></canvas><div class="t"></div><div class="s"></div><div class="bar"></div><div class="dot"></div>';
+ const cv=el.querySelector('canvas'),id=ALIAS[bgk]||bgk,anim=(SRB.list.find(b=>b.id===id)||{}).animated;
+ const draw=t=>{try{SRB.draw(id,cv.getContext('2d'),640,360,t,pal,{})}catch(e){}};draw(0);if(anim)live.push({draw});
  const t=el.querySelector('.t'),s=el.querySelector('.s');t.textContent=SPEC.message;s.textContent=SPEC.sub||GT.sub;
  t.style.fontFamily=fam(fonts.titles);s.style.fontFamily=fam(fonts.text);t.style.fontWeight=fonts.titles.bold?'700':'400';
  el.querySelector('.bar').style.background=pal.accent;el.querySelector('.dot').style.background=pal.accent2||pal.accent}
+let clk=0,lt=performance.now();function loop(n){clk+=Math.min(.05,(n-lt)/1000);lt=n;live.forEach(l=>l.draw(clk));requestAnimationFrame(loop)}requestAnimationFrame(loop);
 function chips(pal){return Object.entries(pal).map(([k,v])=>`<span class="chip"><i style="background:${v}"></i>${v}</span>`).join('')}
-function render(){const g=$('grid');g.innerHTML='';
+function render(){const g=$('grid');g.innerHTML='';live=[];
  P.forEach(p=>{const d=document.createElement('div');d.className='card'+(state.pick===p.id&&!state.none?' sel':'');
   d.innerHTML=`<div class="frame"></div><div class="meta"><b>${p.id}. ${p.name}</b><small></small><div class="chips">${chips(p.palette)}</div><div><span class="tag">${p.background}</span><span class="tag">${p.fonts.titles.name} / ${p.fonts.text.name}</span><span class="tag">${p.effects_pack}</span></div><div style="margin-top:10px"><button class="pk${state.pick===p.id&&!state.none?' on':''}">${GT.pick}</button></div></div>`;
   d.querySelector('small').textContent=p.why||'';frame(d.querySelector('.frame'),p.palette,p.background,p.fonts);
   d.querySelector('.pk').onclick=()=>{state.pick=p.id;state.none=false;['palette','background','fonts','effects'].forEach(k=>state.mix[k]=p.id);render()};g.appendChild(d)});renderMix()}
 function by(id){return P.find(x=>x.id===id)}
-function renderMix(){const m=$('mix');m.innerHTML=`<h3>${GT.mix}</h3><div class="frame" id="mf" style="border-radius:8px;max-width:420px"></div>`;
+function renderMix(){live=live.filter(l=>!l.mix);const m=$('mix');m.innerHTML=`<h3>${GT.mix}</h3><div class="frame" id="mf" style="border-radius:8px;max-width:420px"></div>`;
  const opts=[['palette',GT.palette],['background',GT.background],['fonts',GT.fonts],['effects',GT.effects]];
  opts.forEach(([k,l])=>{const r=document.createElement('div');r.className='row';r.innerHTML=`<label>${l}</label>`;P.forEach(p=>{const b=document.createElement('button');b.textContent=p.id;b.className=state.mix[k]===p.id?'on':'';b.onclick=()=>{if(!state.pick){state.pick=p.id}state.mix[k]=p.id;state.none=false;render()};r.appendChild(b)});m.appendChild(r)});
  const nb=document.createElement('div');nb.className='row';nb.innerHTML=`<button id="nn" class="${state.none?'on':''}">${GT.none}</button>`;m.appendChild(nb);
  const ta=document.createElement('textarea');ta.placeholder=GT.note;ta.rows=2;ta.value=state.note;ta.oninput=()=>state.note=ta.value;ta.style.display=state.none?'block':'none';m.appendChild(ta);
  $('nn').onclick=()=>{state.none=!state.none;render()};
- if(state.pick&&!state.none){const x=state.mix,pa=by(x.palette||state.pick),bg=by(x.background||state.pick),fo=by(x.fonts||state.pick);frame($('mf'),pa.palette,bg.background,fo.fonts)}else{$('mf').style.display='none'}}
+ if(state.pick&&!state.none){const x=state.mix,pa=by(x.palette||state.pick),bg=by(x.background||state.pick),fo=by(x.fonts||state.pick);const n0=live.length;frame($('mf'),pa.palette,bg.background,fo.fonts);if(live.length>n0)live[live.length-1].mix=true}else{$('mf').style.display='none'}}
 function result(){if(state.none)return state.note.trim()?'Look: none of these. '+state.note.trim():null;if(!state.pick)return null;const x=state.mix,ids=['palette','background','fonts','effects'].map(k=>x[k]||state.pick);
  const same=ids.every(i=>i===ids[0]);const pa=by(ids[0]),pb=by(ids[1]),pf=by(ids[2]),pe=by(ids[3]);
  if(same)return `Look: ${pa.id} (${pa.name}) as proposed`;

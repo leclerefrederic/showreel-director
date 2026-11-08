@@ -6,7 +6,7 @@ Inlines: CSS tokens, fonts (woff2 base64, falls back to the raw file), the track
 envelopes (from analysis_dir/beats.json + env.json), core.js + kit.js (window.SR, window.SRK), main.js, player.js. Prints a weight report and
 fails if the budget in project.json is exceeded. No track: omit "track" (the reel then runs silent).
 """
-import argparse, base64, json, os, sys
+import argparse, base64, json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C
 
@@ -116,7 +116,7 @@ def main():
         html = html.replace("__TILEW__", str(a.qa_tile))
     for k, v in [("__QA__", qa_json), ("__TITLE__", cfg["title"]), ("__TOKENS__", tokens), ("__FONTS_CSS__", fcss), ("__TRACK_TAG__", track_tag),
                  ("__DATA__", json.dumps(data, separators=(",", ":"))),
-                 ("__CORE__", rd(os.path.join(ENGINE, "core.js")) + "\n" + rd(os.path.join(ENGINE, "kit.js"))), ("__MAIN__", rd(os.path.join(root, cfg["main"]))),
+                 ("__CORE__", rd(os.path.join(ENGINE, "core.js")) + "\n" + rd(os.path.join(ENGINE, "kit.js")) + ("\n" + rd(os.path.join(ENGINE, "backgrounds.js")) if re.search(r"\bSRB\b", re.sub(r"/\*.*?\*/|//[^\n]*", "", rd(os.path.join(root, cfg["main"])), flags=re.S)) else "")), ("__MAIN__", rd(os.path.join(root, cfg["main"]))),
                  ("__PLAYER__", rd(os.path.join(ENGINE, "player.js")))]:
         html = html.replace(k, v)
     out = a.out or (os.path.join(root, "..", "qa", "contact-" + os.path.basename(os.path.normpath(root)) + ("-" + cut if cut else "") + ".html") if qa else os.path.join(root, "dist", "index" + ("-" + cut if cut else "") + ".html")); os.makedirs(os.path.dirname(out), exist_ok=True)

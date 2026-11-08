@@ -10,6 +10,7 @@
 - Process hardening: gates table, decision sheets, look test, notes pad, waiver and existing-project routes, untrusted-content rule.
 - Asset layout and naming convention, manifest, organiser and build guard (`references/assets.md`).
 - Cut-downs with their own build, audio analysis overrides.
+- Background library (`engine/backgrounds.js`) and background picker (`scripts/build_background_picker.py`); music-reactive backgrounds with continuous crossfades (`SRB.sequence`, `SR.signals`), off without music, when muted or in reduced motion.
 - Look board of design packages (`scripts/build_look_board.py`).
 - Guided effects lab (moods first, then their effects) and font picker over curated free fonts (`scripts/build_font_picker.py`, `scripts/fetch_font.py`).
 - `SKILL.md` split into a 14 KB router plus per-step references.
@@ -21,6 +22,9 @@
 - Design system ingestion (a Claude Design export): needs a real export to build against.
 - Automatic check for text overflowing a card or panel (today only a visual check of stills catches it).
 - Licence note option in the organiser (`--licence`), instead of editing the manifest by hand.
+
+## To explore
+- Playwright (https://playwright.dev/mcp/introduction) for real-browser checks: playback, seek, muted sound and `ctx.music`, console errors, computed fonts on the picker pages, clipboard copy. Likely shape: Playwright tests run by GitHub Actions rather than the MCP server (deterministic, no token cost); an optional "real browser" tier in the skill when `check_env.py` finds a headless browser; the MCP or CLI only for hands-on exploration on an unlocked machine. A canvas has no accessibility tree, so reel frames still need screenshots; headless browsers play no sound.
 
 ## Known limits
 - The decision sheet embeds one font only.

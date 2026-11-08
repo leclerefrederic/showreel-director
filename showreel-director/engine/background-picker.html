@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Background picker</title>
+<style>
+__FONTS_CSS__
+:root{--bg:#151515;--panel:#202020;--fg:#f2f2f2;--mute:#9a9a9a;--line:#333;--acc:#ffd166}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;background:#101010ee;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+header h1{font-size:15px;margin:0 8px 0 0}label{color:var(--mute);font-size:12px;display:flex;align-items:center;gap:6px}
+input[type=color]{width:28px;height:24px;border:0;padding:0;background:none}
+button{background:#2b2b2b;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;font:inherit}button.on{background:var(--acc);color:#111;border-color:var(--acc)}
+#hint{padding:10px 16px 0;color:var(--mute)}nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px 0}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;padding:12px 16px 90px}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:10px;overflow:hidden}.card.sel{border-color:var(--acc)}
+.pv{position:relative}.pv canvas{display:block;width:100%;aspect-ratio:16/9}.pv .tx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 8%;font-weight:700;font-size:26px;pointer-events:none;text-shadow:0 1px 8px #0006}
+.meta{padding:8px 10px 10px}.meta b{display:block}.meta small{color:var(--mute);display:block;margin:2px 0 6px}.tag{font-size:10px;border:1px solid var(--line);border-radius:10px;padding:1px 6px;color:var(--mute)}
+.row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+footer{position:fixed;left:0;right:0;bottom:0;background:#101010f2;border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center}#picks{flex:1;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style></head><body>
+<header><h1 id="ttl">Background picker</h1>
+<label><span id="l1">Background</span><input type="color" id="c1"></label><label><span id="l2">Text</span><input type="color" id="c2"></label><label><span id="l3">Accent</span><input type="color" id="c3"></label><label><span id="l4">Accent 2</span><input type="color" id="c4"></label>
+<label><input type="checkbox" id="calm"><span id="lcalm">Calm preview (no motion)</span></label>
+<label><input type="checkbox" id="beat"><span id="lbeat">Preview with a beat (124 bpm)</span></label><label><span id="lmood">Style</span><select id="mood"></select></label></header>
+<div id="hint"></div><nav id="nav"></nav><div id="grid"></div>
+<footer><button id="copy"></button><span id="picks"></span></footer>
+<script>
+__BACKGROUNDS__
+const PAL=__PALETTE__,MSG=__MESSAGE__,FONT=__FONT__;
+const GT={title:'Background picker',bg:'Background',fg:'Text',accent:'Accent',accent2:'Accent 2',calm:'Calm preview (no motion)',beat:'Preview with a beat (124 bpm)',style:'Style',moods:{punch:'Punch / slam',playful:'Playful',tech:'Tech',clean:'Clean',cinematic:'Cinematic',deadpan:'Deadpan'},hint:'Pick a background for the titles, one for the content scenes and one for the closing. They can be the same. Animated ones are marked.',all:'All',anim:'animated',titles:'Titles',content:'Content',closing:'Closing',copy:'Copy my picks',copied:'Copied',open:'Click Titles, Content or Closing on the backgrounds you like, then copy your picks and paste them in the chat.',fam:{Solid:'Solid',Gradient:'Gradient',Pattern:'Pattern',Texture:'Texture',Animated:'Animated'}};/*__GT__*/
+const $=id=>document.getElementById(id);const S=window.SRB;
+$('ttl').textContent=GT.title;$('l1').textContent=GT.bg;$('l2').textContent=GT.fg;$('l3').textContent=GT.accent;$('l4').textContent=GT.accent2;$('lcalm').textContent=GT.calm;$('lbeat').textContent=GT.beat;$('lmood').textContent=GT.style;Object.keys(S.moods).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=GT.moods[k]||k;$('mood').appendChild(o)});$('mood').value='punch';$('hint').textContent=GT.hint;$('copy').textContent=GT.copy;
+const state={fam:'All',roles:{titles:null,content:null,closing:null},pal:Object.assign({},PAL),calm:false,beat:false,mood:'punch'};
+['c1','c2','c3','c4'].forEach((id,i)=>{const k=['bg','fg','accent','accent2'][i];$(id).value=PAL[k];$(id).oninput=e=>state.pal[k]=e.target.value});$('calm').onchange=e=>state.calm=e.target.checked;$('beat').onchange=e=>state.beat=e.target.checked;$('mood').onchange=e=>state.mood=e.target.value;
+const fams=['All',...new Set(S.list.map(b=>b.family))];
+fams.forEach(f=>{const b=document.createElement('button');b.textContent=f==='All'?GT.all:(GT.fam[f]||f);b.className=f==='All'?'on':'';b.onclick=()=>{state.fam=f;[...$('nav').children].forEach(x=>x.classList.toggle('on',x===b));render()};$('nav').appendChild(b)});
+let cards=[];
+function render(){const g=$('grid');g.innerHTML='';cards=[];
+ S.list.forEach(b=>{if(state.fam!=='All'&&b.family!==state.fam)return;const d=document.createElement('div');d.className='card'+(Object.values(state.roles).includes(b.id)?' sel':'');
+  d.innerHTML=`<div class="pv"><canvas width="640" height="360"></canvas><div class="tx"></div></div><div class="meta"><b>${b.name}</b><small>${b.desc}</small><span class="tag">${b.family}</span> ${b.animated?`<span class="tag">${GT.anim}</span>`:''}<div class="row"></div></div>`;
+  const tx=d.querySelector('.tx');tx.textContent=MSG;tx.style.fontFamily=FONT;
+  const row=d.querySelector('.row');[['titles',GT.titles],['content',GT.content],['closing',GT.closing]].forEach(([k,l])=>{const x=document.createElement('button');x.textContent=l;x.className=state.roles[k]===b.id?'on':'';x.onclick=()=>{state.roles[k]=state.roles[k]===b.id?null:b.id;render();upd()};row.appendChild(x)});
+  g.appendChild(d);const cv=d.querySelector('canvas');cards.push({b,cv,g:cv.getContext('2d'),vis:true,tx})});
+ if('IntersectionObserver'in window){const io=new IntersectionObserver(es=>es.forEach(en=>{const c=cards.find(x=>x.cv===en.target);if(c)c.vis=en.isIntersecting}));cards.forEach(c=>io.observe(c.cv))}}
+function sum(){const o=[['titles',GT.titles],['content',GT.content],['closing',GT.closing]].filter(([k])=>state.roles[k]).map(([k,l])=>l+': '+state.roles[k]);return o.join(' | ')}
+function upd(){$('picks').textContent=sum()||GT.open}
+$('copy').onclick=()=>{const s=sum();if(!s)return;const fb=()=>{const t=document.createElement('textarea');t.value=s;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(x){}t.remove()};try{navigator.clipboard.writeText(s).catch(fb)}catch(x){fb()}$('copy').textContent=GT.copied;setTimeout(()=>$('copy').textContent=GT.copy,1400)};
+let clock=0,last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(!state.calm)clock+=dt;
+ cards.forEach(c=>{if(!c.vis)return;const ph=(clock*124/60)%1,sig=state.beat&&!state.calm?{pulse:Math.exp(-ph*6),energy:.55+.35*Math.sin(clock*.4),beat:ph}:null;try{S.draw(c.b.id,c.g,640,360,clock,state.pal,{reduced:state.calm,sig,mood:state.mood});c.tx.style.color=state.pal.fg}catch(e){window.__ERR__=(window.__ERR__||[]).concat(c.b.id+': '+e.message)}});requestAnimationFrame(loop)}
+render();upd();requestAnimationFrame(loop);
+</script></body></html>

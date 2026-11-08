@@ -12,6 +12,7 @@ Starts only after the explicit go from Step 2b. Read `references/build-guide.md`
 - When there is a track, scene starts sit on real beats from the computed beat map (`scripts/analyze_audio.py`), never counted by hand (a silent film follows the reading budget); flashes stay under 3 per second.
 - Implement the effects the user picked, by name; if one is missing, add it as a new style rather than substituting silently.
 - Readability: each essential line is stable on screen for about 3 s or more, one idea per scene, no clipped or overlapping text.
+- Backgrounds follow the style and the music without cutting against it: draw one continuous background with `SRB.sequence` (reel time, crossfades at scene changes) instead of resetting it per scene, and when there is a track pass `SR.signals(ctx)` and the mood of the chosen effects pack so animated backgrounds bounce or breathe with the beat (a slam or punch style bounces on the kick; a cinematic style breathes slowly). This is a guard rail, not a rule: it never applies without music (no track, sound off, muted, reduced motion) and the user can switch it off (`react: false`). Details in `references/engine.md`.
 - Accessibility choices (muted viewing, contrast, flashing) are recorded in the brief, and every scene honours `ctx.reduced` (reduced motion: no shake, no flashes, softer scale-ins).
 
 ## Step 4 — Extra formats and languages

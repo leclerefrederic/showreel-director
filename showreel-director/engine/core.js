@@ -89,8 +89,13 @@
     g.fillStyle = S.pageColor || '#000'; g.fillRect(0, 0, W, H);
     stage(g, W, H, SW, SH);
     const s = sceneAt(t);
-    S.render(g, t, { SW, SH, mode: state.mode, lang: state.lang, env: envAt(t), beat: beatInfo(t), scene: s && s.scene, lt: s ? s.lt : t, u: s ? s.u : 0, reduced: !!state.reduced });
+    S.render(g, t, { SW, SH, mode: state.mode, lang: state.lang, env: envAt(t), beat: beatInfo(t), scene: s && s.scene, lt: s ? s.lt : t, u: s ? s.u : 0, reduced: !!state.reduced, music: !!state.music });
     g.restore();
   }
-  G.SR = { clamp, lerp, ease, K_, barT, beatInfo, envAt, setScenes, sceneAt, drawFrame, stage, img, imagesReady, data: D };
+  // Music signals for reactive visuals (backgrounds, props): null (so nothing reacts) when there is no music playing, the track is muted or the viewer asked for reduced motion.
+  function signals(ctx) {
+    if (!ctx || !ctx.music || ctx.reduced || !ctx.env) return null;
+    return { pulse: clamp(ctx.env.kick), hat: clamp(ctx.env.hat), energy: clamp(ctx.env.energy), beat: ctx.beat && ctx.beat.bf != null ? ctx.beat.bf : 0 };
+  }
+  G.SR = { signals, clamp, lerp, ease, K_, barT, beatInfo, envAt, setScenes, sceneAt, drawFrame, stage, img, imagesReady, data: D };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -46,12 +46,12 @@ if (opt('--stills', null)) { (async () => {
   const sheet = createCanvas(cols * tw, rows * (th + lab)), sg = sheet.getContext('2d'); sg.fillStyle = '#1d1d1d'; sg.fillRect(0, 0, sheet.width, sheet.height);
   if (S.setup) S.setup({ mode, lang });
   times.forEach((t, i) => {
-    const c = createCanvas(tw, th), g2 = c.getContext('2d'); SR.drawFrame(g2, tw, th, t, { mode, lang, reduced: args.includes('--reduced') });
+    const c = createCanvas(tw, th), g2 = c.getContext('2d'); SR.drawFrame(g2, tw, th, t, { mode, lang, reduced: args.includes('--reduced'), music: /id="trackdata"/.test(html) && !args.includes('--no-audio') });
     const x = (i % cols) * tw, y = Math.floor(i / cols) * (th + lab); sg.drawImage(c, x, y);
     const a = SR.sceneAt(t); sg.fillStyle = '#ccc'; sg.font = '13px sans-serif'; sg.fillText(`${mode}/${lang} t=${t.toFixed(1)} ${a && a.scene ? (a.scene.id || a.scene.name || '') : ''}`, x + 4, y + th + 15);
   });
   if (args.includes('--stills-report')) {  // objective numbers for each tile, for sessions that cannot look at the PNG
-    times.forEach(t => { const c = createCanvas(tw, th), g2 = c.getContext('2d'); SR.drawFrame(g2, tw, th, t, { mode, lang, reduced: args.includes('--reduced') });
+    times.forEach(t => { const c = createCanvas(tw, th), g2 = c.getContext('2d'); SR.drawFrame(g2, tw, th, t, { mode, lang, reduced: args.includes('--reduced'), music: /id="trackdata"/.test(html) && !args.includes('--no-audio') });
       const d = g2.getImageData(0, 0, tw, th).data; const cs = [[4, 4], [tw - 5, 4], [4, th - 5], [tw - 5, th - 5]].map(([x, y]) => { const i = (y * tw + x) * 4; return [d[i], d[i + 1], d[i + 2]]; }); const bg = cs.sort((p, q) => cs.filter(r => r.join() === q.join()).length - cs.filter(r => r.join() === p.join()).length)[0];  // background = most common colour of the four inner corners (the 1 px letterbox strip is ignored)
        let ink = 0, x0 = tw, y0 = th, x1 = -1, y1 = -1, edge = 0;
       for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) { const i = (y * tw + x) * 4; if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 40) { ink++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (x < 2 || y < 2 || x >= tw - 2 || y >= th - 2) edge++; } }
@@ -83,7 +83,7 @@ const done = new Promise(r => proc.on('close', r));
   console.log(`exporting ${frames} frames, ${W}x${H} @ ${fps} fps, mode ${mode}, lang ${lang}, ${start}s to ${end}s, ${fonts} font(s) registered, audio ${audioFile ? 'yes' : 'no'}`);
   for (let i = 0; i < frames; i++) {
     const t = start + i / fps;
-    SR.drawFrame(g, W, H, t, { mode, lang, reduced: args.includes('--reduced') });
+    SR.drawFrame(g, W, H, t, { mode, lang, reduced: args.includes('--reduced'), music: /id="trackdata"/.test(html) && !args.includes('--no-audio') });
     const buf = Buffer.from(cv.data());
     if (procErr) break;
     if (!proc.stdin.write(buf)) await new Promise(r => proc.stdin.once('drain', r));

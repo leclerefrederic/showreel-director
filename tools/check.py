@@ -124,6 +124,36 @@ def main():
     _json.dump({"message": "Hello", "packages": [pk("A", "#000000", "Poppins", "Inter", "Deadpan"), pk("B", "#000000", "Poppins", "Inter", "Nope")]}, open(lj, "w"))
     rb2 = run([sys.executable, os.path.join(SK, "scripts", "build_look_board.py"), lj, "--out", os.path.join(td, "lb2.html")])
     ok("look board: good spec builds, unknown effects mood refused") if rb1.returncode == 0 and rb2.returncode != 0 else bad("look board self-test failed: " + (rb1.stdout + rb1.stderr + rb2.stdout)[-200:])
+    # backgrounds: every one draws (normal and reduced) with a stub canvas, the picker builds, build.py inlines the library only when main.js uses SRB
+    stub = "const g=new Proxy({},{get:(t,k)=>k in t?t[k]:(/Gradient|Pattern/.test(String(k))?()=>({addColorStop(){}}):()=>undefined),set:(t,k,v)=>(t[k]=v,true)});"
+    js = "global.window={};eval(require('fs').readFileSync(process.argv[1],'utf8'));const SRB=window.SRB;" + stub + "const p={bg:'#101010',fg:'#ffffff',accent:'#ff0000',accent2:'#0000ff'};for(const b of SRB.list){SRB.draw(b.id,g,640,360,2.5,p,{});SRB.draw(b.id,g,640,360,2.5,p,{reduced:true})}console.log(SRB.list.length);"
+    rbg = run(["node", "-e", js, os.path.join(SK, "engine", "backgrounds.js")])
+    rpk = run([sys.executable, os.path.join(SK, "scripts", "build_background_picker.py"), "--out", os.path.join(td, "bgp.html")])
+    ids = re.findall(r"add\('([a-z0-9-]+)',", open(os.path.join(SK, "engine", "backgrounds.js"), encoding="utf-8").read())
+    mj = os.path.join(bp, "v1", "main.js"); orig = open(mj).read(); open(mj, "a").write("\n// a comment mentioning SRB does not count\nwindow.__bgtest = typeof SRB;\n")
+    _json.dump({"title": "T", "main": "main.js", "duration": 6, "fonts": [], "tokens": {}}, open(os.path.join(bp, "v1", "project.json"), "w"))
+    run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(bp, "v1")]); with_bg = "SRB.sequence = function" in open(built, encoding="utf-8").read()
+    open(mj, "w").write(orig); run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(bp, "v1")]); without_bg = "SRB.sequence = function" not in open(built, encoding="utf-8").read()
+    ok("backgrounds: all %s draw (normal and reduced), picker builds, library inlined only when used" % len(ids)) if rbg.returncode == 0 and rbg.stdout.strip() == str(len(ids)) and rpk.returncode == 0 and with_bg and without_bg else bad("backgrounds self-test failed: " + (rbg.stderr + rpk.stderr)[-250:] + f" inlined={with_bg}/{without_bg}")
+    # music guard rails: reactions are finite at extreme signals, react only with music signals, never in reduced motion; SR.signals is null without music, muted or reduced
+    rj = os.path.join(td, "react.js")
+    open(rj, "w").write("""global.window={};eval(require('fs').readFileSync(process.argv[2],'utf8'));const SRB=window.SRB;
+const mk=()=>{const log=[];const g=new Proxy({},{get:(t,k)=>k in t?t[k]:(/Gradient/.test(String(k))?()=>({addColorStop(){}}):(...a)=>{a.forEach(v=>{if(typeof v==='number'&&!isFinite(v))throw new Error('non-finite in '+String(k))});log.push(String(k)+a.map(v=>typeof v==='number'?v.toFixed(3):'').join(','))}),set:(t,k,v)=>(t[k]=v,true)});return{g,log}};
+const p={bg:'#101010',fg:'#ffffff',accent:'#ff0000',accent2:'#0000ff'};let bad=[];
+for(const b of SRB.list){for(const mood of Object.keys(SRB.moods)){const x=mk();try{SRB.draw(b.id,x.g,640,360,3.3,p,{sig:{pulse:1,energy:1,beat:.5},mood})}catch(e){bad.push(b.id+': '+e.message)}}
+ const a=mk(),r=mk(),n=mk();SRB.draw(b.id,a.g,640,360,3.3,p,{});SRB.draw(b.id,r.g,640,360,3.3,p,{sig:{pulse:1,energy:1},mood:'punch',reduced:true});SRB.draw(b.id,n.g,640,360,3.3,p,{sig:{pulse:1,energy:1},mood:'punch',react:false});
+ if(a.log.join()!==n.log.join())bad.push(b.id+': react:false changed the drawing');}
+const q=mk(),w=mk();SRB.draw('particles',q.g,640,360,3.3,p,{});SRB.draw('particles',w.g,640,360,3.3,p,{sig:{pulse:1,energy:1},mood:'punch'});if(q.log.join()===w.log.join())bad.push('particles do not react to the beat');
+const z=mk(),y=mk();SRB.draw('particles',z.g,640,360,3.3,p,{reduced:true});SRB.draw('particles',y.g,640,360,3.3,p,{reduced:true,sig:{pulse:1,energy:1},mood:'punch'});if(z.log.join()!==y.log.join())bad.push('reduced motion still reacts');
+const sg=mk();SRB.sequence(sg.g,640,360,5.0,p,{},[{id:'solid',from:0},{id:'grid',from:5}],.6);
+console.log(bad.length?bad.join('; '):'ok');""")
+    rr = run(["node", rj, os.path.join(SK, "engine", "backgrounds.js")])
+    sj = os.path.join(td, "sig.js")
+    open(sj, "w").write("""const {loadReel}=require(process.argv[2]);const {SR}=loadReel(process.argv[3],null);const env={kick:1,hat:.2,energy:.5};
+const a=SR.signals({music:false,env}),b=SR.signals({music:true,env,reduced:true}),c=SR.signals({music:true,env,beat:{bf:.25}}),d=SR.signals({music:true,reduced:false});
+console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad '+JSON.stringify([a,b,c,d]));""")
+    rs = run(["node", sj, os.path.join(SK, "scripts", "_reel.js"), built])
+    ok("music guard rails: reactions finite and mood-scaled, off without music signals, muted or reduced motion; SR.signals gated") if rr.stdout.strip() == "ok" and rs.stdout.strip() == "ok" else bad("music guard rails failed: " + (rr.stdout + rr.stderr + rs.stdout + rs.stderr)[-300:])
     # organiser self-test on the eval assets: plan, apply, held files, check
     import shutil as _sh
     pj = os.path.join(td, "proj"); fx = os.path.join(SK, "evals", "ploma-full-interview", "files", "assets")
