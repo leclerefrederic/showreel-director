@@ -7,13 +7,13 @@ final class Agent {
     private let baseURL: String
     private let bearer: Bool
     private let tools: Tools
-    private let ui: UIBridge
+    private let ui: AgentUI
     private let system: [[String: Any]]
     private var messages: [[String: Any]] = []
     private var aborted = false
     private let lock = NSLock()
 
-    init(apiKey: String, model: String, baseURL: String = "", bearer: Bool = false, project: URL, ui: UIBridge) throws {
+    init(apiKey: String, model: String, baseURL: String = "", bearer: Bool = false, project: URL, ui: AgentUI) throws {
         let sp = try Skill.systemPrompt(project: project, lang: nil)
         self.apiKey = apiKey
         self.model = model

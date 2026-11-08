@@ -18,6 +18,10 @@ This repo holds a skill that directs motion-design showreels (`showreel-director
 
 `tools/rebuild-app.sh` stops a running copy, runs `app-swift/make-app.sh` (release build outside the repo, stale-binary check, `.app` bundle, ad-hoc signature), opens the app and confirms with `pgrep`. Use `--no-open` to only rebuild. To compile alone: `swift build --package-path app-swift --scratch-path ~/Library/Developer/ShowreelStudio/build`.
 
+## Environment for the skill's full mode
+
+`bash tools/setup-env.sh` installs numpy, fonttools, jsdom and @napi-rs/canvas under `~/Library/Application Support/ShowreelStudio/env`; `Tools.swift` puts them first on PATH and NODE_PATH. The owner runs it; do not install packages yourself.
+
 ## One command to verify
 
 `tools/verify.sh` runs everything that can run on this machine: repo checks (`tools/check.py`: skill structure, build self-tests, `.skill` sync, app files and tool coverage), and on macOS the Swift build and, once it exists, the app's `--selftest`. Run it before saying anything is done.
@@ -26,11 +30,11 @@ This repo holds a skill that directs motion-design showreels (`showreel-director
 
 - `showreel-director/`: SKILL.md (router), `references/` (one file per step), `engine/` (browser player, effects, backgrounds, pickers), `scripts/` (Python and Node plumbing), `evals/`.
 - `tools/`: `check.py`, `package.py`, `verify.sh`, `fetch_font_previews.py`.
-- `app-swift/`: SwiftPM package. `ui/` is the chat and preview page shown in a `WKWebView`; `shared/` holds `tools.json` (tool definitions) and `addendum.md` (prompt addendum), read by the Swift code at run time; `Sources/ShowreelStudio/` has the agent loop, tools and Keychain storage. `make-app.sh` builds the `.app`.
+- `app-swift/`: SwiftPM package. the window is SwiftUI (`App.swift`, `ContentView.swift`, `ChatView.swift` with question cards, `PreviewPane.swift` where a `WKWebView` shows the HTML pages, `SettingsView.swift`, `ChatModel.swift` for the state); `shared/` holds `tools.json` (tool definitions) and `addendum.md` (prompt addendum), read by the Swift code at run time; `Agent.swift`, `Tools.swift` and `Keychain.swift` are the agent loop, the tools and the key storage; the interface reaches them through the `AgentUI` protocol. `make-app.sh` builds the `.app`.
 
 ## Open work
 
-1. `app-swift/` was written without a compiler. Make `swift build` pass (the endpoint and Bearer settings were added without a compiler too), then `./make-app.sh`, open the app and check: the window shows, the API key is stored in the Keychain, a project folder can be chosen, a message runs the agent loop, `show_page` opens a page in the preview pane, question cards answer back.
+1. `app-swift/` was written without a compiler. Make `swift build` pass (the endpoint and Bearer settings and the whole SwiftUI shell were also written without a compiler), then `./make-app.sh`, open the app and check: the window shows, the API key is stored in the Keychain, a project folder can be chosen, a message runs the agent loop, `show_page` opens a page in the preview pane, question cards answer back.
 2. Split `app-swift` into a library (`Util`, `Skill`, `Tools`, `Agent`, with a protocol replacing `UIBridge`) and the executable, so the loop can be tested without the UI. Add a `--selftest` flag (tools, path refusal, prompt build, agent loop against a scripted fake) and have `tools/verify.sh` run it.
 3. Build outside the repo and detect stale binaries in `make-app.sh`.
 4. Update `ROADMAP.md` when a limit is lifted.

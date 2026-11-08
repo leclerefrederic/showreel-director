@@ -20,9 +20,9 @@ final class OutputBuffer: @unchecked Sendable {
 final class Tools {
     let project: URL
     let skill: URL
-    let ui: UIBridge
+    let ui: AgentUI
 
-    init(project: URL, skill: URL, ui: UIBridge) {
+    init(project: URL, skill: URL, ui: AgentUI) {
         self.project = project; self.skill = skill; self.ui = ui
     }
 
@@ -33,6 +33,9 @@ final class Tools {
               let a = try? JSONSerialization.jsonObject(with: d) as? [[String: Any]] else { return [] }
         return a
     }()
+
+    /// Puts the app's own Python venv and node modules (made by tools/setup-env.sh) first, when they exist.
+    static let envSetup = "ENVDIR=\"$HOME/Library/Application Support/ShowreelStudio/env\"; [ -d \"$ENVDIR/venv/bin\" ] && export PATH=\"$ENVDIR/venv/bin:$PATH\"; [ -d \"$ENVDIR/node/node_modules\" ] && export NODE_PATH=\"$ENVDIR/node/node_modules${NODE_PATH:+:$NODE_PATH}\"; "
 
     private func abs(_ p: String) -> URL {
         if p.hasPrefix("/") { return URL(fileURLWithPath: p).standardizedFileURL }
@@ -112,7 +115,7 @@ final class Tools {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/bin/zsh")
             // a login shell plus ~/.zshrc, so PATH and the corporate certificate settings match the user's terminal
-            p.arguments = ["-l", "-c", "[ -f \"$HOME/.zshrc\" ] && source \"$HOME/.zshrc\" >/dev/null 2>&1; " + cmd]
+            p.arguments = ["-l", "-c", "[ -f \"$HOME/.zshrc\" ] && source \"$HOME/.zshrc\" >/dev/null 2>&1; " + Tools.envSetup + cmd]
             p.currentDirectoryURL = project
             var env = ProcessInfo.processInfo.environment
             env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")

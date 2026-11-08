@@ -219,7 +219,7 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     sdir = os.path.join(ROOT, "app-swift")
     if os.path.isdir(sdir):
         import json
-        need = ["ui/index.html", "ui/renderer.js", "shared/tools.json", "shared/addendum.md", "Package.swift"]
+        need = ["shared/tools.json", "shared/addendum.md", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "Agent.swift", "Tools.swift")]
         gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
         ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
         sw = os.path.join(sdir, "Sources", "ShowreelStudio", "Tools.swift")
@@ -229,9 +229,6 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
             code = open(sw).read()
             missing = [n for n in names if '"%s"' % n not in code]
             ok("swift app implements every shared tool") if not missing else bad("Tools.swift lacks tools: " + ", ".join(missing))
-        if os.path.exists(os.path.join(sdir, "ui", "renderer.js")):
-            r = run(["node", "--check", os.path.join(sdir, "ui", "renderer.js")])
-            ok("app UI script syntax") if r.returncode == 0 else bad("app UI script syntax")
     print("\n" + ("all checks passed" if not fails else f"{len(fails)} check(s) failed"))
     sys.exit(1 if fails else 0)
 

@@ -25,7 +25,6 @@ cat > "$APP/Contents/Info.plist" <<'P'
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 P
-cp -R ui "$APP/Contents/Resources/ui"
 cp -R shared "$APP/Contents/Resources/shared"
 cp -R ../showreel-director "$APP/Contents/Resources/skill"
 find "$APP" -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
