@@ -2,7 +2,7 @@
 name: "showreel-director"
 description: "Produce a motion-design showreel or short animated video for a product, brand or story. Starts with an interview (conversation language and on-screen language first, English by default) that settles purpose, audience, story, voice, look, motion, music, length, formats, languages and assets before any production. Use whenever the user asks for a showreel, reel, animated video, motion graphics, kinetic typography, animated logo or intro, explainer or promo video, lyric video or product teaser, with or without a style, music, script or format in mind. Not for PowerPoint or slide decks, static graphics or editing existing footage. Also use it to iterate on an existing reel (restyle, new track, other format, translation, timing feedback) and when the user asks what this skill can do, how it works, or which text, transition or other effects it knows."
 metadata:
-  version: "0.11.0"
+  version: "0.13.0"
 ---
 
 # Showreel director

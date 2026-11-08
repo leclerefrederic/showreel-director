@@ -42,16 +42,22 @@ public struct ShowreelFile: Codable, Equatable {
     public struct Track: Codable, Equatable {
         public var file: String?
         public var bpm: Double?
+        /// Time of a real first beat in seconds, set by the user (the analysis's --first-beat).
+        public var firstBeat: Double?
+        /// The user corrected the tempo or the first beat: the analysis runs again with those values.
+        public var manual: Bool?
         public var unknown: [String: JSONValue] = [:]
         public init(file: String? = nil, bpm: Double? = nil) { self.file = file; self.bpm = bpm }
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: DynamicKey.self)
             file = try c.decodeIfPresent(String.self, forKey: "file")
             bpm = try c.decodeIfPresent(Double.self, forKey: "bpm")
-            unknown = try Keep.unknown(decoder, known: ["file", "bpm"])
+            firstBeat = try c.decodeIfPresent(Double.self, forKey: "firstBeat")
+            manual = try c.decodeIfPresent(Bool.self, forKey: "manual")
+            unknown = try Keep.unknown(decoder, known: ["file", "bpm", "firstBeat", "manual"])
         }
         public func encode(to encoder: Encoder) throws {
-            try Keep.encode(encoder, fields: [("file", file), ("bpm", bpm)], unknown: unknown)
+            try Keep.encode(encoder, fields: [("file", file), ("bpm", bpm), ("firstBeat", firstBeat), ("manual", manual)], unknown: unknown)
         }
     }
 
@@ -181,17 +187,20 @@ public struct ShowreelFile: Codable, Equatable {
         public var type: String
         public var duration: Double?
         public var params: JSONValue?
+        /// For the AI, in the user's words (for a match cut: which element becomes which).
+        public var instruction: String?
         public var unknown: [String: JSONValue] = [:]
-        public init(type: String = "cut", duration: Double? = nil, params: JSONValue? = nil) { self.type = type; self.duration = duration; self.params = params }
+        public init(type: String = "cut", duration: Double? = nil, params: JSONValue? = nil, instruction: String? = nil) { self.type = type; self.duration = duration; self.params = params; self.instruction = instruction }
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: DynamicKey.self)
             type = try c.decodeIfPresent(String.self, forKey: "type") ?? "cut"
             duration = try c.decodeIfPresent(Double.self, forKey: "duration")
             params = try c.decodeIfPresent(JSONValue.self, forKey: "params")
-            unknown = try Keep.unknown(decoder, known: ["type", "duration", "params"])
+            instruction = try c.decodeIfPresent(String.self, forKey: "instruction")
+            unknown = try Keep.unknown(decoder, known: ["type", "duration", "params", "instruction"])
         }
         public func encode(to encoder: Encoder) throws {
-            try Keep.encode(encoder, fields: [("type", type), ("duration", duration), ("params", params)], unknown: unknown)
+            try Keep.encode(encoder, fields: [("type", type), ("duration", duration), ("params", params), ("instruction", instruction)], unknown: unknown)
         }
     }
 
@@ -226,6 +235,10 @@ public struct ShowreelFile: Codable, Equatable {
         public var name: String
         public var format: String?
         public var items: [MontageItem]
+        /// The grid level scenes snap to when stretched: beat, bar, section, drop or off (absent: beat).
+        public var snap: String?
+        /// Stretching a scene moves the following ones (absent: yes).
+        public var ripple: Bool?
         public var unknown: [String: JSONValue] = [:]
         public init(id: String = "main", name: String = "Master", format: String? = nil, items: [MontageItem] = []) {
             self.id = id; self.name = name; self.format = format; self.items = items
@@ -236,10 +249,12 @@ public struct ShowreelFile: Codable, Equatable {
             name = try c.decodeIfPresent(String.self, forKey: "name") ?? "Master"
             format = try c.decodeIfPresent(String.self, forKey: "format")
             items = try c.decodeIfPresent([MontageItem].self, forKey: "items") ?? []
-            unknown = try Keep.unknown(decoder, known: ["id", "name", "format", "items"])
+            snap = try c.decodeIfPresent(String.self, forKey: "snap")
+            ripple = try c.decodeIfPresent(Bool.self, forKey: "ripple")
+            unknown = try Keep.unknown(decoder, known: ["id", "name", "format", "items", "snap", "ripple"])
         }
         public func encode(to encoder: Encoder) throws {
-            try Keep.encode(encoder, fields: [("id", id), ("name", name), ("format", format), ("items", items)], unknown: unknown)
+            try Keep.encode(encoder, fields: [("id", id), ("name", name), ("format", format), ("items", items), ("snap", snap), ("ripple", ripple)], unknown: unknown)
         }
     }
 

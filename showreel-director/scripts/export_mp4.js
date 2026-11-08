@@ -23,7 +23,7 @@ if (!args.includes('--stills') && spawnSync('ffmpeg', ['-version']).status !== 0
 // embedded images (project.json "images") are decoded with the canvas library, so MP4 frames match the browser
 // (decoding is asynchronous in the canvas library, so every image is preloaded before the first frame)
 const PRE = new Map();
-const { html, S, SR, DUR } = loadReel(file, uri => PRE.get(uri) || null);
+const { html, S, SR, DUR } = loadReel(file, uri => PRE.get(uri) || null, (w, h) => createCanvas(w, h));
 const mode = opt('--mode', Object.keys(S.formats)[0]), lang = opt('--lang', S.languages[0].id);
 if (!S.formats[mode]) { console.error('unknown mode ' + mode + '; available: ' + Object.keys(S.formats)); process.exit(2); }
 const fps = parseFloat(opt('--fps', '30')), start = parseFloat(opt('--start', '0')), end = Math.min(DUR, parseFloat(opt('--end', String(DUR))));

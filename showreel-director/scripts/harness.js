@@ -10,7 +10,8 @@
 const { makeOpt, loadReel, registerFonts, stubImage } = require('./_reel');
 const args = process.argv.slice(2), file = args[0], opt = makeOpt(args);
 const step = parseFloat(opt('--step', '0.25'));
-const { html, S, SR, DUR } = loadReel(file, stubImage);
+const offscreen = [];   // stub canvases the film layer asked for (transitions draw two scenes into them): same stub as the main one, emptied every frame
+const { html, S, SR, DUR } = loadReel(file, stubImage, (w, h) => { const ctx = mkCtx(); const c = { width: w, height: h, getContext: () => ctx }; offscreen.push(ctx); return c; });
 // Text measurement: with @napi-rs/canvas available (NODE_PATH) the embedded fonts are registered and measureText is real, so wrapping
 // and collision checks run on the layout that ships; otherwise widths are estimated (0.55 em per character) and the report says so.
 let realMeasure = null;
@@ -72,6 +73,7 @@ for (const mode of modes) for (const lang of langs) {
   stageRect = { l: 0, r: W };  // canvas == stage size in the harness (letterbox is identity)
   for (let t = 0; t <= DUR; t += step) {
     const sc = SR.sceneAt(t); cur = `${sc ? sc.scene.name : '-'}|${lang}/${mode} t=${t.toFixed(2)}`;
+    offscreen.forEach(o => { o.__texts.length = 0; });
     const before = g.__ops;
     try { SR.drawFrame(g, W, H, t, { mode, lang, reduced: args.includes('--reduced'), music: /id="trackdata"/.test(html) && !args.includes('--silent') }); } catch (e) { issues.push(`${cur}: EXCEPTION ${e.message}`); }
     frames++; if (g.__ops - before < 4) empty++;

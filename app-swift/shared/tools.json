@@ -166,7 +166,7 @@
   },
   {
     "name": "get_state",
-    "description": "Read the project's state: showreel.json (parameters, decisions including the look, gates, step, the scene library with durations, and the storyboards: the order of the scenes, which are on, the transitions), `film` (the scenes that are on, in order, with start and end times), the assets (id, type, status, scenes, note), the zones of the workspace with their status, what the user has selected, and the top-level files. Call it before you propose anything, so you do not ask what the app already holds.",
+    "description": "Read the project's state: showreel.json (parameters, decisions including the look, gates, step, the scene library with durations, and the storyboards: the order of the scenes, which are on, the transitions), `film` (the scenes that are on, in order, with start and end times), `music` (when a track is analysed: tempo, first beat, strongest drop, breaks, snap level), the transitions on each scene's montage item, the assets (id, type, status, scenes, note), the zones of the workspace with their status, what the user has selected, and the top-level files. Call it before you propose anything, so you do not ask what the app already holds.",
     "input_schema": {
       "type": "object",
       "properties": {}
@@ -667,6 +667,93 @@
         "item",
         "after"
       ]
+    }
+  },
+  {
+    "name": "set_scene_duration",
+    "description": "Set a scene's own length in seconds (the right edge of its frame in the storyboard). With ripple (the default) the following scenes shift; with ripple false the next scene stays where it is. The user sees a plain card and accepts or refuses; after the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string",
+          "description": "the scene ID, from get_state"
+        },
+        "duration": {
+          "type": "number",
+          "description": "seconds, at least 0.1"
+        },
+        "ripple": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "scene",
+        "duration"
+      ]
+    }
+  },
+  {
+    "name": "set_transition",
+    "description": "Set the transition from a scene to the next scene that is on. A transition belongs to the pair of scenes, not to a scene: it overlaps the end of the outgoing scene and the start of the incoming one, and the film's length does not change. The type is a scene transition of the library (see the effects catalogue, 'Scene transitions') or 'cut' for the default, a cut on the beat. Leave the duration out to get the library's, capped at half the shorter scene. The instruction is for the build, in the user's words (for a match cut: which element becomes which). Do not choose a transition the user did not ask for. The user sees a plain card and accepts or refuses; after the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "the outgoing scene ID"
+        },
+        "type": {
+          "type": "string",
+          "description": "a transition name, or 'cut'"
+        },
+        "duration": {
+          "type": "number",
+          "description": "seconds"
+        },
+        "params": {
+          "type": "string",
+          "description": "key=value, separated by commas"
+        },
+        "instruction": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from"
+      ]
+    }
+  },
+  {
+    "name": "set_track",
+    "description": "Attach the project's music: the id of an approved audio resource (from get_state), or an empty value to remove it. The app then analyses it (tempo, bars, drops, breaks) when numpy and ffmpeg are available. The user sees a plain card and accepts or refuses; after the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "description": "an audio asset id, or empty"
+        }
+      },
+      "required": [
+        "asset"
+      ]
+    }
+  },
+  {
+    "name": "set_grid",
+    "description": "Correct the music grid: the tempo in BPM and/or the time in seconds of a real first beat (the equivalents of --bpm and --first-beat of the analysis). Use it only when the user says the grid is off; the analysis assumes a constant tempo. The user sees a plain card and accepts or refuses; after the Go it takes the Go back (the card says so).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "bpm": {
+          "type": "number"
+        },
+        "first_beat": {
+          "type": "number",
+          "description": "seconds"
+        }
+      }
     }
   }
 ]

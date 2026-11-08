@@ -45,6 +45,8 @@ enum Selection: Hashable {
     case scene(String)
     /// A node of a scene's tree: the group it belongs to and, for a resource or a text, which one.
     case sceneNode(String, SceneGroup, String?)
+    /// The passage from this scene to the next one that is on (a marker of the reel).
+    case transition(String)
     case asset(String)
     case look(LookKind, String)
     case file(String)      // a project file opened from the Advanced panel
@@ -99,6 +101,18 @@ final class ProjectModel: ObservableObject {
     @Published var sceneTab: SceneTab = .settings
     /// The content item open in the Content tab (set by selecting its node in the tree).
     @Published var contentItem: String?
+    /// The sizes of the workspace's panels, remembered in .studio/ui.json.
+    @Published private(set) var layout: PanelLayout
+    /// The playhead of the reel, in seconds, and the zoom of the reel (pixels per second).
+    @Published var playhead = 0.0
+    @Published var pps = 60.0
+    /// The analysis of the project's track (analysis/beats.json), its waveform, and what the app has to say about it.
+    @Published private(set) var music: MusicAnalysis?
+    @Published private(set) var waveform: [Float] = []
+    @Published private(set) var trackDuration = 0.0
+    @Published var musicNotice: String?
+    @Published private(set) var analysing = false
+    private var waveformKey: String?
     /// The scenes whose tree is open in the library.
     @Published var expanded: Set<String> = []
     /// The tree of each scene of the library, with the statuses computed natively.
@@ -148,7 +162,16 @@ final class ProjectModel: ObservableObject {
         workspaceOpen = s.mode == StudioSettings.expert
         showCopilot = s.mode == StudioSettings.expert
         decided = s.decided
+        layout = s.layout ?? PanelLayout()
     }
+
+    /// The user dragged a divider: the new sizes are kept for this project (floors applied, no ceiling).
+    func setLayout(_ l: PanelLayout) {
+        layout = l
+        var s = store.settings; s.layout = l.isStandard ? nil : l; store.settings = s
+    }
+
+    func resetLayout() { setLayout(PanelLayout()) }
 
     var title: String { showreel.flatMap { $0.name.isEmpty ? nil : $0.name } ?? root.lastPathComponent }
 
@@ -163,6 +186,7 @@ final class ProjectModel: ObservableObject {
             importOffer = ProjectImporter.importMarkdown(from: root)
         }
         if mode == StudioSettings.beginner { resumeWizard(); workspaceOpen = wizardFinished }
+        if showreel?.decisions.track?.file != nil, music == nil { analyseTrack() }
         LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step)
         watcher = FileWatcher(root: root) { [weak self] paths in self?.filesChanged(paths) }
     }
@@ -177,6 +201,8 @@ final class ProjectModel: ObservableObject {
         if playVersion == nil, let last = versions.last, Versions.hasDist(store, last) { playVersion = last }
         wizardSteps = Wizard.steps(assets: assets, spec: spec, systemLanguage: Locale.current.language.languageCode?.identifier, file: showreel)
         for a in Blocks.areas { checks[a] = Checks.run(area: a, store: store) }
+        music = showreel?.decisions.track?.file == nil ? nil : MusicAnalysis.load(root: root)
+        loadWaveform()
         assetStatus = Dictionary(uniqueKeysWithValues: assets.map { ($0.id, Assets.nodeStatus($0, store: store)) })
         trees = Dictionary(uniqueKeysWithValues: (showreel?.library ?? []).map { ($0.id, SceneTree.build($0, in: showreel!, assets: assets, store: store)) })
     }
@@ -295,6 +321,92 @@ final class ProjectModel: ObservableObject {
             select(.scene(n.id))
         }
         return true
+    }
+
+    // MARK: the reel: durations, cuts, transitions, grid
+
+    /// Where a time lands on the grid at the level the user chose; the modifier key (`bypass`) leaves it alone.
+    func snapped(_ t: Double, bypass: Bool) -> Double {
+        guard !bypass, let m = music, let f = showreel else { return t }
+        return m.snap(t, level: f.snapLevel())
+    }
+
+    /// The right edge of a frame was dragged to `t`: the scene's own duration changes (and the following scenes follow, with ripple).
+    func stretch(scene id: String, toEnd t: Double, bypass: Bool) {
+        guard let f = showreel, let item = f.timeline().first(where: { $0.scene.id == id }), let start = item.start else { return }
+        let d = ((snapped(t, bypass: bypass) - start) * 1000).rounded() / 1000
+        if abs(d - (item.length ?? -1)) < 0.001 { return }
+        perform(.resize(scene: id, duration: max(d, 0.1), ripple: f.ripple()))
+    }
+
+    /// The left edge of a frame was dragged to `t`: the cut between it and the scene before moves.
+    func moveCut(before: String, after: String, to t: Double, bypass: Bool) {
+        guard let f = showreel, let prev = f.timeline().first(where: { $0.scene.id == before }), let end = prev.end else { return }
+        let at = snapped(t, bypass: bypass)
+        if abs(at - end) < 0.001 { return }
+        perform(.moveCut(before: before, after: after, at: at))
+    }
+
+    /// A scene dropped on the reel (from the library or from another frame): switched on if needed, then put before `target` (nil: at the end).
+    func place(_ id: String, before target: String?) {
+        let on = showreel?.storyboards.first?.items.first { $0.scene == id }?.enabled ?? false
+        if !on { guard perform(.sceneEnabled(id: id, enabled: true, montage: nil)) else { return } }
+        moveScene(id, before: target)
+    }
+
+    @discardableResult
+    func setTransition(from id: String, _ e: TransitionEdit?) -> Bool { perform(.transition(from: id, e)) }
+    func setGridSettings(snap: SnapLevel? = nil, ripple: Bool? = nil) { perform(.gridSettings(snap: snap?.rawValue, ripple: ripple)) }
+
+    // MARK: the music
+
+    /// Attaches an approved audio resource as the music (nil removes it) and analyses it.
+    func attachTrack(_ asset: String?) {
+        guard perform(.track(asset: asset)) else { return }
+        for p in [MusicAnalysis.beatsPath, MusicAnalysis.envPath] { try? FileManager.default.removeItem(at: root.appendingPathComponent(p)) }
+        musicNotice = nil
+        if asset?.isEmpty == false { analyseTrack() } else { refresh() }
+    }
+
+    /// The user corrected the tempo or the first beat: the grid is computed again with those values.
+    func correctGrid(bpm: Double?, firstBeat: Double?) {
+        guard perform(.grid(bpm: bpm, firstBeat: firstBeat)) else { return }
+        let t = showreel?.decisions.track
+        analyseTrack(bpm: t?.bpm, firstBeat: t?.firstBeat)
+    }
+
+    /// Runs the skill's analysis from the app's environment. Without numpy or ffmpeg the notice says what is missing and the grid stays a time ruler.
+    func analyseTrack(bpm: Double? = nil, firstBeat: Double? = nil) {
+        guard !analysing, let skill = Skill.root() else { return }
+        analysing = true; musicNotice = nil
+        Task { @MainActor in
+            let out = await Audio.analyse(store: store, skill: skill, bpm: bpm, firstBeat: firstBeat)
+            analysing = false
+            switch out {
+            case .analysed(let a): try? store.recordAnalysis(a)
+            case .unavailable(let m): musicNotice = m
+            case .failed(let m): musicNotice = "The analysis failed: " + m
+            }
+            refresh()
+        }
+    }
+
+    private func loadWaveform() {
+        guard let file = showreel?.decisions.track?.file, !file.isEmpty else { waveform = []; trackDuration = 0; waveformKey = nil; return }
+        let url = root.appendingPathComponent(file)
+        let stamp = ((try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)?.timeIntervalSince1970 ?? 0)
+        let key = "\(file)|\(stamp)"
+        guard key != waveformKey else { return }
+        waveformKey = key
+        let env = music?.envelope ?? []
+        Task { @MainActor in
+            let (p, len) = await Task.detached { (Audio.peaks(url, buckets: 1500), Audio.duration(url)) }.value
+            guard waveformKey == key else { return }
+            trackDuration = len ?? music?.duration ?? 0
+            if let p = p { waveform = p }
+            else if !env.isEmpty { let n = 1500, per = max(1, env.count / n); waveform = (0..<min(n, env.count / per)).map { i in Float(env[(i * per)..<min(env.count, (i + 1) * per)].max() ?? 0) / 255 } }
+            else { waveform = [] }
+        }
     }
 
     // MARK: scene content
@@ -497,6 +609,7 @@ final class ProjectModel: ObservableObject {
     var foregroundBlock: String? {
         switch selection {
         case .scene(let id): return "inspector: scene \(id)"
+        case .transition(let id): return "inspector: transition after scene \(id)"
         case .sceneNode(let id, let g, _): return "inspector: scene \(id), \(g.title) tab"
         case .asset(let id): return "inspector: resource \(id)"
         case .look(let k, let id): return "inspector: \(k.title.lowercased()) element \(id)"

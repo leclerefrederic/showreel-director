@@ -153,15 +153,16 @@ enum SelfCheck {
         check(engineScript != nil && fm.fileExists(atPath: engineScript!.path) && inside(engineScript), "engine host script found" + (bundled ? " inside the app" : ""))
         check(shared?.appendingPathComponent("look-packages.json").path.isEmpty == false && LookPackages.all().count >= 6, "starting looks load (\(LookPackages.all().count))")
         let pal = EnginePalette(bg: "#101820", fg: "#FFFFFF", accent: "#F2AA4C", accent2: "#4CC2F2")
-        let drawn = awaitMain { () -> (Int, Int, Data, Data, [String], Set<String>) in
+        let drawn = awaitMain { () -> (Int, Int, Data, Data, [String], Set<String>, Set<String>) in
             let e = EngineRenderer()
             try await e.start()
             let fx = try await e.renderEffect("Pop", palette: pal, font: "Helvetica", t: 0.9)
             let bgd = try await e.renderBackground("duotone", palette: pal, t: 0)
-            return (e.catalogue?.effects.count ?? 0, e.catalogue?.backgrounds.count ?? 0, fx, bgd, try await e.errors(), Set(e.catalogue?.effects.map { $0.name } ?? []))
+            return (e.catalogue?.effects.count ?? 0, e.catalogue?.backgrounds.count ?? 0, fx, bgd, try await e.errors(), Set(e.catalogue?.effects.map { $0.name } ?? []), Set(e.catalogue?.effects.filter { $0.cat == EngineCatalogue.transitionCategory }.map { $0.name } ?? []))
         }
         switch drawn {
-        case .success(let (nfx, nbg, fx, bgd, errs, names)):
+        case .success(let (nfx, nbg, fx, bgd, errs, names, trans)):
+            check(trans == Set(Look.transitions().map { $0.name }) && trans.count >= 40, "the scene transitions of the library are the engine's (\(trans.count))")
             check(names == Set(Look.effects()), "the effect library the checks read (effects-index.md) is the engine's catalogue (\(names.count))")
             check(nfx >= 240 && nbg >= 20, "engine catalogue loads (\(nfx) effects, \(nbg) backgrounds)")
             let a = pixelStats(fx, background: pal.bg), b = pixelStats(bgd, background: pal.bg)
@@ -209,6 +210,13 @@ enum SelfCheck {
             try? bs.apply(.content(scene: "S02", .add(ContentEdit(type: "text", text: "More", color: "accent", animation: "Pop"), after: nil)))
             check(bs.loadShowreel()?.scenes.first { $0.id == "S02" }?.content.last?.animation.effect == "Pop" && BuildRunner.prompt(version: "v2", store: bs).contains("animation: FIXED Pop"),
                   "a content item is an operation, and the build message lists it with its fixed attributes")
+            try? bs.apply(.sceneEnabled(id: "S01", enabled: true, montage: nil))
+            if let lead = bs.loadShowreel()?.film.first?.id {
+                try? bs.apply(.transition(from: lead, TransitionEdit(type: "Push", duration: 0.5)))
+                try? bs.apply(.resize(scene: lead, duration: 6, ripple: true))
+                check(bs.loadShowreel()?.storyboards.first?.items.first { $0.scene == lead }?.transition.type == "Push" && bs.loadShowreel()?.scenes.first { $0.id == lead }?.duration == 6
+                      && BuildRunner.prompt(version: "v2", store: bs).contains("Push 0.5 s"), "a transition and a duration are operations, and the build message lists the transition")
+            }
             try? bs.apply(.sceneLook(id: "S02", [DecisionChange(.background, "duotone")]))
             if let f = bs.loadShowreel(), let sc = f.scenes.first(where: { $0.id == "S02" }) {
                 let node = SceneTree.build(sc, in: f, assets: [], store: bs).first { $0.group == .background }?.nodes.first

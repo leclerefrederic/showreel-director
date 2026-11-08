@@ -3,7 +3,7 @@
 
 Usage: python3 build.py PROJECT_DIR [--out FILE]
 Inlines: CSS tokens, fonts (woff2 base64, falls back to the raw file), the track (base64), beat map and
-envelopes (from analysis_dir/beats.json + env.json), core.js + kit.js (window.SR, window.SRK), main.js, player.js. Prints a weight report and
+envelopes (from analysis_dir/beats.json + env.json), core.js + kit.js (window.SR, window.SRK), backgrounds.js when main.js uses SRB, film.js + transitions.js when it uses SRF, main.js, player.js. Prints a weight report and
 fails if the budget in project.json is exceeded. No track: omit "track" (the reel then runs silent).
 """
 import argparse, base64, json, os, re, sys
@@ -107,6 +107,8 @@ def main():
     fcss, frep = font_css(cfg.get("fonts", []), root); report += frep
     tokens = ";".join("%s:%s" % kv for kv in cfg.get("tokens", {}).items())
     rd = lambda p: open(p, encoding="utf-8").read()
+    # optional engine files are inlined only when main.js (comments aside) names them: SRB backgrounds, SRF the film layer (modules per scene and transitions)
+    uses = lambda name: bool(re.search(r"\b" + name + r"\b", re.sub(r"/\*.*?\*/|//[^\n]*", "", rd(os.path.join(root, cfg["main"])), flags=re.S)))
     qa = a.qa is not None or a.qa_step is not None
     html = rd(os.path.join(ENGINE, "qa-shell.html" if qa else "shell.html"))
     qa_json = "null"
@@ -117,7 +119,7 @@ def main():
         html = html.replace("__TILEW__", str(a.qa_tile))
     for k, v in [("__QA__", qa_json), ("__TITLE__", cfg["title"]), ("__TOKENS__", tokens), ("__FONTS_CSS__", fcss), ("__TRACK_TAG__", track_tag),
                  ("__DATA__", json.dumps(data, separators=(",", ":"))),
-                 ("__CORE__", rd(os.path.join(ENGINE, "core.js")) + "\n" + rd(os.path.join(ENGINE, "kit.js")) + ("\n" + rd(os.path.join(ENGINE, "backgrounds.js")) if re.search(r"\bSRB\b", re.sub(r"/\*.*?\*/|//[^\n]*", "", rd(os.path.join(root, cfg["main"])), flags=re.S)) else "")), ("__MAIN__", rd(os.path.join(root, cfg["main"]))),
+                 ("__CORE__", rd(os.path.join(ENGINE, "core.js")) + "\n" + rd(os.path.join(ENGINE, "kit.js")) + ("\n" + rd(os.path.join(ENGINE, "backgrounds.js")) if uses("SRB") else "") + ("\n" + rd(os.path.join(ENGINE, "transitions.js")) + "\n" + rd(os.path.join(ENGINE, "film.js")) if uses("SRF") else "")), ("__MAIN__", rd(os.path.join(root, cfg["main"]))),
                  ("__PLAYER__", rd(os.path.join(ENGINE, "player.js")))]:
         html = html.replace(k, v)
     out = a.out or (os.path.join(root, "..", "qa", "contact-" + os.path.basename(os.path.normpath(root)) + ("-" + cut if cut else "") + ".html") if qa else os.path.join(root, "dist", "index" + ("-" + cut if cut else "") + ".html")); os.makedirs(os.path.dirname(out), exist_ok=True)

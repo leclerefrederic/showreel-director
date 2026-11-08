@@ -5,11 +5,13 @@ const fs = require('fs'), vm = require('vm');
 const makeOpt = args => (name, def) => { const i = args.indexOf(name); return i > -1 ? args[i + 1] : def; };
 
 // imgLoader(dataUri) -> drawable or null; it becomes SR_IMG_LOADER, which SR.img(key) calls (see engine/core.js).
-function loadReel(file, imgLoader) {
+// canvasFactory(w, h) -> an off-screen canvas; it becomes SR_CANVAS_FACTORY, which the film layer (engine/film.js) uses to draw two scenes at once during a transition.
+function loadReel(file, imgLoader, canvasFactory) {
   const html = fs.readFileSync(file, 'utf8');
   const sandbox = { console, atob: s => Buffer.from(s, 'base64').toString('binary'), Math, Uint8Array, Array, JSON };
   sandbox.window = sandbox; sandbox.globalThis = sandbox;
   if (imgLoader) sandbox.SR_IMG_LOADER = imgLoader;
+  if (canvasFactory) sandbox.SR_CANVAS_FACTORY = canvasFactory;
   vm.createContext(sandbox);
   for (const id of ['sr-data', 'sr-core', 'sr-main']) {
     const m = new RegExp(`<script id="${id}">([\\s\\S]*?)</script>`).exec(html);

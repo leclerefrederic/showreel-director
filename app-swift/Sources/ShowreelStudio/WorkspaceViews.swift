@@ -6,17 +6,70 @@ import UniformTypeIdentifiers
 /// The editing workspace: the library on the left, the viewer in the centre, the inspector (with the copilot) on the right, and the
 /// storyboard strip at the bottom. Selection drives the viewer and the inspector. The views call typed operations; the rules live in ShowreelKit.
 struct WorkspaceView: View {
+    @EnvironmentObject var project: ProjectModel
+    @State private var live: PanelLayout?
+    @State private var dragStart: Double?
+    private static let centerMinWidth = 320.0, centerMinHeight = 200.0, handle = 6.0
+
+    private var layout: PanelLayout { live ?? project.layout }
+
     var body: some View {
-        VSplitView {
-            HSplitView {
-                LibraryPane().frame(minWidth: 250, idealWidth: 290, maxWidth: 420)
-                CenterPane().frame(minWidth: 360)
-                InspectorPane().frame(minWidth: 330, idealWidth: 390, maxWidth: 560)
+        GeometryReader { geo in
+            let lw = fit(layout.libraryWidth, floor: PanelLayout.minLibrary, room: geo.size.width - layout.inspectorWidth - Self.centerMinWidth - 2 * Self.handle)
+            let iw = fit(layout.inspectorWidth, floor: PanelLayout.minInspector, room: geo.size.width - lw - Self.centerMinWidth - 2 * Self.handle)
+            let sh = fit(layout.stripHeight, floor: PanelLayout.minStrip, room: geo.size.height - Self.centerMinHeight - Self.handle)
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    LibraryPane().frame(width: lw)
+                    SplitHandle(vertical: true) { dx, ended in drag(.library, from: lw, by: dx, ended: ended) }
+                    CenterPane().frame(minWidth: Self.centerMinWidth, maxWidth: .infinity)
+                    SplitHandle(vertical: true) { dx, ended in drag(.inspector, from: iw, by: -dx, ended: ended) }
+                    InspectorPane().frame(width: iw)
+                }
+                SplitHandle(vertical: false) { dy, ended in drag(.strip, from: sh, by: -dy, ended: ended) }
+                FilmStrip().frame(height: sh)
             }
-            .frame(minHeight: 380)
-            FilmStrip().frame(minHeight: 150, idealHeight: 210, maxHeight: 320)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    /// A stored size, never under its floor; it gives way only when the window leaves no room for the others (the stored value is kept).
+    private func fit(_ v: Double, floor: Double, room: Double) -> CGFloat { CGFloat(max(floor, min(v, room))) }
+
+    private enum Panel { case library, inspector, strip }
+
+    /// Dragging a divider changes one size; the new value is kept when the drag ends.
+    private func drag(_ p: Panel, from start: CGFloat, by delta: CGFloat, ended: Bool) {
+        if dragStart == nil { dragStart = Double(start) }
+        let v = (dragStart ?? Double(start)) + Double(delta)
+        var l = project.layout
+        switch p {
+        case .library: l = PanelLayout(library: v, inspector: l.inspector, strip: l.strip)
+        case .inspector: l = PanelLayout(library: l.library, inspector: v, strip: l.strip)
+        case .strip: l = PanelLayout(library: l.library, inspector: l.inspector, strip: v)
+        }
+        if ended { live = nil; dragStart = nil; project.setLayout(l) } else { live = l }
+    }
+}
+
+/// A divider between two panels: a thin line to drag, with the resize cursor.
+struct SplitHandle: View {
+    let vertical: Bool
+    let onDrag: (CGFloat, Bool) -> Void
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(Color.clear)
+            Rectangle().fill(Color.primary.opacity(0.18)).frame(width: vertical ? 1 : nil, height: vertical ? nil : 1)
+        }
+        .frame(width: vertical ? 6 : nil, height: vertical ? nil : 6)
+        .contentShape(Rectangle())
+        .onHover { inside in
+            if inside { (vertical ? NSCursor.resizeLeftRight : NSCursor.resizeUpDown).set() } else { NSCursor.arrow.set() }
+        }
+        .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global)
+            .onChanged { onDrag(vertical ? $0.translation.width : $0.translation.height, false) }
+            .onEnded { onDrag(vertical ? $0.translation.width : $0.translation.height, true) })
     }
 }
 
@@ -220,6 +273,7 @@ struct ScenesLibrary: View {
                                     Toggle("", isOn: Binding(get: { onIDs.contains(s.id) }, set: { project.setEnabled(s.id, $0) }))
                                         .toggleStyle(.checkbox).labelsHidden().help("In the film (the storyboard)")
                                     LibraryRow(selected: project.selection == .scene(s.id), action: { project.select(.scene(s.id)) }) { SceneRowView(scene: s, on: onIDs.contains(s.id)) }
+                                    .draggable(s.id)
                                 }
                                 if project.expanded.contains(s.id) { SceneTreeView(scene: s.id).padding(.leading, 34).padding(.bottom, 4) }
                             }
@@ -383,6 +437,7 @@ struct LookLibrary: View {
 
     private func row<C: View>(_ kind: LookKind, _ id: String, @ViewBuilder _ content: @escaping () -> C) -> some View {
         LibraryRow(selected: project.selection == .look(kind, id), action: { project.select(.look(kind, id)) }, content: content)
+            .draggable(kind == .transitions ? "transition:" + id : "look:" + kind.rawValue + ":" + id)    // a transition is dropped on a marker of the reel
     }
 
     private func chip(_ t: String) -> some View {
@@ -395,118 +450,6 @@ enum AssetFonts {
     @MainActor static func family(_ a: AssetRow, in root: URL) -> String {
         guard let u = AssetFiles.url(a, in: root) else { return (a.name as NSString).deletingPathExtension }
         return FontRegistry.shared.register(u) ?? (a.name as NSString).deletingPathExtension
-    }
-}
-
-// MARK: storyboard strip
-
-struct FilmStrip: View {
-    @EnvironmentObject var project: ProjectModel
-
-    private var file: ShowreelFile? { project.showreel }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            if let f = file, let m = f.storyboards.first {
-                let items = m.items.filter { it in f.scenes.contains { $0.id == it.scene && !$0.archived } }
-                if items.isEmpty {
-                    Text("The storyboard is empty. Create scenes in the library: each one you switch on appears here, in order.")
-                        .font(.callout).foregroundStyle(.secondary).padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                    Spacer()
-                } else {
-                    let timed = Dictionary(f.timeline().map { ($0.scene.id, $0) }, uniquingKeysWith: { a, _ in a })
-                    ScrollView(.horizontal) {
-                        HStack(alignment: .top, spacing: 8) {
-                            ForEach(items, id: \.scene) { it in
-                                if let s = f.scenes.first(where: { $0.id == it.scene }) {
-                                    FrameCard(scene: s, item: it, timed: timed[s.id]).id(it.scene)
-                                }
-                            }
-                            Color.clear.frame(width: 60, height: 100)
-                                .dropDestination(for: String.self) { ids, _ in
-                                    guard let id = ids.first else { return false }
-                                    project.moveScene(id, before: nil); return true
-                                }
-                        }
-                        .padding(10)
-                    }
-                }
-            } else {
-                Spacer()
-            }
-        }
-        .background(Color(nsColor: .underPageBackgroundColor))
-    }
-
-    private var header: some View {
-        HStack(spacing: 12) {
-            Label("Storyboard", systemImage: "film.stack").font(.headline)
-            if let f = file {
-                let end = f.filmEnd
-                let target = f.decisions.duration
-                Text(summary(count: f.film.count, end: end, target: target)).font(.callout).foregroundStyle(.secondary)
-                let worst = Checks.worst((project.checks["storyboard"] ?? []) + (project.checks["scene"] ?? []))
-                Image(systemName: worst.symbol).foregroundStyle(worst.color).help("Film-level checks: see the Checks menu")
-            }
-            Spacer()
-            if file != nil {
-                ValidateButton(gate: "storyboard", block: "storyboard")
-                GoButton()
-            }
-        }
-        .padding(.horizontal, 12).padding(.vertical, 6)
-        .background(.bar)
-    }
-
-    private func summary(count: Int, end: Double?, target: Double?) -> String {
-        var t = "\(count) scene\(count == 1 ? "" : "s") on"
-        if let e = end { t += " · \(ProjectDocs.seconds(e)) s" }
-        if let d = target { t += " of \(ProjectDocs.seconds(d)) s" }
-        return t
-    }
-}
-
-/// One frame of the strip: the scene's thumbnail, its ID, duration and review state, on or off. Drag it to reorder.
-struct FrameCard: View {
-    let scene: ShowreelFile.Scene
-    let item: ShowreelFile.MontageItem
-    let timed: TimedScene?
-    @EnvironmentObject var project: ProjectModel
-    @State private var targeted = false
-
-    private var selected: Bool { project.selection.sceneID == scene.id }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ZStack(alignment: .topLeading) {
-                SceneThumb(scene: scene, still: true)
-                    .frame(width: 168, height: 94)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .opacity(item.enabled ? 1 : 0.35)
-                Text(scene.id).font(.caption2.monospaced().weight(.bold)).padding(.horizontal, 5).padding(.vertical, 1)
-                    .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 4)).foregroundStyle(.white).padding(4)
-                if !item.enabled { Text("OFF").font(.caption.weight(.bold)).foregroundStyle(.secondary).frame(width: 168, height: 94) }
-            }
-            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(targeted ? Color.accentColor : selected ? Color.accentColor : Color.primary.opacity(0.15), lineWidth: selected || targeted ? 3 : 1))
-            HStack(spacing: 6) {
-                Image(systemName: scene.statusSymbol).foregroundStyle(scene.statusColor).font(.caption)
-                Text(scene.durationLabel == "no duration" ? "no duration" : scene.durationLabel).font(.caption).foregroundStyle(.secondary)
-                Spacer()
-                Toggle("", isOn: Binding(get: { item.enabled }, set: { project.setEnabled(scene.id, $0) })).toggleStyle(.switch).controlSize(.mini).labelsHidden()
-                    .help("In the film")
-            }
-            .frame(width: 168)
-            if let t = timed, let a = t.start { Text("from \(ProjectDocs.seconds(a)) s").font(.caption2).foregroundStyle(.tertiary) }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { project.select(.scene(scene.id)) }
-        .draggable(scene.id)
-        .dropDestination(for: String.self, action: { ids, _ in
-            guard let id = ids.first, id != scene.id else { return false }
-            project.moveScene(id, before: scene.id); return true
-        }, isTargeted: { targeted = $0 })
     }
 }
 

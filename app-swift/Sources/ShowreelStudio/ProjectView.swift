@@ -72,6 +72,9 @@ struct ProjectView: View {
                     Button { showChecks.toggle() } label: { Label("Checks", systemImage: Checks.worst(project.checks.values.flatMap { $0 }).symbol) }
                         .help("The checks and the gates of the process, green or red, no AI")
                         .popover(isPresented: $showChecks) { ChecksPopover() }
+                    Button { project.resetLayout() } label: { Label("Reset layout", systemImage: "rectangle.3.group") }
+                        .help("Reset layout: put the library, the inspector and the storyboard back to their standard sizes")
+                        .disabled(project.layout.isStandard)
                     GoButton()
                     Button { project.centerMode = project.centerMode == .build ? .viewer : .build } label: { Label("Build", systemImage: "play.rectangle") }
                         .help("Build the film, test it and play it")

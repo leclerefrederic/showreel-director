@@ -72,8 +72,9 @@ public enum BuildRunner {
         3. main.js implements the storyboard scene by scene with the stable IDs as scene names, the Time column of storyboard.md as scene starts (t in seconds, there is no beat map; scenes marked off or archived are not in the film), the on-screen text in each reel language (\(langs.isEmpty ? "the language of the brief" : langs)), the palette, the fonts, the background and the effects pack or moods the user chose, and the linked approved assets.\(overrideLine) The film lasts \(dur). Every scene honours ctx.reduced.
         4. Scene content. Each scene lists what it contains, in processing priority: treat the items from the first to the last, the earlier ones win conflicts of time, space and emphasis (this priority is not the stacking order on screen, which you decide unless an instruction fixes it). Every attribute is marked FIXED (the user chose it: honour it strictly, exactly as written) or AUTO (decide it yourself from the style sheet, the effect packs and the brief). If the feasibility or the reading budget fail, simplify or drop the last items first and say so in your answer.
         \(contentBrief(f))
-        5. Use only approved assets listed in assets/MANIFEST.csv, from assets/prepared or assets/generated. Do not embed a font file that is not an approved asset: set the family in tokens and let the reel fall back to a system font, and say so in your answer. Add the formats of the brief (16:9 as d, 9:16 as m).
-        6. Do not change any decision, scene or asset, do not run build.py, the harness or the smoke test (the app runs them next and shows the user the result), and do not give or assume any Go beyond this one. Do not write outside \(version)/.
+        5. Transitions and music. \(reelBrief(f, store: store))
+        6. Use only approved assets listed in assets/MANIFEST.csv, from assets/prepared or assets/generated. Do not embed a font file that is not an approved asset: set the family in tokens and let the reel fall back to a system font, and say so in your answer. Add the formats of the brief (16:9 as d, 9:16 as m).
+        7. Do not change any decision, scene or asset, do not run build.py, the harness or the smoke test (the app runs them next and shows the user the result), and do not give or assume any Go beyond this one. Do not write outside \(version)/.
         Answer in two short lines: what you built, and anything you could not do.
         """
     }
@@ -92,6 +93,28 @@ public enum BuildRunner {
             }
             return ([head] + items).joined(separator: "\n")
         }.joined(separator: "\n")
+    }
+
+    /// The passages between scenes and the music grid, for the build message.
+    static func reelBrief(_ f: ShowreelFile?, store: ProjectStore) -> String {
+        guard let f = f else { return "" }
+        var lines: [String] = []
+        let tl = f.timeline()
+        let named = tl.enumerated().filter { $0.offset + 1 < tl.count && !$0.element.item.transition.isCut }
+        if named.isEmpty { lines.append("Every scene change is a cut on the beat (the default).") }
+        else {
+            lines.append("Transitions belong to a pair of scenes: each overlaps the end of the outgoing scene and the start of the incoming one over its duration, and the film's length does not change. Other scene changes are cuts on the beat. The player has no transition compositor yet: draw both scenes together in main.js with the engine's helpers and say if one cannot be made.")
+            for (i, t) in named { lines.append("   \(t.scene.id) -> \(tl[i + 1].scene.id): \(t.item.transition.text)") }
+        }
+        if f.decisions.track?.file != nil, let a = MusicAnalysis.load(root: store.root) {
+            let manual = f.decisions.track?.manual == true ? " (corrected by the user)" : ""
+            var g = "Music grid\(manual), constant tempo: \(ProjectDocs.seconds(a.bpm)) BPM, first beat \(ProjectDocs.seconds(a.firstBeat)) s, \(a.bars.count) bars."
+            if let d = a.strongestDrop { g += " Strongest drop at \(ProjectDocs.seconds(d)) s: land the film's biggest moment there." }
+            if !a.breaks.isEmpty { g += " Breaks (bass out): " + a.breaks.map { "\(ProjectDocs.seconds($0.start))-\(ProjectDocs.seconds($0.end)) s" }.joined(separator: ", ") + "." }
+            g += " Scene starts: " + tl.map { "\($0.scene.id) \($0.start.map { ProjectDocs.seconds($0) } ?? "?") s (\($0.start.flatMap { a.gridKind($0) } ?? "off the grid"))" }.joined(separator: ", ") + "."
+            lines.append(g)
+        } else if let t = f.decisions.track?.file { lines.append("Music: \((t as NSString).lastPathComponent), not analysed (no grid): use the times of the storyboard.") }
+        return lines.joined(separator: "\n")
     }
 
     static func q(_ u: URL) -> String { "'" + u.path.replacingOccurrences(of: "'", with: "'\\''") + "'" }

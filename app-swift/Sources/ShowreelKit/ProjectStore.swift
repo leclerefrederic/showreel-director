@@ -1,5 +1,36 @@
 import Foundation
 
+/// The sizes of the workspace's panels (library width, inspector width, storyboard height), remembered per project. A panel has a floor, so its
+/// content stays usable, and no ceiling: the window is the only limit. Absent sizes mean the standard layout.
+public struct PanelLayout: Codable, Equatable, Sendable {
+    public static let minLibrary = 200.0, minInspector = 280.0, minStrip = 130.0
+    public static let standardLibrary = 290.0, standardInspector = 390.0, standardStrip = 210.0
+
+    public var library: Double?
+    public var inspector: Double?
+    public var strip: Double?
+
+    public init(library: Double? = nil, inspector: Double? = nil, strip: Double? = nil) {
+        self.library = Self.floored(library, Self.minLibrary); self.inspector = Self.floored(inspector, Self.minInspector); self.strip = Self.floored(strip, Self.minStrip)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(library: try c.decodeIfPresent(Double.self, forKey: .library), inspector: try c.decodeIfPresent(Double.self, forKey: .inspector), strip: try c.decodeIfPresent(Double.self, forKey: .strip))
+    }
+
+    /// A size with the floor applied; nil for something that is not a size (not finite).
+    public static func floored(_ v: Double?, _ min: Double) -> Double? {
+        guard let v = v, v.isFinite else { return nil }
+        return Swift.max(v, min)
+    }
+
+    public var libraryWidth: Double { library ?? Self.standardLibrary }
+    public var inspectorWidth: Double { inspector ?? Self.standardInspector }
+    public var stripHeight: Double { strip ?? Self.standardStrip }
+    public var isStandard: Bool { library == nil && inspector == nil && strip == nil }
+}
+
 /// App-private settings of one project, kept in `.studio/ui.json`.
 public struct StudioSettings: Codable, Equatable {
     public static let beginner = "beginner", expert = "expert"
@@ -11,9 +42,11 @@ public struct StudioSettings: Codable, Equatable {
     public var mode: String
     /// Wizard steps the user settled without giving a value ("none needed"). Everything else is decided by the data itself.
     public var decided: [String]
+    /// The panel sizes of the workspace; nil is the standard layout.
+    public var layout: PanelLayout?
 
-    public init(applyDirectly: Bool = false, mode: String = StudioSettings.expert, decided: [String] = []) {
-        self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided
+    public init(applyDirectly: Bool = false, mode: String = StudioSettings.expert, decided: [String] = [], layout: PanelLayout? = nil) {
+        self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided; self.layout = layout
     }
 
     public init(from decoder: Decoder) throws {
@@ -22,6 +55,7 @@ public struct StudioSettings: Codable, Equatable {
         let m = try c.decodeIfPresent(String.self, forKey: .mode)
         mode = m == Self.beginner ? Self.beginner : Self.expert
         decided = try c.decodeIfPresent([String].self, forKey: .decided) ?? []
+        layout = try c.decodeIfPresent(PanelLayout.self, forKey: .layout)
     }
 }
 

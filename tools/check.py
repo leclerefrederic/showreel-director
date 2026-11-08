@@ -189,6 +189,41 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
         except Exception: good = False
         d["origin"]["tool"] = "studio"; _json.dump(d, open(ej, "w", encoding="utf-8")); re2 = run([sys.executable, os.path.join(SK, "scripts", "export_studio.py"), ep])
         ok("studio export: showreel.json from brief and storyboard, app-written file protected") if re1.returncode == 0 and good and re2.returncode != 0 else bad("studio export self-test failed: " + (re1.stdout + re1.stderr)[-300:])
+    # film layer (optional mode: one render module per scene, transitions mixing two scenes): generated file in sync, the test film builds, passes the harness
+    # and the player test, and a transition draws both scenes at once with the same pixels on every run
+    ex = run([sys.executable, os.path.join(SK, "scripts", "export_transitions.py"), "--check"])
+    ok("engine/transitions.js is what export_transitions.py writes from the effects lab") if ex.returncode == 0 else bad("engine/transitions.js is out of date (run: python3 showreel-director/scripts/export_transitions.py)")
+    fsrc = os.path.join(SK, "evals", "film-spike", "v1")
+    if os.path.isdir(fsrc):
+        nm = [p for p in (os.environ.get("NODE_PATH"), os.path.expanduser("~/Library/Application Support/ShowreelStudio/env/node/node_modules")) if p and os.path.isdir(p)]
+        env = dict(os.environ, NODE_PATH=os.pathsep.join(nm))
+        built = os.path.join(td, "film.html")
+        rb = run([sys.executable, os.path.join(SK, "scripts", "build.py"), fsrc, "--out", built])
+        rh = run(["node", os.path.join(SK, "scripts", "harness.js"), built, "--step", "0.25"], env=env) if rb.returncode == 0 else None
+        hl = next((l for l in (rh.stdout.splitlines() if rh else []) if l.startswith("issues:")), "")
+        ok("film test: builds with film.js and transitions.js inlined, harness reports no issue") if rb.returncode == 0 and rh and rh.returncode == 0 and hl == "issues: 0" and "SRT" in open(built, encoding="utf-8").read() \
+            else bad("film test: build or harness failed: " + (rb.stderr + (rh.stdout if rh else ""))[-300:])
+        pp = os.path.join(td, "plainfilm"); os.makedirs(os.path.join(pp, "v1")); _sh.copy(os.path.join(SK, "engine", "main.template.js"), os.path.join(pp, "v1", "main.js"))
+        _json.dump({"title": "T", "main": "main.js", "duration": 6, "fonts": [], "tokens": {}}, open(os.path.join(pp, "v1", "project.json"), "w"))
+        rp = run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(pp, "v1"), "--out", os.path.join(pp, "plain.html")])
+        plain = open(os.path.join(pp, "plain.html"), encoding="utf-8").read() if rp.returncode == 0 else ""
+        ok("a reel with one main.js does not carry the film layer") if plain and "SRF.film" not in plain and "SRT = {" not in plain else bad("the film layer leaked into a single-main.js build")
+        try:
+            sm = run(["node", os.path.join(SK, "scripts", "smoke_player.js"), built], env=env, timeout=120)
+            skipped = "Cannot find module" in sm.stderr
+            if skipped: ok("film test: player test skipped (jsdom is not installed)")
+            else: ok("film test: the player test passes on the film") if sm.returncode == 0 and "FAIL" not in sm.stdout else bad("film test: player test failed: " + sm.stdout[-300:])
+        except Exception as e: bad("film test: player test did not run: " + str(e))
+        t1 = run(["node", os.path.join(SK, "scripts", "test_film.js"), built, "--quiet"], env=env, timeout=300)
+        if "Missing @napi-rs/canvas" in t1.stderr: ok("film test: pixel test skipped (@napi-rs/canvas is not installed)")
+        else:
+            t2 = run(["node", os.path.join(SK, "scripts", "test_film.js"), built, "--quiet"], env=env, timeout=300)
+            d1 = [l for l in t1.stdout.splitlines() if l.startswith("digest ")]; d2 = [l for l in t2.stdout.splitlines() if l.startswith("digest ")]
+            ok("film test: mid-transition frames hold pixels of both scenes (push, iris) and are identical from one run to the next") if t1.returncode == 0 and d1 and d1 == d2 \
+                else bad("film test: pixel test failed: " + (t1.stdout + t1.stderr)[-400:])
+            ta = run(["node", os.path.join(SK, "scripts", "test_film.js"), built, "--all", "--min-working", "36"], env=env, timeout=600)
+            summary = next((l for l in ta.stdout.splitlines() if l.startswith("transitions that run")), "")
+            ok("film test: " + summary) if ta.returncode == 0 and summary else bad("film test: transitions between two real scenes: " + ta.stdout[-500:])
     # syntax
     for f in package.skill_files():
         if f.endswith(".py"):
@@ -241,7 +276,7 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     sdir = os.path.join(ROOT, "app-swift")
     if os.path.isdir(sdir):
         import json
-        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "shared/process.json", "shared/engine-host.js", "shared/look-packages.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "BlockViews.swift", "EditorViews.swift", "LibraryView.swift", "LookViews.swift", "EngineService.swift", "WizardView.swift", "StoryboardViews.swift", "BuildViews.swift", "WorkspaceViews.swift", "InspectorViews.swift", "ContentViews.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift", "Assets.swift", "ProjectDocs.swift", "Operations.swift", "Process.swift", "JSONValue.swift", "Engine.swift", "Look.swift", "Checks.swift", "Wizard.swift", "Storyboard.swift", "Build.swift", "SceneTree.swift", "Content.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift", "StudioFileTests.swift", "BlocksTests.swift", "DocsTests.swift", "AssetTests.swift", "EngineTests.swift", "LookTests.swift", "ChecksTests.swift", "WizardTests.swift", "SceneTests.swift", "WorkspaceTests.swift", "SceneTreeTests.swift", "ContentTests.swift")]
+        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "shared/process.json", "shared/engine-host.js", "shared/look-packages.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "BlockViews.swift", "EditorViews.swift", "LibraryView.swift", "LookViews.swift", "EngineService.swift", "WizardView.swift", "StoryboardViews.swift", "BuildViews.swift", "WorkspaceViews.swift", "InspectorViews.swift", "ContentViews.swift", "ReelViews.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift", "Assets.swift", "ProjectDocs.swift", "Operations.swift", "Process.swift", "JSONValue.swift", "Engine.swift", "Look.swift", "Checks.swift", "Wizard.swift", "Storyboard.swift", "Build.swift", "SceneTree.swift", "Content.swift", "Reel.swift", "Music.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift", "StudioFileTests.swift", "BlocksTests.swift", "DocsTests.swift", "AssetTests.swift", "EngineTests.swift", "LookTests.swift", "ChecksTests.swift", "WizardTests.swift", "SceneTests.swift", "WorkspaceTests.swift", "SceneTreeTests.swift", "ContentTests.swift", "ReelTests.swift", "LayoutTests.swift")]
         gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
         ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
         capf = os.path.join(sdir, "shared", "capabilities.json")

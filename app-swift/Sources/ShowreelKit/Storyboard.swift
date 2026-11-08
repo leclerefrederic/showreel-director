@@ -164,7 +164,7 @@ public enum SceneRules {
         f.timeline().map { t in
             let s = t.scene
             return [s.id, s.text, "\(String(describing: s.overrides))", "\(s.content)", s.texts.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "|"), s.visual, s.feeling, s.handoff, s.inCuts,
-                    "\(t.start ?? -1)", "\(t.end ?? -1)", t.item.transition.type, "\(t.item.transition.duration ?? -1)"].joined(separator: "\u{1}")
+                    "\(t.start ?? -1)", "\(t.end ?? -1)", "\(t.item.transition)"].joined(separator: "\u{1}")
         }
     }
 

@@ -41,19 +41,24 @@ public enum Look {
     }
 
     /// Every effect of the library with its category, read from references/effects-index.md (the tables under "## Category (n)").
-    public static func effectList() -> [(cat: String, name: String)] { effectCache }
+    public static func effectList() -> [(cat: String, name: String)] { effectCache.map { ($0.cat, $0.name) } }
+
+    public struct LibraryEffect: Equatable, Sendable { public let cat: String; public let name: String; public let desc: String; public let energy: String; public let duration: Double }
+    /// The same list with what each effect shows, its energy and its natural duration (a scene transition's default length).
+    public static func effectDetails() -> [LibraryEffect] { effectCache }
+    public static func transitions() -> [LibraryEffect] { effectCache.filter { $0.cat == EngineCatalogue.transitionCategory } }
     public static func effects() -> [String] { effectCache.map { $0.name } }
     public static func effectCategory(_ name: String) -> String? { effectCache.first { $0.name == name }?.cat }
 
-    private static let effectCache: [(cat: String, name: String)] = {
+    private static let effectCache: [LibraryEffect] = {
         guard let u = Skill.root()?.appendingPathComponent("references/effects-index.md"), let md = try? String(contentsOf: u, encoding: .utf8) else { return [] }
-        var cat = "", out: [(String, String)] = []
+        var cat = "", out: [LibraryEffect] = []
         for line in md.components(separatedBy: "\n") {
             if line.hasPrefix("## ") { cat = line.dropFirst(3).replacingOccurrences(of: #"\s*\(\d+\)\s*$"#, with: "", options: .regularExpression); continue }
             guard line.hasPrefix("|"), !cat.isEmpty else { continue }
             let c = MarkdownTable.cells(line)
             guard let n = c.first, !n.isEmpty, n != "Effect", !n.hasPrefix("---"), !n.hasPrefix(":-") else { continue }
-            out.append((cat, n))
+            out.append(LibraryEffect(cat: cat, name: n, desc: c.count > 1 ? c[1] : "", energy: c.count > 2 ? c[2] : "", duration: c.count > 3 ? Double(c[3]) ?? 1 : 1))
         }
         return out
     }()

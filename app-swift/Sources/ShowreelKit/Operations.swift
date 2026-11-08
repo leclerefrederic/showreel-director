@@ -196,6 +196,18 @@ public enum ProjectOperation: Equatable, Sendable {
     case sceneLook(id: String, [DecisionChange])
     /// Add, change, remove or reorder one content item of a scene.
     case content(scene: String, ContentOp)
+    /// A scene's own length (the right edge of its frame). Without `ripple` the next scene stays where it is.
+    case resize(scene: String, duration: Double, ripple: Bool)
+    /// The cut between two consecutive scenes moves to `at` seconds (the left edge of the second frame): their lengths trade time, nothing else moves.
+    case moveCut(before: String, after: String, at: Double)
+    /// The passage from a scene to the next one; nil puts the default back (a cut on the beat).
+    case transition(from: String, TransitionEdit?)
+    /// The project's music: an approved audio resource, or nil for none.
+    case track(asset: String?)
+    /// The tempo and the first beat, corrected by the user (the analysis runs again with them).
+    case grid(bpm: Double?, firstBeat: Double?)
+    /// How the reel snaps and whether stretching ripples.
+    case gridSettings(snap: String?, ripple: Bool?)
 }
 
 public enum Operations {
@@ -274,6 +286,12 @@ extension ProjectStore {
         case .moveScene(let id, let after, let m): return try planMove(id, after: after, montage: m).card
         case .sceneLook(let id, let ch): return try planSceneLook(id, ch).card
         case .content(let id, let op): return try planContent(id, op).card
+        case .resize(let id, let d, let r): return try planResize(id, d, ripple: r).card
+        case .moveCut(let a, let b, let t): return try planCut(a, b, at: t).card
+        case .transition(let id, let e): return try planTransition(id, e).card
+        case .track(let a): return try planTrack(a).card
+        case .grid(let b, let s): return try planGrid(bpm: b, firstBeat: s).card
+        case .gridSettings(let s, let r): return try planGridSettings(snap: s, ripple: r).card
         case .gate(let key, let passed):
             let f = try needShowreel()
             guard ShowreelFile.gateKeys.contains(key) else { throw AgentError.msg("unknown gate \(key)") }
@@ -306,6 +324,12 @@ extension ProjectStore {
         case .moveScene(let id, let after, let m): try planMove(id, after: after, montage: m).run()
         case .sceneLook(let id, let ch): try planSceneLook(id, ch).run()
         case .content(let id, let op): try planContent(id, op).run()
+        case .resize(let id, let d, let r): try planResize(id, d, ripple: r).run()
+        case .moveCut(let a, let b, let t): try planCut(a, b, at: t).run()
+        case .transition(let id, let e): try planTransition(id, e).run()
+        case .track(let a): try planTrack(a).run()
+        case .grid(let b, let s): try planGrid(bpm: b, firstBeat: s).run()
+        case .gridSettings(let s, let r): try planGridSettings(snap: s, ripple: r).run()
         case .gate(let key, let passed):
             var f = try needShowreel()
             f.gates[key] = passed ? "passed" : "open"

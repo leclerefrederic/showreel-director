@@ -62,6 +62,9 @@ struct ViewerPane: View {
             if let a = project.assets.first(where: { $0.id == id }) { assetView(a) }
         case .look(let kind, let id):
             LookViewer(kind: kind, id: id)
+        case .transition(let id):
+            if let pair = f?.transition(after: id), !pair.item.isCut { LookViewer(kind: .transitions, id: pair.item.type) }
+            else { caption("Cut on beat", "The default: a hard cut on the beat, no overlap.") }
         default:
             VStack(spacing: 8) {
                 Image(systemName: "rectangle.on.rectangle").font(.system(size: 44, weight: .light)).foregroundStyle(.secondary)
@@ -213,6 +216,7 @@ struct InspectorContent: View {
                 } else {
                     switch project.selection {
                     case .scene(let id), .sceneNode(let id, _, _): SceneInspector(id: id).id(id)
+                    case .transition(let id): TransitionInspector(from: id).id(id)
                     case .asset(let id): AssetInspector(id: id).id(id)
                     case .look(let kind, let id): LookInspector(kind: kind, id: id).id(kind.rawValue + id)
                     default: ProjectInspector()
@@ -269,6 +273,7 @@ struct ProjectInspector: View {
                 ValidateButton(gate: "interview", block: "inspector")
             }
             ProjectForm()
+            InspectorSection(title: "Music") { MusicInspector() }
             InspectorSection(title: "Global look") { GlobalLook() }
             InspectorSection(title: "Checks") { ChecksList(areas: ["project", "look"]) }
         }

@@ -41,7 +41,7 @@ public enum Checks {
         case "project": return feasibility(f) + gates(area: area, f)
         case "resources": return assetRules(assets, store: store) + gates(area: area, f)
         case "look": return lookChecks(f, assets, store) + gates(area: area, f)
-        case "storyboard": return storyboardRules(f, assets) + readingBudget(f) + feasibility(f) + gates(area: area, f)
+        case "storyboard": return storyboardRules(f, assets) + readingBudget(f) + reelRules(f, store) + feasibility(f) + gates(area: area, f)
         case "scene": return reviewRules(f) + contentRules(f, assets, store) + gates(area: area, f)
         case "build": return BuildRunner.readiness(store) + gates(area: area, f)
         default: return gates(area: area, f)

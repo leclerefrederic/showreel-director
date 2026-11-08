@@ -102,6 +102,17 @@ public final class Tools {
             return await operate(.content(scene: input["scene"] as? String ?? "", .remove(item: input["item"] as? String ?? "")))
         case "move_content_item":
             return await operate(.content(scene: input["scene"] as? String ?? "", .move(item: input["item"] as? String ?? "", after: input["after"] as? String ?? "")))
+        case "set_scene_duration":
+            guard let d = (input["duration"] as? Double) ?? (input["duration"] as? Int).map(Double.init) else { return "duration must be a number of seconds" }
+            return await operate(.resize(scene: input["scene"] as? String ?? "", duration: d, ripple: input["ripple"] as? Bool ?? true))
+        case "set_transition":
+            let d = (input["duration"] as? Double) ?? (input["duration"] as? Int).map(Double.init)
+            return await operate(.transition(from: input["from"] as? String ?? "", TransitionEdit(type: input["type"] as? String, duration: d, params: input["params"] as? String, instruction: input["instruction"] as? String)))
+        case "set_track":
+            return await operate(.track(asset: input["asset"] as? String))
+        case "set_grid":
+            func num(_ k: String) -> Double? { (input[k] as? Double) ?? (input[k] as? Int).map(Double.init) }
+            return await operate(.grid(bpm: num("bpm"), firstBeat: num("first_beat")))
         case "set_scene_override":
             guard let key = DecisionKey(rawValue: input["key"] as? String ?? ""), DecisionKey.sceneKeys.contains(key) else {
                 return "unknown key: use one of " + DecisionKey.sceneKeys.map { $0.rawValue }.joined(separator: ", ")
@@ -251,6 +262,13 @@ public final class Tools {
                 if let b = t.end { d["end"] = b }
                 return d
             }
+        }
+        if let a = MusicAnalysis.load(root: store.root) {
+            var m: [String: Any] = ["bpm": a.bpm, "firstBeat": a.firstBeat, "duration": a.duration, "bars": a.bars.count, "tempo": "constant (the analysis assumes it)",
+                                    "snap": (store.loadShowreel()?.snapLevel() ?? .beat).rawValue]
+            if let d = a.strongestDrop { m["strongestDrop"] = d }
+            m["breaks"] = a.breaks.map { ["start": $0.start, "end": $0.end] }
+            state["music"] = m
         }
         state["go"] = (store.loadShowreel()?.gates["review"] == "passed") ? "given by the user" : "not given: only the user can give it, with the Go button"
         let assets = Assets.load(store)
