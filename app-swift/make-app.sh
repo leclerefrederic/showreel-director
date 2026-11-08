@@ -27,6 +27,7 @@ cat > "$APP/Contents/Info.plist" <<'P'
 P
 cp -R shared "$APP/Contents/Resources/shared"
 cp -R ../showreel-director "$APP/Contents/Resources/skill"
+python3 ../tools/skill_hash.py > "$APP/Contents/Resources/skill.hash"
 find "$APP" -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
 find "$APP" -name .DS_Store -delete 2>/dev/null || true
 codesign --force --deep -s - "$APP"

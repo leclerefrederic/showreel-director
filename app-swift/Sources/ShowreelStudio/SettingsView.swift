@@ -18,6 +18,9 @@ struct SettingsView: View {
                     Toggle("Send the key as Authorization: Bearer (gateways)", isOn: $bearer)
                     TextField("Model", text: $modelName)
                 }
+                Section("Skill") {
+                    LabeledContent("Version", value: Skill.fingerprint())
+                }
                 Section {
                     Text("The key is stored in the macOS Keychain, never in a file. The base URL has no /v1/messages at the end.")
                         .font(.caption)

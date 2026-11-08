@@ -1,0 +1,45 @@
+{
+ "version": 1,
+ "capabilities": [
+  {
+   "need": "Ask the user questions in rounds",
+   "provided": true,
+   "via": "ask_user shows question cards (1 to 4 questions, 2 to 4 options each, one answer per question)"
+  },
+  {
+   "need": "A working folder that persists",
+   "provided": true,
+   "via": "the user picks the project folder with the folder button; bash and the file tools work in it"
+  },
+  {
+   "need": "Show a file (reel, lab, cards, MP4)",
+   "provided": true,
+   "via": "show_page opens an HTML or video file of the project or the skill in the preview pane"
+  },
+  {
+   "need": "Look at the result (contact sheets)",
+   "provided": false,
+   "fallback": "no screenshot tool: ask the user to look at the preview pane and describe what they see; never claim to have seen frames"
+  },
+  {
+   "need": "Persist or share a page",
+   "provided": false,
+   "fallback": "no hosted pages: deliver the HTML file and say how to share it"
+  },
+  {
+   "need": "Run scripts",
+   "provided": true,
+   "via": "bash runs in a login shell in the project folder"
+  },
+  {
+   "need": "Read the track",
+   "provided": true,
+   "via": "numpy and ffmpeg when the owner ran the environment setup; the environment check reports what is missing"
+  },
+  {
+   "need": "Search the web",
+   "provided": false,
+   "fallback": "no web search: ask the user for facts and documents; never invent figures"
+  }
+ ]
+}

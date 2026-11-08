@@ -219,9 +219,24 @@ console.log(a===null&&b===null&&d===null&&c&&c.pulse===1&&c.beat===.25?'ok':'bad
     sdir = os.path.join(ROOT, "app-swift")
     if os.path.isdir(sdir):
         import json
-        need = ["shared/tools.json", "shared/addendum.md", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "Agent.swift", "Tools.swift")]
+        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "Agent.swift", "Tools.swift")]
         gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
         ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
+        capf = os.path.join(sdir, "shared", "capabilities.json")
+        port = os.path.join(SK, "references", "portability.md")
+        if os.path.exists(capf) and os.path.exists(port):
+            declared = {x["need"] for x in json.load(open(capf))["capabilities"]}
+            rows, inside = [], False
+            for ln in open(port, encoding="utf-8").read().splitlines():
+                if ln.startswith("| Step needs"): inside = True; continue
+                if inside and ln.startswith("|---"): continue
+                if inside and ln.startswith("|"): rows.append(ln.split("|")[1].strip())
+                elif inside: break
+            miss = [r for r in rows if r not in declared]; extra = sorted(declared - set(rows))
+            if rows and not miss and not extra: ok("app capabilities match the skill's portability table (%d)" % len(rows))
+            else: bad("capabilities.json out of step with portability.md: undeclared %s, unknown %s" % (miss, extra))
+        import skill_hash
+        ok("skill fingerprint is stable (" + skill_hash.fingerprint() + ")") if skill_hash.fingerprint() == skill_hash.fingerprint() else bad("skill fingerprint not deterministic")
         sw = os.path.join(sdir, "Sources", "ShowreelStudio", "Tools.swift")
         tj = os.path.join(sdir, "shared", "tools.json")
         if os.path.exists(sw) and os.path.exists(tj):
