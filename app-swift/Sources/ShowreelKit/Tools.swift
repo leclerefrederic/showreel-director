@@ -220,7 +220,7 @@ public final class Tools {
             return nil
         }
         return SceneEdit(duration: str("duration"), text: str("text"), visual: str("visual"), feeling: str("feeling"), handoff: str("handoff"),
-                         inCuts: str("in_cuts"), note: str("note"), status: str("status"), archived: i["archived"] as? Bool, assets: str("assets"), after: str("after"), controlLevel: str("control_level"))
+                         inCuts: str("in_cuts"), note: str("note"), status: str("status"), archived: i["archived"] as? Bool, assets: str("assets"), after: str("after"), controlLevel: str("control_level"), name: str("name"))
     }
 
     /// showreel.json and the manifest hold the project's data: they change through typed operations, which the user can read.
@@ -258,6 +258,7 @@ public final class Tools {
         if let f = store.loadShowreel() {
             state["film"] = f.timeline().map { t -> [String: Any] in
                 var d: [String: Any] = ["scene": t.scene.id, "status": t.scene.status]
+                if let n = t.scene.name { d["name"] = n }
                 if let a = t.start { d["start"] = a }
                 if let b = t.end { d["end"] = b }
                 return d

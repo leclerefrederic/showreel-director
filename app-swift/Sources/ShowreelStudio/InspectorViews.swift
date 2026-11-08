@@ -18,6 +18,8 @@ struct CenterPane: View {
                 .padding(.horizontal, 12).padding(.vertical, 6).background(.bar)
                 Divider()
                 BuildBlockView()
+            } else if project.showProjectSettings, project.settingsTab == .look {
+                DesignBoardView()          // the project's design system, live, while its look is being edited
             } else {
                 switch project.selection {
                 case .file(let p):
@@ -39,7 +41,7 @@ struct ViewerPane: View {
     private var filmVersion: String? {
         switch project.selection {
         case .none, .scene, .transition: return project.playableVersion
-        case .sceneNode(_, let g, _): return g == .raw ? nil : project.playableVersion
+        case .sceneNode(let sid, _, let n): return nodeAsset(sid, n) != nil ? nil : project.playableVersion
         default: return nil
         }
     }
@@ -63,10 +65,8 @@ struct ViewerPane: View {
     @ViewBuilder private var content: some View {
         let f = project.showreel
         switch project.selection {
-        case .sceneNode(_, .raw, let item?) where item.hasPrefix("raw.") && project.assets.contains(where: { $0.id == String(item.dropFirst(4)) }):
-            assetView(project.assets.first { $0.id == String(item.dropFirst(4)) }!)
-        case .sceneNode(let sid, _, let item?) where item.hasPrefix("item.") && itemAsset(sid, String(item.dropFirst(5))) != nil:
-            assetView(itemAsset(sid, String(item.dropFirst(5)))!)
+        case .sceneNode(let sid, _, let n) where nodeAsset(sid, n) != nil:
+            assetView(nodeAsset(sid, n)!)
         case .scene(let id), .sceneNode(let id, _, _):
             if let s = f?.scenes.first(where: { $0.id == id }) {
                 SceneThumb(scene: s, size: EngineService.viewerSize).frame(maxWidth: 760).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -86,6 +86,14 @@ struct ViewerPane: View {
                     .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 420)
             }
         }
+    }
+
+    /// The resource a node of a scene's tree stands for (a resource element, or a linked resource), if any.
+    private func nodeAsset(_ scene: String, _ node: String?) -> AssetRow? {
+        guard let n = node else { return nil }
+        if n.hasPrefix("raw.") { return project.assets.first { $0.id == String(n.dropFirst(4)) } }
+        if n.hasPrefix("item.") { return itemAsset(scene, String(n.dropFirst(5))) }
+        return nil
     }
 
     private func itemAsset(_ scene: String, _ item: String) -> AssetRow? {
@@ -281,72 +289,49 @@ struct ProjectInspector: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Project").font(.title3.weight(.semibold))
+                Text(project.title).font(.title3.weight(.semibold)).lineLimit(2)
                 Spacer()
-                ValidateButton(gate: "interview", block: "inspector")
+                Button { project.openSettings() } label: { Label("Project settings", systemImage: "slider.horizontal.3") }
+                    .help("The project's parameters and its global look, in one panel")
             }
-            ProjectForm()
+            Text("Select a scene, a resource or a transition marker to see its properties here.").font(.callout).foregroundStyle(.secondary)
             InspectorSection(title: "Music") { MusicInspector() }
             InspectorSection(title: "Global look") { GlobalLook() }
-            InspectorSection(title: "Checks") { ChecksList(areas: ["project", "look"]) }
         }
     }
 }
 
-/// The global look: palette, fonts, background and motion, with the way to the library's elements.
+/// What the global look is now. Each part is changed in the project settings, the one place that edits it.
 struct GlobalLook: View {
     @EnvironmentObject var project: ProjectModel
 
     var body: some View {
         let d = project.showreel?.decisions
-        VStack(alignment: .leading, spacing: 12) {
-            PaletteEditor(compact: true)
-            Divider()
+        VStack(alignment: .leading, spacing: 10) {
+            row("Palette", .palette) { if let p = d?.palette, !p.isEmpty { Swatches(colours: p) } else { Text("not chosen yet").font(.callout).foregroundStyle(.secondary) } }
             ForEach([DecisionKey.titleFont, .textFont], id: \.self) { k in
                 let name = project.showreel.map { k.current($0) } ?? ""
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack { Text(k.title).font(.callout.weight(.medium)); Spacer(); Button(name.isEmpty ? "Choose..." : "Change...") { browse(.fonts) }.buttonStyle(.borderless) }
+                row(k.title, .fonts) {
                     Text(name.isEmpty ? "not chosen yet" : name).font(.callout).foregroundStyle(name.isEmpty ? .secondary : .primary)
                     if !name.isEmpty { LicenceBadge(assessment: FontLicense.assess(name: name, assets: project.assets, store: project.store)) }
                 }
             }
-            Divider()
-            summary("Background", [d?.background?.id, d?.background?.mood.flatMap { $0.isEmpty ? nil : "reacts like \($0)" }].compactMap { $0 }.joined(separator: ", "), .backgrounds)
-            summary("Motion moods", (d?.moods ?? []).joined(separator: ", "), .effects)
+            summary("Background", [d?.background?.id, d?.background?.mood.flatMap { $0.isEmpty ? nil : "reacts like \($0)" }].compactMap { $0 }.joined(separator: ", "), .background)
+            summary("Motion moods", (d?.moods ?? []).joined(separator: ", "), .moods)
             summary("Effects pack", d?.effectsPack ?? "", .effects)
-            Button { browse(.looks) } label: { Label("Pick a complete look...", systemImage: "wand.and.stars") }
-            ValidateButton(gate: "style", block: "inspector")
+            Button { project.openSettings(.look, look: .looks) } label: { Label("Pick a complete look...", systemImage: "wand.and.stars") }
         }
     }
 
-    private func summary(_ title: String, _ value: String, _ kind: LookKind) -> some View {
+    private func row<C: View>(_ title: String, _ section: LookSection, @ViewBuilder _ content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack { Text(title).font(.callout.weight(.medium)); Spacer(); Button(value.isEmpty ? "Choose..." : "Change...") { browse(kind) }.buttonStyle(.borderless) }
-            Text(value.isEmpty ? "not chosen yet" : value).font(.callout).foregroundStyle(value.isEmpty ? .secondary : .primary)
+            HStack { Text(title).font(.callout.weight(.medium)); Spacer(); Button("Change...") { project.openSettings(.look, look: section) }.buttonStyle(.borderless) }
+            content()
         }
     }
 
-    private func browse(_ kind: LookKind) { project.libraryTab = .look; project.lookKind = kind }
-}
-
-struct ChecksList: View {
-    let areas: [String]
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        let all = areas.flatMap { project.checks[$0] ?? [] }
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(all) { r in
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: r.level.symbol).foregroundStyle(r.level.color).frame(width: 18)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(r.title).font(.callout.weight(.medium))
-                        Text(r.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            if all.isEmpty { Text("Nothing to check yet.").font(.caption).foregroundStyle(.secondary) }
-        }
+    private func summary(_ title: String, _ value: String, _ section: LookSection) -> some View {
+        row(title, section) { Text(value.isEmpty ? "not chosen yet" : value).font(.callout).foregroundStyle(value.isEmpty ? .secondary : .primary) }
     }
 }
 
@@ -355,6 +340,7 @@ struct ChecksList: View {
 struct SceneInspector: View {
     let id: String
     @EnvironmentObject var project: ProjectModel
+    @State private var editingName = false
 
     private var scene: ShowreelFile.Scene? { project.showreel?.scenes.first { $0.id == id } }
     private var on: Bool { project.showreel?.film.contains { $0.id == id } ?? false }
@@ -362,7 +348,20 @@ struct SceneInspector: View {
     var body: some View {
         if let s = scene {
             VStack(alignment: .leading, spacing: 14) {
-                InspectorHeader(title: "Scene \(s.id)", subtitle: s.archived ? "Archived" : "\(s.durationLabel) · \(s.status)")
+                // the name is a label next to the ID: double-click to change it where it stands
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        InlineEdit(text: s.name ?? "", placeholder: "Name this scene", editing: $editingName, commit: { project.renameScene(id, $0) }) {
+                            Text("Scene \(s.label)").font(.title3.weight(.semibold)).lineLimit(2)
+                                .onTapGesture(count: 2) { editingName = true }
+                                .help("Double-click to name the scene. The ID never changes.")
+                        }
+                        Text(s.archived ? "Archived" : "\(s.durationLabel) · \(s.status)").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button { project.selection = .none } label: { Label("Project", systemImage: "slider.horizontal.3") }
+                        .buttonStyle(.borderless).help("Back to the project parameters and the global look")
+                }
                 if s.archived {
                     InspectorSection(title: "Archived") {
                         Text("This scene left the lists. Its ID stays reserved.").font(.callout).foregroundStyle(.secondary)
@@ -377,25 +376,14 @@ struct SceneInspector: View {
                         SceneForm(id: id, tab: .settings)
                         InspectorSection(title: "Review") { SceneDecision(id: id) }
                         HStack {
-                            Button("Duplicate") { project.addScene(copying: id) }
+                            Button("Duplicate") { project.duplicateScene(id) }
                             Button("Archive", role: .destructive) { project.archiveScene(id) }
                                 .help("Takes the scene out of the lists. Its ID is never reused.")
                         }
-                    case .content:
-                        SceneContentTab(id: id)
+                    case .composition:
+                        SceneCompositionTab(id: id)
                     case .effects:
-                        InspectorSection(title: "Effects of the whole scene") {
-                            Text("Scene-wide effects (background effects, whole-scene moves) live here; none yet. An item's own animation is set on the item, in the Content tab. The project's effects pack applies.")
-                                .font(.callout).foregroundStyle(.secondary)
-                            if let p = project.showreel?.decisions.effectsPack, !p.isEmpty { Label("Project pack: \(p)", systemImage: "sparkles").font(.callout) }
-                        }
-                        InspectorSection(title: "Used by the items") {
-                            let used = project.trees[id]?.first { $0.group == .effects }?.nodes ?? []
-                            if used.isEmpty { Text("No item names an effect: the AI decides.").font(.callout).foregroundStyle(.secondary) }
-                            ForEach(used) { n in HStack { Text(n.title).font(.callout.weight(.medium)); Text(n.detail).font(.caption).foregroundStyle(.secondary) } }
-                        }
-                    case .resources:
-                        SceneForm(id: id, tab: .resources)
+                        SceneEffectsTab(id: id)
                     case .look:
                         SceneLookTab(id: id)
                     }
@@ -405,59 +393,94 @@ struct SceneInspector: View {
     }
 }
 
-/// Background and look of one scene: inherited from the project, or overridden here, with the way back.
+/// Background, palette and fonts of one scene. They are the project's, shown locked, until the user asks to replace them for this scene with the switch of the
+/// group; switching it off gives the project's values back. The rules (what a switch does) are ShowreelKit's `LookOverrides`.
 struct SceneLookTab: View {
     let id: String
     @EnvironmentObject var project: ProjectModel
     @State private var palette: [String] = []
+    @State private var unlocked: Set<SceneLookGroup> = []
     private let fonts = Look.freeFonts().map { $0.name }
 
     private var scene: ShowreelFile.Scene? { project.showreel?.scenes.first { $0.id == id } }
     private func eff(_ k: DecisionKey) -> String { scene.flatMap { project.showreel?.effective(k, for: $0) } ?? "" }
-    private func over(_ k: DecisionKey) -> Bool { scene.flatMap { project.showreel?.isOverridden(k, for: $0) } ?? false }
+    private func state(_ g: SceneLookGroup) -> LookOverrides.State? { scene.flatMap { s in project.showreel.map { LookOverrides.state(g, scene: s, in: $0) } } }
+    private func isOn(_ g: SceneLookGroup) -> Bool { (state(g)?.overridden ?? false) || unlocked.contains(g) }
+    private func focused(_ g: SceneLookGroup) -> Bool { project.lookFocus == g.rawValue }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            InspectorSection(title: "Background") {
-                mark(over(.background) || over(.backgroundMood), project: (project.showreel?.decisions.background?.id).map { $0 + ((project.showreel?.decisions.background?.mood).map { m in m.isEmpty ? "" : " (\(m))" } ?? "") })
-                Picker("Background", selection: Binding(get: { eff(.background) }, set: { project.setSceneLook(id, [DecisionChange(.background, $0)]) })) {
-                    Text(eff(.background).isEmpty ? "(none)" : "Project's").tag(over(.background) ? "" : eff(.background))
-                    ForEach(Look.backgroundIDs(), id: \.self) { Text($0).tag($0) }
-                }
-                Picker("Reacts to music like", selection: Binding(get: { eff(.backgroundMood) }, set: { project.setSceneLook(id, [DecisionChange(.backgroundMood, $0)]) })) {
-                    Text("Calm / project's").tag(over(.backgroundMood) ? "" : eff(.backgroundMood))
-                    ForEach(Look.backgroundMoods(), id: \.self) { Text($0.capitalized).tag($0) }
-                }
-                if over(.background) || over(.backgroundMood) {
-                    Button("Revert to project") { project.setSceneLook(id, [DecisionChange(.background, ""), DecisionChange(.backgroundMood, "")]) }
-                }
-            }
-            InspectorSection(title: "Palette") {
-                mark(over(.palette), project: (project.showreel?.decisions.palette).map { $0.joined(separator: ", ") })
-                ForEach(palette.indices, id: \.self) { i in
-                    HStack {
-                        Text(["Background", "Text", "Accent", "Accent 2"][min(i, 3)]).frame(width: 90, alignment: .leading)
-                        ColorPicker("", selection: Binding(get: { Color(hex: palette[i]) }, set: { palette[i] = $0.hexString }), supportsOpacity: false).labelsHidden()
-                        Text(palette[i]).font(.callout.monospaced()).foregroundStyle(.secondary)
+            Text("The scene follows the project's design system. Replace a group only when this scene must differ: the values then belong to this scene alone.").font(.caption).foregroundStyle(.secondary)
+            group(.background) {
+                if isOn(.background) {
+                    HStack { Text("Background").font(.callout); PickerButton(kind: .background, current: eff(.background)) { project.choose(.background, $0, for: .scene(id)) } }
+                    Picker("Reacts to music like", selection: Binding(get: { eff(.backgroundMood) }, set: { project.setSceneLook(id, [DecisionChange(.backgroundMood, $0)]) })) {
+                        Text("Calm").tag("")
+                        ForEach(Look.backgroundMoods(), id: \.self) { Text($0.capitalized).tag($0) }
                     }
-                }
-                HStack {
-                    Button("Override the palette") { project.setSceneLook(id, [DecisionChange(.palette, palette.joined(separator: ", "))]) }
-                        .disabled(palette.count < 2 || palette.map { $0.uppercased() } == eff(.palette).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).uppercased() })
-                    if over(.palette) { Button("Revert to project") { project.setSceneLook(id, [DecisionChange(.palette, "")]) } }
+                } else {
+                    locked([eff(.background).isEmpty ? "no background chosen in the project yet" : eff(.background), eff(.backgroundMood).isEmpty ? nil : "reacts like \(eff(.backgroundMood))"])
                 }
             }
-            InspectorSection(title: "Fonts") {
-                mark(over(.titleFont) || over(.textFont), project: [project.showreel?.decisions.fonts?.titles, project.showreel?.decisions.fonts?.text].compactMap { $0 }.joined(separator: " / "))
-                fontPicker("Titles", .titleFont)
-                fontPicker("Text", .textFont)
-                if over(.titleFont) || over(.textFont) {
-                    Button("Revert to project") { project.setSceneLook(id, [DecisionChange(.titleFont, ""), DecisionChange(.textFont, "")]) }
+            group(.palette) {
+                if isOn(.palette) {
+                    ForEach(palette.indices, id: \.self) { i in
+                        HStack {
+                            Text(["Background", "Text", "Accent", "Accent 2"][min(i, 3)]).frame(width: 90, alignment: .leading)
+                            ColorPicker("", selection: Binding(get: { Color(hex: palette[i]) }, set: { palette[i] = $0.hexString }), supportsOpacity: false).labelsHidden()
+                            Text(palette[i]).font(.callout.monospaced()).foregroundStyle(.secondary)
+                        }
+                    }
+                    Button("Apply this palette to the scene") { project.setSceneLook(id, [DecisionChange(.palette, palette.joined(separator: ", "))]) }
+                        .disabled(palette.count < 2 || palette.map { $0.uppercased() } == eff(.palette).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).uppercased() })
+                } else {
+                    let p = eff(.palette).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                    if p.isEmpty { locked(["no palette chosen in the project yet"]) } else { Swatches(colours: p).opacity(0.85) }
                 }
+            }
+            group(.fonts) {
+                if isOn(.fonts) { fontPicker("Titles", .titleFont); fontPicker("Text", .textFont) }
+                else { locked([eff(.titleFont).isEmpty ? nil : "Titles: \(eff(.titleFont))", eff(.textFont).isEmpty ? nil : "Text: \(eff(.textFont))"].map { $0 } + (eff(.titleFont).isEmpty && eff(.textFont).isEmpty ? ["no fonts chosen in the project yet"] : [])) }
             }
         }
         .onAppear { loadPalette() }
         .onChange(of: project.showreel) { _ in loadPalette() }
+        .onChange(of: id) { _ in unlocked = [] }
+    }
+
+    /// One group: its switch, the mark (inherited or replaced), and the content, locked or editable.
+    private func group<C: View>(_ g: SceneLookGroup, @ViewBuilder _ content: @escaping () -> C) -> some View {
+        let on = isOn(g), st = state(g)
+        return InspectorSection(title: g.title) {
+            HStack {
+                Toggle("Replace for this scene", isOn: Binding(get: { on }, set: { flip(g, $0) })).toggleStyle(.switch)
+                Spacer()
+                Text(st?.overridden == true ? "replaced" : "inherited").font(.caption.weight(.semibold)).foregroundStyle(st?.overridden == true ? Color.orange : .secondary)
+            }
+            if st?.overridden == true, let proj = st?.project.sorted(by: { $0.key.rawValue < $1.key.rawValue }).map({ $0.value }).filter({ !$0.isEmpty }), !proj.isEmpty {
+                Text("project: " + proj.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+            content()
+        }
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(focused(g) ? Color.accentColor : Color.clear, lineWidth: 2))
+        .animation(Motion.quick, value: on)
+    }
+
+    private func flip(_ g: SceneLookGroup, _ on: Bool) {
+        guard let s = scene, let f = project.showreel else { return }
+        if on {
+            if let op = LookOverrides.enable(g, scene: s, in: f) { project.perform(op) } else { unlocked.insert(g) }
+        } else {
+            unlocked.remove(g)
+            if state(g)?.overridden == true { project.perform(LookOverrides.disable(g, scene: id)) }
+        }
+    }
+
+    private func locked(_ lines: [String?]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(lines.compactMap { $0 }.enumerated()), id: \.offset) { _, l in Text(l).font(.callout).foregroundStyle(.secondary) }
+            Label("locked to the project", systemImage: "lock.fill").font(.caption2).foregroundStyle(.tertiary)
+        }
     }
 
     private func loadPalette() {
@@ -467,16 +490,8 @@ struct SceneLookTab: View {
 
     private func fontPicker(_ title: String, _ k: DecisionKey) -> some View {
         Picker(title, selection: Binding(get: { eff(k) }, set: { project.setSceneLook(id, [DecisionChange(k, $0)]) })) {
-            Text(eff(k).isEmpty ? "(none)" : "Project's").tag(over(k) ? "" : eff(k))
+            if !eff(k).isEmpty, !fonts.contains(eff(k)) { Text(eff(k)).tag(eff(k)) }
             ForEach(fonts, id: \.self) { Text($0).tag($0) }
-        }
-    }
-
-    @ViewBuilder private func mark(_ overridden: Bool, project value: String?) -> some View {
-        if overridden {
-            HStack { Text("overridden").font(.caption.weight(.semibold)).foregroundStyle(.orange); Text("project: \(value?.isEmpty == false ? value! : "(none)")").font(.caption).foregroundStyle(.secondary) }
-        } else {
-            HStack { Text("inherited").font(.caption.weight(.semibold)).foregroundStyle(.secondary); Text(value?.isEmpty == false ? value! : "project value not chosen yet").font(.caption).foregroundStyle(.secondary) }
         }
     }
 }
@@ -524,7 +539,6 @@ struct LookInspector: View {
     let id: String
     @EnvironmentObject var project: ProjectModel
     @ObservedObject private var engine = EngineService.shared
-    @State private var mood = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -535,23 +549,17 @@ struct LookInspector: View {
         }
     }
 
+    /// A look element is a source: it is dragged onto what takes it, or chosen where it is used. The project-wide choices have one editor, in the project settings.
     @ViewBuilder private var actions: some View {
-        let d = project.showreel?.decisions
         switch kind {
         case .looks:
             if let p = LookPackages.all().first(where: { $0.id == id }) {
-                let chosen = d?.palette == p.palette.map { $0.uppercased() } && d?.background?.id == p.background && d?.fonts?.titles == p.fonts.titles && d?.effectsPack == p.pack
                 Swatches(colours: p.palette)
                 Text("\(p.fonts.titles ?? "") + \(p.fonts.text ?? "") · \(p.pack) · \(p.background)").font(.caption).foregroundStyle(.secondary)
-                Text("Starting points, not defaults: nothing changes until you click. After choosing, each part can still be changed.").font(.caption).foregroundStyle(.secondary)
-                if chosen { Label("Chosen", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
-                else { Button("Choose this look") { project.perform(.decisions(p.decisions, title: "Choose the look: \(p.name)")) }.buttonStyle(.borderedProminent) }
+                hint("Drag it onto a scene to give that scene this look. Choosing it for the whole project is in the project settings.", .looks)
             }
         case .palettes:
-            if id == "project" {
-                PaletteEditor(compact: true)
-            } else if let p = LookPackages.all().first(where: { $0.id == id }) {
-                let upper = p.palette.map { $0.uppercased() }
+            if let p = LookPackages.all().first(where: { $0.id == id }) {
                 Swatches(colours: p.palette)
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Contrast.checks(p.palette)) { r in
@@ -561,50 +569,22 @@ struct LookInspector: View {
                         }
                     }
                 }
-                if d?.palette == upper { Label("This is the project palette", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
-                else { Button("Use as the project palette") { project.perform(.decisions([DecisionChange(.palette, p.palette.joined(separator: ", "))], title: "Use the \(p.name) palette")) }.buttonStyle(.borderedProminent) }
-            }
+                hint("Drag it onto a scene to give that scene this palette. The project's palette is in the project settings.", .palette)
+            } else { hint("The project's palette is edited in the project settings.", .palette) }
         case .fonts:
-            let family = LookElement.fontFamily(id, project: project)
-            LicenceBadge(assessment: FontLicense.assess(name: family, assets: project.assets, store: project.store))
-            HStack {
-                ForEach([DecisionKey.titleFont, .textFont], id: \.self) { role in
-                    let on = project.showreel.map { role.current($0) == family } ?? false
-                    Button(on ? "\(role == .titleFont ? "Titles" : "Text"): chosen" : "Use for \(role == .titleFont ? "titles" : "text")") {
-                        project.perform(.decisions([DecisionChange(role, family)], title: nil))
-                    }
-                    .buttonStyle(.bordered).tint(on ? .green : nil).disabled(on)
-                }
-            }
+            LicenceBadge(assessment: FontLicense.assess(name: LookElement.fontFamily(id, project: project), assets: project.assets, store: project.store))
             if !id.hasPrefix("asset:") { Text("The free fonts here are previews to choose from. A film embeds only the font files you add as approved resources.").font(.caption).foregroundStyle(.secondary) }
+            hint("The fonts of the project are chosen in the project settings.", .fonts)
         case .backgrounds:
-            let chosen = d?.background?.id == id
-            Picker("Reacts to music like", selection: $mood) {
-                Text("Calm (no reaction)").tag("")
-                ForEach(Look.backgroundMoods(), id: \.self) { Text($0.capitalized).tag($0) }
-            }
-            Text("The mood only changes how animated backgrounds breathe with a track. It is saved with the background.").font(.caption).foregroundStyle(.secondary)
-            Button(chosen && (d?.background?.mood ?? "") == mood ? "Chosen" : "Use this background") {
-                let name = engine.catalogue?.backgrounds.first { $0.id == id }?.name ?? id
-                project.perform(.decisions([DecisionChange(.background, id), DecisionChange(.backgroundMood, mood)], title: "Set background: \(name)"))
-            }
-            .buttonStyle(.borderedProminent).disabled(chosen && (d?.background?.mood ?? "") == mood)
-            .onAppear { mood = d?.background?.mood ?? "" }
+            hint("Drag it onto a scene to give that scene this background, or choose it in the scene's Look tab. The project's default background is in the project settings.", .background)
         case .effects:
             if id.hasPrefix("pack:") {
                 let name = String(id.dropFirst(5))
-                let pack = Look.packs().first { $0.name == name }
-                Text((pack?.effects ?? []).joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
-                HStack {
-                    let isMood = (d?.moods ?? []).contains(name)
-                    Button(isMood ? "Mood: chosen" : "Use as my mood") { project.perform(.decisions([DecisionChange(.moods, name)], title: nil)) }.disabled(isMood)
-                    let isPack = d?.effectsPack == name
-                    Button(isPack ? "Effects pack: chosen" : "Use as the effects pack") { project.perform(.decisions([DecisionChange(.effectsPack, name)], title: nil)) }
-                        .buttonStyle(.borderedProminent).disabled(isPack)
-                }
+                Text((Look.packs().first { $0.name == name }?.effects ?? []).joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                hint("A pack is a whole-project choice: the moods and the effects pack are in the project settings.", .effects)
             } else if let e = engine.catalogue?.effects.first(where: { $0.name == id }) {
                 Text("\(e.cat) · energy \(e.energy) · \(String(format: "%.1f", e.dur)) s").font(.caption).foregroundStyle(.secondary)
-                Text("An effect is used through an effects pack today; picking single effects per scene comes with layers.").font(.caption).foregroundStyle(.secondary)
+                Text("Drag it onto a content item, or pick it in the item's animation.").font(.caption).foregroundStyle(.secondary)
             }
         case .transitions:
             if let e = engine.catalogue?.effects.first(where: { $0.name == id }) {
@@ -612,6 +592,13 @@ struct LookInspector: View {
             }
             if Look.isPreviewOnly(id) { Label("Preview only: it does not run between two real scenes, so it cannot be chosen for a montage.", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange) }
             else { Text("Drag it onto a marker of the reel, or choose it in the inspector of a transition.").font(.caption).foregroundStyle(.secondary) }
+        }
+    }
+
+    private func hint(_ text: String, _ section: LookSection) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(text).font(.caption).foregroundStyle(.secondary)
+            Button("Open the project settings") { project.openSettings(.look, look: section) }.buttonStyle(.bordered)
         }
     }
 }

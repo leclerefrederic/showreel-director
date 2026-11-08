@@ -31,6 +31,7 @@ struct WorkspaceView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .dragDropRoot(project)
     }
 
     /// A stored size, never under its floor; it gives way only when the window leaves no room for the others (the stored value is kept).
@@ -44,9 +45,9 @@ struct WorkspaceView: View {
         let v = (dragStart ?? Double(start)) + Double(delta)
         var l = project.layout
         switch p {
-        case .library: l = PanelLayout(library: v, inspector: l.inspector, strip: l.strip)
-        case .inspector: l = PanelLayout(library: l.library, inspector: v, strip: l.strip)
-        case .strip: l = PanelLayout(library: l.library, inspector: l.inspector, strip: v)
+        case .library: l = PanelLayout(library: v, inspector: l.inspector, strip: l.strip, settings: l.settings)
+        case .inspector: l = PanelLayout(library: l.library, inspector: v, strip: l.strip, settings: l.settings)
+        case .strip: l = PanelLayout(library: l.library, inspector: l.inspector, strip: v, settings: l.settings)
         }
         if ended { live = nil; dragStart = nil; project.setLayout(l) } else { live = l }
     }
@@ -80,8 +81,7 @@ struct LibraryPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $project.libraryTab) { ForEach(LibraryTab.allCases) { Text($0.title).tag($0) } }
-                .pickerStyle(.segmented).labelsHidden().padding(10)
+            LibraryTabs().padding(10)
             Divider()
             if project.showreel == nil {
                 Text("This project has no data yet. Confirm the import or create it with the banner above.").font(.callout).foregroundStyle(.secondary).padding(16)
@@ -90,11 +90,98 @@ struct LibraryPane: View {
                 switch project.libraryTab {
                 case .resources: ResourcesLibrary()
                 case .scenes: ScenesLibrary()
-                case .look: LookLibrary()
+                case .checks: ChecksLibrary()
                 }
             }
         }
         .background(Color(nsColor: .controlBackgroundColor))
+    }
+}
+
+/// The tabs of the left panel: Resources, Scenes and Checks, with a pill on Checks that counts what is red or orange.
+struct LibraryTabs: View {
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(LibraryTab.allCases) { t in
+                Button { project.libraryTab = t } label: {
+                    HStack(spacing: 5) {
+                        Text(t.title)
+                        if t == .checks, project.attentionCount > 0 {
+                            Text("\(project.attentionCount)").font(.caption2.weight(.bold)).foregroundStyle(.white).padding(.horizontal, 5).padding(.vertical, 1)
+                                .background(project.checkEntries.contains { $0.result.level == .fail } ? Color.red : Color.orange, in: Capsule())
+                        }
+                    }
+                    .font(.callout.weight(project.libraryTab == t ? .semibold : .regular))
+                    .frame(maxWidth: .infinity).padding(.vertical, 4)
+                    .background(project.libraryTab == t ? Color(nsColor: .controlColor) : Color.clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(2).background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .animation(Motion.quick, value: project.libraryTab)
+    }
+}
+
+/// The checks of the project, by group (Project, Resources, Scenes, Storyboard, Music, Build). A click opens what the check is about.
+struct ChecksLibrary: View {
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        let groups = CheckPanel.grouped(project.checkEntries)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                if groups.isEmpty { Text("Nothing to check yet.").font(.callout).foregroundStyle(.secondary).padding(16) }
+                ForEach(groups, id: \.group) { g in
+                    let hot = g.entries.filter { $0.result.level == .fail || $0.result.level == .tight }
+                    let rest = g.entries.filter { $0.result.level != .fail && $0.result.level != .tight }
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Image(systemName: g.group.symbol).foregroundStyle(.secondary)
+                            Text(g.group.title).font(.callout.weight(.semibold))
+                            if !hot.isEmpty { Text("\(hot.count)").font(.caption2.weight(.bold)).foregroundStyle(.white).padding(.horizontal, 5).background(hot.contains { $0.result.level == .fail } ? Color.red : Color.orange, in: Capsule()) }
+                            Spacer()
+                        }
+                        ForEach(hot) { e in CheckRow(entry: e) }
+                        if !rest.isEmpty {
+                            DisclosureGroup("Fine or waiting (\(rest.count))") { VStack(spacing: 2) { ForEach(rest) { e in CheckRow(entry: e) } } }
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .padding(10)
+        }
+    }
+}
+
+struct CheckRow: View {
+    let entry: CheckEntry
+    @EnvironmentObject var project: ProjectModel
+    @State private var hovering = false
+
+    var body: some View {
+        let r = entry.result
+        Button { project.openCheck(entry) } label: {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: r.level.symbol).foregroundStyle(r.level.color).frame(width: 16)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(r.title).font(.callout.weight(.medium)).multilineTextAlignment(.leading)
+                    Text(r.detail).font(.caption).foregroundStyle(.secondary).lineLimit(3).multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 2)
+                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 6).padding(.vertical, 4).frame(maxWidth: .infinity, alignment: .leading)
+            .background(hovering ? Color.primary.opacity(0.07) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Open what this is about")
     }
 }
 
@@ -103,22 +190,25 @@ struct LibraryRow<Content: View>: View {
     let selected: Bool
     let action: () -> Void
     @ViewBuilder let content: () -> Content
+    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             content()
                 .padding(.horizontal, 8).padding(.vertical, 5)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(selected ? Color.accentColor.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .background(selected ? Color.accentColor.opacity(0.2) : hovering ? Color.primary.opacity(0.07) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(Motion.quick, value: hovering)
+        .animation(Motion.quick, value: selected)
     }
 }
 
 struct ResourcesLibrary: View {
     @EnvironmentObject var project: ProjectModel
-    @State private var targeted = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -139,21 +229,37 @@ struct ResourcesLibrary: View {
                     .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 2) {
-                            ForEach(project.assets) { a in
-                                LibraryRow(selected: project.selection == .asset(a.id), action: { project.select(.asset(a.id)) }) { AssetRowView(row: a) }
+                        let ids = project.assets.map { $0.id }
+                        VStack(spacing: 0) {
+                            ForEach(Array(project.assets.enumerated()), id: \.element.id) { n, a in
+                                VStack(spacing: 0) {
+                                    SlotGap(target: .assetSlot(before: a.id))
+                                    LibraryRow(selected: project.selection == .asset(a.id), action: { project.select(.asset(a.id)) }) {
+                                        HStack(spacing: 6) { Handle(); AssetRowView(row: a) }
+                                    }
+                                    .padding(.vertical, 1)
+                                    .dragSource(.resource(a.id), label: a.name, icon: a.symbolName)
+                                    .dropSlots(before: .assetSlot(before: a.id), after: .assetSlot(before: n + 1 < ids.count ? ids[n + 1] : nil))
+                                    .contextMenu { menu(a) }
+                                }
+                                .transition(Motion.appear)
                             }
+                            SlotGap(target: .assetSlot(before: nil))
                         }
+                        .animation(Motion.spring, value: ids)
                         .padding(.horizontal, 6)
                     }
                 }
-                if targeted {
-                    RoundedRectangle(cornerRadius: 12).stroke(Color.accentColor, style: StrokeStyle(lineWidth: 3, dash: [8]))
-                        .background(Color.accentColor.opacity(0.08)).padding(6).allowsHitTesting(false)
-                }
             }
-            .onDrop(of: [.fileURL], isTargeted: $targeted) { providers in drop(providers) }
+            .dropTarget(.resourceList)      // files from the Finder land here: added with the automatic checks
         }
+    }
+
+    @ViewBuilder private func menu(_ a: AssetRow) -> some View {
+        if a.status == "proposed" || a.status == "placeholder" { Button("Approve") { project.setAssetStatus(a.id, .approved) } }
+        if a.status == "excluded" { Button("Put back") { project.setAssetStatus(a.id, .proposed) } }
+        else { Button("Exclude from the project", role: .destructive) { project.setAssetStatus(a.id, .excluded) } }
+        if let u = AssetFiles.url(a, in: project.root) { Divider(); Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([u]) } }
     }
 
     private func chooseFiles() {
@@ -161,21 +267,6 @@ struct ResourcesLibrary: View {
         p.canChooseFiles = true; p.canChooseDirectories = false; p.allowsMultipleSelection = true
         p.prompt = "Add"
         if p.runModal() == .OK { project.addAssets(p.urls) }
-    }
-
-    private func drop(_ providers: [NSItemProvider]) -> Bool {
-        var urls: [URL] = []
-        let group = DispatchGroup()
-        let lock = NSLock()
-        for p in providers where p.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
-            group.enter()
-            p.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
-                if let d = item as? Data, let u = URL(dataRepresentation: d, relativeTo: nil) { lock.lock(); urls.append(u); lock.unlock() }
-                group.leave()
-            }
-        }
-        group.notify(queue: .main) { project.addAssets(urls) }
-        return !providers.isEmpty
     }
 }
 
@@ -264,25 +355,34 @@ struct ScenesLibrary: View {
                 Spacer()
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 2) {
-                        ForEach(list) { s in
+                    let ids = list.map { $0.id }
+                    VStack(spacing: 0) {
+                        ForEach(Array(list.enumerated()), id: \.element.id) { n, s in
+                            let next: String? = n + 1 < ids.count ? ids[n + 1] : nil
                             VStack(alignment: .leading, spacing: 0) {
+                                SlotGap(target: .librarySlot(before: s.id))
                                 HStack(spacing: 4) {
+                                    Handle()
                                     Button { toggle(s.id) } label: { Image(systemName: project.expanded.contains(s.id) ? "chevron.down" : "chevron.right").frame(width: 12) }
                                         .buttonStyle(.borderless).help("Show what the scene is made of")
                                     Toggle("", isOn: Binding(get: { onIDs.contains(s.id) }, set: { project.setEnabled(s.id, $0) }))
                                         .toggleStyle(.checkbox).labelsHidden().help("In the film (the storyboard)")
                                     LibraryRow(selected: project.selection == .scene(s.id), action: { project.select(.scene(s.id)) }) { SceneRowView(scene: s, on: onIDs.contains(s.id)) }
-                                    .draggable(s.id)
+                                        .simultaneousGesture(TapGesture(count: 2).onEnded { project.beginRename(s.id) })
                                 }
-                                if project.expanded.contains(s.id) { SceneTreeView(scene: s.id).padding(.leading, 34).padding(.bottom, 4) }
+                                .padding(.vertical, 1)
+                                .dragSource(.scene(s.id), label: s.label, icon: "film")
+                                .dropTarget(.scene(s.id))
+                                .dropSlots(before: .librarySlot(before: s.id), after: .librarySlot(before: next))
+                                .contextMenu { SceneMenu(id: s.id) }
+                                if project.expanded.contains(s.id) { SceneTreeView(scene: s.id).padding(.leading, 34).padding(.bottom, 4).transition(.opacity) }
                             }
-                            .contextMenu {
-                                Button("Duplicate") { project.addScene(copying: s.id) }
-                                Button("Archive", role: .destructive) { project.archiveScene(s.id) }
-                            }
+                            .transition(Motion.appear)
                         }
+                        SlotGap(target: .librarySlot(before: nil))
                     }
+                    .animation(Motion.spring, value: ids)
+                    .animation(Motion.spring, value: project.expanded)
                     .padding(.horizontal, 6)
                     let archived = file?.scenes.filter { $0.archived } ?? []
                     if !archived.isEmpty {
@@ -315,27 +415,66 @@ struct ScenesLibrary: View {
     }
 }
 
+/// The items of the context menu of a scene, wherever the scene is shown (library row, frame of the reel).
+struct SceneMenu: View {
+    let id: String
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        Button("Rename") { project.beginRename(id) }
+        Button("Duplicate") { project.duplicateScene(id) }
+        Divider()
+        Button("Archive", role: .destructive) { project.archiveScene(id) }
+    }
+}
+
+/// A scene that replaces part of the project's look carries this mark: in the library, the tree and the reel.
+struct OverrideBadge: View {
+    let scene: ShowreelFile.Scene
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        if let f = project.showreel {
+            let groups = LookOverrides.groups(of: scene, in: f)
+            if !groups.isEmpty {
+                Image(systemName: "paintpalette.fill").font(.system(size: 9)).foregroundColor(.orange).padding(3)
+                    .background(Color.orange.opacity(0.2), in: Circle())
+                    .help("This scene replaces the project's " + groups.map { $0.rawValue }.joined(separator: ", "))
+            }
+        }
+    }
+}
+
 struct SceneRowView: View {
     let scene: ShowreelFile.Scene
     let on: Bool
+    @EnvironmentObject var project: ProjectModel
 
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: scene.statusSymbol).foregroundStyle(scene.statusColor)
             Text(scene.id).font(.callout.monospaced().weight(.semibold))
             VStack(alignment: .leading, spacing: 0) {
-                Text(scene.text.isEmpty ? "(no text)" : scene.text).lineLimit(1).font(.callout)
-                Text(scene.durationLabel).font(.caption2).foregroundStyle(.secondary)
+                InlineEdit(text: scene.name ?? "", placeholder: "Name this scene",
+                           editing: Binding(get: { project.renaming == scene.id }, set: { if !$0, project.renaming == scene.id { project.renaming = nil } }),
+                           commit: { project.renameScene(scene.id, $0) }) {
+                    if let n = scene.name { Text(n).lineLimit(1).font(.callout.weight(.medium)) }
+                    else { Text(scene.text.isEmpty ? "(no text)" : scene.text).lineLimit(1).font(.callout) }
+                }
+                Text((scene.name != nil && !scene.text.isEmpty ? scene.text + " \u{00B7} " : "") + scene.durationLabel).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }
+            OverrideBadge(scene: scene)
             Spacer(minLength: 0)
         }
         .opacity(on ? 1 : 0.5)
     }
 }
 
-// MARK: look elements
+// MARK: look elements (the Catalogue palette)
 
 struct LookLibrary: View {
+    /// The kinds the list offers (the Catalogue palette leaves fonts out: a font has nothing to be dropped on).
+    var kinds: [LookKind] = LookKind.allCases
     @EnvironmentObject var project: ProjectModel
     @ObservedObject private var engine = EngineService.shared
     @State private var search = ""
@@ -344,7 +483,7 @@ struct LookLibrary: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Picker("", selection: $project.lookKind) { ForEach(LookKind.allCases) { Text($0.title).tag($0) } }.labelsHidden()
+                Picker("", selection: $project.lookKind) { ForEach(kinds) { Text($0.title).tag($0) } }.labelsHidden()
                 if [.fonts, .effects, .backgrounds].contains(project.lookKind) {
                     TextField("Search", text: $search).textFieldStyle(.roundedBorder)
                 }
@@ -355,7 +494,7 @@ struct LookLibrary: View {
             }
         }
         .task { await engine.start() }
-        .onAppear { FontRegistry.shared.registerAll() }
+        .onAppear { FontRegistry.shared.registerAll(); if !kinds.contains(project.lookKind), let k = kinds.first { project.lookKind = k } }
         .onChange(of: project.lookKind) { _ in search = "" }
     }
 
@@ -435,9 +574,12 @@ struct LookLibrary: View {
         }
     }
 
-    private func row<C: View>(_ kind: LookKind, _ id: String, @ViewBuilder _ content: @escaping () -> C) -> some View {
-        LibraryRow(selected: project.selection == .look(kind, id), action: { project.select(.look(kind, id)) }, content: content)
-            .draggable(kind == .transitions ? "transition:" + id : "look:" + kind.rawValue + ":" + id)    // a transition is dropped on a marker of the reel
+    /// A look element can be dragged onto what takes it (a background or a look onto a scene, an effect onto an item, a transition onto a marker).
+    @ViewBuilder private func row<C: View>(_ kind: LookKind, _ id: String, @ViewBuilder _ content: @escaping () -> C) -> some View {
+        let r = LibraryRow(selected: project.selection == .look(kind, id), action: { project.select(.look(kind, id)) }, content: content)
+        if let item = DragItem.library(kind: kind.rawValue, id: id) {
+            r.dragSource(item, label: id.hasPrefix("pack:") ? String(id.dropFirst(5)) : id, icon: kind == .transitions ? "arrow.left.arrow.right" : kind == .effects ? "sparkles" : kind == .backgrounds ? "rectangle.on.rectangle" : "paintpalette")
+        } else { r }
     }
 
     private func chip(_ t: String) -> some View {
@@ -499,37 +641,74 @@ extension NodeStatus {
     }
 }
 
-/// What a scene is made of: Raw, Texts, Effects, Background, Look. Selecting a node opens the matching tab of the scene's inspector.
+/// What a scene is made of: Raw, Texts, Effects, Background, Look. Selecting a node opens the matching tab of the scene's inspector. The nodes take drops
+/// (a resource links it to the scene, an effect goes on an item's node), and the items can be dragged to change their priority.
 struct SceneTreeView: View {
     let scene: String
     @EnvironmentObject var project: ProjectModel
 
+    private var order: [String] { project.showreel?.scenes.first { $0.id == scene }?.content.map { $0.id } ?? [] }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            ForEach(project.trees[scene] ?? []) { g in
-                HStack(spacing: 4) {
-                    Text(g.group.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    if !g.nodes.isEmpty && g.group != .background && g.group != .look { Text("\(g.nodes.count)").font(.caption2).foregroundStyle(.tertiary) }
-                    Spacer()
-                }
-                .padding(.top, 3)
-                if g.nodes.isEmpty {
-                    Text(g.group == .effects ? "none yet" : g.group == .raw ? "no resource linked" : "none").font(.caption2).foregroundStyle(.tertiary).padding(.leading, 8)
-                }
-                ForEach(g.nodes) { n in
-                    LibraryRow(selected: project.selection == .sceneNode(scene, g.group, n.id), action: { project.selectNode(scene, g.group, n.id) }) {
-                        HStack(spacing: 6) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(n.title).font(.caption).lineLimit(1).truncationMode(.middle)
-                                Text(n.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            Spacer(minLength: 2)
-                            if let st = n.status { Text(st.rawValue).font(.caption2.weight(.semibold)).foregroundStyle(st.color) }
-                            if let o = n.origin { Text(o.rawValue).font(.caption2).foregroundStyle(o == .overridden ? Color.orange : .secondary) }
-                        }
+            ForEach(project.trees[scene] ?? []) { g in group(g) }
+        }
+        .animation(Motion.spring, value: project.trees[scene] ?? [])
+    }
+
+    /// A group of the tree. Clicking its title opens the matching tab of the scene's inspector; its nodes open it on that element.
+    @ViewBuilder private func group(_ g: SceneGroupNodes) -> some View {
+        Button { project.selectNode(scene, g.group, nil) } label: {
+            HStack(spacing: 4) {
+                Text(g.group.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                if g.group != .look && !g.nodes.isEmpty { Text("\(g.nodes.count)").font(.caption2).foregroundStyle(.tertiary) }
+                if g.group == .look, let s = project.showreel?.scenes.first(where: { $0.id == scene }) { OverrideBadge(scene: s) }
+                Spacer()
+            }
+            .padding(.top, 3).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .dropTarget(.sceneNode(scene: scene, group: g.group, node: nil))
+        if g.nodes.isEmpty {
+            Text(g.group == .effects ? "none yet" : "nothing yet").font(.caption2).foregroundStyle(.tertiary).padding(.leading, 8)
+        }
+        ForEach(g.nodes) { n in node(g.group, n) }
+        if g.group == .composition { SlotGap(target: .contentSlot(scene: scene, before: nil), size: 24) }
+    }
+
+    @ViewBuilder private func node(_ group: SceneGroup, _ n: SceneNode) -> some View {
+        let item: String? = n.id.hasPrefix("item.") ? String(n.id.dropFirst(5)) : nil
+        let next: String? = item.flatMap { i in order.firstIndex(of: i).flatMap { $0 + 1 < order.count ? order[$0 + 1] : nil } }
+        VStack(spacing: 0) {
+            if let i = item { SlotGap(target: .contentSlot(scene: scene, before: i), size: 24) }
+            let row = LibraryRow(selected: project.selection == .sceneNode(scene, group, n.id), action: { project.selectNode(scene, group, n.id) }) {
+                HStack(spacing: 6) {
+                    if item != nil { Handle() }
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(n.title).font(.caption).lineLimit(1).truncationMode(.middle)
+                        Text(n.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }
+                    Spacer(minLength: 2)
+                    if let st = n.status { Text(st.rawValue).font(.caption2.weight(.semibold)).foregroundStyle(st.color) }
+                    if let o = n.origin { Text(o.rawValue).font(.caption2).foregroundStyle(o == .overridden ? Color.orange : .secondary) }
                 }
             }
+            .dropTarget(.sceneNode(scene: scene, group: group, node: n.id))
+            .contextMenu { nodeMenu(n, item) }
+            if let i = item {
+                row.dragSource(.content(scene: scene, item: i), label: n.title, icon: "line.3.horizontal")
+                    .dropSlots(before: .contentSlot(scene: scene, before: i), after: .contentSlot(scene: scene, before: next))
+            } else { row }
+        }
+        .transition(Motion.appear)
+    }
+
+    @ViewBuilder private func nodeMenu(_ n: SceneNode, _ item: String?) -> some View {
+        if let i = item {
+            Button("Duplicate") { project.duplicateItem(scene, i) }
+            Button("Remove", role: .destructive) { project.removeItem(scene, i) }
+        } else if n.id.hasPrefix("raw."), let a = n.assetID {
+            Button("Unlink from the scene", role: .destructive) { project.unlink(a, from: scene) }
         }
     }
 }

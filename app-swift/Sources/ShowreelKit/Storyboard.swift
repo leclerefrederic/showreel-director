@@ -3,6 +3,8 @@ import Foundation
 /// A change to one scene of the library, field by field. Every field is optional: nil leaves it as it is, an empty string clears it.
 /// Times are text ("4", "4.5") so that the copilot's tool input and the form share one path.
 public struct SceneEdit: Equatable, Sendable {
+    /// The label the user gives the scene (shown next to its ID). Empty clears it. The ID never changes.
+    public var name: String?
     public var duration: String?
     public var text: String?
     public var visual: String?
@@ -17,8 +19,8 @@ public struct SceneEdit: Equatable, Sendable {
     public var after: String?         // position in the master montage: after this ID, "start" for first (a move never changes an ID)
 
     public init(duration: String? = nil, text: String? = nil, visual: String? = nil, feeling: String? = nil, handoff: String? = nil,
-                inCuts: String? = nil, note: String? = nil, status: String? = nil, archived: Bool? = nil, assets: String? = nil, after: String? = nil, controlLevel: String? = nil) {
-        self.controlLevel = controlLevel
+                inCuts: String? = nil, note: String? = nil, status: String? = nil, archived: Bool? = nil, assets: String? = nil, after: String? = nil, controlLevel: String? = nil, name: String? = nil) {
+        self.controlLevel = controlLevel; self.name = name
         self.duration = duration; self.text = text; self.visual = visual; self.feeling = feeling; self.handoff = handoff
         self.inCuts = inCuts; self.note = note; self.status = status; self.archived = archived; self.assets = assets; self.after = after
     }
@@ -113,6 +115,8 @@ public enum SceneRules {
         return String(format: "S%02d", n + 1)
     }
 
+    public static let nameLimit = 60
+
     public static func isValidID(_ id: String) -> Bool { id.range(of: #"^S\d{2,}[a-z]?$"#, options: .regularExpression) != nil }
 
     static func time(_ s: String, _ what: String) throws -> Double? {
@@ -138,6 +142,12 @@ public enum SceneRules {
             write(n); ch.append(Change(label, shown(old), shown(n)))
         }
         func secs(_ x: Double?) -> String { x.map { ProjectDocs.seconds($0) } ?? "" }
+        if let raw = e.name {
+            let n = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !n.contains("\n"), n.count <= nameLimit else { throw AgentError.msg("a scene name is one line of at most \(nameLimit) characters") }
+            guard !isValidID(n) else { throw AgentError.msg("a name cannot look like a scene ID (\(n)): the ID is what the film refers to") }
+            if (n.isEmpty ? nil : n) != s.name { ch.append(Change("Name", shown(s.name ?? ""), n.isEmpty ? "(none)" : n)); s.name = n.isEmpty ? nil : n }
+        }
         if let v = e.duration { let t = try time(v, "duration"); if t != s.duration { ch.append(Change("Duration", shown(secs(s.duration)), shown(secs(t)))); s.duration = t } }
         set("On-screen text", e.text, s.text) { s.setMasterText($0) }
         if let v = e.controlLevel?.trimmingCharacters(in: .whitespaces).lowercased() {
@@ -248,7 +258,9 @@ extension ProjectStore {
             assetRows = newRows
         }
         guard !changes.isEmpty else { throw AgentError.msg("no change for \(sceneID)") }
-        let title = adding ? "Add scene \(sceneID)" : (edit.status == "ditched" ? "Ditch \(sceneID)" : edit.archived == true ? "Archive \(sceneID)" : "Edit \(sceneID)")
+        let label = g.scenes.first { $0.id == sceneID }?.label ?? sceneID
+        let renamedOnly = !adding && edit.name != nil && changes.allSatisfy { $0.label == "Name" }
+        let title = adding ? "Add scene \(label)" : (edit.status == "ditched" ? "Ditch \(label)" : edit.archived == true ? "Archive \(label)" : renamedOnly ? "Rename \(sceneID)" : "Edit \(label)")
         let rows = assetRows, newGraph = g, linked = linkChanged
         let inFilm = g.film.contains { $0.id == sceneID } || f.film.contains { $0.id == sceneID }
         return finish(title: title, changes: changes, from: f, to: newGraph, extraFilmChange: linked && inFilm) { if linked { try Assets.save(rows, self) } }

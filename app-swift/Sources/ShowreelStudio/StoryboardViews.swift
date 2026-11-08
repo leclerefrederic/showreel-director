@@ -46,11 +46,11 @@ struct SceneForm: View {
                     area("Feeling and tension", $feeling, 2)
                     area("Passage to the next scene", $handoff, 2)
                 }
-                if shows(.content) {
+                if shows(.composition) {
                     if tab == nil { area("On-screen text", $text, 3) }
                     area(tab == nil ? "Image and motion" : "Scene note (image and motion)", $visual, 2)
                 }
-                if shows(.resources) {
+                if tab == nil {            // in the workspace the composition holds the resources, as elements; the guided path links them here
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Linked resources").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         let usable = project.assets.filter { $0.type != "doc" && $0.type != "data" && $0.type != "note" && $0.type != "misc" }
@@ -69,7 +69,7 @@ struct SceneForm: View {
                     Button("Save scene") { if let e = edit { project.perform(.scene(id: id, e)) } }.buttonStyle(.borderedProminent).disabled(edit == nil)
                     Button("Revert") { load(force: true) }.disabled(edit == nil)
                 }
-                if s.status == "ok", shows(.settings) || shows(.content) { Text("Changing the text or the duration sends this scene back to review.").font(.caption).foregroundStyle(.secondary) }
+                if s.status == "ok", shows(.settings) || shows(.composition) { Text("Changing the text or the duration sends this scene back to review.").font(.caption).foregroundStyle(.secondary) }
             }
             .onAppear { load(force: false) }
             .onChange(of: project.showreel) { _ in load(force: false) }
@@ -122,19 +122,37 @@ struct SceneListEditor: View {
             if scenes.isEmpty {
                 Text("No scene yet. Add one, or draft with the AI.").font(.callout).foregroundStyle(.secondary).padding(.vertical, 20)
             } else {
-                List(selection: $selected) {
-                    ForEach(scenes) { s in
-                        HStack(spacing: 8) {
-                            Image(systemName: s.statusSymbol).foregroundStyle(s.statusColor)
-                            Text(s.id).font(.callout.monospaced().weight(.semibold))
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(s.text.isEmpty ? "(no text)" : s.text).lineLimit(1).font(.callout)
-                                Text(s.durationLabel).font(.caption).foregroundStyle(.secondary)
+                let ids = scenes.map { $0.id }
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(Array(scenes.enumerated()), id: \.element.id) { n, s in
+                            VStack(spacing: 0) {
+                                SlotGap(target: .librarySlot(before: s.id))
+                                HStack(spacing: 8) {
+                                    Handle()
+                                    Image(systemName: s.statusSymbol).foregroundStyle(s.statusColor)
+                                    Text(s.id).font(.callout.monospaced().weight(.semibold))
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        Text(s.name ?? (s.text.isEmpty ? "(no text)" : s.text)).lineLimit(1).font(.callout)
+                                        Text(s.durationLabel).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 8).padding(.vertical, 5)
+                                .background(selected == s.id ? Color.accentColor.opacity(0.2) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                                .contentShape(Rectangle())
+                                .onTapGesture { selected = s.id }
+                                .dragSource(.scene(s.id), label: s.label, icon: "film")
+                                .dropTarget(.scene(s.id))
+                                .dropSlots(before: .librarySlot(before: s.id), after: .librarySlot(before: n + 1 < ids.count ? ids[n + 1] : nil))
+                                .contextMenu { SceneMenu(id: s.id) }
                             }
-                            Spacer()
-                        }.tag(s.id)
+                            .transition(Motion.appear)
+                        }
+                        SlotGap(target: .librarySlot(before: nil))
                     }
-                    .onMove { from, to in move(from, to) }
+                    .animation(Motion.spring, value: ids)
+                    .padding(.horizontal, 4)
                 }
                 .frame(minHeight: 160, maxHeight: 300)
                 Text("Drag to reorder: the order changes, the IDs never do.").font(.caption).foregroundStyle(.secondary)
@@ -145,14 +163,6 @@ struct SceneListEditor: View {
                 }
             }
         }
-    }
-
-    private func move(_ from: IndexSet, _ to: Int) {
-        guard let i = from.first else { return }
-        let moved = scenes[i].id
-        let dest = to > i ? to : to       // `to` is the index the row lands before, in the list as it was
-        let target: String? = dest >= scenes.count ? nil : scenes[dest].id
-        project.moveScene(moved, before: target == moved ? nil : target)
     }
 
     private func draft() {

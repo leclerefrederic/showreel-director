@@ -208,6 +208,8 @@ public enum ProjectOperation: Equatable, Sendable {
     case grid(bpm: Double?, firstBeat: Double?)
     /// How the reel snaps and whether stretching ripples.
     case gridSettings(snap: String?, ripple: Bool?)
+    /// Puts a resource after another one in the resources list ("start" for first). Only the order of the list changes.
+    case moveAsset(id: String, after: String)
 }
 
 public enum Operations {
@@ -241,6 +243,18 @@ public enum Operations {
 }
 
 extension ProjectStore {
+    func planMoveAsset(_ id: String, after: String) throws -> (card: OperationCard, run: () throws -> Void) {
+        var rows = Assets.load(self)
+        guard let from = rows.firstIndex(where: { $0.id == id }) else { throw AgentError.msg("unknown asset \(id)") }
+        guard after == "start" || (after != id && rows.contains { $0.id == after }) else { throw AgentError.msg("no resource \(after) to put it after") }
+        let row = rows.remove(at: from)
+        let to = after == "start" ? 0 : rows.firstIndex { $0.id == after }! + 1
+        guard to != from else { throw AgentError.msg("no change: \(row.name) already is there") }
+        rows.insert(row, at: to)
+        let new = rows
+        return (OperationCard(title: "Move \(row.name)", changes: [Change("Position of \(id)", "\(from + 1)", "\(to + 1)")]), { try Assets.save(new, self) })
+    }
+
     private func needShowreel() throws -> ShowreelFile {
         guard let f = loadShowreel() else { throw AgentError.msg("there is no readable showreel.json: create the project first") }
         return f
@@ -292,6 +306,7 @@ extension ProjectStore {
         case .track(let a): return try planTrack(a).card
         case .grid(let b, let s): return try planGrid(bpm: b, firstBeat: s).card
         case .gridSettings(let s, let r): return try planGridSettings(snap: s, ripple: r).card
+        case .moveAsset(let id, let after): return try planMoveAsset(id, after: after).card
         case .gate(let key, let passed):
             let f = try needShowreel()
             guard ShowreelFile.gateKeys.contains(key) else { throw AgentError.msg("unknown gate \(key)") }
@@ -307,6 +322,19 @@ extension ProjectStore {
     public func apply(_ op: ProjectOperation, expecting card: OperationCard? = nil) throws {
         let now = try plan(op)
         if let c = card, c.changes != now.changes { throw AgentError.msg("not applied: the project changed since the proposal was made. Read the state again and propose again.") }
+        try recording(now.title, backup: filesToKeep(op)) {
+            try perform(op)
+            if linksResources(op) { try completeComposition(reopenGo: true) }     // a linked resource is an element of the scene
+        }
+    }
+
+    /// The files an operation may delete, which the undo log keeps the bytes of (excluding a resource removes its prepared copy).
+    private func filesToKeep(_ op: ProjectOperation) -> [String] {
+        guard case .asset(let id, let status, _, _, _) = op, status == .excluded, let r = Assets.load(self).first(where: { $0.id == id }), r.file.hasPrefix("prepared/") else { return [] }
+        return ["assets/" + r.file]
+    }
+
+    private func perform(_ op: ProjectOperation) throws {
         switch op {
         case .parameter(let key, let value):
             var f = try needShowreel()
@@ -330,6 +358,7 @@ extension ProjectStore {
         case .track(let a): try planTrack(a).run()
         case .grid(let b, let s): try planGrid(bpm: b, firstBeat: s).run()
         case .gridSettings(let s, let r): try planGridSettings(snap: s, ripple: r).run()
+        case .moveAsset(let id, let after): try planMoveAsset(id, after: after).run()
         case .gate(let key, let passed):
             var f = try needShowreel()
             f.gates[key] = passed ? "passed" : "open"

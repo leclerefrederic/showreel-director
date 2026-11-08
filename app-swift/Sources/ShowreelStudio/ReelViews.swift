@@ -41,7 +41,7 @@ struct ReelHeader: View {
             if let f = project.showreel {
                 Text(summary(f)).font(.callout).foregroundStyle(.secondary)
                 let worst = Checks.worst((project.checks["storyboard"] ?? []) + (project.checks["scene"] ?? []))
-                Image(systemName: worst.symbol).foregroundStyle(worst.color).help("Film-level checks: see the Checks menu")
+                Image(systemName: worst.symbol).foregroundStyle(worst.color).help("Film-level checks: see the Checks tab of the left panel")
                 Text(timeText(project.playhead)).font(.callout.monospacedDigit()).foregroundStyle(.secondary).help("Playhead")
                 Spacer()
                 Picker("Snap", selection: Binding(get: { f.snapLevel() }, set: { project.setGridSettings(snap: $0) })) {
@@ -82,7 +82,15 @@ struct ReelHeader: View {
 struct ReelScroll: View {
     let f: ShowreelFile
     @EnvironmentObject var project: ProjectModel
-    private let frameH: CGFloat = 78
+    @EnvironmentObject var dnd: DragState
+    private let frameH: CGFloat = 78, gapW: CGFloat = 64
+
+    /// The place the pointer holds a scene over: the frames from it on move over to open a gap. nil when nothing is held over a valid place.
+    private func gapIndex(_ tl: [TimedScene]) -> Int? {
+        guard case .reelSlot(let before)? = dnd.hover, let item = dnd.item, project.verdict(item, .reelSlot(before: before)).isValid else { return nil }
+        guard let b = before else { return tl.count }
+        return tl.firstIndex { $0.scene.id == b }
+    }
 
     var body: some View {
         let pps = CGFloat(project.pps)
@@ -94,25 +102,35 @@ struct ReelScroll: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ReelRuler(width: width, pps: pps).frame(width: width, height: 20)
                     ZStack(alignment: .topLeading) {
-                        Color.clear.frame(width: width, height: frameH)
-                            .dropDestination(for: String.self) { ids, _ in
-                                guard let id = ids.first, !id.contains(":") else { return false }
-                                project.place(id, before: nil); return true
-                            }
+                        Color.clear.frame(width: width, height: frameH).registers(.reelSlot(before: nil))   // empty room: the end of the film
+                        let gap = gapIndex(tl)
+                        // a gap opens where the dropped scene would land: the frames after it make room
+                        if let g = gap {
+                            let x = g < tl.count ? CGFloat(tl[g].start ?? 0) * pps : CGFloat(tl.last?.end ?? 0) * pps
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(Color.accentColor.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                                .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .frame(width: gapW - 6, height: frameH).offset(x: x + 3)
+                                .transition(.opacity)
+                            if g < tl.count { Color.clear.frame(width: gapW, height: frameH).registers(.reelSlot(before: tl[g].scene.id)).offset(x: x) }
+                        }
                         ForEach(Array(tl.enumerated()), id: \.element.scene.id) { i, t in
+                            let next: String? = i + 1 < tl.count ? tl[i + 1].scene.id : nil
                             FrameView(timed: t, previous: i > 0 ? tl[i - 1].scene.id : nil, pps: pps, height: frameH)
-                                .offset(x: CGFloat(t.start ?? 0) * pps)
+                                .dropSlots(before: .reelSlot(before: t.scene.id), after: .reelSlot(before: next), vertical: false)
+                                .offset(x: CGFloat(t.start ?? 0) * pps + ((gap ?? Int.max) <= i ? gapW : 0))
                         }
                         ForEach(Array(tl.enumerated()), id: \.element.scene.id) { i, t in
                             if i + 1 < tl.count {
                                 TransitionMarker(from: t.scene.id, transition: t.item.transition)
-                                    .offset(x: CGFloat(tl[i + 1].start ?? t.end ?? 0) * pps - 11, y: frameH - 26)
+                                    .offset(x: CGFloat(tl[i + 1].start ?? t.end ?? 0) * pps - 11 + ((gap ?? Int.max) <= i + 1 ? gapW : 0), y: frameH - 26)
                             }
                         }
                     }
                     .frame(width: width, height: frameH)
                     MusicLane(width: width, pps: pps).frame(width: width, height: 54)
                 }
+                .animation(Motion.spring, value: dnd.hover)
                 Rectangle().fill(Color.red).frame(width: 1.5)
                     .frame(height: 20 + frameH + 54 + 8)
                     .offset(x: CGFloat(project.playhead) * pps).allowsHitTesting(false)
@@ -162,7 +180,7 @@ struct FrameView: View {
     let pps: CGFloat
     let height: CGFloat
     @EnvironmentObject var project: ProjectModel
-    @State private var targeted = false
+    @State private var hovering = false
     @State private var dragging: (edge: Int, dx: CGFloat)?
 
     private var scene: ShowreelFile.Scene { timed.scene }
@@ -172,8 +190,12 @@ struct FrameView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             SceneThumb(scene: scene, still: true).frame(width: width, height: height).clipped()
-            Text(scene.id).font(.caption2.monospaced().weight(.bold)).padding(.horizontal, 5).padding(.vertical, 1)
-                .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 4)).foregroundStyle(.white).padding(4)
+            HStack(spacing: 3) {
+                Text(scene.label).font(.caption2.monospaced().weight(.bold)).lineLimit(1).padding(.horizontal, 5).padding(.vertical, 1)
+                    .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 4)).foregroundStyle(.white)
+                OverrideBadge(scene: scene)
+            }
+            .padding(4).frame(maxWidth: max(20, width - 64), alignment: .leading)
             VStack {
                 HStack {
                     Spacer()
@@ -199,14 +221,20 @@ struct FrameView: View {
         }
         .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(targeted || selected ? Color.accentColor : Color.primary.opacity(0.2), lineWidth: targeted || selected ? 3 : 1))
+        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(selected ? Color.accentColor : hovering ? Color.primary.opacity(0.5) : Color.primary.opacity(0.2), lineWidth: selected ? 3 : hovering ? 2 : 1))
         .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .animation(Motion.quick, value: hovering)
         .onTapGesture { project.select(.scene(scene.id)); if let s = timed.start { project.playhead = s } }
-        .draggable(scene.id)
-        .dropDestination(for: String.self, action: { ids, _ in
-            guard let id = ids.first, id != scene.id, !id.contains(":") else { return false }
-            project.place(id, before: scene.id); return true
-        }, isTargeted: { targeted = $0 })
+        .dragSource(.scene(scene.id), label: scene.label, icon: "film")
+        .dropTarget(.scene(scene.id))       // a resource, a background or a look dropped on a frame goes to that scene
+        .contextMenu {
+            Button("Rename") { project.beginRename(scene.id) }
+            Button("Duplicate") { project.duplicateScene(scene.id) }
+            Button("Switch off") { project.setEnabled(scene.id, false) }
+            Divider()
+            Button("Archive", role: .destructive) { project.archiveScene(scene.id) }
+        }
     }
 
     /// An edge: the left one moves the cut with the scene before, the right one changes this scene's duration.
@@ -240,7 +268,6 @@ struct TransitionMarker: View {
     let from: String
     let transition: ShowreelFile.Transition
     @EnvironmentObject var project: ProjectModel
-    @State private var targeted = false
 
     var body: some View {
         let selected = project.selection == .transition(from)
@@ -249,15 +276,17 @@ struct TransitionMarker: View {
             Image(systemName: transition.isCut ? "scissors" : "arrow.left.arrow.right").font(.system(size: 10, weight: .bold))
                 .foregroundStyle(transition.isCut ? Color.secondary : .white)
         }
-        .overlay(Circle().stroke(targeted || selected ? Color.accentColor : Color.primary.opacity(0.35), lineWidth: targeted || selected ? 3 : 1))
+        .overlay(Circle().stroke(selected ? Color.accentColor : Color.primary.opacity(0.35), lineWidth: selected ? 3 : 1))
         .contentShape(Circle())
         .help(transition.text)
         .onTapGesture { project.selectTransition(from: from) }
-        .dropDestination(for: String.self, action: { ids, _ in
-            guard let p = ids.first, p.hasPrefix("transition:") else { return false }
-            project.selectTransition(from: from)
-            return project.setTransition(from: from, TransitionEdit(type: String(p.dropFirst(11))))
-        }, isTargeted: { targeted = $0 })
+        .padding(6)
+        .dropTarget(.marker(from: from))     // a transition dropped from the library lands here
+        .padding(-6)
+        .contextMenu {
+            Button("Edit the transition") { project.selectTransition(from: from) }
+            Button("Set to a cut") { project.setTransition(from: from, nil) }.disabled(transition.isCut)
+        }
     }
 }
 
@@ -324,7 +353,8 @@ struct OffRow: View {
                 Text("Off:").font(.caption).foregroundStyle(.secondary)
                 ForEach(off) { s in
                     Button { project.place(s.id, before: nil) } label: { Label(s.id, systemImage: "eye") }.buttonStyle(.bordered).controlSize(.mini)
-                        .help("Switch on: at the end of the film")
+                        .dragSource(.scene(s.id), label: s.label, icon: "film")
+                        .help("Switch on: at the end of the film, or drag it into the reel")
                 }
                 Spacer()
             }
@@ -350,16 +380,10 @@ struct TransitionInspector: View {
             InspectorHeader(title: "\(from) \u{2192} \(pair?.next.id ?? "?")", subtitle: "Transition")
             if let p = pair {
                 InspectorSection(title: "Type") {
-                    // a transition that does not run between two real scenes stays visible but cannot be chosen
-                    Menu {
-                        Button("Cut on beat (default)") { project.setTransition(from: from, TransitionEdit(type: "cut")) }
-                        Divider()
-                        ForEach(Look.transitions(), id: \.name) { t in
-                            Button(Look.isPreviewOnly(t.name) ? "\(t.name) (preview only)" : "\(t.name) · \(t.energy)") { project.setTransition(from: from, TransitionEdit(type: t.name)) }
-                                .disabled(Look.isPreviewOnly(t.name))
-                        }
-                    } label: { Text(p.item.isCut ? "Cut on beat (default)" : p.item.type) }
-                    .menuStyle(.borderlessButton).fixedSize()
+                    // the catalogue with the engine's previews; a transition that does not run between two real scenes stays visible but cannot be chosen
+                    PickerButton(kind: .transition, current: p.item.isCut ? "cut" : p.item.type, none: ("cut", "Cut on beat (default)")) {
+                        project.choose(.transition, $0, for: .marker(from: from))
+                    }
                     if Look.isPreviewOnly(p.item.type) { Label("Preview only: it does not run between two real scenes. Choose another or a cut.", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange) }
                     if let lib = Look.transitions().first(where: { $0.name == p.item.type }) { Text(lib.desc).font(.caption).foregroundStyle(.secondary) }
                 }

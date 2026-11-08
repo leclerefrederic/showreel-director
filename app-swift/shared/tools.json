@@ -264,7 +264,7 @@
   },
   {
     "name": "open_block",
-    "description": "Bring a zone of the editing workspace to the front: library, viewer, inspector (the project parameters and the global look), storyboard, build or deliver. In the guided path (Beginner mode) it goes to the first undecided step of that part. A zone that is not built yet answers so: say it and carry on in the chat.",
+    "description": "Bring a zone of the editing workspace to the front: library, viewer, inspector (the properties of what is selected; it also opens the project settings panel, which holds the project parameters and the global look), storyboard, build or deliver. In the guided path (Beginner mode) it goes to the first undecided step of that part. A zone that is not built yet answers so: say it and carry on in the chat.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -323,6 +323,10 @@
           "type": "string",
           "description": "optional, for example S04b"
         },
+        "name": {
+          "type": "string",
+          "description": "an optional label for the scene, shown beside its ID (one line, at most 60 characters, never an ID such as S02); empty clears it. The ID stays the scene's identity: always refer to a scene by its ID"
+        },
         "duration": {
           "type": "number",
           "description": "the scene's own length in seconds (about 3 s for a line of six to eight words); where it starts follows from its place in the storyboard"
@@ -379,6 +383,10 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "an optional label for the scene, shown beside its ID (one line, at most 60 characters, never an ID such as S02); empty clears it. The ID stays the scene's identity: always refer to a scene by its ID"
         },
         "duration": {
           "type": "number",

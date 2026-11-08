@@ -351,7 +351,7 @@ struct ConnectAIView: View {
             Label("The copilot is off", systemImage: "sparkles").font(.headline)
             Text("It answers questions, suggests values and makes changes that you accept or refuse. You can build a project by hand without it. Only generating the film (Build) needs an AI.")
                 .font(.callout).foregroundStyle(.secondary)
-            Button("Connect AI") { model.showSettings = true }.buttonStyle(.borderedProminent)
+            Button("Connect AI") { AppSettingsWindow.open() }.buttonStyle(.borderedProminent)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

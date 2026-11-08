@@ -77,9 +77,22 @@ struct WizardDone: View {
             if !upcoming.isEmpty {
                 Text("Coming soon: " + upcoming.joined(separator: ", ") + ".").font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 420)
             }
+            // a new project reaches the workspace once its base configuration is set: what is missing is named, and a click goes there
+            if project.needsSetup, let f = project.showreel {
+                let missing = ProjectSetup.missing(f)
+                if !missing.isEmpty {
+                    VStack(spacing: 4) {
+                        Label("The workspace opens when these are set:", systemImage: "exclamationmark.circle").font(.callout).foregroundStyle(.orange)
+                        ForEach(missing) { m in
+                            Button { project.jumpToFirstUndecided(in: m.section == "project" ? "project" : "look") } label: { Text(m.title + ": " + m.detail).font(.callout) }.buttonStyle(.link)
+                        }
+                    }
+                }
+            }
             HStack {
                 if p.decided < p.total { Button("Go to the first undecided step") { project.resumeWizard() } }
-                Button("Open the editing workspace") { project.workspaceOpen = true }.buttonStyle(.borderedProminent)
+                Button("Open the editing workspace") { project.finishSetup() }.buttonStyle(.borderedProminent)
+                    .disabled(project.needsSetup && (project.showreel.map { !ProjectSetup.isComplete($0) } ?? true))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -364,12 +377,11 @@ struct WizardStepView: View {
 struct WizardFiles: View {
     let step: WizardStep
     @EnvironmentObject var project: ProjectModel
-    @State private var targeted = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12).strokeBorder(targeted ? Color.accentColor : Color.primary.opacity(0.2), style: StrokeStyle(lineWidth: 2, dash: [8]))
+                RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.2), style: StrokeStyle(lineWidth: 2, dash: [8]))
                 VStack(spacing: 8) {
                     Image(systemName: "square.and.arrow.down").font(.system(size: 30, weight: .light)).foregroundStyle(.secondary)
                     Text(project.assets.isEmpty ? "Drop files here" : "\(project.assets.count) files added. Drop more, or go on.").font(.headline)
@@ -378,19 +390,7 @@ struct WizardFiles: View {
                 .padding(24)
             }
             .frame(height: 150)
-            .onDrop(of: [.fileURL], isTargeted: $targeted) { providers in
-                var urls: [URL] = []
-                let group = DispatchGroup(), lock = NSLock()
-                for p in providers where p.hasItemConformingToTypeIdentifier("public.file-url") {
-                    group.enter()
-                    p.loadItem(forTypeIdentifier: "public.file-url", options: nil) { item, _ in
-                        if let d = item as? Data, let u = URL(dataRepresentation: d, relativeTo: nil) { lock.lock(); urls.append(u); lock.unlock() }
-                        group.leave()
-                    }
-                }
-                group.notify(queue: .main) { project.addAssets(urls) }
-                return !providers.isEmpty
-            }
+            .dropTarget(.resourceList)      // the same drop as the workspace's resources list: added with the automatic checks
             if project.assets.isEmpty {
                 Button("I have no files yet") { project.markDecided(step); project.wizardNext() }
             }
@@ -418,7 +418,7 @@ struct ConnectAIHelp: View {
             HStack {
                 Spacer()
                 Button("Continue by hand") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Connect AI") { dismiss(); chat.showSettings = true }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                Button("Connect AI") { dismiss(); AppSettingsWindow.open() }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
             }
         }
         .padding(18).frame(width: 440)

@@ -3,20 +3,24 @@ import Foundation
 /// The sizes of the workspace's panels (library width, inspector width, storyboard height), remembered per project. A panel has a floor, so its
 /// content stays usable, and no ceiling: the window is the only limit. Absent sizes mean the standard layout.
 public struct PanelLayout: Codable, Equatable, Sendable {
-    public static let minLibrary = 200.0, minInspector = 280.0, minStrip = 130.0
-    public static let standardLibrary = 290.0, standardInspector = 390.0, standardStrip = 210.0
+    public static let minLibrary = 200.0, minInspector = 280.0, minStrip = 130.0, minSettings = 380.0
+    public static let standardLibrary = 290.0, standardInspector = 390.0, standardStrip = 210.0, standardSettings = 560.0
 
     public var library: Double?
     public var inspector: Double?
     public var strip: Double?
+    /// The project settings panel (opened from the top bar), which slides in over the right side.
+    public var settings: Double?
 
-    public init(library: Double? = nil, inspector: Double? = nil, strip: Double? = nil) {
+    public init(library: Double? = nil, inspector: Double? = nil, strip: Double? = nil, settings: Double? = nil) {
         self.library = Self.floored(library, Self.minLibrary); self.inspector = Self.floored(inspector, Self.minInspector); self.strip = Self.floored(strip, Self.minStrip)
+        self.settings = Self.floored(settings, Self.minSettings)
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.init(library: try c.decodeIfPresent(Double.self, forKey: .library), inspector: try c.decodeIfPresent(Double.self, forKey: .inspector), strip: try c.decodeIfPresent(Double.self, forKey: .strip))
+        self.init(library: try c.decodeIfPresent(Double.self, forKey: .library), inspector: try c.decodeIfPresent(Double.self, forKey: .inspector), strip: try c.decodeIfPresent(Double.self, forKey: .strip),
+                  settings: try c.decodeIfPresent(Double.self, forKey: .settings))
     }
 
     /// A size with the floor applied; nil for something that is not a size (not finite).
@@ -28,7 +32,8 @@ public struct PanelLayout: Codable, Equatable, Sendable {
     public var libraryWidth: Double { library ?? Self.standardLibrary }
     public var inspectorWidth: Double { inspector ?? Self.standardInspector }
     public var stripHeight: Double { strip ?? Self.standardStrip }
-    public var isStandard: Bool { library == nil && inspector == nil && strip == nil }
+    public var settingsWidth: Double { settings ?? Self.standardSettings }
+    public var isStandard: Bool { library == nil && inspector == nil && strip == nil && settings == nil }
 }
 
 /// App-private settings of one project, kept in `.studio/ui.json`.
@@ -44,9 +49,12 @@ public struct StudioSettings: Codable, Equatable {
     public var decided: [String]
     /// The panel sizes of the workspace; nil is the standard layout.
     public var layout: PanelLayout?
+    /// A project made by the app starts with its base configuration to fill in; the workspace opens when that is done. A folder that has no such flag
+    /// (made earlier, or opened from elsewhere) is never blocked.
+    public var setupRequired: Bool
 
-    public init(applyDirectly: Bool = false, mode: String = StudioSettings.expert, decided: [String] = [], layout: PanelLayout? = nil) {
-        self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided; self.layout = layout
+    public init(applyDirectly: Bool = false, mode: String = StudioSettings.expert, decided: [String] = [], layout: PanelLayout? = nil, setupRequired: Bool = false) {
+        self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided; self.layout = layout; self.setupRequired = setupRequired
     }
 
     public init(from decoder: Decoder) throws {
@@ -56,6 +64,7 @@ public struct StudioSettings: Codable, Equatable {
         mode = m == Self.beginner ? Self.beginner : Self.expert
         decided = try c.decodeIfPresent([String].self, forKey: .decided) ?? []
         layout = try c.decodeIfPresent(PanelLayout.self, forKey: .layout)
+        setupRequired = try c.decodeIfPresent(Bool.self, forKey: .setupRequired) ?? false
     }
 }
 
@@ -75,6 +84,8 @@ public final class ProjectStore {
 
     public let root: URL
     private let fm = FileManager.default
+    /// What the typed operations did, to undo and redo them (in memory, per project; see Undo.swift).
+    public let undoLog = UndoLog()
 
     public init(root: URL) { self.root = root.standardizedFileURL }
 
@@ -212,6 +223,7 @@ public final class ProjectStore {
         try save(f)
         var s = settings
         s.mode = StudioSettings.beginner       // a new project starts in the wizard
+        s.setupRequired = true                 // and does not reach the workspace before its base configuration is set
         settings = s
         return f
     }

@@ -18,6 +18,7 @@ struct ProjectWindow: View {
         }
         .environmentObject(win.project)
         .environmentObject(win.chat)
+        .focusedSceneObject(win.project)          // the Edit menu's Undo and Redo act on the project in front
         .navigationTitle(win.project.title)
         .onAppear { win.project.start() }
     }
@@ -28,23 +29,39 @@ struct ProjectView: View {
     @EnvironmentObject var chat: ChatModel
     @EnvironmentObject var settings: AppSettings
     @Environment(\.openWindow) private var openWindow
-    @State private var showChecks = false
 
-    private var inWizard: Bool { project.mode == StudioSettings.beginner && !project.workspaceOpen }
+    /// The guided path shows while it has not led to the workspace, and while a new project's base configuration is not done.
+    private var inWizard: Bool { project.mode == StudioSettings.beginner && (!project.workspaceOpen || project.needsSetup) }
+    /// In Expert mode a new project first shows one compact form with the same data.
+    private var inSetupForm: Bool { project.mode == StudioSettings.expert && project.needsSetup }
 
     var body: some View {
         VStack(spacing: 0) {
             if let offer = project.importOffer { ImportBanner(offer: offer) }
             if !project.docIssues.isEmpty { DocBanner() }
-            if inWizard {
+            if project.outdated && !project.updateBannerDismissed { OutdatedBanner() }
+            if inSetupForm {
+                SetupFormView()
+            } else if inWizard {
                 HSplitView {
                     WizardView().frame(minWidth: 560)
                     if project.showCopilot { ChatView().frame(minWidth: 340, idealWidth: 400) }
                 }
+                .dragDropRoot(project)
             } else {
                 WorkspaceView()
             }
         }
+        .overlay(alignment: .bottom) { ToastHost().padding(.bottom, 14) }
+        // the project settings slide in over the right side; the Catalogue is a small floating card (both optional, both opened from the top bar)
+        .overlay(alignment: .trailing) {
+            if project.showProjectSettings { SettingsDock().transition(.move(edge: .trailing)) }
+        }
+        .overlay(alignment: .topLeading) {
+            if project.showCatalogue { CataloguePalette().transition(.opacity) }
+        }
+        .animation(Motion.spring, value: project.showProjectSettings)
+        .animation(Motion.quick, value: project.showCatalogue)
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button { openWindow(id: "library") } label: { Label("Library", systemImage: "books.vertical") }
@@ -62,16 +79,17 @@ struct ProjectView: View {
                 if inWizard {
                     Button { project.showCopilot.toggle() } label: { Label("Copilot", systemImage: "sidebar.right") }
                         .help(project.showCopilot ? "Hide the copilot" : "Show the copilot")
-                    Button { project.workspaceOpen = true } label: { Label("Workspace", systemImage: "rectangle.split.3x1") }
-                        .help("Open the editing workspace")
+                    Button { if project.needsSetup { project.finishSetup() } else { project.workspaceOpen = true } } label: { Label("Workspace", systemImage: "rectangle.split.3x1") }
+                        .help(project.needsSetup ? "The workspace opens when the base configuration is complete: languages, formats, duration and a look" : "Open the editing workspace")
+                        .disabled(project.showreel.map { project.needsSetup && !ProjectSetup.isComplete($0) } ?? true)
                 } else {
                     if project.mode == StudioSettings.beginner {
                         Button { project.workspaceOpen = false; project.resumeWizard() } label: { Label("Guide", systemImage: "list.number") }
                             .help("Back to the guided path")
                     }
-                    Button { showChecks.toggle() } label: { Label("Checks", systemImage: Checks.worst(project.checks.values.flatMap { $0 }).symbol) }
-                        .help("The checks and the gates of the process, green or red, no AI")
-                        .popover(isPresented: $showChecks) { ChecksPopover() }
+                    Button { project.showCatalogue.toggle() } label: { Label("Catalogue", systemImage: "square.grid.2x2") }
+                        .keyboardShortcut("k", modifiers: [.command, .shift])
+                        .help("The Catalogue: effects, transitions, backgrounds and looks to drag onto a scene, an item or a marker (Shift-Command-K)")
                     Button { project.resetLayout() } label: { Label("Reset layout", systemImage: "rectangle.3.group") }
                         .help("Reset layout: put the library, the inspector and the storyboard back to their standard sizes")
                         .disabled(project.layout.isStandard)
@@ -79,41 +97,24 @@ struct ProjectView: View {
                     Button { project.centerMode = project.centerMode == .build ? .viewer : .build } label: { Label("Build", systemImage: "play.rectangle") }
                         .help("Build the film, test it and play it")
                 }
-                Button { chat.showSettings = true } label: { Label("Settings", systemImage: "gearshape") }
-                    .help("Settings")
+                Button { project.showProjectSettings.toggle() } label: { Label("Project settings", systemImage: "slider.horizontal.3") }
+                    .help("The project's parameters and its global look. The application's settings (key, model, environment) are in the Showreel Studio menu, Settings (Command-,).")
             }
         }
-        .sheet(isPresented: $chat.showSettings) { SettingsView() }
+        .sheet(isPresented: $project.showUpdateSheet) { UpdateSheet(store: project.store) { project.updateProject() } }
         .sheet(item: $project.historyFor) { tab in HistoryView(tab: tab) }
         .sheet(isPresented: Binding(get: { project.reimport != nil }, set: { if !$0 { project.reimport = nil } })) { ReimportSheet() }
+        // a drop that would replace a scene's look asks first; saying no changes nothing
+        .alert(project.pendingDrop?.message ?? "", isPresented: Binding(get: { project.pendingDrop != nil }, set: { if !$0 { project.cancelPendingDrop() } })) {
+            Button("Replace") { project.confirmPendingDrop() }
+            Button("Cancel", role: .cancel) { project.cancelPendingDrop() }
+        } message: { Text(project.pendingDrop.map { project.verdict($0.item, $0.target).text } ?? "") }
         .alert("Something went wrong", isPresented: Binding(get: { project.error != nil }, set: { if !$0 { project.error = nil } })) {
             Button("OK") { project.error = nil }
         } message: { Text(project.error ?? "") }
     }
 }
 
-/// The process bar of the workspace: every area's checks and gates, in the order of the process.
-struct ChecksPopover: View {
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(Wizard.sections.filter { Blocks.areas.contains($0.area) }, id: \.area) { s in
-                    VStack(alignment: .leading, spacing: 4) {
-                        let results = project.checks[s.area] ?? []
-                        Label(s.name, systemImage: Checks.worst(results).symbol).font(.headline).foregroundStyle(Checks.worst(results).color)
-                        ChecksList(areas: [s.area])
-                    }
-                }
-            }
-            .padding(14)
-        }
-        .frame(width: 420, height: 480)
-    }
-}
-
-/// Shown when the folder has no showreel.json: what was read from the markdown, to confirm.
 struct ImportBanner: View {
     let offer: ImportResult
     @EnvironmentObject var project: ProjectModel

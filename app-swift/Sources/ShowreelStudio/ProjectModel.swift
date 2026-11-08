@@ -61,25 +61,40 @@ enum Selection: Hashable {
     }
 }
 
-/// The tabs of a scene's inspector, one per group of its tree (plus Settings).
+/// The tabs of a scene's inspector, one per group of its tree (plus Settings, which the scene's row sums up).
 enum SceneTab: String, CaseIterable, Identifiable {
-    case settings, content, effects, resources, look
+    case settings, composition, effects, look
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
     init(_ g: SceneGroup) {
         switch g {
-        case .raw: self = .resources
-        case .texts: self = .content
+        case .composition: self = .composition
         case .effects: self = .effects
-        case .background, .look: self = .look
+        case .look: self = .look
         }
     }
 }
 
+/// A drop that waits for the user's yes: it would replace the look of a scene.
+struct PendingDrop: Identifiable {
+    let id = UUID()
+    let item: DragItem
+    let target: DropTarget
+    let message: String
+}
+
+/// The library holds assets only: the resources and the scenes. The look is a project setting, and its catalogues are picked where they are used.
 enum LibraryTab: String, CaseIterable, Identifiable {
-    case resources, scenes, look
+    case resources, scenes, checks
     var id: String { rawValue }
-    var title: String { self == .look ? "Look" : rawValue.capitalized }
+    var title: String { rawValue.capitalized }
+}
+
+/// The two parts of the project settings panel.
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case project, look
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
 }
 
 enum InspectorTab: String, CaseIterable, Identifiable {
@@ -124,6 +139,12 @@ final class ProjectModel: ObservableObject {
     /// The status of each resource (approved, to approve, missing, over budget), from the asset rules.
     @Published private(set) var assetStatus: [String: NodeStatus] = [:]
     @Published var libraryTab: LibraryTab = .scenes
+    /// The project settings panel (project parameters and global look) and the floating Catalogue palette, both opened from the top bar.
+    @Published var showProjectSettings = false
+    @Published var settingsTab: SettingsTab = .project
+    /// The look editor open in the project settings (nil: the list of the six).
+    @Published var lookSection: LookSection?
+    @Published var showCatalogue = false
     @Published var inspectorTab: InspectorTab = .inspector
     @Published var centerMode: CenterMode = .viewer
     @Published var lookKind: LookKind = .looks
@@ -145,7 +166,7 @@ final class ProjectModel: ObservableObject {
     @Published var mode: String {
         didSet {
             var s = store.settings; s.mode = mode; store.settings = s
-            if mode == StudioSettings.beginner { resumeWizard(); workspaceOpen = wizardFinished } else { workspaceOpen = true }
+            if mode == StudioSettings.beginner { resumeWizard(); workspaceOpen = wizardFinished && !needsSetup } else { workspaceOpen = true }
         }
     }
     @Published var showCopilot: Bool
@@ -157,6 +178,22 @@ final class ProjectModel: ObservableObject {
 
     private var watcher: FileWatcher?
 
+    /// Direct manipulation (phase W5): what is being dragged and over what, the notice at the bottom of the window, the scene being renamed in place.
+    let dnd = DragState()
+    @Published var toast: Toast?
+    @Published var renaming: String?
+    @Published var pendingDrop: PendingDrop?
+    /// The base configuration of a new project is not done: the workspace stays closed. And: the file is of an older revision (nothing was written on opening).
+    @Published private(set) var needsSetup = false
+    @Published private(set) var outdated = false
+    @Published var updateBannerDismissed = false
+    @Published var showUpdateSheet = false
+    /// Every check, with its group and what it points at (the Checks tab of the left panel).
+    @Published private(set) var checkEntries: [CheckEntry] = []
+    var attentionCount: Int { CheckPanel.attention(checkEntries) }
+    /// The look node of a scene's tree that was clicked (background, palette, fonts): the Look tab marks that group.
+    @Published var lookFocus: String?
+
     init(path: String) {
         root = URL(fileURLWithPath: path)
         store = ProjectStore(root: root)
@@ -167,6 +204,7 @@ final class ProjectModel: ObservableObject {
         showCopilot = s.mode == StudioSettings.expert
         decided = s.decided
         layout = s.layout ?? PanelLayout()
+        dnd.onRefused = { [weak self] why in self?.showToast(why, error: true) }
     }
 
     /// The user dragged a divider: the new sizes are kept for this project (floors applied, no ceiling).
@@ -176,6 +214,8 @@ final class ProjectModel: ObservableObject {
     }
 
     func resetLayout() { setLayout(PanelLayout()) }
+
+    deinit { let p = root.path; DispatchQueue.main.async { LibraryModel.shared.markClosed(p) } }
 
     var title: String { showreel.flatMap { $0.name.isEmpty ? nil : $0.name } ?? root.lastPathComponent }
 
@@ -189,14 +229,17 @@ final class ProjectModel: ObservableObject {
         } else {
             importOffer = ProjectImporter.importMarkdown(from: root)
         }
-        if mode == StudioSettings.beginner { resumeWizard(); workspaceOpen = wizardFinished }
+        if mode == StudioSettings.beginner { resumeWizard(); workspaceOpen = wizardFinished && !needsSetup }
         if showreel?.decisions.track?.file != nil, music == nil { analyseTrack() }
+        LibraryModel.shared.markOpen(root.path)
         LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step)
         watcher = FileWatcher(root: root) { [weak self] paths in self?.filesChanged(paths) }
     }
 
     /// Reads showreel.json, the manifest and the state of the generated documents again.
     func refresh() {
+        store.dropUndoIfStale()           // a data file changed outside the typed operations: what can be undone is no longer known
+        dnd.verdicts = [:]
         showreel = store.loadShowreel()
         assets = Assets.load(store)
         docIssues = DocSync.pending(store).filter { !dismissedDocs.contains($0.file) }
@@ -209,6 +252,11 @@ final class ProjectModel: ObservableObject {
         loadWaveform()
         assetStatus = Dictionary(uniqueKeysWithValues: assets.map { ($0.id, Assets.nodeStatus($0, store: store)) })
         trees = Dictionary(uniqueKeysWithValues: (showreel?.library ?? []).map { ($0.id, SceneTree.build($0, in: showreel!, assets: assets, store: store)) })
+        checkEntries = CheckPanel.entries(checks, file: showreel, assets: assets, status: assetStatus)
+        outdated = showreel?.isOutdated ?? false
+        // in the guided path the workspace follows the wizard: once the base configuration is complete there is nothing left to wait for
+        if store.needsSetup, mode == StudioSettings.beginner, let f = showreel, ProjectSetup.isComplete(f) { try? store.finishSetup() }
+        needsSetup = store.needsSetup
     }
 
     // MARK: build and preview
@@ -306,26 +354,20 @@ final class ProjectModel: ObservableObject {
 
     /// A new scene at the end of the master montage, selected. Returns false when it could not be added.
     @discardableResult
-    func addScene(copying id: String? = nil) -> Bool {
+    func addScene() -> Bool {
         var e = SceneEdit(duration: "3")
-        if let id = id, let s = showreel?.scenes.first(where: { $0.id == id }) {
-            e = SceneEdit(duration: s.duration.map { ProjectDocs.seconds($0) }, text: s.text, visual: s.visual, feeling: s.feeling, handoff: s.handoff, inCuts: s.inCuts)
-            e.after = id
-        } else if let last = showreel?.storyboards.first?.items.last { e.after = last.scene }
+        if let last = showreel?.storyboards.first?.items.last { e.after = last.scene }
         let before = Set(showreel?.scenes.map { $0.id } ?? [])
         guard perform(.addScene(id: "", e)) else { return false }
-        if let n = showreel?.scenes.first(where: { !before.contains($0.id) }) {
-            // a copy keeps the other items too (the first text item came with the text)
-            if let id = id, let src = showreel?.scenes.first(where: { $0.id == id }) {
-                var skippedFirstText = false
-                for it in src.content {
-                    if it.type == "text", !skippedFirstText { skippedFirstText = true; continue }
-                    perform(.content(scene: n.id, .add(it.edit, after: nil)))
-                }
-            }
-            select(.scene(n.id))
-        }
+        if let n = showreel?.scenes.first(where: { !before.contains($0.id) }) { select(.scene(n.id)) }
         return true
+    }
+
+    /// A copy right after the scene, with its name and the rest of its content: one undo step (the rules are in ShowreelKit).
+    @discardableResult
+    func duplicateScene(_ id: String) -> Bool {
+        do { let n = try store.duplicateScene(id); refresh(); select(.scene(n)); showToast("Duplicated \(id) as \(n)", undoable: true); return true }
+        catch { self.error = error.localizedDescription; refresh(); return false }
     }
 
     // MARK: the reel: durations, cuts, transitions, grid
@@ -444,6 +486,12 @@ final class ProjectModel: ObservableObject {
         if perform(.content(scene: scene, .add(e, after: nil))), let last = showreel?.scenes.first(where: { $0.id == scene })?.content.last { contentItem = last.id }
     }
 
+    /// A resource of the project becomes an element of the scene's composition, at the end (it is linked to the scene by the same operation).
+    func addResource(_ scene: String, _ asset: String) {
+        guard let a = assets.first(where: { $0.id == asset }), let t = ContentRules.elementType(for: a.type) else { return }
+        if perform(.content(scene: scene, .add(ContentEdit(type: t, resource: asset), after: nil))), let last = showreel?.scenes.first(where: { $0.id == scene })?.content.last { contentItem = last.id }
+    }
+
     func updateItem(_ scene: String, _ item: String, _ e: ContentEdit) { perform(.content(scene: scene, .update(item: item, e))) }
     func removeItem(_ scene: String, _ item: String) { perform(.content(scene: scene, .remove(item: item))) }
 
@@ -471,6 +519,147 @@ final class ProjectModel: ObservableObject {
 
     func restoreScene(_ id: String) { perform(.scene(id: id, SceneEdit(status: "open", archived: false))) }
 
+    // MARK: setup, update, checks (phases P2 and P3): the rules are ShowreelKit's
+
+    /// The user opens the workspace: only when the base configuration is complete (the form enables its button on that).
+    func finishSetup() {
+        guard store.needsSetup else { workspaceOpen = true; return }       // a project that never asked for its setup is never held back
+        do { try store.finishSetup(); needsSetup = false; if mode == StudioSettings.beginner { workspaceOpen = true } }
+        catch { self.error = error.localizedDescription }
+    }
+
+    /// What "Update project" would do now, to show before doing it.
+    var updatePlan: UpdatePlan? { ProjectFormat.plan(store) }
+
+    /// Backs the data up, migrates and writes the current revision (the user decided: nothing is written before this).
+    func updateProject() {
+        do {
+            let r = try ProjectFormat.update(store)
+            showUpdateSheet = false; updateBannerDismissed = false
+            refresh(); reloadTree()
+            showToast("Updated to revision \(ProjectFormat.current). The backup is in .studio/backups/\(r.backup.id)")
+        } catch { self.error = error.localizedDescription; refresh() }
+    }
+
+    func restoreBackup(_ b: ProjectBackup) {
+        do { try ProjectFormat.restore(store, b); refresh(); reloadTree(); showToast("Restored the backup \(b.id)") } catch { self.error = error.localizedDescription }
+    }
+
+    /// A click on a check opens the element it is about, on the right section.
+    func openCheck(_ e: CheckEntry) {
+        switch e.target {
+        case .project: openSettings(.project)
+        case .look(let s): openSettings(.look, look: s)
+        case .resource(let id): libraryTab = .resources; select(.asset(id))
+        case .resources: libraryTab = .resources
+        case .scene(let id, let tab):
+            libraryTab = .scenes; select(.scene(id)); expanded.insert(id)
+            sceneTab = SceneTab(rawValue: tab) ?? .settings
+        case .transition(let from): selectTransition(from: from)
+        case .music: showProjectSettings = false; selection = .none; inspectorTab = .inspector; centerMode = .viewer
+        case .storyboard: centerMode = .viewer
+        case .build: centerMode = .build
+        }
+    }
+
+    // MARK: direct manipulation (phase W5): the views relay, ShowreelKit decides
+
+    func showToast(_ text: String, error: Bool = false, undoable: Bool = false) {
+        let t = Toast(text: text, isError: error, undoable: undoable)
+        toast = t
+        DispatchQueue.main.asyncAfter(deadline: .now() + (error ? 6 : 4.5)) { [weak self] in if self?.toast?.id == t.id { self?.toast = nil } }
+    }
+
+    /// Whether the drop is allowed, with what it does or why not. Cached while the drag lasts (the data does not change under the pointer).
+    func verdict(_ item: DragItem, _ target: DropTarget) -> DropVerdict {
+        let k = DragState.Key(item: item, target: target)
+        if let v = dnd.verdicts[k] { return v }
+        let v = Drops.verdict(item, on: target, store: store)
+        dnd.verdicts[k] = v
+        return v
+    }
+
+    /// The user dropped something. Typed operations do the work; a refusal is said in a short notice.
+    @discardableResult
+    func performDrop(_ item: DragItem, on target: DropTarget) -> Bool {
+        // a drop that would replace a scene's look asks first (the rule is ShowreelKit's); a no changes nothing
+        if let q = Drops.confirmation(item, on: target) { pendingDrop = PendingDrop(item: item, target: target, message: q); return true }
+        return carryOutDrop(item, on: target)
+    }
+
+    func confirmPendingDrop() {
+        guard let p = pendingDrop else { return }
+        pendingDrop = nil
+        carryOutDrop(p.item, on: p.target)
+    }
+
+    func cancelPendingDrop() { pendingDrop = nil }
+
+    @discardableResult
+    private func carryOutDrop(_ item: DragItem, on target: DropTarget) -> Bool {
+        do {
+            let r = try Drops.drop(item, on: target, store: store)
+            refresh(); reloadTree()
+            if let s = r.scene, case .files = item { select(.scene(s)); if let i = r.item { contentItem = i } }
+            showToast([r.title, r.notice].compactMap { $0 }.joined(separator: "\n"), undoable: true)
+            return true
+        } catch {
+            showToast(error.localizedDescription, error: true); refresh(); return false
+        }
+    }
+
+    var canUndo: Bool { store.undoLog.canUndo }
+    var canRedo: Bool { store.undoLog.canRedo }
+    var undoTitle: String? { store.undoLog.undoTitle }
+    var redoTitle: String? { store.undoLog.redoTitle }
+
+    func undo() { stepHistory { try store.undo() } label: { "Undid: \($0)" } }
+    func redo() { stepHistory { try store.redo() } label: { "Redid: \($0)" } }
+
+    private func stepHistory(_ step: () throws -> String, label: (String) -> String) {
+        let track = showreel?.decisions.track?.file
+        do {
+            let t = try step()
+            refresh(); reloadTree()
+            if showreel?.decisions.track?.file != track {            // the music changed: its analysis was for the other file
+                for p in [MusicAnalysis.beatsPath, MusicAnalysis.envPath] { try? FileManager.default.removeItem(at: root.appendingPathComponent(p)) }
+                music = nil
+                if showreel?.decisions.track?.file != nil { analyseTrack() } else { refresh() }
+            }
+            showToast(label(t))
+        } catch { showToast(error.localizedDescription, error: true); refresh() }
+    }
+
+    /// Renaming in place: the name is a label next to the ID, the ID never changes.
+    func beginRename(_ id: String) { libraryTab = .scenes; renaming = id }
+    func renameScene(_ id: String, _ name: String) { renaming = nil; perform(.scene(id: id, SceneEdit(name: name))) }
+
+    func duplicateItem(_ scene: String, _ item: String) {
+        guard let it = showreel?.scenes.first(where: { $0.id == scene })?.content.first(where: { $0.id == item }) else { return }
+        perform(.content(scene: scene, .add(it.edit, after: item)))
+    }
+
+    /// Takes a resource out of a scene (the resource stays in the project).
+    func unlink(_ asset: String, from scene: String) {
+        let rest = assets.filter { $0.sceneIDs.contains(scene) && $0.id != asset }.map { $0.id }.joined(separator: ", ")
+        perform(.scene(id: scene, SceneEdit(assets: rest)))
+    }
+
+    /// A choice made in a picker (an effect for an item, a transition for a marker, a background for a scene): the same typed operation the drag builds.
+    @discardableResult
+    func choose(_ kind: CatalogueKind, _ choice: String, for target: CatalogueTarget) -> Bool {
+        do { return perform(try Catalogue.operation(kind, choice: choice, target: target)) } catch { self.error = error.localizedDescription; return false }
+    }
+
+    /// Opens the project settings on a part of the global look.
+    func openSettings(_ tab: SettingsTab = .project, look: LookSection? = nil) {
+        settingsTab = tab
+        if let l = look { lookSection = l }
+        showProjectSettings = true
+    }
+
+    func setAssetStatus(_ id: String, _ status: AssetStatus) { perform(.asset(id: id, status: status, note: nil, licence: nil, scenes: nil)) }
+
     // MARK: operations (the blocks and the copilot use the same ones)
 
     /// Applies a change the user made in a block. Errors are shown, never swallowed.
@@ -481,7 +670,8 @@ final class ProjectModel: ObservableObject {
     }
 
     func addAssets(_ urls: [URL]) {
-        do { try Assets.add(urls, to: store); refresh(); reloadTree() } catch { self.error = error.localizedDescription }
+        // adding files is one undo step too (the copies in assets/ and the manifest rows go back together)
+        do { try store.transaction(urls.count == 1 ? "Add \(urls[0].lastPathComponent)" : "Add \(urls.count) files") { try Assets.add(urls, to: store) }; refresh(); reloadTree() } catch { self.error = error.localizedDescription }
     }
 
     func status(_ zone: String) -> BlockStatus {
@@ -542,7 +732,8 @@ final class ProjectModel: ObservableObject {
     func selectNode(_ scene: String, _ group: SceneGroup, _ item: String?) {
         select(.sceneNode(scene, group, item))
         sceneTab = SceneTab(group)
-        if let i = item, i.hasPrefix("item.") { sceneTab = .content; contentItem = String(i.dropFirst(5)) }
+        lookFocus = group == .look ? item : nil
+        if let i = item, i.hasPrefix("item.") { sceneTab = .composition; contentItem = String(i.dropFirst(5)) }
         expanded.insert(scene)
     }
 
@@ -562,7 +753,7 @@ final class ProjectModel: ObservableObject {
         switch id {
         case "library": break
         case "viewer": centerMode = .viewer
-        case "inspector": inspectorTab = .inspector; selection = .none
+        case "inspector": inspectorTab = .inspector; selection = .none; showProjectSettings = true
         case "storyboard": centerMode = .viewer
         case "build": centerMode = .build
         default: break
@@ -626,16 +817,19 @@ final class ProjectModel: ObservableObject {
         return nil
     }
 
+    /// The scene as the user reads it (ID and name), for the copilot's context. The ID is still what operations use.
+    func sceneLabel(_ id: String) -> String { showreel?.scenes.first { $0.id == id }?.label ?? id }
+
     /// The zone or selection in front of the user, for the copilot's context.
     var foregroundBlock: String? {
         switch selection {
-        case .scene(let id): return "inspector: scene \(id)"
+        case .scene(let id): return "inspector: scene \(sceneLabel(id))"
         case .transition(let id): return "inspector: transition after scene \(id)"
-        case .sceneNode(let id, let g, _): return "inspector: scene \(id), \(g.title) tab"
+        case .sceneNode(let id, let g, _): return "inspector: scene \(sceneLabel(id)), \(g.title) tab"
         case .asset(let id): return "inspector: resource \(id)"
         case .look(let k, let id): return "inspector: \(k.title.lowercased()) element \(id)"
         case .file, .preview: return nil
-        case .none: return centerMode == .build ? "build" : "inspector: project and global look"
+        case .none: return showProjectSettings ? "project settings (parameters and global look)" : centerMode == .build ? "build" : "inspector: nothing selected"
         }
     }
 

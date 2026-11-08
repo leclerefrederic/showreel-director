@@ -38,7 +38,7 @@ public enum Checks {
         let f = store.loadShowreel()
         let assets = Assets.load(store)
         switch area {
-        case "project": return feasibility(f) + gates(area: area, f)
+        case "project": return setupChecks(f) + feasibility(f) + gates(area: area, f)
         case "resources": return assetRules(assets, store: store) + gates(area: area, f)
         case "look": return lookChecks(f, assets, store) + gates(area: area, f)
         case "storyboard": return storyboardRules(f, assets) + readingBudget(f) + reelRules(f, store) + feasibility(f) + gates(area: area, f)
@@ -46,6 +46,12 @@ public enum Checks {
         case "build": return BuildRunner.readiness(store) + gates(area: area, f)
         default: return gates(area: area, f)
         }
+    }
+
+    /// What the base configuration still lacks, as orange checks: an existing project is never blocked by it, only told.
+    static func setupChecks(_ f: ShowreelFile?) -> [CheckResult] {
+        guard let f = f else { return [] }
+        return ProjectSetup.missing(f).map { CheckResult(id: "setup." + $0.id, block: "project", title: "Missing: \($0.title.lowercased())", level: .tight, detail: $0.detail.prefix(1).uppercased() + $0.detail.dropFirst() + ". Everything else depends on it.") }
     }
 
     public static func worst(_ r: [CheckResult]) -> CheckLevel { r.map { $0.level }.max() ?? .pending }

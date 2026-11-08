@@ -43,16 +43,38 @@ struct ShowreelStudioApp: App {
         }
         .windowToolbarStyle(.unified(showsTitle: true))
         .commands { StudioCommands() }
+        // the application's own settings: the Showreel Studio menu, Settings (Command-,)
+        Settings { SettingsView().environmentObject(settings) }
     }
 }
 
 struct StudioCommands: Commands {
     @Environment(\.openWindow) private var openWindow
+    @FocusedObject private var project: ProjectModel?
+
+    /// The text being edited, when a field has the keyboard: Undo then belongs to the text, not to the project.
+    private var fieldUndo: UndoManager? {
+        guard let tv = NSApp.keyWindow?.firstResponder as? NSTextView, tv.isEditable else { return nil }
+        return tv.undoManager
+    }
 
     var body: some Commands {
         // A project window always belongs to a folder: there is no blank "New Window".
         CommandGroup(replacing: .newItem) {
             Button("Project Library") { openWindow(id: "library") }.keyboardShortcut("l", modifiers: [.command, .shift])
+        }
+        // Undo and redo of every typed operation of the project in front (a text field being edited keeps its own).
+        CommandGroup(replacing: .undoRedo) {
+            Button(project?.undoTitle.map { "Undo \($0)" } ?? "Undo") {
+                if let m = fieldUndo, m.canUndo { m.undo() } else { project?.undo() }
+            }
+            .keyboardShortcut("z", modifiers: .command)
+            .disabled(!(project?.canUndo ?? false) && !(fieldUndo?.canUndo ?? false))
+            Button(project?.redoTitle.map { "Redo \($0)" } ?? "Redo") {
+                if let m = fieldUndo, m.canRedo { m.redo() } else { project?.redo() }
+            }
+            .keyboardShortcut("z", modifiers: [.command, .shift])
+            .disabled(!(project?.canRedo ?? false) && !(fieldUndo?.canRedo ?? false))
         }
     }
 }

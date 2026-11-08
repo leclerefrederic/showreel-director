@@ -5,6 +5,9 @@ import Foundation
 public struct ShowreelFile: Codable, Equatable {
     public static let fileName = "showreel.json"
     public static let currentSchema = 1
+    /// The revision of the file's shape that this app writes. A file without `formatRevision` is revision 0 (every file made before revisions existed).
+    /// Revision 1: the scene library with montages, the content list of each scene, a resource linked to a scene being one of its elements.
+    public static let currentRevision = 1
     public static let gateKeys = ["interview", "assets", "style", "storyboard", "review", "build", "verify", "publish"]
 
     public struct Fonts: Codable, Equatable, Sendable {
@@ -119,6 +122,8 @@ public struct ShowreelFile: Codable, Equatable {
     /// `archived` is the tombstone: the scene leaves the lists, its ID stays reserved. DITCH archives it.
     public struct Scene: Codable, Equatable, Identifiable {
         public var id: String
+        /// A label the user chose, shown next to the ID. Never an identity: the ID is what everything refers to.
+        public var name: String?
         public var duration: Double?            // the scene's own length in seconds
         public var text: String
         public var texts: [String: String]      // one text per reel language column
@@ -150,10 +155,13 @@ public struct ShowreelFile: Codable, Equatable {
             self.archived = archived
         }
         public static let statuses = ["open", "ok", "modify", "ditched"]
-        static let keys: Set<String> = ["id", "duration", "text", "texts", "visual", "feeling", "handoff", "inCuts", "extra", "status", "note", "archived", "overrides", "content", "controlLevel", "start", "end"]
+        /// What the user reads: the ID, and the name beside it when there is one.
+        public var label: String { (name ?? "").isEmpty ? id : "\(id) \u{00B7} \(name!)" }
+        static let keys: Set<String> = ["id", "name", "duration", "text", "texts", "visual", "feeling", "handoff", "inCuts", "extra", "status", "note", "archived", "overrides", "content", "controlLevel", "start", "end"]
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: DynamicKey.self)
             id = try c.decode(String.self, forKey: "id")
+            name = try c.decodeIfPresent(String.self, forKey: "name").flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
             duration = try c.decodeIfPresent(Double.self, forKey: "duration")
             legacyStart = try c.decodeIfPresent(Double.self, forKey: "start")
             legacyEnd = try c.decodeIfPresent(Double.self, forKey: "end")
@@ -176,7 +184,7 @@ public struct ShowreelFile: Codable, Equatable {
             unknown = try Keep.unknown(decoder, known: Self.keys)
         }
         public func encode(to encoder: Encoder) throws {
-            try Keep.encode(encoder, fields: [("id", id), ("duration", duration), ("text", text), ("texts", texts), ("visual", visual),
+            try Keep.encode(encoder, fields: [("id", id), ("name", name), ("duration", duration), ("text", text), ("texts", texts), ("visual", visual),
                                               ("feeling", feeling), ("handoff", handoff), ("inCuts", inCuts), ("extra", extra),
                                               ("status", status), ("note", note), ("archived", archived), ("overrides", overrides), ("content", content), ("controlLevel", controlLevel)], unknown: unknown)
         }
@@ -278,6 +286,8 @@ public struct ShowreelFile: Codable, Equatable {
     }
 
     public var schema: Int
+    /// Absent (nil) means revision 0. Only "Update project" raises it; a save never does, so an old file stays recognisable as old until the user decides.
+    public var formatRevision: Int?
     public var name: String
     public var created: String
     public var conversationLanguage: String?
@@ -294,6 +304,7 @@ public struct ShowreelFile: Codable, Equatable {
     public init(name: String, created: String = ShowreelFile.today(), conversationLanguage: String? = nil,
                 reelLanguages: [String] = [], step: String = "start") {
         self.schema = Self.currentSchema
+        self.formatRevision = Self.currentRevision
         self.name = name
         self.created = created
         self.conversationLanguage = conversationLanguage
@@ -306,13 +317,14 @@ public struct ShowreelFile: Codable, Equatable {
         self.storyboards = [Montage()]
     }
 
-    static let keys: Set<String> = ["schema", "name", "created", "conversationLanguage", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin"]
+    static let keys: Set<String> = ["schema", "formatRevision", "name", "created", "conversationLanguage", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin"]
 
     // A hand-edited or exported file may lack keys: every key but the schema falls back to a default.
     // `scenes` is an ordered array; the phase A form, a dictionary of review states keyed by ID, is read too.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: DynamicKey.self)
         schema = try c.decodeIfPresent(Int.self, forKey: "schema") ?? Self.currentSchema
+        formatRevision = try c.decodeIfPresent(Int.self, forKey: "formatRevision")
         name = try c.decodeIfPresent(String.self, forKey: "name") ?? ""
         created = try c.decodeIfPresent(String.self, forKey: "created") ?? Self.today()
         conversationLanguage = try c.decodeIfPresent(String.self, forKey: "conversationLanguage")
@@ -358,7 +370,7 @@ public struct ShowreelFile: Codable, Equatable {
     private struct LegacyScene: Decodable { var status: String?; var note: String? }
 
     public func encode(to encoder: Encoder) throws {
-        try Keep.encode(encoder, fields: [("schema", schema), ("name", name), ("created", created), ("conversationLanguage", conversationLanguage),
+        try Keep.encode(encoder, fields: [("schema", schema), ("formatRevision", formatRevision), ("name", name), ("created", created), ("conversationLanguage", conversationLanguage),
                                           ("reelLanguages", reelLanguages), ("step", step), ("parameters", parameters), ("decisions", decisions),
                                           ("gates", gates), ("scenes", scenes), ("storyboards", storyboards), ("origin", origin)], unknown: unknown)
     }
@@ -382,4 +394,7 @@ public struct ShowreelFile: Codable, Equatable {
     }
 
     public var isStudioOwned: Bool { origin?.tool == "studio" }
+    /// The revision of the file's shape (0 when the file does not say).
+    public var revision: Int { formatRevision ?? 0 }
+    public var isOutdated: Bool { revision < Self.currentRevision }
 }

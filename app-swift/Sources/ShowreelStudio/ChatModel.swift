@@ -58,7 +58,6 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     @Published var draft = ""
     @Published var running = false
     @Published var scrollTick = 0
-    @Published var showSettings = false
     @Published var previewURL: URL?
     @Published var previewTitle = "Preview"
     @Published var previewNonce = 0

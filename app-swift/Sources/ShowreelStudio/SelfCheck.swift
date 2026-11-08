@@ -221,9 +221,33 @@ enum SelfCheck {
                   && (try? bs.apply(.transition(from: bs.loadShowreel()?.film.first?.id ?? "S01", TransitionEdit(type: "Morph")))) == nil, "the build message quotes the montage (film.json) and a preview-only transition cannot be chosen")
             try? bs.apply(.sceneLook(id: "S02", [DecisionChange(.background, "duotone")]))
             if let f = bs.loadShowreel(), let sc = f.scenes.first(where: { $0.id == "S02" }) {
-                let node = SceneTree.build(sc, in: f, assets: [], store: bs).first { $0.group == .background }?.nodes.first
+                let node = SceneTree.build(sc, in: f, assets: [], store: bs).first { $0.group == .look }?.nodes.first { $0.id == "background" }
                 check(node?.origin == .overridden && f.decisions.background == nil, "a scene overrides its background without touching the project's")
             }
+        }
+        // direct manipulation (phase W5): a scene's name is a label, a drop is a typed operation that undo takes back, and a refused drop says why
+        if let f0 = bs.loadShowreel(), let first = f0.film.first?.id {
+            let textsBefore = [bs.read(ShowreelFile.fileName), bs.read(Assets.manifestPath)]
+            try? bs.apply(.scene(id: first, SceneEdit(name: "Opening")))
+            let named = bs.loadShowreel()?.scenes.first { $0.id == first }
+            let dropped = try? Drops.drop(.background(Look.backgroundIDs().first { $0 != "duotone" } ?? "duotone"), on: .scene(first), store: bs)
+            let refused = Drops.verdict(.transition("Push"), on: .scene(first), store: bs)
+            check(named?.id == first && named?.label == "\(first) \u{00B7} Opening" && dropped != nil && !refused.isValid && !refused.text.isEmpty
+                  && (try? bs.undo()) != nil && (try? bs.undo()) != nil && [bs.read(ShowreelFile.fileName), bs.read(Assets.manifestPath)] == textsBefore && bs.undoLog.canRedo,
+                  "a scene has a name next to its stable ID, a drop is an operation that undo takes back, and a refused drop says why")
+        }
+        // phase L: the catalogues are pickers where they are used, and a picker builds the same operation as a drag; the six preview-only transitions are marked
+        let trs = Catalogue.choices(.transition)
+        check(Catalogue.choices(.effect).count > 200 && trs.count == 42 && trs.filter { !$0.selectable }.count == 6 && Catalogue.choices(.background).count > 20
+              && (try? Catalogue.operation(.effect, choice: "Pop", target: .item(scene: "S01", item: "c1"))) == .content(scene: "S01", .update(item: "c1", ContentEdit(animation: "Pop"))),
+              "the catalogues are pickers (\(Catalogue.choices(.effect).count) effects, \(trs.count) transitions with \(trs.filter { !$0.selectable }.count) preview-only, \(Catalogue.choices(.background).count) backgrounds) that call the operation a drag builds")
+        // phase P1: the design board reads the decisions, a scene's look is locked until its switch, and the tree has the three groups of the inspector
+        if let f1 = bs.loadShowreel(), let sc = f1.scenes.first {
+            let board = DesignBoard.make(f1)
+            let locked = LookOverrides.state(.background, scene: sc, in: f1).locked
+            let groups = SceneTree.build(sc, in: f1, assets: [], store: bs).map { $0.group }
+            check(!board.sampleText.isEmpty && !board.sampleEffect.isEmpty && locked && groups == [.composition, .effects, .look] && Drops.confirmation(.background("duotone"), on: .scene(sc.id)) != nil,
+                  "the design board reads the project, a scene's look is locked until its switch, and the tree is Composition, Effects, Look")
         }
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1

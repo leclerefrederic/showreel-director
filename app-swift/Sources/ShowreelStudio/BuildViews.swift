@@ -19,7 +19,7 @@ struct BuildPanel: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Writing the film needs an AI").font(.callout.weight(.semibold))
                         Text("Connect one to build a new version. Everything else in the app stays usable, and you can still test and play a version that already exists.").font(.caption).foregroundStyle(.secondary)
-                        Button("Connect AI") { chat.showSettings = true }
+                        Button("Connect AI") { AppSettingsWindow.open() }
                     }
                 }
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))

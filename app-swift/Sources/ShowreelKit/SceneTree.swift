@@ -1,8 +1,10 @@
 import Foundation
 
+/// The groups of a scene's tree, which are also the tabs of its inspector (after Settings, which the scene's row sums up): the composition (every element in
+/// priority order: texts, images, sounds), the effects of the whole scene, and the look (background, palette, fonts: each inherited or overridden).
 public enum SceneGroup: String, CaseIterable, Sendable {
-    case raw, texts, effects, background, look
-    public var title: String { self == .raw ? "Raw" : rawValue.capitalized }
+    case composition, effects, look
+    public var title: String { rawValue.capitalized }
 }
 
 /// The status of a resource used by a scene, from the asset rules the app already has (no AI).
@@ -29,29 +31,30 @@ public struct SceneGroupNodes: Equatable, Identifiable, Sendable {
 }
 
 public enum SceneTree {
-    /// What composes one scene: the resources linked to it (Raw), its words (Texts), its effects (none until layers exist), its background
-    /// and its look (inherited from the project unless the scene overrides them). Statuses are computed from the manifest and the files.
+    /// What composes one scene: its elements in priority order (words, images, sounds), the effects it uses, and its look (background, palette and fonts,
+    /// inherited from the project unless the scene overrides them). Statuses are computed from the manifest and the files.
     public static func build(_ scene: ShowreelFile.Scene, in f: ShowreelFile, assets: [AssetRow], store: ProjectStore) -> [SceneGroupNodes] {
-        // the items of the content list first, by type; then the resources the manifest links to the scene that no item uses
         func facts(_ i: ShowreelFile.ContentItem) -> String {
-            [i.color.isFixed ? "colour \(i.color.text)" : nil, i.animation.isFixed ? i.animation.text : nil, i.hasInstruction ? "instruction" : nil].compactMap { $0 }.joined(separator: " · ")
+            [i.color.isFixed ? "colour \(i.color.text)" : nil, i.animation.isFixed ? i.animation.text : nil, i.hasInstruction ? "instruction" : nil].compactMap { $0 }.joined(separator: " \u{00B7} ")
         }
-        var raw: [SceneNode] = []
-        for (n, i) in scene.content.enumerated() where i.type != "text" {
-            let a = assets.first { $0.id == i.resource }
-            raw.append(SceneNode(id: "item." + i.id, title: (i.type == "image" ? "Image · " : "Sound · ") + (a?.name ?? i.resource ?? "(no resource)"),
-                                 detail: "priority \(n + 1)" + (facts(i).isEmpty ? "" : " · " + facts(i)), status: a.map { Assets.nodeStatus($0, store: store) } ?? .missing, assetID: a?.id))
+        var comp: [SceneNode] = []
+        for (n, i) in scene.content.enumerated() {
+            let detail = "priority \(n + 1)" + (facts(i).isEmpty ? "" : " \u{00B7} " + facts(i))
+            if i.type == "text" {
+                comp.append(SceneNode(id: "item." + i.id, title: "Text \(n + 1)", detail: "\u{201C}\(i.text ?? "")\u{201D}" + (facts(i).isEmpty ? "" : " \u{00B7} " + facts(i))))
+            } else {
+                let a = assets.first { $0.id == i.resource }
+                comp.append(SceneNode(id: "item." + i.id, title: (i.type == "image" ? "Image \u{00B7} " : "Sound \u{00B7} ") + (a?.name ?? i.resource ?? "(no resource)"),
+                                      detail: detail, status: a.map { Assets.nodeStatus($0, store: store) } ?? .missing, assetID: a?.id))
+            }
         }
+        // a resource the manifest links to the scene that cannot be an element (a font, one that needs attention or is excluded) stays visible
         let used = Set(scene.content.compactMap { $0.resource })
         for a in assets where a.sceneIDs.contains(scene.id) && !used.contains(a.id) {
-            raw.append(SceneNode(id: "raw." + a.id, title: a.name, detail: "\(a.id) · \(a.type)", status: Assets.nodeStatus(a, store: store), assetID: a.id))
+            comp.append(SceneNode(id: "raw." + a.id, title: a.name, detail: "\(a.id) \u{00B7} \(a.type) \u{00B7} linked", status: Assets.nodeStatus(a, store: store), assetID: a.id))
         }
-        var texts: [SceneNode] = []
-        for (n, i) in scene.content.enumerated() where i.type == "text" {
-            texts.append(SceneNode(id: "item." + i.id, title: "Text \(n + 1)", detail: "\u{201C}\(i.text ?? "")\u{201D}" + (facts(i).isEmpty ? "" : " · " + facts(i))))
-        }
-        if scene.content.allSatisfy({ $0.type != "text" }), !scene.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { texts.append(SceneNode(id: "text.master", title: "Text", detail: scene.text)) }
-        for (l, t) in scene.texts.sorted(by: { $0.key < $1.key }) where !t.isEmpty { texts.append(SceneNode(id: "text." + l, title: l, detail: t)) }
+        if scene.content.allSatisfy({ $0.type != "text" }), !scene.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { comp.append(SceneNode(id: "text.master", title: "Text", detail: scene.text)) }
+        for (l, t) in scene.texts.sorted(by: { $0.key < $1.key }) where !t.isEmpty { comp.append(SceneNode(id: "text." + l, title: l, detail: t)) }
         func node(_ id: String, _ title: String, _ keys: [DecisionKey]) -> SceneNode {
             let over = keys.contains { f.isOverridden($0, for: scene) }
             let value = keys.map { f.effective($0, for: scene) }.filter { !$0.isEmpty }.joined(separator: ", ")
@@ -59,11 +62,9 @@ public enum SceneTree {
             return SceneNode(id: id, title: title, detail: value.isEmpty ? "(none)" : value, origin: over ? .overridden : .inherited, projectValue: over ? (proj.isEmpty ? "(none)" : proj) : nil)
         }
         return [
-            SceneGroupNodes(group: .raw, nodes: raw),
-            SceneGroupNodes(group: .texts, nodes: texts),
+            SceneGroupNodes(group: .composition, nodes: comp),
             SceneGroupNodes(group: .effects, nodes: effects(scene)),
-            SceneGroupNodes(group: .background, nodes: [node("background", "Background", [.background, .backgroundMood])]),
-            SceneGroupNodes(group: .look, nodes: [node("palette", "Palette", [.palette]), node("fonts", "Fonts", [.titleFont, .textFont])]),
+            SceneGroupNodes(group: .look, nodes: [node("background", "Background", [.background, .backgroundMood]), node("palette", "Palette", [.palette]), node("fonts", "Fonts", [.titleFont, .textFont])]),
         ]
     }
 

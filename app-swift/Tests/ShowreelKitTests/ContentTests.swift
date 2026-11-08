@@ -211,10 +211,10 @@ final class ContentTests: XCTestCase {
         try store.apply(.content(scene: "S01", .update(item: "c1", ContentEdit(animation: "Pop"))))
         let f = file
         let tree = SceneTree.build(f.scenes[0], in: f, assets: Assets.load(store), store: store)
-        XCTAssertEqual(tree[0].nodes.map { $0.id }, ["item.c2"], "Raw lists the image item, once")
-        XCTAssertEqual(tree[0].nodes.first?.assetID, id)
-        XCTAssertEqual(tree[1].nodes.map { $0.id }, ["item.c1"], "Texts lists the text items")
-        XCTAssertEqual(tree[2].nodes.map { $0.title }, ["Pop"]); XCTAssertEqual(tree[2].nodes.first?.detail, "on c1, c2", "Effects lists the effects the items use")
+        XCTAssertEqual(tree[0].nodes.map { $0.id }, ["item.c1", "item.c2"], "the composition lists the text and the image in priority order, the image once")
+        XCTAssertEqual(tree[0].nodes.last?.assetID, id)
+        XCTAssertEqual(tree[1].nodes.map { $0.title }, ["Pop"]); XCTAssertEqual(tree[1].nodes.first?.detail, "on c1, c2", "Effects lists the effects the items use")
+        XCTAssertEqual(tree[2].nodes.map { $0.title }, ["Background", "Palette", "Fonts"])
     }
 
     func testStoryboardMarkdownKeepsTheVisualColumnReadableAndDoesNotPolluteTheNote() throws {

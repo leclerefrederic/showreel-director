@@ -114,6 +114,12 @@ public enum ContentRules {
 
     public static func title(_ type: String) -> String { type == "text" ? "Text" : type == "image" ? "Image or logo" : type == "audio" ? "Sound or voice" : type.capitalized }
 
+    /// The element type a resource of this kind becomes in a scene's composition: an image (logo, icon, illustration, photo, video, frames) or a sound; nil
+    /// for what is not shown or heard (a font, a document).
+    public static func elementType(for assetType: String) -> String? {
+        accepts("image", asset: assetType) ? "image" : accepts("audio", asset: assetType) ? "audio" : nil
+    }
+
     /// Resource types an item type accepts.
     public static func accepts(_ type: String, asset: String) -> Bool { type == "image" ? imageAssets.contains(asset) : type == "audio" ? audioAssets.contains(asset) : false }
 
@@ -248,6 +254,7 @@ extension ProjectStore {
         var rows = Assets.load(self)
         var changes: [Change] = []
         var linked: String?
+        var released: [String] = []         // resources an item stopped using
         let tag = { (i: ShowreelFile.ContentItem) in "\(sceneID) \(i.id)" }
 
         func validate(_ item: inout ShowreelFile.ContentItem, _ e: ContentEdit, adding: Bool) throws {
@@ -303,6 +310,7 @@ extension ProjectStore {
             var item = before
             try validate(&item, e, adding: false)
             guard item != before else { throw AgentError.msg("no change for \(sceneID) \(id)") }
+            if let o = before.resource, o != item.resource { released.append(o) }
             s.content[i] = item
             func line(_ label: String, _ a: String, _ b: String) { if a != b { changes.append(Change("\(tag(item)) \(label)", a, b)) } }
             line("words", before.text ?? "(none)", item.text ?? "(none)")
@@ -315,6 +323,7 @@ extension ProjectStore {
         case .remove(let id):
             guard let i = s.content.firstIndex(where: { $0.id == id }) else { throw AgentError.msg("no item \(id) in \(sceneID)") }
             let gone = s.content.remove(at: i)
+            if let o = gone.resource { released.append(o) }
             changes.append(Change(tag(gone), describe(gone, rows), "(removed)"))
             title = "Remove \(gone.type) item \(id) from \(sceneID)"
         case .move(let id, let after):
@@ -336,6 +345,13 @@ extension ProjectStore {
         if let r = linked, let k = rows.firstIndex(where: { $0.id == r }) {
             rows[k].scene = (rows[k].sceneIDs + [sceneID]).joined(separator: ", "); assetsChanged = true
             changes.append(Change("Linked assets", "(not linked to \(sceneID))", "\(r) linked to \(sceneID)"))
+        }
+        // a resource no element of the scene uses any more is not linked to it any more (otherwise it would come back as an element)
+        for r in released where !s.content.contains(where: { $0.resource == r }) {
+            if let k = rows.firstIndex(where: { $0.id == r }), rows[k].sceneIDs.contains(sceneID) {
+                rows[k].scene = rows[k].sceneIDs.filter { $0 != sceneID }.joined(separator: ", "); assetsChanged = true
+                changes.append(Change("Linked assets", "\(r) linked to \(sceneID)", "\(r) not linked to \(sceneID) any more"))
+            }
         }
         let saved = rows
         return finish(title: title, changes: changes, from: f, to: g, extraFilmChange: !s.archived && g.film.contains { $0.id == sceneID } && assetsChanged) {

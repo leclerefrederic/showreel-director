@@ -18,12 +18,13 @@ final class SceneTreeTests: XCTestCase {
         XCTAssertNil(file.scenes[0].overrides)
         XCTAssertFalse(try String(contentsOf: dir.appendingPathComponent("showreel.json")).contains("overrides"), "absent from the file by default")
         let tree = SceneTree.build(file.scenes[0], in: file, assets: Assets.load(store), store: store)
-        XCTAssertEqual(tree.map { $0.group }, [.raw, .texts, .effects, .background, .look])
-        let bg = try XCTUnwrap(tree[3].nodes.first)
+        XCTAssertEqual(tree.map { $0.group }, [.composition, .effects, .look])
+        XCTAssertEqual(tree[2].nodes.map { $0.id }, ["background", "palette", "fonts"], "the look: background, palette, fonts")
+        let bg = try XCTUnwrap(tree[2].nodes.first)
         XCTAssertEqual(bg.origin, .inherited); XCTAssertEqual(bg.detail, "aurora")
-        XCTAssertEqual(tree[4].nodes.map { $0.origin }, [.inherited, .inherited])
-        XCTAssertEqual(tree[1].nodes.first?.detail, "\u{201C}Hello\u{201D}"); XCTAssertTrue(tree[2].nodes.isEmpty, "no effect yet")
-        XCTAssertTrue(tree[0].nodes.isEmpty)
+        XCTAssertEqual(tree[2].nodes.map { $0.origin }, [.inherited, .inherited, .inherited])
+        XCTAssertEqual(tree[0].nodes.first?.detail, "\u{201C}Hello\u{201D}", "the words are the first element of the composition"); XCTAssertTrue(tree[1].nodes.isEmpty, "no effect yet")
+        XCTAssertEqual(tree[0].nodes.count, 1)
     }
 
     func testOverridingAndRevertingAreTypedOperationsWithCards() throws {
@@ -36,7 +37,7 @@ final class SceneTreeTests: XCTestCase {
         XCTAssertEqual(f.effective(.background, for: f.scenes[0]), "duotone"); XCTAssertTrue(f.isOverridden(.palette, for: f.scenes[0]))
         XCTAssertEqual(f.effective(.titleFont, for: f.scenes[0]), "Anton", "what is not overridden is inherited")
         XCTAssertEqual(f.decisions.background?.id, "aurora", "the project is untouched")
-        let node = try XCTUnwrap(SceneTree.build(f.scenes[0], in: f, assets: [], store: store)[3].nodes.first)
+        let node = try XCTUnwrap(SceneTree.build(f.scenes[0], in: f, assets: [], store: store)[2].nodes.first)
         XCTAssertEqual(node.origin, .overridden); XCTAssertEqual(node.projectValue, "aurora")
         // invalid values are refused like the project's
         XCTAssertThrowsError(try store.plan(.sceneLook(id: "S01", [DecisionChange(.background, "nope")])))
@@ -94,7 +95,7 @@ final class SceneTreeTests: XCTestCase {
         try store.apply(.asset(id: "shot-01", status: .excluded, note: nil, licence: nil, scenes: nil))
         XCTAssertEqual(Assets.nodeStatus(Assets.load(store).first { $0.id == "shot-01" }!, store: store), .excluded)
         let tree = SceneTree.build(file.scenes[0], in: file, assets: Assets.load(store), store: store)
-        XCTAssertEqual(Set(tree[0].nodes.compactMap { $0.assetID }), Set(ids), "every linked resource is a node of Raw")
+        XCTAssertEqual(Set(tree[0].nodes.compactMap { $0.assetID }), Set(ids), "every linked resource is a node of the composition")
     }
 
     func testToolSetsAndRevertsAnOverride() async throws {

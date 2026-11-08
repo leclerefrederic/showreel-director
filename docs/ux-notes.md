@@ -6,6 +6,21 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 
 ## Application (launch, library, settings)
 
+- Very important (owner): the project must keep the AI's memory so that what was decided, validated or modified is never lost, even if the user changes the model or relaunches the project: a history of the work sessions. Scheduled as phase M (journal, curated memory, session history).
+
+- The AI assistant is named Clap (the word Copilot is too tied to another product). User-facing only: the right panel tabs are Inspector and Ask Clap (with a clapperboard icon, a badge when a proposal is waiting), the panel header reads "Clap, AI assistant", and the interface says plainly that it is an AI. Code names, tool names and file names keep "copilot" where they exist. If asked what it is, Clap answers honestly that it is an AI assistant built on Claude.
+
+- Library window: the project rows need a hover effect at minimum. Opening a project by double-click is not intuitive: one click opens it (with a clear affordance such as a chevron or an Open button on hover). The grey "start" badge looks clickable and does nothing: show the project's progress as plain status text with a clear meaning (for example Setup, Storyboard, Built), not as a button-like pill.
+- Library window: remove the Settings button at the bottom. Application settings live only in the app menu (Showreel Studio, Settings, Cmd+,).
+
+- The scene look bug seen earlier came from leftovers of an old project (data written by an older version of the app). Needed: an explicit way to bring an outdated project up to date, and a way to delete a project. Proposal: `showreel.json` gets a format revision number; the Library marks an outdated project and offers "Update project", which lists what will change, keeps a backup first (`.studio/backups/`), migrates and rebuilds the derived caches, with a way back by restoring the backup. Deleting: "Remove from Library" (files kept) and "Move to Trash..." (confirmation naming the folder and its size, never a permanent deletion); a project whose folder is missing shows as missing with "Locate..." and "Remove".
+
+- Look editor chooser: the dropdown listing Looks, Palette, Fonts, Background, Moods, Effects pack is not intuitive. Proposal: the Look tab of the project settings is a list of six rows (icon, name, the current choice as a swatch or sample); clicking a row opens that editor (drill-in with a back button, like macOS System Settings), with the current choice pinned at the top and the library below.
+- A new project must not start without its base configuration, even in Expert mode, because everything else depends on it. Proposal: a required setup at creation, the same data in both modes (the wizard in Beginner, one compact form in Expert), covering the languages (conversation and reel), the formats, the target duration and a look (palette, fonts, default background); the workspace opens only when these are set. Audience, message and tone stay optional.
+- Checks: they should live in the left panel as a Checks tab (with a badge counting what is red or orange), grouped by area (Project, Resources, Scenes, Storyboard, Music, Build). Clicking a check opens the element to configure: the project setting, the resource, the scene or the transition concerned.
+
+- The Look tab (palette, fonts, backgrounds, effects, transitions, looks) does not belong in the left library: the look is a project parameter, not an asset like a scene or a resource. The library keeps assets only (Resources, Scenes). Proposal pending validation: the global look (looks board, palette, fonts, default background, mood and effects pack) moves to the project settings in the top bar; the catalogues of effects, transitions and backgrounds become pickers inside the scene inspector (Effects tab, per-scene Look), the transition inspector, plus an optional floating catalogue palette that stays a drag source.
+
 - Project settings belong in the top bar of the project window (one button opening the project's parameters: audience, message, tone, languages, formats, duration, constraints, control level). App settings (API key, gateway, model, environment, skill version) do not belong in the toolbar: they stay in the application menu (Showreel Studio, Settings, Cmd+,), because they are about the app and not about a project.
 
 - Overall feel: too much like a form-based Windows application of the 2000s. More drag and drop everywhere (reorder elements, rearrange, drop resources onto scenes), more fluid, visual and dynamic. Up and Down buttons should go. Scheduled as W5 (direct manipulation) and P (feel).
@@ -18,11 +33,23 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 
 ## Library, Scenes tab
 
+- Bug found testing W5: a resource cannot be dragged from the library onto a scene, because Resources and Scenes are separate tabs of the same panel, so the source and the target are never visible together. Fix: the reel frames (always visible) and the selected scene's inspector accept drops, and tabs switch by themselves when a drag hovers over them (spring-loaded tabs). To consider in the feel pass: showing Resources and Scenes together (stacked sections) instead of tabs.
+
 - A scene can be renamed (a name chosen by the user, shown next to its ID). The ID (S01, S02) stays stable and is never renamed or reused; the name is only a label, used in the library, the tree, the reel and the copilot's messages.
 
 - Each scene must expand into a tree of what composes it: Raw (images, sound, etc.), Texts, Effects, Background (inherited from the project), Look (inherited from the project). The goal is to see at a glance what a scene is made of (scheduled as phase W1b).
 
 ## Inspector, scene
+
+- Remove the "Project" button at the top right of the scene inspector header: the project settings are already always reachable from the top bar.
+
+- Bug seen in use: turning off a scene's look override (switch off) does not show the project's values again, neither in the Look tab nor in the scene tree on the left: the flag says Inherited but the customised values are still displayed.
+
+- Scene Content and Resources tabs merge: an attached resource and a text are both elements of the scene. Proposed name: Composition (a scene is a composition of elements); the items are called elements. Scene inspector tabs become Settings, Composition, Effects, Look.
+- The scene tree and the inspector use the same structure: Composition (the elements in priority order, texts, images and sounds mixed, since the order is the priority), Effects (scene-wide), Look (Background, Palette, Fonts, each shown as inherited or overridden). Settings (duration, in the film, review, feeling, passage) are summarised on the scene row. The tree is the overview of the scene's parameters: clicking a group or a node opens the matching inspector tab on that item, where it is managed.
+- A resource linked to a scene (by drop or in the manifest) is always an element of its Composition: one that had no element gets one automatically.
+
+- Scene Look tab: an override must be asked for explicitly, with a switch per group (background, palette, fonts), because it departs from the project's base design system. By default the inherited values are shown locked (read-only) with the project's values; turning the switch on unlocks editing for this scene only, turning it off returns to the project value. A drop of a background, palette or look onto a scene asks one short confirmation ("Override for this scene only?") before it creates the override. A scene with an override carries a visible badge in the library, the tree and the reel.
 
 - Known behaviours of W1b to review: a background mood cannot be overridden to "calm" if the project has one (only "revert to project" exists); picking the same value as the project still creates an override.
 
@@ -57,9 +84,17 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 
 ## Look and technique
 
+- Option cards in the look editors carry a "Use this palette" style button. Replace the buttons with direct selection: the whole card is the target, it reacts on hover (subtle lift or highlight), and a click selects it at once; the selected state is obvious; keyboard accessible. Same pattern for looks, palettes, fonts, backgrounds, moods and effects packs.
+- Possible bug seen on screen (palette editor): the pinned card says "Current palette, Slow film" and shows the Slow film colours, while the "Edit the colours" block below shows the project's own colours (#101820, #FFFFFF, #F2AA4C): the card must show the project's actual palette, labelled with a look name only when it matches that look, otherwise "Custom".
+
+- When the project settings are open, the central viewer shows the project's design system as a visual board (palette with roles, type specimens for titles and text, the background running live, a sample of the chosen animation and mood), updating live as options change. It is visual and speaks for itself.
+- In every look editor (looks, palette, fonts, background, moods, effects pack) the chosen option is always visible at the top, large, with its preview; the other options sit below it as a library of materials to pick from. Today everything is blended in one list and the current choice is hard to see.
+
 ## Storyboard and scene editor
 
 ## Storyboard and music
+
+- The storyboard strip panel resizes but its content does not follow, so a taller panel is useless. The reel must zoom: frames, thumbnails and the music track scale with the panel height, and the time scale can be changed to focus on a portion instead of the whole film (zoom in and out, fit to the whole film, fit to the selection, horizontal scroll, the playhead stays in view).
 
 - The project's music should show under the storyboard with its waveform and analysis. Stretching a scene to the left or right snaps to the track's grid (stick to grid), so scenes are timed on the music.
 

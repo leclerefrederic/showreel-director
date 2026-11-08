@@ -1,13 +1,20 @@
 import ShowreelKit
 import SwiftUI
 
-/// The Content tab of a scene: the ordered list of what the scene contains. The order is the processing priority.
-struct SceneContentTab: View {
+/// The Composition tab of a scene: everything the scene is made of, in priority order. Words, images and sounds are elements of one list, and the order is
+/// the processing priority. A resource linked to the scene is one of them.
+struct SceneCompositionTab: View {
     let id: String
     @EnvironmentObject var project: ProjectModel
 
     private var scene: ShowreelFile.Scene? { project.showreel?.scenes.first { $0.id == id } }
     private var level: ControlLevel { scene.flatMap { project.showreel?.controlLevel(for: $0) } ?? .auto }
+
+    /// Resources that could be added as elements: not used by this scene yet, usable, and something that is shown or heard.
+    private func addable(_ s: ShowreelFile.Scene) -> [AssetRow] {
+        let used = Set(s.content.compactMap { $0.resource })
+        return project.assets.filter { ContentRules.elementType(for: $0.type) != nil && $0.status != "excluded" && $0.status != "hold" && !used.contains($0.id) }
+    }
 
     var body: some View {
         if let s = scene {
@@ -17,19 +24,53 @@ struct SceneContentTab: View {
                         Text("Project's (\(project.showreel?.parameters.controlLevel ?? "auto"))").tag("")
                         ForEach(ControlLevel.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
                     }.labelsHidden()
-                    Text("\(level.help) It sets the defaults of new items; any attribute can be changed item by item.").font(.caption).foregroundStyle(.secondary)
+                    Text("\(level.help) It sets the defaults of new elements; any attribute can be changed element by element.").font(.caption).foregroundStyle(.secondary)
                 }
-                InspectorSection(title: "Content, in priority order") {
-                    Text("The AI treats the items from the first to the last: the earlier ones win conflicts of time, space and emphasis, and the last ones are simplified or dropped first if the film does not fit. This is not the stacking order on screen.")
+                InspectorSection(title: "Composition, in priority order") {
+                    Text("The AI treats the elements from the first to the last: the earlier ones win conflicts of time, space and emphasis, and the last ones are simplified or dropped first if the film does not fit. This is not the stacking order on screen. A resource linked to the scene is an element too.")
                         .font(.caption).foregroundStyle(.secondary)
-                    if s.content.isEmpty { Text("Nothing yet. Add the words, an image or a sound.").font(.callout).foregroundStyle(.secondary) }
-                    ForEach(Array(s.content.enumerated()), id: \.element.id) { n, item in
-                        ContentItemRow(scene: id, item: item, priority: n + 1, count: s.content.count).id(item.id)
+                    if s.content.isEmpty {
+                        Text("Nothing yet. Add the words, or drop an image, a sound or a file here.").font(.callout).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+                            .registers(.contentSlot(scene: id, before: nil))
                     }
+                    // the rows are dragged by their handle to change the priority: a gap opens where the element would land
+                    let ids = s.content.map { $0.id }
+                    VStack(spacing: 0) {
+                        ForEach(Array(s.content.enumerated()), id: \.element.id) { n, item in
+                            VStack(spacing: 0) {
+                                SlotGap(target: .contentSlot(scene: id, before: item.id))
+                                ContentItemRow(scene: id, item: item, priority: n + 1, count: s.content.count).id(item.id)
+                                    .padding(.vertical, 2)
+                                    .dropTarget(.contentItem(scene: id, item: item.id))
+                                    .dropSlots(before: .contentSlot(scene: id, before: item.id), after: .contentSlot(scene: id, before: n + 1 < ids.count ? ids[n + 1] : nil))
+                            }
+                            .transition(Motion.appear)
+                        }
+                        SlotGap(target: .contentSlot(scene: id, before: nil))
+                    }
+                    .animation(Motion.spring, value: ids)
                     Menu {
-                        ForEach(ContentRules.types, id: \.self) { t in Button(ContentRules.title(t)) { project.addItem(id, type: t) } }
-                    } label: { Label("Add an item", systemImage: "plus") }
+                        Button("Words") { project.addItem(id, type: "text") }
+                        let more = addable(s)
+                        if !more.isEmpty { Divider(); Text("From the resources") }
+                        ForEach(more) { a in Button(a.name) { project.addResource(id, a.id) } }
+                    } label: { Label("Add an element", systemImage: "plus") }
                     .menuStyle(.borderlessButton).fixedSize()
+                }
+                let leftovers = (project.trees[id]?.first { $0.group == .composition }?.nodes ?? []).filter { $0.id.hasPrefix("raw.") }
+                if !leftovers.isEmpty {
+                    InspectorSection(title: "Other linked resources") {
+                        Text("Linked to the scene, but not shown or heard: a font, a file that needs attention, an excluded one.").font(.caption).foregroundStyle(.secondary)
+                        ForEach(leftovers) { n in
+                            HStack {
+                                Text(n.title).font(.callout).lineLimit(1)
+                                if let st = n.status { Text(st.rawValue).font(.caption).foregroundStyle(st.color) }
+                                Spacer()
+                                if let a = n.assetID { Button("Unlink") { project.unlink(a, from: id) }.buttonStyle(.borderless) }
+                            }
+                        }
+                    }
                 }
                 if let c = project.checks["scene"]?.first(where: { $0.id == "content.\(id)" }) {
                     HStack(alignment: .top, spacing: 8) {
@@ -37,7 +78,7 @@ struct SceneContentTab: View {
                         Text(c.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                SceneForm(id: id, tab: .content)
+                SceneForm(id: id, tab: .composition)
             }
         }
     }
@@ -63,11 +104,11 @@ struct ContentItemRow: View {
     @State private var params = ""
     @State private var instruction = ""
     @State private var hex = "#FFFFFF"
+    @State private var editingWords = false
 
     private var open: Binding<Bool> {
         Binding(get: { project.contentItem == item.id }, set: { project.contentItem = $0 ? item.id : nil })
     }
-    private static let effects: [(cat: String, name: String)] = Look.effectList().filter { $0.cat != EngineCatalogue.transitionCategory }
     private var dirty: Bool { words != (item.text ?? "") || params != item.animation.paramsText || instruction != (item.instruction ?? "") }
 
     private var colorChoice: String { item.color.mode == "role" ? (item.color.role ?? "text") : item.color.mode == "custom" ? "custom" : "auto" }
@@ -84,8 +125,6 @@ struct ContentItemRow: View {
                 }
                 HStack {
                     Button("Apply") { apply() }.buttonStyle(.borderedProminent).disabled(!dirty)
-                    Button("Up") { project.moveItem(scene, item.id, by: -1) }.disabled(priority == 1).help("Higher priority")
-                    Button("Down") { project.moveItem(scene, item.id, by: 1) }.disabled(priority == count).help("Lower priority")
                     Spacer()
                     Button("Remove", role: .destructive) { project.removeItem(scene, item.id) }
                 }
@@ -93,17 +132,34 @@ struct ContentItemRow: View {
             .padding(.top, 6)
         } label: {
             HStack(spacing: 6) {
+                Handle()
                 Text("\(priority)").font(.caption.monospacedDigit().weight(.bold)).frame(width: 18).help("Processing priority")
-                Image(systemName: item.type == "text" ? "textformat" : item.type == "image" ? "photo" : "waveform").foregroundStyle(.secondary)
-                Text(label).lineLimit(1).font(.callout)
+                Image(systemName: icon).foregroundStyle(.secondary)
+                if item.type == "text" {
+                    // the words are edited where they stand (double-click); the rest of the item opens below
+                    InlineEdit(text: item.text ?? "", placeholder: "Your words", editing: $editingWords, commit: { project.updateItem(scene, item.id, ContentEdit(text: $0)) }) {
+                        Text(label).lineLimit(1).font(.callout).onTapGesture(count: 2) { editingWords = true }
+                    }
+                } else { Text(label).lineLimit(1).font(.callout) }
                 Spacer(minLength: 4)
                 if item.color.isFixed { FixedBadge(fixed: true).help("Colour fixed") }
                 if item.animation.isFixed { Image(systemName: "sparkles").font(.caption).foregroundStyle(Color.accentColor).help("Animation fixed: \(item.animation.text)") }
             }
+            .contentShape(Rectangle())
+            .dragSource(.content(scene: scene, item: item.id), label: label, icon: icon)
+        }
+        .contextMenu {
+            Button("Duplicate") { project.duplicateItem(scene, item.id) }
+            Button("Move to the top") { project.moveItem(scene, item.id, by: -count) }.disabled(priority == 1)
+            Button("Move to the bottom") { project.moveItem(scene, item.id, by: count) }.disabled(priority == count)
+            Divider()
+            Button("Remove", role: .destructive) { project.removeItem(scene, item.id) }
         }
         .onAppear { load() }
         .onChange(of: item) { _ in load() }
     }
+
+    private var icon: String { item.type == "text" ? "textformat" : item.type == "image" ? "photo" : "waveform" }
 
     private var label: String {
         if item.type == "text" { return (item.text ?? "").isEmpty ? "(no words)" : item.text! }
@@ -159,13 +215,50 @@ struct ContentItemRow: View {
     private var animation: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack { Text("Animation").font(.caption.weight(.semibold)).foregroundStyle(.secondary); FixedBadge(fixed: item.animation.isFixed) }
-            Picker("", selection: Binding(get: { item.animation.mode == "effect" ? (item.animation.effect ?? "auto") : "auto" }, set: { project.updateItem(scene, item.id, ContentEdit(animation: $0)) })) {
-                Text("Auto (the AI decides)").tag("auto")
-                ForEach(Self.effects, id: \.name) { Text("\($0.name) · \($0.cat)").tag($0.name) }
-            }.labelsHidden()
+            PickerButton(kind: .effect, current: item.animation.mode == "effect" ? (item.animation.effect ?? "auto") : "auto", none: ("auto", "Auto (the AI decides)")) {
+                project.choose(.effect, $0, for: .item(scene: scene, item: item.id))
+            }
             if item.animation.mode == "effect" {
                 TextField("Parameters (key=value, key=value)", text: $params).textFieldStyle(.roundedBorder).font(.caption).onSubmit { apply() }
             }
         }
+    }
+}
+
+/// The Effects tab of a scene: the animation of each item, picked from the catalogue with the engine's previews. Auto leaves it to the AI.
+struct SceneEffectsTab: View {
+    let id: String
+    @EnvironmentObject var project: ProjectModel
+
+    private var scene: ShowreelFile.Scene? { project.showreel?.scenes.first { $0.id == id } }
+
+    var body: some View {
+        if let s = scene {
+            InspectorSection(title: "Animation of each item") {
+                let items = s.content.filter { $0.type != "audio" }
+                if items.isEmpty { Text("This scene has no item to animate yet: add the words or an image in the Content tab.").font(.callout).foregroundStyle(.secondary) }
+                ForEach(items) { item in
+                    HStack(spacing: 8) {
+                        Image(systemName: item.type == "text" ? "textformat" : "photo").foregroundStyle(.secondary)
+                        Text(label(item)).lineLimit(1).font(.callout)
+                        Spacer(minLength: 4)
+                        PickerButton(kind: .effect, current: Catalogue.current(.effect, target: .item(scene: id, item: item.id), in: project.showreel!), none: ("auto", "Auto (the AI decides)")) {
+                            project.choose(.effect, $0, for: .item(scene: id, item: item.id))
+                        }
+                    }
+                }
+                Text("An animation you pick is fixed; auto leaves it to the AI, from the project's effects pack.").font(.caption).foregroundStyle(.secondary)
+            }
+            InspectorSection(title: "Project effects pack") {
+                if let p = project.showreel?.decisions.effectsPack, !p.isEmpty { Label(p, systemImage: "sparkles").font(.callout) }
+                else { Text("None chosen yet.").font(.callout).foregroundStyle(.secondary) }
+                Button("Change in the project settings") { project.openSettings(.look, look: .effects) }.buttonStyle(.borderless)
+            }
+        }
+    }
+
+    private func label(_ i: ShowreelFile.ContentItem) -> String {
+        if i.type == "text" { return (i.text ?? "").isEmpty ? "(no words)" : i.text! }
+        return project.assets.first { $0.id == i.resource }?.name ?? i.resource ?? "(no resource)"
     }
 }

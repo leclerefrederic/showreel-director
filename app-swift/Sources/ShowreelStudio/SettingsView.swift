@@ -1,9 +1,9 @@
+import AppKit
 import ShowreelKit
 import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var model: AppSettings
-    @Environment(\.dismiss) private var dismiss
     @State private var key = ""
     @State private var url = ""
     @State private var bearer = false
@@ -31,10 +31,10 @@ struct SettingsView: View {
             .formStyle(.grouped)
             HStack {
                 Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Cancel") { close() }.keyboardShortcut(.cancelAction)
                 Button("Save") {
                     model.save(key: key, url: url, bearer: bearer, modelName: modelName)
-                    dismiss()
+                    close()
                 }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
@@ -43,9 +43,15 @@ struct SettingsView: View {
         }
         .frame(width: 500)
         .onAppear {
+            key = ""
             url = model.baseURL
             bearer = model.bearer
             modelName = model.modelName
         }
+    }
+
+    private func close() {
+        key = ""
+        NSApp.keyWindow?.close()
     }
 }

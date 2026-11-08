@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import ShowreelKit
 
@@ -59,15 +60,26 @@ final class LibraryModel: ObservableObject {
     private let library = ProjectLibrary()
     @Published private(set) var visible: [LibraryEntry] = []
     @Published private(set) var archived: [LibraryEntry] = []
+    /// Where each project stands (Setup, Storyboard, Built, Outdated, Missing), read from its folder when the list is loaded.
+    @Published private(set) var states: [String: LibraryState] = [:]
+    /// The projects that are open in a window: they cannot be updated or moved to the Trash from here.
+    private(set) var openPaths: Set<String> = []
 
     init() { reload() }
 
     func reload() {
         library.load()
         library.refreshMetadata()
-        visible = library.visible
-        archived = library.archived
+        publish()
     }
+
+    func state(_ e: LibraryEntry) -> LibraryState { states[e.id] ?? .setup }
+
+    func markOpen(_ path: String) { openPaths.insert(URL(fileURLWithPath: path).standardizedFileURL.path) }
+    func markClosed(_ path: String) { openPaths.remove(URL(fileURLWithPath: path).standardizedFileURL.path); publish() }
+
+    func locate(_ id: String, to path: String) throws { try library.locate(id, to: path); publish() }
+    func moveToTrash(_ e: LibraryEntry) throws { try LibraryRules.moveToTrash(e, in: library, openPaths: openPaths, using: LibraryRules.systemTrash); publish() }
 
     @discardableResult func add(path: String, name: String? = nil) -> LibraryEntry {
         defer { publish() }
@@ -78,5 +90,16 @@ final class LibraryModel: ObservableObject {
     func setArchived(_ id: String, _ on: Bool) { library.setArchived(id, on); publish() }
     func remove(_ id: String) { library.remove(id); publish() }
 
-    private func publish() { visible = library.visible; archived = library.archived }
+    private func publish() {
+        visible = library.visible; archived = library.archived
+        states = Dictionary(uniqueKeysWithValues: (library.visible + library.archived).map { ($0.id, LibraryRules.state(path: $0.path)) })
+    }
+}
+
+/// The one way to the application's settings window: the Showreel Studio menu, Settings (Command-,). Anything that needs it (the copilot's "Connect AI") calls this.
+enum AppSettingsWindow {
+    static func open() {
+        NSApp.activate(ignoringOtherApps: true)
+        for name in ["showSettingsWindow:", "showPreferencesWindow:"] where NSApp.sendAction(Selector((name)), to: nil, from: nil) { return }
+    }
 }
