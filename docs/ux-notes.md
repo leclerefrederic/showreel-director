@@ -94,6 +94,10 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 
 ## Storyboard and music
 
+- The viewer is blank when nothing is selected and there is no build (seen on the same screenshot). It should follow the playhead: show the thumbnail of the scene under the playhead.
+
+- The storyboard strip is a major UX flaw as it stands (owner, 2026-11-09). Seen on the screenshot: the frames stay tiny inside a tall panel, a 6 s film fills about a seventh of the width, the flat mid-grey background is heavy and low in contrast, the ruler and the music placeholder use tiny text, the music lane is a small dashed box far from the frames, the transition marker covers the duration label of the next scene, and the controls (Snap, Ripple, an unlabeled slider, Add scene, Mark as validated, Give the Go) are a row of raw system controls. It is to be redesigned as a proper editing timeline (phase S, which also covers the zoom of W2b).
+
 - The storyboard strip panel resizes but its content does not follow, so a taller panel is useless. The reel must zoom: frames, thumbnails and the music track scale with the panel height, and the time scale can be changed to focus on a portion instead of the whole film (zoom in and out, fit to the whole film, fit to the selection, horizontal scroll, the playhead stays in view).
 
 - The project's music should show under the storyboard with its waveform and analysis. Stretching a scene to the left or right snaps to the track's grid (stick to grid), so scenes are timed on the music.

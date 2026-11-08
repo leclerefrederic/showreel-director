@@ -143,7 +143,7 @@ enum SelfCheck {
             check(steps.count >= 10 && steps.contains { !$0.isBuilt }, "the wizard has its steps and the blocks to come (\(steps.count))")
             check(Wizard.firstUndecided(steps, file: store.loadShowreel(), assets: Assets.load(store), settings: store.settings, spec: spec).map { steps[$0].id } == "project.message",
                   "the wizard resumes after what is already decided (languages, audience) at the first undecided step")
-            check(Checks.run(area: "project", store: store).first?.level == .pending && !Checks.run(area: "resources", store: store).isEmpty, "deterministic checks run without AI")
+            check(Checks.run(area: "project", store: store).first { $0.id.hasPrefix("feasibility") }?.level == .pending && !Checks.run(area: "resources", store: store).isEmpty, "deterministic checks run without AI")
             check(spec?.blocks.filter { $0.ai == "required" }.map { $0.id } == ["build"], "only build requires generation")
             check(Skill.version()?.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil, "skill version is read (\(Skill.version() ?? "none"))")
         }
@@ -248,6 +248,17 @@ enum SelfCheck {
             let groups = SceneTree.build(sc, in: f1, assets: [], store: bs).map { $0.group }
             check(!board.sampleText.isEmpty && !board.sampleEffect.isEmpty && locked && groups == [.composition, .effects, .look] && Drops.confirmation(.background("duotone"), on: .scene(sc.id)) != nil,
                   "the design board reads the project, a scene's look is locked until its switch, and the tree is Composition, Effects, Look")
+        }
+        // phases P2 and P3: the base configuration, the format revision, the Library's states and the checks' groups
+        let lifeDir = fm.temporaryDirectory.appendingPathComponent("showreel-selftest-life-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: lifeDir) }
+        let life = ProjectStore(root: lifeDir)
+        if (try? life.create(name: "Life", conversationLanguage: "en", reelLanguages: ["en"])) != nil, let lf = life.loadShowreel() {
+            let rawBefore = life.read("showreel.json")
+            check(life.needsSetup && !ProjectSetup.isComplete(lf) && lf.revision == ShowreelFile.currentRevision && LibraryRules.state(path: lifeDir.path) == .setup
+                  && LibraryRules.state(path: lifeDir.path + "-gone") == .missing && CheckPanel.group(of: CheckResult(id: "reel.starts", block: "storyboard", title: "", level: .tight, detail: "")) == .music
+                  && ProjectFormat.plan(life) == nil && life.read("showreel.json") == rawBefore,
+                  "a new project asks for its base configuration, carries the current format revision, and reading it writes nothing")
         }
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1

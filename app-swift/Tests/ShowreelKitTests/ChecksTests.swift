@@ -76,7 +76,7 @@ final class ChecksTests: XCTestCase {
 
     func testFeasibilityFromTheProject() throws {
         try store.create(name: "F", conversationLanguage: nil, reelLanguages: [])
-        XCTAssertEqual(Checks.run(area: "project", store: store).first?.level, .pending, "no duration, nothing to judge yet")
+        XCTAssertEqual(Checks.run(area: "project", store: store).first { $0.id.hasPrefix("feasibility") }?.level, .pending, "no duration, nothing to judge yet")
         try store.apply(.parameter(.duration, "30"))
         var f = try XCTUnwrap(store.loadShowreel())
         f.scenes = (1...14).map { .init(id: String(format: "S%02d", $0), duration: 2, text: "Some words here") }
