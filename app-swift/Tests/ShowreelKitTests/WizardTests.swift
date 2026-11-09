@@ -39,42 +39,39 @@ final class WizardTests: XCTestCase {
     func testStepsFollowTheInterviewAndThePlan() throws {
         try store.create(name: "S", conversationLanguage: nil, reelLanguages: [])
         let ids = steps.map { $0.id }
-        XCTAssertEqual(Array(ids.prefix(8)), ["project.conversationLanguage", "project.reelLanguages", "project.audience", "project.message", "project.tone",
+        XCTAssertEqual(Array(ids.prefix(7)), ["project.reelLanguages", "project.audience", "project.message", "project.tone",
                                               "project.duration", "project.formats", "project.constraints"])
         XCTAssertTrue(ids.contains("project.summary") && ids.contains("resources.files") && ids.contains("resources.summary"))
         XCTAssertEqual(Array(ids.suffix(1)), ["soon.deliver"], "blocks not built yet plug in as coming soon")
         XCTAssertFalse(ids.contains("soon.look"), "the look block is built: its steps are real")
         XCTAssertTrue(steps.filter { !$0.isBuilt }.allSatisfy { $0.id.hasPrefix("soon.") })
         XCTAssertTrue(steps.prefix(3).allSatisfy { !$0.title.isEmpty && !$0.help.isEmpty }, "every step has the question as its title and a help")
-        XCTAssertEqual(steps[0].title, "Which language should we use together for this project?")
+        XCTAssertEqual(steps[0].title, "Which language(s) should the reel speak?")
     }
 
     func testChoicesAreOfferedWithRecommendationsButNeverPreRecorded() throws {
-        try store.create(name: "C", conversationLanguage: nil, reelLanguages: [])
-        let s = Wizard.steps(assets: [], spec: spec, systemLanguage: "fr")
-        guard case .single(_, let opts, let rec, _) = s[0].kind else { return XCTFail() }
-        XCTAssertTrue(opts.count >= 5); XCTAssertEqual(rec, "fr", "the recommendation follows the system language")
-        guard case .multi(_, _, let recLangs) = s[1].kind else { return XCTFail() }
+        try store.create(name: "C", conversationLanguage: "en", reelLanguages: [])
+        let s = Wizard.steps(assets: [], spec: spec)
+        XCTAssertFalse(s.contains { $0.id == "project.conversationLanguage" }, "CL1: the conversation language is not a question")
+        guard case .multi(_, _, let recLangs) = s[0].kind else { return XCTFail() }
         XCTAssertEqual(recLangs, ["en"], "English by default, as the skill says")
-        guard case .multi(_, _, let recFormats) = s[6].kind else { return XCTFail() }
+        guard case .multi(_, _, let recFormats) = s[5].kind else { return XCTFail() }
         XCTAssertEqual(recFormats, ["16:9"])
-        guard case .number(_, let presets) = s[5].kind else { return XCTFail() }
+        guard case .number(_, let presets) = s[4].kind else { return XCTFail() }
         XCTAssertEqual(presets.map { $0.value }, ["30", "45", "60", "75", "90"])
         // looking at the steps wrote nothing, and nothing counts as decided
         let f = try XCTUnwrap(store.loadShowreel())
-        XCTAssertNil(f.conversationLanguage); XCTAssertTrue(f.reelLanguages.isEmpty); XCTAssertNil(f.decisions.duration); XCTAssertNil(f.decisions.formats)
-        XCTAssertEqual(Wizard.steps(assets: [], spec: spec, systemLanguage: "zz").first.flatMap { s -> String? in
-            if case .single(_, _, let r, _) = s.kind { return r }; return nil }, nil, "no recommendation for a language that is not offered")
+        XCTAssertTrue(f.reelLanguages.isEmpty); XCTAssertNil(f.decisions.duration); XCTAssertNil(f.decisions.formats)
     }
 
     func testAnswersAreTheTypedOperationsOfTheBlocksAndTheWizardResumes() throws {
         try store.create(name: "W", conversationLanguage: nil, reelLanguages: [])
-        XCTAssertEqual(resume(), "project.conversationLanguage")
-        try store.apply(.parameter(.conversationLanguage, "fr"))          // the same operation as the block's picker
         XCTAssertEqual(resume(), "project.reelLanguages")
+        try store.apply(.parameter(.reelLanguages, "fr"))          // the same operation as the block's picker
+        XCTAssertEqual(resume(), "project.audience")
         XCTAssertTrue(decided(steps[0]))
         // "Decide later" writes nothing: the wizard comes back to the same step
-        XCTAssertEqual(resume(), "project.reelLanguages")
+        XCTAssertEqual(resume(), "project.audience")
         try store.apply(.parameter(.reelLanguages, "en, fr"))
         try store.apply(.parameter(.audience, "Teams"))
         XCTAssertEqual(resume(), "project.message")

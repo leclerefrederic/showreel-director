@@ -83,6 +83,7 @@ struct WelcomeView: View {
 
 struct Composer: View {
     @EnvironmentObject var model: ChatModel
+    @FocusState private var inputFocused: Bool
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -92,6 +93,8 @@ struct Composer: View {
                 .padding(.vertical, 8)
                 .padding(.leading, 6)
                 .onSubmit { model.send() }
+                .focused($inputFocused)
+                .onChange(of: model.focusInput) { _ in inputFocused = true }
             Button {
                 if model.running { model.stop() } else { model.send() }
             } label: {

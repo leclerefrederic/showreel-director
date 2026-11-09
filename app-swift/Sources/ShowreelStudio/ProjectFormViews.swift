@@ -41,6 +41,7 @@ struct ProjectForm: View {
                 }
             }
             section("Control level", required: false) { controlCards(f) }
+            moreArea(f)
             if !setup, let f = f {
                 let look = ProjectSetup.requirements(f).first { $0.id == "look" }?.isSet ?? false
                 HStack {
@@ -66,7 +67,7 @@ struct ProjectForm: View {
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    /// "4 of 5 set" and what each of the five is.
+    /// "3 of 4 set" and what each of the four is.
     private func progress(_ f: ShowreelFile) -> some View {
         let p = ProjectSetup.progress(f)
         return VStack(alignment: .leading, spacing: 6) {
@@ -126,13 +127,6 @@ struct ProjectForm: View {
     private func languagesRow(_ f: ShowreelFile?) -> some View {
         let codes = f?.reelLanguages ?? []
         return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Conversation language").font(.subheadline.weight(.medium))
-                Picker("", selection: Binding(get: { f?.conversationLanguage ?? "" }, set: { v in if v != (f?.conversationLanguage ?? "") { project.perform(.parameter(.conversationLanguage, v)) } })) {
-                    Text("Not set").tag("")
-                    ForEach(ProjectLanguages.all, id: \.code) { Text($0.name).tag($0.code) }
-                }.labelsHidden().frame(maxWidth: 180)
-            }
             Text("Film languages").font(.subheadline.weight(.medium))
             HStack(spacing: 6) {
                 ForEach(Array(codes.enumerated()), id: \.element) { i, c in
@@ -150,6 +144,26 @@ struct ProjectForm: View {
             }
             Text(ParameterKey.reelLanguages.help).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// The conversation language is settled from the Mac when the project is made: it is not a question. It stays editable here, in a collapsed area, with where it came from.
+    @State private var moreOpen = false
+    private func moreArea(_ f: ShowreelFile?) -> some View {
+        DisclosureGroup("More", isExpanded: $moreOpen) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Conversation language").font(.subheadline.weight(.medium))
+                    Picker("", selection: Binding(get: { f?.conversationLanguage ?? "" }, set: { v in if v != (f?.conversationLanguage ?? "") { project.perform(.parameter(.conversationLanguage, v)) } })) {
+                        if (f?.conversationLanguage ?? "").isEmpty || !ProjectLanguages.all.contains(where: { $0.code == f?.conversationLanguage }) { Text(f?.conversationLanguage.map { $0.isEmpty ? "Not set" : $0 } ?? "Not set").tag(f?.conversationLanguage ?? "") }
+                        ForEach(ProjectLanguages.all, id: \.code) { Text($0.name).tag($0.code) }
+                    }.labelsHidden().frame(maxWidth: 180)
+                    Text(ConversationLanguage.origin(f)).fontSmall().foregroundStyle(.secondary)
+                }
+                Text("Clap writes its first message in it, and answers in the language you write in. The film's own languages are above.").fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 6)
+        }
+        .font(.callout)
     }
 
     private func controlCards(_ f: ShowreelFile?) -> some View {

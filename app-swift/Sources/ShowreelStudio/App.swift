@@ -46,7 +46,6 @@ struct ShowreelStudioApp: App {
                     .environmentObject(settings)
                     .environmentObject(theme)
                     .preferredColorScheme(.dark)
-                    .frame(minWidth: 1180, minHeight: 720)
             }
         }
         .windowToolbarStyle(.unified(showsTitle: true))

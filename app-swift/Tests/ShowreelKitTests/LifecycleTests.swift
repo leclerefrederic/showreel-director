@@ -40,10 +40,10 @@ final class LifecycleTests: XCTestCase {
         XCTAssertFalse(ProjectSetup.isComplete(file)); XCTAssertFalse(store.needsSetup, "later gaps are told by the checks, never a block")
     }
 
-    func testConversationAndReelLanguagesAreRequiredToo() throws {
+    func testReelLanguagesAreRequiredAndTheConversationLanguageIsNot() throws {
         try writeRaw(#"{"schema": 1, "name": "X"}"#)
-        XCTAssertEqual(ProjectSetup.missing(file).map { $0.id }, ["conversationLanguage", "reelLanguages", "formats", "duration", "palette", "fonts", "background"])
-        XCTAssertEqual(ProjectSetup.missing(file).map { $0.section }, ["project", "project", "project", "project", "palette", "fonts", "background"])
+        XCTAssertEqual(ProjectSetup.missing(file).map { $0.id }, ["reelLanguages", "formats", "duration", "palette", "fonts", "background"])
+        XCTAssertEqual(ProjectSetup.missing(file).map { $0.section }, ["project", "project", "project", "palette", "fonts", "background"])
     }
 
     func testAnExistingIncompleteProjectIsNotBlockedButToldInTheChecks() throws {

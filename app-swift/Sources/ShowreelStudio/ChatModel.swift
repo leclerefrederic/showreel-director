@@ -57,6 +57,8 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     @Published var items: [ChatItem] = []
     @Published var draft = ""
     @Published var running = false
+    /// Raised by the shortcut that opens Clap: the composer puts the cursor in its input.
+    @Published var focusInput = 0
     @Published var scrollTick = 0
     /// How Clap's last request ended, shown for a few seconds next to the activity chip: done, an error in plain words, or stopped.
     struct End: Equatable { let id = UUID(); let text: String; let isError: Bool }

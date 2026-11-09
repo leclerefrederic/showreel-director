@@ -93,8 +93,12 @@ public enum TimelineLayout {
     /// Below this frame height a marker in the middle of the cut would touch the label or the duration of a frame.
     public static let markerMiddleThreshold = 72.0
 
-    public static func sizes(panelHeight: Double, hasMusic: Bool) -> TimelineSizes {
-        let avail = max(0, panelHeight - toolbar - ruler - 2 * padding - gap)
+    /// The toolbar has one row when the strip is wide, two when it is the width of the centre column (the zoom, the snap and the actions go on the second row).
+    public static let wideToolbar = 860.0
+    public static func toolbarRows(width: Double) -> Int { width >= wideToolbar ? 1 : 2 }
+
+    public static func sizes(panelHeight: Double, hasMusic: Bool, toolbarRows: Int = 1) -> TimelineSizes {
+        let avail = max(0, panelHeight - toolbar * Double(toolbarRows) - ruler - 2 * padding - gap)
         let floorMusic = hasMusic ? 56.0 : 72.0           // an empty lane holds a text and a button
         var music = min(max(avail * (hasMusic ? 0.30 : 0.24), floorMusic), 170)
         var frame = avail - music
@@ -105,7 +109,7 @@ public enum TimelineLayout {
             music = max(minMusic, music - row)
             frame = max(absoluteMinFrame, avail - music - row)
         }
-        return TimelineSizes(toolbar: toolbar, ruler: ruler, markerRow: row, frame: frame, music: music, gap: gap, padding: padding)
+        return TimelineSizes(toolbar: toolbar * Double(toolbarRows), ruler: ruler, markerRow: row, frame: frame, music: music, gap: gap, padding: padding)
     }
 }
 

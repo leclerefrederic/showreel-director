@@ -56,14 +56,11 @@ public enum Wizard {
 
     /// Every step of the wizard, in the order of the process. The asset steps follow the manifest; blocks that are not built
     /// appear as "coming soon" steps, so later blocks plug in here.
-    public static func steps(assets: [AssetRow], spec: ProcessSpec?, systemLanguage: String? = nil, file: ShowreelFile? = nil) -> [WizardStep] {
+    public static func steps(assets: [AssetRow], spec: ProcessSpec?, file: ShowreelFile? = nil) -> [WizardStep] {
         func p(_ k: ParameterKey, _ title: String, _ kind: WizardStep.Kind) -> WizardStep {
             WizardStep(id: "project." + k.rawValue, area: "project", title: title, help: k.help, kind: kind)
         }
-        let sys = systemLanguage.flatMap { l in languages.contains { $0.value == l } ? l : nil }
         var out: [WizardStep] = [
-            p(.conversationLanguage, "Which language should we use together for this project?",
-              .single(.conversationLanguage, options: languages, recommended: sys, custom: false)),
             p(.reelLanguages, "Which language(s) should the reel speak?", .multi(.reelLanguages, options: languages, recommended: ["en"])),
             p(.audience, "Who will watch this film, and in what setting?",
               .text(.audience, examples: ["Customers or prospects, on a big screen with sound", "My own team, on laptops, often muted", "The public, in a phone feed"], optional: false)),
@@ -209,9 +206,9 @@ public enum Wizard {
 
 // MARK: the interview Clap leads, and the starting pack it proposes
 
-/// Clap's express interview for a new project in Wizard mode: five questions with fixed headers (so that the answers can be kept), then the starting pack.
+/// Clap's express interview for a new project in Wizard mode: four questions with fixed headers (so that the answers can be kept), then the starting pack.
 public enum WizardInterview {
-    public static let headers = ["Conversation language", "Film language", "Formats", "Duration", "About the film"]
+    public static let headers = ["Film language", "Formats", "Duration", "About the film"]
 
     static func option(_ label: String, _ detail: String = "") -> [String: Any] { ["label": label, "description": detail.isEmpty ? label : detail] }
 
@@ -219,18 +216,17 @@ public enum WizardInterview {
     public static var questions: [[String: Any]] {
         let langs = ProjectLanguages.all.prefix(4).map { option($0.name) }
         return [
-            ["header": headers[0], "question": "Which language do we talk in?", "multiSelect": false, "options": langs],
-            ["header": headers[1], "question": "Which language is the film in? Pick several to offer a switch; the first is the master text.", "multiSelect": true, "options": langs],
-            ["header": headers[2], "question": "Which formats?", "multiSelect": true, "options": [option("Desktop 16:9", "Landscape, for screens"), option("Mobile 9:16", "Portrait, for phones: it changes the layout design")]],
-            ["header": headers[3], "question": "How long should the film be?", "multiSelect": false, "options": ProjectSetup.durationChoices.map { option("\($0) s") }],
-            ["header": headers[4], "question": "Optional: who is it for, what should they remember, and in what tone? Skip it if you prefer; you can say it in your own words.", "multiSelect": false, "options": [option("Skip", "Decide later in the project settings")]],
+            ["header": headers[0], "question": "Which language is the film in? Pick several to offer a switch; the first is the master text.", "multiSelect": true, "options": langs],
+            ["header": headers[1], "question": "Which formats?", "multiSelect": true, "options": [option("Desktop 16:9", "Landscape, for screens"), option("Mobile 9:16", "Portrait, for phones: it changes the layout design")]],
+            ["header": headers[2], "question": "How long should the film be?", "multiSelect": false, "options": ProjectSetup.durationChoices.map { option("\($0) s") }],
+            ["header": headers[3], "question": "Optional: who is it for, what should they remember, and in what tone? Skip it if you prefer; you can say it in your own words.", "multiSelect": false, "options": [option("Skip", "Decide later in the project settings")]],
         ]
     }
 
     /// What a design package already set in a new project: the base items the form counts, and the tone. The Wizard does not ask them again.
     public static func alreadySet(_ f: ShowreelFile) -> [String] {
         guard f.package != nil else { return [] }
-        var out = ProjectSetup.requirements(f).filter { $0.isSet && $0.id != "conversationLanguage" }.map { $0.title.lowercased() }
+        var out = ProjectSetup.requirements(f).filter { $0.isSet }.map { $0.title.lowercased() }
         if !(f.parameters.tone ?? "").isEmpty { out.append("tone") }
         return out
     }
@@ -239,14 +235,14 @@ public enum WizardInterview {
     public static func questions(for f: ShowreelFile?) -> [[String: Any]] {
         guard let f = f, f.package != nil else { return questions }
         let gone = Set(ProjectSetup.missing(f).map { $0.id })
-        let keep: [String: String] = [headers[0]: "conversationLanguage", headers[1]: "reelLanguages", headers[2]: "formats", headers[3]: "duration"]
+        let keep: [String: String] = [headers[0]: "reelLanguages", headers[1]: "formats", headers[2]: "duration"]
         return questions.filter { q in
             guard let h = q["header"] as? String else { return false }
-            if h == headers[4] { return true }                       // the audience and the message belong to this film, whatever the package says
+            if h == headers[3] { return true }                       // the audience and the message belong to this film, whatever the package says
             return keep[h].map { gone.contains($0) } ?? true
         }.map { q in
             var q = q
-            if (q["header"] as? String) == headers[4], !(f.parameters.tone ?? "").isEmpty {
+            if (q["header"] as? String) == headers[3], !(f.parameters.tone ?? "").isEmpty {
                 q["question"] = "Optional: who is it for, and what should they remember? The tone comes from the design package. Skip it if you prefer."
             }
             return q
@@ -266,9 +262,9 @@ public enum WizardInterview {
         return """
         This is the new project \u{201C}\(projectName)\u{201D}, in Wizard mode: you lead its setup. Do this:
         1. Call ask_user ONCE with exactly these questions, unchanged: \(q)
-        2. From the answers (and what the user wrote in their own words), propose a starting pack with ONE call to propose_starter_pack: `base` (conversationLanguage, reelLanguages as codes such as "en, fr", formats such as "16:9, 9:16", duration in seconds), `brief` (audience, message, tone, only what the user said), `look` (palette of #RRGGBB colours in the order background, text, accent, accent 2; titleFont and textFont from the skill's free list; background id; optionally moods and effectsPack), `scenes` (a short ordered list: text, duration in seconds, optionally visual and feeling) and `music` only if the user supplied an approved audio resource. Choose the look and the scenes from the user's words and the skill's references, not from a fixed style.
+        2. From the answers (and what the user wrote in their own words), propose a starting pack with ONE call to propose_starter_pack: `base` (reelLanguages as codes such as "en, fr", formats such as "16:9, 9:16", duration in seconds), `brief` (audience, message, tone, only what the user said), `look` (palette of #RRGGBB colours in the order background, text, accent, accent 2; titleFont and textFont from the skill's free list; background id; optionally moods and effectsPack), `scenes` (a short ordered list: text, duration in seconds, optionally visual and feeling) and `music` only if the user supplied an approved audio resource. Choose the look and the scenes from the user's words and the skill's references, not from a fixed style.
         3. The user reviews each card, or all at once, and nothing is saved until they accept. Do not change anything with any other tool during the setup. If a card is refused, ask what they want instead.
-        Answer in the user's language once you know it; until then, in English.\(fromPackage)
+        Never ask which language to talk in: the app has settled it (\(ProjectLanguages.name(conversationLanguage ?? "en")), from the user's Mac). Write your first message in that language, then answer in the language the user writes in.\(fromPackage)
         """
     }
 
@@ -278,10 +274,9 @@ public enum WizardInterview {
     public static func operations(from answers: [String: String], file f: ShowreelFile) -> [ProjectOperation] {
         var ops: [ProjectOperation] = []
         func split(_ s: String) -> [String] { s.split(whereSeparator: { ",;\n".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
-        if let a = answers[headers[0]], let c = ProjectLanguages.code(forName: split(a).first ?? a), f.conversationLanguage != c { ops.append(.parameter(.conversationLanguage, c)) }
-        if let a = answers[headers[1]] { let codes = split(a).compactMap { ProjectLanguages.code(forName: $0) }; if !codes.isEmpty, codes != f.reelLanguages { ops.append(.parameter(.reelLanguages, codes.joined(separator: ", "))) } }
-        if let a = answers[headers[2]] { let fm = split(a).compactMap { formatCode($0) }; if !fm.isEmpty, fm != (f.decisions.formats ?? []) { ops.append(.parameter(.formats, fm.joined(separator: ", "))) } }
-        if let a = answers[headers[3]], let n = Double(a.filter { "0123456789.".contains($0) }), n > 0, n != f.decisions.duration { ops.append(.parameter(.duration, ProjectDocs.seconds(n))) }
+        if let a = answers[headers[0]] { let codes = split(a).compactMap { ProjectLanguages.code(forName: $0) }; if !codes.isEmpty, codes != f.reelLanguages { ops.append(.parameter(.reelLanguages, codes.joined(separator: ", "))) } }
+        if let a = answers[headers[1]] { let fm = split(a).compactMap { formatCode($0) }; if !fm.isEmpty, fm != (f.decisions.formats ?? []) { ops.append(.parameter(.formats, fm.joined(separator: ", "))) } }
+        if let a = answers[headers[2]], let n = Double(a.filter { "0123456789.".contains($0) }), n > 0, n != f.decisions.duration { ops.append(.parameter(.duration, ProjectDocs.seconds(n))) }
         return ops
     }
 }
@@ -309,7 +304,7 @@ public enum StarterPack {
         var out: [PackCard] = []
         let base = input["base"] as? [String: Any], brief = input["brief"] as? [String: Any]
         var params: [ProjectOperation] = []
-        for (k, key) in [("conversationLanguage", ParameterKey.conversationLanguage), ("reelLanguages", .reelLanguages), ("formats", .formats), ("duration", .duration)] {
+        for (k, key) in [("reelLanguages", ParameterKey.reelLanguages), ("formats", .formats), ("duration", .duration)] {
             if let v = str(base, k), !v.isEmpty { params.append(.parameter(key, v)) }
         }
         for (k, key) in [("audience", ParameterKey.audience), ("message", .message), ("tone", .tone)] { if let v = str(brief, k), !v.isEmpty { params.append(.parameter(key, v)) } }

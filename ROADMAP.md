@@ -1,6 +1,8 @@
 # Roadmap
 
 ## Done
+- A rail with two groups and Clap as an entry (one right panel at a time), the Film strip under the preview or at full width, sizes stored apart from the placement, one reset icon (RL1).
+- The conversation language comes from the Mac (stored with its origin, editable under More); the base configuration is four items (CL1).
 - Dark theme from one set of design tokens (contrast-tested), a theme object read from the environment, a view rail (Film, Look, Build, Project) and rounded panels; text never below 11 pt; a source guard that stops views picking their own colours (DS1). DS2 (the strip and the lists) and DS3 (the inspector and the forms) take the 189 remaining colour picks to the theme; there is no light theme.
 - Scene rows with one Status icon (six states), Visible and Locked columns; three switches (Visible, Ready, Locked) and Delete scene in the inspector; a real lock (frozen in time and space, a copy of its look, never rewritten by a Build); the Go reads every visible scene is Ready (UI2).
 - Left panel: the Storyboard (flat list with transition lines, state icons, "Not in the storyboard") above the Resources browser, one divider remembered per project; the Checks are a badge in the top bar with their list in the centre (UI1).

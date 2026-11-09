@@ -8,6 +8,9 @@ public enum IconRole: String, CaseIterable, Sendable {
     case lockClosed = "lock.closed", lockOpen = "lock.open"
     case visibleOn = "visible.on", visibleOff = "visible.off"
     case railFilm = "rail.film", railLook = "rail.look", railBuild = "rail.build", railProject = "rail.project"
+    case railInspector = "rail.inspector", railClap = "rail.clap"
+    /// The two pictograms of the Film placement and the reset of the proportions: drawn by the theme (a small window with its regions), not SF Symbols; a skin can replace them.
+    case layoutUnderPreview = "layout.underPreview", layoutFullWidth = "layout.fullWidth", resetLayout = "layout.reset"
     case checks = "checks", checksAttention = "checks.attention"
 
     /// THE table: every role has one SF Symbol.
@@ -21,10 +24,14 @@ public enum IconRole: String, CaseIterable, Sendable {
         .lockClosed: "lock.fill", .lockOpen: "lock.open",
         .visibleOn: "eye", .visibleOff: "eye.slash",
         .railFilm: "film", .railLook: "paintpalette", .railBuild: "hammer", .railProject: "slider.horizontal.3",
+        .railInspector: "sidebar.right", .railClap: "sparkles",
+        .layoutUnderPreview: "pictogram.filmUnderPreview", .layoutFullWidth: "pictogram.filmFullWidth", .resetLayout: "arrow.counterclockwise",
         .checks: "checkmark.seal", .checksAttention: "exclamationmark.triangle.fill",
     ]
 
     public var symbol: String { Self.table[self] ?? "questionmark.square" }
+    /// A role drawn by the theme as a pictogram instead of an SF Symbol.
+    public var isPictogram: Bool { symbol.hasPrefix("pictogram.") }
 
     public static func status(_ k: SceneStatusKind) -> IconRole {
         switch k {

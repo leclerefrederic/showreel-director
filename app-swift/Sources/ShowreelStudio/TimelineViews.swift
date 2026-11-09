@@ -34,12 +34,13 @@ struct FilmStrip: View {
             let on = Set(f?.film.map { $0.id } ?? [])
             let off = (f?.library ?? []).filter { !on.contains($0.id) }
             let offH = off.isEmpty ? 0.0 : 30.0
-            let sizes = TimelineLayout.sizes(panelHeight: max(0, geo.size.height - offH), hasMusic: f?.decisions.track?.file != nil)
+            let rows = TimelineLayout.toolbarRows(width: Double(geo.size.width))          // in the centre column the toolbar has two rows
+            let sizes = TimelineLayout.sizes(panelHeight: max(0, geo.size.height - offH), hasMusic: f?.decisions.track?.file != nil, toolbarRows: rows)
             VStack(spacing: 0) {
-                StripToolbar(player: project.player).frame(height: sizes.toolbar)
+                StripToolbar(player: project.player, rows: rows).frame(height: sizes.toolbar)
                 if let f = f, f.storyboards.first != nil {
                     if f.library.isEmpty {
-                        Text("The storyboard is empty. Create scenes in the library: each one you switch on appears here, in order.")
+                        Text("The film has no scene yet. Create scenes in the Storyboard: each one you switch on appears here, in order.")
                             .font(.system(size: 13)).foregroundStyle(StripColor.dim).padding(16).frame(maxWidth: .infinity, alignment: .leading)
                         Spacer()
                     } else {
@@ -90,13 +91,24 @@ struct StripKeys: NSViewRepresentable {
 
 struct StripToolbar: View {
     @ObservedObject var player: ReelPlayer
+    var rows = 1
     @EnvironmentObject var project: ProjectModel
 
     var body: some View {
-        HStack(spacing: 12) {
-            left.frame(maxWidth: .infinity, alignment: .leading)
-            transport
-            right.frame(maxWidth: .infinity, alignment: .trailing)
+        Group {
+            if rows == 1 {
+                HStack(spacing: 12) {
+                    left.frame(maxWidth: .infinity, alignment: .leading)
+                    transport
+                    right.frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            } else {
+                // the width of the centre column: the title and the transport on one row, the zoom, the snap and the actions on the other (scrolling if even that is too wide)
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) { left.frame(maxWidth: .infinity, alignment: .leading); transport }.frame(height: CGFloat(TimelineLayout.toolbar))
+                    ScrollView(.horizontal, showsIndicators: false) { right.padding(.trailing, 4) }.frame(height: CGFloat(TimelineLayout.toolbar))
+                }
+            }
         }
         .padding(.horizontal, 12)
         .background(StripColor.ruler)
@@ -105,7 +117,7 @@ struct StripToolbar: View {
 
     private var left: some View {
         HStack(spacing: 10) {
-            Label("Storyboard", systemImage: "film.stack").font(.system(size: 13, weight: .semibold)).foregroundStyle(StripColor.text)
+            Label("Film", systemImage: "film.stack").font(.system(size: 13, weight: .semibold)).foregroundStyle(StripColor.text)
             if let f = project.showreel {
                 Text(summary(f)).font(.system(size: 12)).foregroundStyle(StripColor.dim).lineLimit(1)
             }

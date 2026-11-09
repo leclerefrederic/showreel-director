@@ -39,7 +39,7 @@ struct ProjectSettingsPanel: View {
             HStack {
                 Label("Project settings", systemImage: "slider.horizontal.3").font(.headline)
                 Spacer()
-                Button { project.showProjectSettings = false } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).help("Close")
+                Button { project.closeRight() } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).help("Close")
             }
             .padding(.horizontal, 14).padding(.top, 12)
             Picker("", selection: $project.settingsTab) { ForEach(SettingsTab.allCases) { Text($0.title).tag($0) } }
@@ -50,19 +50,23 @@ struct ProjectSettingsPanel: View {
                 Spacer()
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        switch project.settingsTab {
-                        case .project: ProjectSettingsForm().readOnlyWhenBlocked(.setting("parameter"))
-                        case .look: GlobalLookSettings().readOnlyWhenBlocked(.setting("look"))
+                    // one stack: a ScrollView whose content holds several views without one overlays them (the footer used to land on the form)
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            switch project.settingsTab {
+                            case .project: ProjectSettingsForm().readOnlyWhenBlocked(.setting("parameter"))
+                            case .look: GlobalLookSettings().readOnlyWhenBlocked(.setting("look"))
+                            }
                         }
+                        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                        PackageSettingsFooter().padding(.horizontal, 14).padding(.bottom, 14)
                     }
-                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                    PackageSettingsFooter().padding(.horizontal, 14).padding(.bottom, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
         .panelBackground()
-        .onExitCommand { project.showProjectSettings = false }
+        .onExitCommand { project.closeRight() }
     }
 }
 

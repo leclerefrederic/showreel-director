@@ -1,6 +1,6 @@
 import Foundation
 
-/// What a new project must have before the editing workspace opens: the languages, the formats, the target duration and a look. Everything else depends on
+/// What a new project must have before the editing workspace opens: the film languages, the formats, the target duration and a look (the conversation language is settled by the Mac, not asked). Everything else depends on
 /// these. The audience, the message and the tone stay optional.
 public struct SetupItem: Equatable, Identifiable, Sendable {
     public let id: String
@@ -20,7 +20,6 @@ public enum ProjectSetup {
     public static func missing(_ f: ShowreelFile) -> [SetupItem] {
         var out: [SetupItem] = []
         func need(_ id: String, _ title: String, _ detail: String, _ section: String = "project") { out.append(SetupItem(id: id, title: title, detail: detail, section: section)) }
-        if (f.conversationLanguage ?? "").isEmpty { need("conversationLanguage", "Conversation language", "the language you and the copilot talk in") }
         if f.reelLanguages.isEmpty { need("reelLanguages", "Reel language", "at least one language for the words in the film") }
         if (f.decisions.formats ?? []).isEmpty { need("formats", "Formats", "desktop 16:9, mobile 9:16, or both") }
         if (f.decisions.duration ?? 0) <= 0 { need("duration", "Target duration", "how long the film should be, in seconds") }
@@ -33,7 +32,7 @@ public enum ProjectSetup {
 
     public static func isComplete(_ f: ShowreelFile) -> Bool { missing(f).isEmpty }
 
-    /// The five things the base configuration is made of, as the user counts them: the look is one of them (palette, fonts and background).
+    /// The four things the base configuration is made of, as the user counts them: the look is one of them (palette, fonts and background).
     public struct Requirement: Equatable, Identifiable, Sendable {
         public let id: String
         public let title: String
@@ -43,11 +42,11 @@ public enum ProjectSetup {
     public static func requirements(_ f: ShowreelFile) -> [Requirement] {
         let gone = Set(missing(f).map { $0.id })
         func r(_ id: String, _ title: String, _ keys: [String]) -> Requirement { Requirement(id: id, title: title, isSet: keys.allSatisfy { !gone.contains($0) }) }
-        return [r("conversationLanguage", "Conversation language", ["conversationLanguage"]), r("reelLanguages", "Film language", ["reelLanguages"]), r("formats", "Formats", ["formats"]),
+        return [r("reelLanguages", "Film language", ["reelLanguages"]), r("formats", "Formats", ["formats"]),
                 r("duration", "Target duration", ["duration"]), r("look", "Look", ["palette", "fonts", "background"])]
     }
 
-    /// "4 of 5 set".
+    /// "3 of 4 set".
     public static func progress(_ f: ShowreelFile) -> (set: Int, total: Int, line: String) {
         let r = requirements(f), n = r.filter { $0.isSet }.count
         return (n, r.count, "\(n) of \(r.count) set")
@@ -63,10 +62,25 @@ public enum ProjectSetup {
     }
 }
 
+/// Where the conversation language came from, in words.
+public enum ConversationLanguage {
+    public static func origin(_ f: ShowreelFile?) -> String {
+        switch f?.conversationLanguageSource { case "system": return "From your Mac"; case "user": return "Set by you"; default: return (f?.conversationLanguage ?? "").isEmpty ? "Not set" : "Kept from before" }
+    }
+}
+
 /// The languages the form offers, by code.
 public enum ProjectLanguages {
     public static let all: [(code: String, name: String)] = [("en", "English"), ("fr", "French"), ("de", "German"), ("es", "Spanish"), ("it", "Italian"), ("pt", "Portuguese"), ("nl", "Dutch")]
     public static func name(_ code: String) -> String { all.first { $0.code == code }?.name ?? code }
+    /// The first of the Mac's preferred languages that the app supports (the list above, the one the pickers use), English when none is. The list is injected ("fr-FR", "en_US", "de"...).
+    public static func system(preferred: [String]) -> String {
+        for l in preferred {
+            let code = l.lowercased().split(whereSeparator: { $0 == "-" || $0 == "_" }).first.map(String.init) ?? ""
+            if all.contains(where: { $0.code == code }) { return code }
+        }
+        return "en"
+    }
     public static func code(forName n: String) -> String? { all.first { $0.name.caseInsensitiveCompare(n.trimmingCharacters(in: .whitespaces)) == .orderedSame || $0.code == n.lowercased() }?.code }
 }
 

@@ -166,12 +166,25 @@ final class ProjectModel: ObservableObject {
     /// The status of each resource (approved, to approve, missing, over budget), from the asset rules.
     @Published private(set) var assetStatus: [String: NodeStatus] = [:]
     /// The project settings panel (project parameters and global look) and the floating Catalogue palette, both opened from the top bar.
-    @Published var showProjectSettings = false
-    @Published var settingsTab: SettingsTab = .project
+    @Published var showProjectSettings = false { didSet { persistShell() } }
+    @Published var settingsTab: SettingsTab = .project { didSet { persistShell() } }
     /// The look editor open in the project settings (nil: the list of the six).
     @Published var lookSection: LookSection?
     @Published var showCatalogue = false
-    @Published var inspectorTab: InspectorTab = .inspector
+    @Published var inspectorTab: InspectorTab = .inspector {
+        didSet {
+            // Clap's pane opens whenever something asks for it (a draft, a Build, a card to answer): it is the one panel of the right side
+            if inspectorTab == .copilot, oldValue != .copilot { rightClosed = false; showProjectSettings = false }
+            persistShell()
+        }
+    }
+    /// The right side is closed (no panel open). Which panel is open is derived: the settings (Look, Project), Clap, or the Inspector.
+    @Published var rightClosed = false { didSet { persistShell() } }
+    /// A selection happened while another right panel was open: the Inspector entry of the rail carries a mark.
+    @Published var inspectorMark = false
+    /// Where the Film strip lives (stored per project, apart from the sizes the owner dragged).
+    @Published private(set) var filmPlacement: FilmPlacement = .underPreview
+    private var restoringShell = false
     @Published var clapSection: ClapSection = .conversation
     @Published var centerMode: CenterMode = .viewer
     @Published var lookKind: LookKind = .looks
@@ -261,6 +274,7 @@ final class ProjectModel: ObservableObject {
         foldMemory = s.collapsed
         gridVisible = s.gridVisible ?? true
         showCopilot = !s.setupRequired || s.mode == StudioSettings.wizard
+        filmPlacement = s.filmPlacement.flatMap { FilmPlacement(rawValue: $0) } ?? .underPreview
         decided = s.decided
         layout = s.layout ?? PanelLayout()
         if let m = s.timeline, m.fitAll == false { timeline = TimelineScale.Viewport(pps: TimelineScale.clamp(m.pps ?? 60), scroll: max(0, m.scroll ?? 0)); fitAll = false }
@@ -268,6 +282,12 @@ final class ProjectModel: ObservableObject {
         store.activity.reset()
         Versions.pruneHusks(store, keep: BuildJob.pending(store))          // the empty folders of Builds that stopped before their first file
         store.activity.observer = { [weak self] s in DispatchQueue.main.async { self?.activity = s } }
+        restoringShell = true
+        if let r = s.rightPanel, !s.setupRequired {          // the right panel that was open (a project with no choice opens with the Inspector)
+            if r == "none" { rightClosed = true }
+            else if let p = RightPanel(rawValue: r) { restoreRight(p) }
+        }
+        restoringShell = false
         OpenProjects.shared.register(self)
     }
 
@@ -277,7 +297,74 @@ final class ProjectModel: ObservableObject {
         var s = store.settings; s.layout = l.isStandard ? nil : l; store.settings = s
     }
 
-    func resetLayout() { setLayout(PanelLayout()) }
+    func resetLayout() { setLayout(ShellLayout.standardSizes) }          // the sizes only: the placement of the Film strip is not a proportion
+
+    // MARK: the right side (one panel at a time) and the Film placement
+
+    /// The panel the right side shows, or nil when it is closed.
+    var rightPanel: RightPanel? {
+        if rightClosed { return nil }
+        if showProjectSettings { return settingsTab == .look ? .look : .project }
+        return inspectorTab == .copilot ? .clap : .inspector
+    }
+    var railState: RailState { RailState(build: centerMode == .build, checks: centerMode == .checks, right: rightPanel, inspectorMark: inspectorMark) }
+
+    private func restoreRight(_ p: RightPanel) {
+        switch p {
+        case .inspector: break
+        case .clap: inspectorTab = .copilot
+        case .look: settingsTab = .look; showProjectSettings = true
+        case .project: settingsTab = .project; showProjectSettings = true
+        }
+    }
+
+    /// Writes a rail state back: the centre view and the right panel are separate, each changes only when the state says so.
+    func applyRail(_ s: RailState) {
+        if s.build != (centerMode == .build) { centerMode = s.build ? .build : .viewer }
+        else if !s.build, !s.checks, centerMode == .checks { centerMode = .viewer }
+        setRight(s.right)
+        inspectorMark = s.inspectorMark
+    }
+
+    func setRight(_ p: RightPanel?) {
+        guard p != rightPanel else { return }
+        switch p {
+        case nil: rightClosed = true; showProjectSettings = false
+        case .inspector?: rightClosed = false; showProjectSettings = false; if inspectorTab == .copilot { inspectorTab = .inspector }
+        case .clap?: rightClosed = false; showProjectSettings = false; inspectorTab = .copilot
+        case .look?: rightClosed = false; settingsTab = .look; showProjectSettings = true
+        case .project?: rightClosed = false; settingsTab = .project; showProjectSettings = true
+        }
+    }
+
+    /// A click on the rail. Film and Build never touch the right side, a right panel never touches the centre (the design board shows in the centre while the Look panel is open:
+    /// that is what Look contains, not a choice of the centre).
+    func openRail(_ e: RailEntry) { var s = railState; s.choose(e); applyRail(s) }
+
+    /// A selection of a scene, a transition, a resource or a look element: the Inspector shows it when no other panel is open; otherwise a mark on its entry.
+    func noteSelection() { var s = railState; s.selectionHappened(); applyRail(s) }
+
+    func closeRight() { setRight(nil) }
+
+    /// The shortcut: opens Clap and puts the cursor in its input.
+    func openClap() {
+        var s = railState; s.open(.clap); applyRail(s)
+        clapSection = .conversation
+        chat?.focusInput += 1
+    }
+
+    /// The button of the view group: the other placement of the Film strip. Remembered per project, with the spring (a plain change under Reduce motion). The sizes are not touched.
+    func toggleFilmPlacement() {
+        Motion.go { filmPlacement = filmPlacement.other }
+        var s = store.settings; s.filmPlacement = filmPlacement.rawValue; store.settings = s
+    }
+
+    private func persistShell() {
+        guard !restoringShell else { return }
+        let want = rightPanel?.rawValue ?? "none"
+        var s = store.settings
+        if (s.rightPanel ?? "inspector") != want { s.rightPanel = want == "inspector" ? nil : want; store.settings = s }
+    }
 
     /// The divider of the left panel moved (the Storyboard's share of its height), or the Resources were collapsed, expanded or restored: remembered for this project.
     func setLibrarySplit(_ fraction: Double) { setLayout(layout.replacing(split: LibrarySplit.clamp(fraction))) }
@@ -1043,23 +1130,10 @@ final class ProjectModel: ObservableObject {
     }
 
     /// Opens the project settings on a part of the global look.
-    /// A click on the rail: the same views the top bar's Build and Project settings buttons reached, the Film entry being the viewer. Choosing an entry that is already shown
-    /// brings the film back (as the buttons toggled). The rail is exclusive: the settings panel closes when Film or Build is chosen.
-    func openRail(_ e: RailEntry) {
-        let now = RailEntry.current(centreIsBuild: centerMode == .build, settingsOpen: showProjectSettings, settingsIsLook: settingsTab == .look, centreIsChecks: centerMode == .checks)
-        switch e.target {
-        case .viewer: showProjectSettings = false; centerMode = .viewer
-        case .build:
-            showProjectSettings = false
-            centerMode = now == .build ? .viewer : .build
-        case .settings(let look):
-            if now == e { showProjectSettings = false } else { centerMode = .viewer; openSettings(look ? .look : .project) }
-        }
-    }
-
     func openSettings(_ tab: SettingsTab = .project, look: LookSection? = nil) {
         settingsTab = tab
         if let l = look { lookSection = l }
+        rightClosed = false
         showProjectSettings = true
     }
 
@@ -1188,8 +1262,8 @@ final class ProjectModel: ObservableObject {
         selection = x
         centerMode = .viewer
         switch x {
-        case .scene: inspectorTab = .inspector; sceneTab = .settings
-        case .asset, .look, .sceneNode: inspectorTab = .inspector
+        case .scene: sceneTab = .settings; noteSelection()
+        case .asset, .look, .sceneNode, .transition: noteSelection()
         default: break
         }
     }
@@ -1212,7 +1286,7 @@ final class ProjectModel: ObservableObject {
         switch id {
         case "library": break
         case "viewer": centerMode = .viewer
-        case "inspector": inspectorTab = .inspector; selection = .none; showProjectSettings = true
+        case "inspector": selection = .none; openSettings(.project)
         case "storyboard": centerMode = .viewer
         case "build": centerMode = .build
         default: break

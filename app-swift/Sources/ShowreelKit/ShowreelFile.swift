@@ -320,6 +320,8 @@ public struct ShowreelFile: Codable, Equatable {
     public var name: String
     public var created: String
     public var conversationLanguage: String?
+    /// Where the conversation language came from: "system" (the Mac's language when the project was made) or "user" (changed by the owner). Absent in a project made before: no claim.
+    public var conversationLanguageSource: String?
     public var reelLanguages: [String]
     public var step: String
     public var parameters: Parameters
@@ -352,7 +354,7 @@ public struct ShowreelFile: Codable, Equatable {
         self.storyboards = [Montage()]
     }
 
-    static let keys: Set<String> = ["schema", "formatRevision", "name", "created", "conversationLanguage", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin", "resourceTags", "package", "retiredIDs"]
+    static let keys: Set<String> = ["schema", "formatRevision", "name", "created", "conversationLanguage", "conversationLanguageSource", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin", "resourceTags", "package", "retiredIDs"]
 
     // A hand-edited or exported file may lack keys: every key but the schema falls back to a default.
     // `scenes` is an ordered array; the phase A form, a dictionary of review states keyed by ID, is read too.
@@ -363,6 +365,7 @@ public struct ShowreelFile: Codable, Equatable {
         name = try c.decodeIfPresent(String.self, forKey: "name") ?? ""
         created = try c.decodeIfPresent(String.self, forKey: "created") ?? Self.today()
         conversationLanguage = try c.decodeIfPresent(String.self, forKey: "conversationLanguage")
+        conversationLanguageSource = try c.decodeIfPresent(String.self, forKey: "conversationLanguageSource")
         reelLanguages = try c.decodeIfPresent([String].self, forKey: "reelLanguages") ?? []
         step = try c.decodeIfPresent(String.self, forKey: "step") ?? "start"
         parameters = try c.decodeIfPresent(Parameters.self, forKey: "parameters") ?? Parameters()
@@ -408,7 +411,7 @@ public struct ShowreelFile: Codable, Equatable {
     private struct LegacyScene: Decodable { var status: String?; var note: String? }
 
     public func encode(to encoder: Encoder) throws {
-        try Keep.encode(encoder, fields: [("schema", schema), ("formatRevision", formatRevision), ("name", name), ("created", created), ("conversationLanguage", conversationLanguage),
+        try Keep.encode(encoder, fields: [("schema", schema), ("formatRevision", formatRevision), ("name", name), ("created", created), ("conversationLanguage", conversationLanguage), ("conversationLanguageSource", conversationLanguageSource),
                                           ("reelLanguages", reelLanguages), ("step", step), ("parameters", parameters), ("decisions", decisions),
                                           ("gates", gates), ("scenes", scenes), ("storyboards", storyboards), ("origin", origin), ("resourceTags", resourceTags), ("package", package), ("retiredIDs", retiredIDs)], unknown: unknown)
     }

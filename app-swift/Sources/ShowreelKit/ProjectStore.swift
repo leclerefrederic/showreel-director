@@ -82,6 +82,10 @@ public struct StudioSettings: Codable, Equatable {
     public var collapsed: [String]?
     /// Whether the music's grid is drawn over the frames of the strip; nil: shown.
     public var gridVisible: Bool?
+    /// Which right panel was open ("inspector", "look", "project", "clap", or "none" for a closed right side); nil: the Inspector.
+    public var rightPanel: String?
+    /// Where the Film strip lives; nil: under the preview. Independent of the sizes the owner dragged.
+    public var filmPlacement: String?
 
     public init(applyDirectly: Bool = false, mode: String = StudioSettings.manual, decided: [String] = [], layout: PanelLayout? = nil, setupRequired: Bool = false, timeline: TimelineMemory? = nil) {
         self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided; self.layout = layout; self.setupRequired = setupRequired; self.timeline = timeline
@@ -98,6 +102,8 @@ public struct StudioSettings: Codable, Equatable {
         timeline = try c.decodeIfPresent(TimelineMemory.self, forKey: .timeline)
         collapsed = try c.decodeIfPresent([String].self, forKey: .collapsed)
         gridVisible = try c.decodeIfPresent(Bool.self, forKey: .gridVisible)
+        rightPanel = try c.decodeIfPresent(String.self, forKey: .rightPanel)
+        filmPlacement = try c.decodeIfPresent(String.self, forKey: .filmPlacement)
     }
 }
 
@@ -258,9 +264,11 @@ public final class ProjectStore {
 
     /// Creates `showreel.json` for a new project, and the folder when needed.
     @discardableResult
-    public func create(name: String, conversationLanguage: String?, reelLanguages: [String], mode: String = StudioSettings.wizard) throws -> ShowreelFile {
+    /// The conversation language is settled here, once: the one given, or else the Mac's (`preferredLanguages`, injected by a test), English when it is not supported.
+    public func create(name: String, conversationLanguage: String?, reelLanguages: [String], mode: String = StudioSettings.wizard, preferredLanguages: [String]? = nil) throws -> ShowreelFile {
         try fm.createDirectory(at: root.appendingPathComponent(Self.studioDir), withIntermediateDirectories: true)
-        let f = ShowreelFile(name: name, conversationLanguage: conversationLanguage, reelLanguages: reelLanguages)
+        var f = ShowreelFile(name: name, conversationLanguage: conversationLanguage ?? ProjectLanguages.system(preferred: preferredLanguages ?? Locale.preferredLanguages), reelLanguages: reelLanguages)
+        if conversationLanguage == nil { f.conversationLanguageSource = "system" }
         try save(f)
         var s = settings
         s.mode = mode == StudioSettings.manual ? StudioSettings.manual : StudioSettings.wizard       // chosen once, here

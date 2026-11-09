@@ -50,15 +50,14 @@ final class SetupFlowTests: XCTestCase {
 
     func testTheProgressOfTheBaseConfigurationField1by1() throws {
         func line() -> String { ProjectSetup.progress(file).line }
-        XCTAssertEqual(line(), "0 of 5 set"); XCTAssertEqual(ProjectSetup.requirements(file).map { $0.id }, ["conversationLanguage", "reelLanguages", "formats", "duration", "look"])
-        try store.apply(.parameter(.conversationLanguage, "en")); XCTAssertEqual(line(), "1 of 5 set")
-        try store.apply(.parameter(.reelLanguages, "en, fr")); XCTAssertEqual(line(), "2 of 5 set")
-        try store.apply(.parameter(.formats, "16:9")); XCTAssertEqual(line(), "3 of 5 set")
-        try store.apply(.parameter(.duration, "30")); XCTAssertEqual(line(), "4 of 5 set"); XCTAssertFalse(ProjectSetup.isComplete(file))
-        // the look is one of the five, set only when its palette, fonts and background all are
-        try store.apply(.decisions([DecisionChange(.palette, "#101820, #FFFFFF, #F2AA4C, #4CC2F2")], title: nil)); XCTAssertEqual(line(), "4 of 5 set")
-        try store.apply(.decisions([DecisionChange(.titleFont, "Fredoka"), DecisionChange(.textFont, "Nunito")], title: nil)); XCTAssertEqual(line(), "4 of 5 set")
-        try store.apply(.decisions([DecisionChange(.background, Look.backgroundIDs().first!)], title: nil)); XCTAssertEqual(line(), "5 of 5 set"); XCTAssertTrue(ProjectSetup.isComplete(file))
+        XCTAssertEqual(line(), "0 of 4 set"); XCTAssertEqual(ProjectSetup.requirements(file).map { $0.id }, ["reelLanguages", "formats", "duration", "look"], "CL1: the conversation language is not one of them")
+        try store.apply(.parameter(.reelLanguages, "en, fr")); XCTAssertEqual(line(), "1 of 4 set")
+        try store.apply(.parameter(.formats, "16:9")); XCTAssertEqual(line(), "2 of 4 set")
+        try store.apply(.parameter(.duration, "30")); XCTAssertEqual(line(), "3 of 4 set"); XCTAssertFalse(ProjectSetup.isComplete(file))
+        // the look is one of the four, set only when its palette, fonts and background all are
+        try store.apply(.decisions([DecisionChange(.palette, "#101820, #FFFFFF, #F2AA4C, #4CC2F2")], title: nil)); XCTAssertEqual(line(), "3 of 4 set")
+        try store.apply(.decisions([DecisionChange(.titleFont, "Fredoka"), DecisionChange(.textFont, "Nunito")], title: nil)); XCTAssertEqual(line(), "3 of 4 set")
+        try store.apply(.decisions([DecisionChange(.background, Look.backgroundIDs().first!)], title: nil)); XCTAssertEqual(line(), "4 of 4 set"); XCTAssertTrue(ProjectSetup.isComplete(file))
         XCTAssertTrue(ProjectSetup.requirements(file).allSatisfy { $0.isSet })
         // optional parts never count
         XCTAssertEqual(ProjectSetup.optional, ["audience", "message", "tone"])
@@ -102,7 +101,7 @@ final class SetupFlowTests: XCTestCase {
     // MARK: the interview and the starting pack
 
     func pack() -> [String: Any] {
-        ["base": ["conversationLanguage": "en", "reelLanguages": "en, fr", "formats": "16:9, 9:16", "duration": "30"], "brief": ["audience": "Teams", "tone": "Warm"],
+        ["base": ["reelLanguages": "en, fr", "formats": "16:9, 9:16", "duration": "30"], "brief": ["audience": "Teams", "tone": "Warm"],
          "look": ["palette": "#101820, #FFFFFF, #F2AA4C, #4CC2F2", "titleFont": "Fredoka", "textFont": "Nunito", "background": Look.backgroundIDs().first!],
          "scenes": [["text": "Hello", "duration": "4"], ["text": "How it works", "duration": "6", "feeling": "calm"], ["text": "Try it", "duration": 5]]]
     }
@@ -110,9 +109,9 @@ final class SetupFlowTests: XCTestCase {
     func testTheInterviewQuestionsAreFixedAndTheirAnswersBecomeTypedChanges() throws {
         XCTAssertEqual(WizardInterview.questions.map { $0["header"] as? String }, WizardInterview.headers)
         let p = WizardInterview.prompt(projectName: "Reel", conversationLanguage: nil)
-        for needle in ["ask_user ONCE", "propose_starter_pack", "Conversation language", "nothing is saved until they accept", "Do not change anything with any other tool", "Reel"] { XCTAssertTrue(p.contains(needle), needle) }
-        let ops = WizardInterview.operations(from: ["Conversation language": "French", "Film language": "French, English", "Formats": "Desktop 16:9, Mobile 9:16", "Duration": "45 s", "About the film": "Skip"], file: file)
-        XCTAssertEqual(ops, [.parameter(.conversationLanguage, "fr"), .parameter(.reelLanguages, "fr, en"), .parameter(.formats, "16:9, 9:16"), .parameter(.duration, "45")])
+        for needle in ["ask_user ONCE", "propose_starter_pack", "Film language", "nothing is saved until they accept", "Do not change anything with any other tool", "Reel"] { XCTAssertTrue(p.contains(needle), needle) }
+        let ops = WizardInterview.operations(from: ["Film language": "French, English", "Formats": "Desktop 16:9, Mobile 9:16", "Duration": "45 s", "About the film": "Skip"], file: file)
+        XCTAssertEqual(ops, [.parameter(.reelLanguages, "fr, en"), .parameter(.formats, "16:9, 9:16"), .parameter(.duration, "45")])
         XCTAssertTrue(WizardInterview.operations(from: ["Duration": "a while", "Formats": "huge"], file: file).isEmpty, "only what is understood, never a guess")
     }
 
@@ -136,7 +135,7 @@ final class SetupFlowTests: XCTestCase {
         ui.accept = false
         let none = await tools.run("propose_starter_pack", pack()).text
         XCTAssertTrue(none.hasPrefix("nothing was saved") && none.contains("Refused by the user"), none)
-        XCTAssertTrue(file.scenes.isEmpty); XCTAssertNil(file.decisions.palette); XCTAssertEqual(file.reelLanguages, []); XCTAssertEqual(ProjectSetup.progress(file).line, "0 of 5 set")
+        XCTAssertTrue(file.scenes.isEmpty); XCTAssertNil(file.decisions.palette); XCTAssertEqual(file.reelLanguages, []); XCTAssertEqual(ProjectSetup.progress(file).line, "0 of 4 set")
         XCTAssertEqual(store.journal.entries().filter { $0.state == "refused" }.count, 3, "each refused card is in the journal")
         // one card only: the answers per card
         final class OnlyLook: AgentUI, @unchecked Sendable {
@@ -149,7 +148,7 @@ final class SetupFlowTests: XCTestCase {
         let one = await t2.run("propose_starter_pack", pack()).text
         XCTAssertTrue(one.hasPrefix("accepted and applied: Look"), one)
         XCTAssertEqual(file.decisions.palette?.count, 4); XCTAssertTrue(file.scenes.isEmpty); XCTAssertEqual(file.reelLanguages, [])
-        XCTAssertEqual(ProjectSetup.progress(file).line, "1 of 5 set"); XCTAssertThrowsError(try store.finishSetup(), "the workspace stays closed while the base is incomplete")
+        XCTAssertEqual(ProjectSetup.progress(file).line, "1 of 4 set"); XCTAssertThrowsError(try store.finishSetup(), "the workspace stays closed while the base is incomplete")
     }
 
     func testABadValueIsAnErrorToClapNeverABrokenCardAndTheFreezeApplies() async throws {
@@ -167,13 +166,13 @@ final class SetupFlowTests: XCTestCase {
 
     func testAWizardThatCannotGoOnKeepsTheAnswersAndTheWayToManual() throws {
         // the answers given before the failure become typed changes (journalled, undoable), the base is then what the answers say
-        let answers = ["Conversation language": "English", "Film language": "English, French", "Formats": "Desktop 16:9", "Duration": "30 s"]
+        let answers = ["Film language": "English, French", "Formats": "Desktop 16:9", "Duration": "30 s"]
         for op in WizardInterview.operations(from: answers, file: file) { try store.apply(op) }
-        XCTAssertEqual(ProjectSetup.progress(file).line, "4 of 5 set", "four answers, the look is still to choose in the form")
+        XCTAssertEqual(ProjectSetup.progress(file).line, "3 of 4 set", "three answers, the look is still to choose in the form")
         XCTAssertEqual(file.reelLanguages, ["en", "fr"]); XCTAssertEqual(file.decisions.duration, 30)
         var s = store.settings; s.mode = StudioSettings.manual; store.settings = s     // the way out
         XCTAssertEqual(ProjectStore(root: dir).settings.mode, "manual"); XCTAssertTrue(ProjectStore(root: dir).needsSetup, "the workspace stays closed")
-        XCTAssertEqual(store.journal.entries().filter { $0.op == "parameter" }.count, 4)
-        try store.undo(); XCTAssertEqual(ProjectSetup.progress(file).line, "3 of 5 set")
+        XCTAssertEqual(store.journal.entries().filter { $0.op == "parameter" }.count, 3)
+        try store.undo(); XCTAssertEqual(ProjectSetup.progress(file).line, "2 of 4 set")
     }
 }

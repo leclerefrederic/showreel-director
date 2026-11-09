@@ -7,55 +7,76 @@ import UniformTypeIdentifiers
 /// storyboard strip at the bottom. Selection drives the viewer and the inspector. The views call typed operations; the rules live in ShowreelKit.
 struct WorkspaceView: View {
     @EnvironmentObject var project: ProjectModel
+    @EnvironmentObject var theme: Theme
     @State private var live: PanelLayout?
     @State private var dragStart: Double?
-    private static let centerMinWidth = 320.0, centerMinHeight = 200.0, handle = 6.0, rail = 60.0
 
-    private var layout: PanelLayout { live ?? project.layout }
+    private var sizes: PanelLayout { live ?? project.layout }
 
     var body: some View {
         GeometryReader { geo in
-            let room = geo.size.width - Self.rail - Self.handle      // the rail, and the gap at the right edge
-            let lw = fit(layout.libraryWidth, floor: PanelLayout.minLibrary, room: room - layout.inspectorWidth - Self.centerMinWidth - 2 * Self.handle)
-            let iw = fit(layout.inspectorWidth, floor: PanelLayout.minInspector, room: room - lw - Self.centerMinWidth - 2 * Self.handle)
-            let sh = fit(layout.stripHeight, floor: PanelLayout.minStrip, room: geo.size.height - Self.centerMinHeight - 3 * Self.handle)
-            // the canvas, with the rail at the left and the regions as rounded panels one gap apart (the dividers are the gaps)
-            HStack(spacing: 0) {
-                ViewRailView()
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        LibraryPane().frame(width: lw).panelContainer()
-                        SplitHandle(vertical: true) { dx, ended in drag(.library, from: lw, by: dx, ended: ended) }
-                        CenterPane().frame(minWidth: Self.centerMinWidth, maxWidth: .infinity).panelContainer()
-                        SplitHandle(vertical: true) { dx, ended in drag(.inspector, from: iw, by: -dx, ended: ended) }
-                        InspectorPane().frame(width: iw).panelContainer()
-                    }
-                    SplitHandle(vertical: false) { dy, ended in drag(.strip, from: sh, by: -dy, ended: ended) }
-                    FilmStrip().frame(height: sh).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            // the frames come from ShowreelKit's `ShellLayout` (the stored sizes, clamped for drawing, never overwritten): the rail, the left panels and the right panel, the preview
+            // and the Film strip, in the placement the owner chose
+            let f = ShellLayout.frames(window: geo.size, placement: project.filmPlacement, sizes: sizes, right: project.rightPanel)
+            let g = CGFloat(ShellLayout.gap)
+            ZStack(alignment: .topLeading) {
+                ViewRailView().frame(width: f.rail.width, height: f.rail.height)
+                region(f.left) { LibraryPane().panelContainer() }
+                region(f.preview) { CenterPane().panelContainer() }
+                region(f.film) { FilmStrip().clipShape(RoundedRectangle(cornerRadius: theme.rLarge, style: .continuous)) }
+                if let r = f.right {
+                    region(r) { RightPanelView().panelContainer() }.transition(.move(edge: .trailing).combined(with: .opacity))
                 }
-                .padding(.top, Self.handle).padding(.trailing, Self.handle).padding(.bottom, Self.handle)
+                // the dividers are the gaps between the panels
+                SplitHandle(vertical: true) { dx, ended in drag(.library, from: f.leftWidth, by: dx, ended: ended) }
+                    .frame(width: g, height: f.left.height).offset(x: f.left.maxX, y: f.left.minY)
+                if let r = f.right {
+                    SplitHandle(vertical: true) { dx, ended in drag(project.rightPanel == .look || project.rightPanel == .project ? .settings : .inspector, from: f.rightWidth, by: -dx, ended: ended) }
+                        .frame(width: g, height: r.height).offset(x: r.minX - g, y: r.minY)
+                }
+                SplitHandle(vertical: false) { dy, ended in drag(.strip, from: f.filmHeight, by: -dy, ended: ended) }
+                    .frame(width: f.film.width, height: g).offset(x: f.film.minX, y: f.film.minY - g)
             }
+            .animation(Motion.spring, value: project.filmPlacement)
+            .animation(Motion.spring, value: project.rightPanel)
         }
         .canvasBackground()
         .dragDropRoot(project)
+        // Shift-Command-A: Clap opens and the cursor goes to its input, from anywhere in the project window
+        .background { Button("") { project.openClap() }.keyboardShortcut("a", modifiers: [.command, .shift]).opacity(0).frame(width: 0, height: 0).accessibilityHidden(true) }
     }
 
-    /// A stored size, never under its floor; it gives way only when the window leaves no room for the others (the stored value is kept).
-    private func fit(_ v: Double, floor: Double, room: Double) -> CGFloat { CGFloat(max(floor, min(v, room))) }
+    private func region<C: View>(_ r: CGRect, @ViewBuilder _ content: () -> C) -> some View {
+        content().frame(width: max(0, r.width), height: max(0, r.height)).offset(x: r.minX, y: r.minY)
+    }
 
-    private enum Panel { case library, inspector, strip }
+    private enum Panel { case library, inspector, settings, strip }
 
-    /// Dragging a divider changes one size; the new value is kept when the drag ends.
-    private func drag(_ p: Panel, from start: CGFloat, by delta: CGFloat, ended: Bool) {
-        if dragStart == nil { dragStart = Double(start) }
-        let v = (dragStart ?? Double(start)) + Double(delta)
+    /// Dragging a divider changes one stored size; the new value is kept when the drag ends. The placement of the Film strip never changes it.
+    private func drag(_ p: Panel, from start: Double, by delta: CGFloat, ended: Bool) {
+        if dragStart == nil { dragStart = start }
+        let v = (dragStart ?? start) + Double(delta)
         var l = project.layout
         switch p {
         case .library: l = l.replacing(library: v)
         case .inspector: l = l.replacing(inspector: v)
+        case .settings: l = l.replacing(settings: v)
         case .strip: l = l.replacing(strip: v)
         }
         if ended { live = nil; dragStart = nil; project.setLayout(l) } else { live = l }
+    }
+}
+
+/// The one panel of the right side: the Inspector, Clap, or the project settings (Look and Project).
+struct RightPanelView: View {
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        switch project.rightPanel {
+        case .clap?: ClapPanel()
+        case .look?, .project?: ProjectSettingsPanel()
+        default: InspectorPanel()
+        }
     }
 }
 

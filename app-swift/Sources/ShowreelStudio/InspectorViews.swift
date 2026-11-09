@@ -201,27 +201,40 @@ enum LookElement {
 
 // MARK: the right side: inspector, copilot, files
 
-struct InspectorPane: View {
+/// The Inspector panel: what the selection is made of, and its settings. With the Advanced setting on, a Files tab sits beside it.
+struct InspectorPanel: View {
     @EnvironmentObject var project: ProjectModel
     @EnvironmentObject var settings: AppSettings
 
     var body: some View {
         VStack(spacing: 0) {
             ProposalsBanner()
-            ThemedTabs(items: InspectorTab.allCases.filter { $0 != .files || settings.advanced }, selection: $project.inspectorTab,
-                       label: { tab in tab == .copilot ? AnyView(Label(tab.title, systemImage: ClapMark.symbol)) : AnyView(Text(tab.title)) }, name: { $0.title })
-                .padding(10)
-            Divider()
+            if settings.advanced {
+                ThemedTabs(items: [InspectorTab.inspector, .files], selection: Binding(get: { project.inspectorTab == .files ? .files : .inspector }, set: { project.inspectorTab = $0 }),
+                           label: { AnyView(Text($0.title)) }, name: { $0.title })
+                    .padding(10)
+                Divider()
+            }
             switch project.inspectorTab {
-            case .inspector: InspectorContent()
-            case .copilot: AskClapPane()
             case .files: FilesInspector()
+            default: InspectorContent()
             }
         }
         .panelBackground()
         .onChange(of: settings.advanced) { on in
             if !on { if project.inspectorTab == .files { project.inspectorTab = .inspector }; if case .file = project.selection { project.selection = .none } }
         }
+    }
+}
+
+/// The Clap panel: the conversation, with Memory, Sessions and Journal as tabs inside it. The proposals banner stays on top, as it was above the two tabs.
+struct ClapPanel: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            ProposalsBanner()
+            AskClapPane()
+        }
+        .panelBackground()
     }
 }
 

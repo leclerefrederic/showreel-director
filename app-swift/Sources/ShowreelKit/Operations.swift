@@ -89,7 +89,10 @@ public enum ParameterKey: String, CaseIterable, Sendable {
         case .message: f.parameters.message = v.isEmpty ? nil : v
         case .tone: f.parameters.tone = v.isEmpty ? nil : v
         case .constraints: f.parameters.constraints = v.isEmpty ? nil : v
-        case .conversationLanguage: f.conversationLanguage = v.isEmpty ? nil : v.lowercased()
+        case .conversationLanguage:
+            let new = v.isEmpty ? nil : v.lowercased()
+            if new != f.conversationLanguage { f.conversationLanguageSource = "user" }          // changed by the owner: no longer "from the Mac"
+            f.conversationLanguage = new
         case .reelLanguages: f.reelLanguages = Self.list(v, lowercase: true)
         case .formats: let l = Self.list(v, lowercase: false); f.decisions.formats = l.isEmpty ? nil : l
         case .duration:

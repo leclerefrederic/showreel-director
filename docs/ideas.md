@@ -14,6 +14,8 @@
 
 ## Ideas
 
+- 2026-11-10 (RL1): show and hide controls for the left and right panels in the view group at the top right of the top bar (focus on the preview and the Film strip).
+
 - 2026-11-10: interface skins (phase SK1, after DS1 to DS3): a skin is a JSON file of design tokens (colours, radii, spacing, type scale) loaded at run time, never code; bundled skins (a dark default, a light one, a high-contrast one), a picker in Settings that applies at once, import and export of one skin file from `~/Library/Application Support/ShowreelStudio/Skins/`, a contrast gate that refuses or warns on a skin below the minimum ratios and falls back to the default. It needs the theme read through the environment (not static) and every view migrated to tokens first. A skin is the app's own look, not the film's palette and not a design package (.studiopack). Icons: SK1 carries an icon map only (a stable semantic role such as status.review or lock.closed mapped to an SF Symbol name, plus weight and size scale), validated at load (every symbol must exist, the six Status roles must stay distinct, the legend and the tooltips read the same map); custom icon artwork (a .studioskin zip with plain SVG or PDF template images, no scripts or external references, size limits, a hash like the packages) is a later phase (SK2).
 
 Ideas for Showreel Studio that are not in the current phase. Nothing here is built, estimated or scheduled until the owner moves an item into `docs/studio-spec.md`. Add one line per idea, newest first, with the date.
@@ -56,3 +58,5 @@ Ideas for Showreel Studio that are not in the current phase. Nothing here is bui
 - 2026-11-09 (UI2): a "free gap" for editing between two locked scenes while keeping the gap constant (today a change that would move a locked scene's start is refused).
 - 2026-11-09 (UI2): the stored states stay wip/validated/locked/ditched and the `archived` flag; a later migration could drop "ditched" and "archived" from the file for good.
 - 2026-11-10 (DS1): a light theme (the tokens are swappable at run time, the app forces the dark appearance for now); loading, importing and exporting skins and a picker, on top of the theme object and the icon roles.
+- 2026-11-10 (RL1): show and hide controls for the side panels (the left panels and the right side), beyond the rail's click on the open panel.
+- 2026-11-10 (RL1): Clap as a drawer beside the Inspector, both visible at once.

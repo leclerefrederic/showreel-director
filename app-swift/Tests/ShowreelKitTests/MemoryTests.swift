@@ -443,7 +443,7 @@ final class MemoryTests: XCTestCase {
         for need in ["WhatClapKnows", "SessionsList", "JournalList", "JournalFilter.apply(", "project.openJournal(entry)", "project.addMemory(", "project.deleteMemory(", "Transcript", "Confirm"] { XCTAssertTrue(h.contains(need), need) }
         XCTAssertFalse(try src("ProjectSettingsPanel.swift").contains("HistoryPanel"), "no History entry in the project settings")
         let iv = try src("InspectorViews.swift")
-        XCTAssertTrue(iv.contains("case .copilot: AskClapPane()") && iv.contains("ClapHistoryPane(section: project.clapSection)"))
+        XCTAssertTrue(iv.contains("struct ClapPanel: View") && iv.contains("AskClapPane()") && iv.contains("ClapHistoryPane(section: project.clapSection)"), "RL1: Clap's panel holds the conversation and its three tabs")
         XCTAssertTrue(h.contains("case .memory: WhatClapKnows()") && h.contains("case .sessions: SessionsList()") && h.contains("case .journal: JournalList()"))
         XCTAssertTrue(h.contains("static let title = \"Ask Clap\""))
         let c = try src("ChatModel.swift")

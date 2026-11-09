@@ -46,10 +46,12 @@ struct ProjectView: View {
                 WorkspaceView()
             }
         }
+        .frame(minWidth: inSetup ? 820 : CGFloat(ShellLayout.minimumWindow(project.filmPlacement, right: project.rightPanel).width),
+               minHeight: inSetup ? 520 : CGFloat(ShellLayout.minimumWindow(project.filmPlacement, right: project.rightPanel).height))          // the window cannot be smaller than the shell needs
         .overlay(alignment: .bottom) { ToastHost().padding(.bottom, 14) }
         // the project settings slide in over the right side; the Catalogue is a small floating card (both optional, both opened from the top bar)
         .overlay(alignment: .trailing) {
-            if project.showProjectSettings { SettingsDock().transition(.move(edge: .trailing)) }
+            if inSetup, project.showProjectSettings { SettingsDock().transition(.move(edge: .trailing)) }          // in the workspace the settings are a panel of the right side
         }
         .overlay(alignment: .topLeading) {
             if project.showCatalogue { CataloguePalette().transition(.opacity) }
@@ -73,9 +75,7 @@ struct ProjectView: View {
                     Button { project.showCatalogue.toggle() } label: { Label("Catalogue", systemImage: "square.grid.2x2") }
                         .keyboardShortcut("k", modifiers: [.command, .shift])
                         .help("The Catalogue: effects, transitions, backgrounds and looks to drag onto a scene, an item or a marker (Shift-Command-K)")
-                    Button { project.resetLayout() } label: { Label("Reset layout", systemImage: "rectangle.3.group") }
-                        .help("Reset layout: put the library, the inspector and the storyboard back to their standard sizes")
-                        .disabledWithReason(project.layout.isStandard ? "The layout already is the standard one" : nil)
+                    ViewGroup()          // where the Film strip lives, and the reset of the proportions (the only reset: it replaced the older control that did the same)
                 }
                 // in the workspace, Build and the project settings are entries of the rail; during the base configuration the button is still here
                 if inSetup {

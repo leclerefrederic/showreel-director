@@ -82,24 +82,13 @@ final class DS1Tests: XCTestCase {
         XCTAssertEqual(Set(["rail.film", "rail.look", "rail.build", "rail.project"]).count, 4)
     }
 
-    // MARK: the rail
+    // MARK: the rail (RL1 gave it two groups and Clap: see RL1Tests for the model; this keeps what DS1 asked of its wiring)
 
-    func testTheRailHasOneEntryForEveryCentreViewTheTopBarOffered() {
-        XCTAssertEqual(RailEntry.allCases, [.film, .look, .build, .project])
-        XCTAssertEqual(RailEntry.allCases.map { $0.title }, ["Film", "Look", "Build", "Project"])
-        // the old top bar: Build toggled the Build view; Project settings toggled the settings panel, which has two parts (Project and Look)
-        XCTAssertEqual(RailEntry.build.target, .build); XCTAssertEqual(RailEntry.project.target, .settings(look: false)); XCTAssertEqual(RailEntry.look.target, .settings(look: true))
-        XCTAssertEqual(RailEntry.film.target, .viewer)
-        XCTAssertEqual(Set(RailEntry.allCases.map { $0.role }).count, 4)
-        XCTAssertTrue(RailEntry.allCases.allSatisfy { !$0.help.isEmpty })
-    }
-
-    func testTheRailSaysWhereTheWorkspaceIs() {
-        func now(build: Bool = false, settings: Bool = false, look: Bool = false, checks: Bool = false) -> RailEntry? { RailEntry.current(centreIsBuild: build, settingsOpen: settings, settingsIsLook: look, centreIsChecks: checks) }
-        XCTAssertEqual(now(), .film); XCTAssertEqual(now(build: true), .build)
-        XCTAssertEqual(now(settings: true), .project); XCTAssertEqual(now(settings: true, look: true), .look)
-        XCTAssertEqual(now(build: true, settings: true, look: true), .look, "the panel is over the centre: it is the one in front")
-        XCTAssertNil(now(checks: true), "the list of checks is opened from its badge, which stays in the top bar")
+    func testTheRailKeepsTheViewsTheTopBarOffered() {
+        // the old top bar: Build toggled the Build view; Project settings toggled the settings panel with its two parts (Project and Look)
+        for e in [RailEntry.build, .look, .project, .film] { XCTAssertTrue(RailEntry.allCases.contains(e), e.title) }
+        XCTAssertEqual(RailEntry.allCases.map { $0.title }, ["Film", "Build", "Inspector", "Look", "Project", "Clap"])
+        XCTAssertEqual(Set(RailEntry.allCases.map { $0.role }).count, 6); XCTAssertTrue(RailEntry.allCases.allSatisfy { !$0.help.isEmpty })
     }
 
     func testTheRailKeepsTheReasonTheOldButtonGave() {
@@ -108,16 +97,14 @@ final class DS1Tests: XCTestCase {
         XCTAssertNil(RailEntry.build.unavailable(workspaceOpen: true, progressLine: ""))
     }
 
-    func testTheRailAndTheTopBarAreWiredToTheSameViews() throws {
+    func testTheShellIsWiredToTheRailAndTheTopBarKeepsWhatItHad() throws {
         let m = try source("ProjectModel.swift"), bar = try source("ProjectView.swift"), shell = try source("WorkspaceViews.swift")
-        XCTAssertTrue(m.contains("func openRail(_ e: RailEntry)"))
-        XCTAssertTrue(m.contains("centerMode = now == .build ? .viewer : .build"), "Build toggles the Build view as the button did")
-        XCTAssertTrue(m.contains("openSettings(look ? .look : .project)"), "Look and Project open the settings panel on their part")
+        XCTAssertTrue(m.contains("func openRail(_ e: RailEntry)") && m.contains("func applyRail(_ s: RailState)"))
         XCTAssertFalse(bar.contains("label: { Label(\"Build\""), "the Build button left the top bar: it is the rail's Build")
         XCTAssertTrue(bar.contains("if inSetup {") && bar.contains("Project settings"), "during the base configuration the settings button stays")
-        for kept in ["ChecksBadge()", "Catalogue", "Reset layout", "Library"] { XCTAssertTrue(bar.contains(kept), "\(kept) stays in the top bar") }
+        for kept in ["ChecksBadge()", "Catalogue", "Library"] { XCTAssertTrue(bar.contains(kept), "\(kept) stays in the top bar") }
         XCTAssertTrue(shell.contains("ViewRailView()") && shell.contains(".panelContainer()") && shell.contains(".canvasBackground()"), "the shell: the rail, rounded panels, the canvas")
-        XCTAssertTrue(try source("InspectorViews.swift").contains("ThemedTabs(items: InspectorTab.allCases"), "the right panel's two tabs are segmented tabs")
+        XCTAssertFalse(try source("InspectorViews.swift").contains("ThemedTabs(items: InspectorTab.allCases"), "RL1: the right panel has no Inspector and Ask Clap tabs any more")
     }
 
     // MARK: the source guard

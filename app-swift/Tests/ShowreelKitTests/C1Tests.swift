@@ -203,7 +203,7 @@ final class C1Tests: XCTestCase {
         XCTAssertEqual(labels, ["30 s", "45 s", "60 s", "75 s", "90 s"])
         let p = WizardInterview.prompt(projectName: "C", conversationLanguage: "en")
         XCTAssertTrue(p.contains("75 s") && !p.contains("\"15 s\""))
-        guard case .number(_, let presets) = Wizard.steps(assets: [], spec: ProcessSpec.load()!, systemLanguage: nil).first(where: { $0.id == "project.duration" })!.kind else { return XCTFail() }
+        guard case .number(_, let presets) = Wizard.steps(assets: [], spec: ProcessSpec.load()!).first(where: { $0.id == "project.duration" })!.kind else { return XCTFail() }
         XCTAssertEqual(presets.map { $0.value }, ProjectSetup.durationChoices.map { String($0) })
     }
 

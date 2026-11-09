@@ -2,6 +2,56 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.16.0 - 2026-11-10
+
+**What's new**
+- **The rail has two groups**, with a thin line between them: the centre views (**Film**, **Build**) and the right panels (**Inspector**, **Look**, **Project**, **Clap**). A centre view and a right panel are independent: choosing Film or Build never closes a right panel, and opening a right panel never changes the centre.
+- **Clap is an entry of the rail.** Its icon pulses while Clap works (a dot under Reduce motion) and carries a badge with the number of proposals waiting for you; the tooltip and VoiceOver say the same ("Clap, working", "Clap, 2 proposals waiting"). Its panel slides in from the right like Look and Project, with the conversation and, as tabs inside it, Memory, Sessions and Journal. **Shift-Command-A** opens Clap and puts the cursor in its input from anywhere in the project window.
+- **One right panel at a time.** A click on the open panel's entry closes the right side. A selection shows in the Inspector when no other panel is open; otherwise the open panel stays and the Inspector entry gets a small mark. The panel that was open is remembered for each project (a project with no choice opens with the Inspector).
+- **The shell uses the full height.** Under the top bar, the rail, the left panels (Storyboard on top, Resources below) and the right panel each take the whole height; the preview and, under it, the **Film** strip (the timeline) share the centre column. The strip is now titled Film; the left list stays the Storyboard. When the strip is the width of the centre column its toolbar has two rows.
+- **Film placement.** A new button at the right end of the top bar (after the Checks badge and the Catalogue) switches the Film strip between "under the preview" and "full width" (along the whole bottom, from the left panels to the right panel). Its pictogram shows the layout in use, its tooltip names the state and the action ("Film under the preview. Click for full width"); the panels move with the spring. The choice is remembered per project.
+- **The sizes you drag are yours.** The widths, the Film height and the Storyboard and Resources divider are stored apart from the placement and never changed by it; in a small window they are only clamped for drawing, and come back when the window grows. The window cannot be smaller than the shell needs. A new reset icon next to the placement button puts the standard proportions back (it replaces the old "Reset layout", which did the same), keeps the placement, and says why when the proportions are already standard.
+
+**Changed**
+- The right panel no longer has the Inspector and Ask Clap tabs. With the Advanced setting on, the Inspector panel keeps a Files tab.
+- Choosing Film or Build no longer closes the Look or Project panel (the rail is no longer exclusive).
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
+## 0.15.0 - 2026-11-10
+
+**What's new**
+- **The conversation language is no longer a question.** A new project takes the language of your Mac (the first of its preferred languages that the app supports, English if none): Clap writes its first message in it, then answers in the language you write in. The base configuration is now four things (film languages, formats, target duration and a look): "n of 4 set". The Wizard has one question fewer, and the Manual form no longer lists it among the required fields.
+- **Still editable**, in Project settings, Project tab, under a collapsed "More": the Conversation language, with where it came from ("From your Mac" until you change it, then "Set by you"). Changing it is a normal setting: journalled, with Undo.
+
+**Changed**
+- Clap is told never to ask which language to talk in; the film's own on-screen languages are still asked.
+- Projects that already exist keep their stored language and are never changed.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
+## 0.14.1 - 2026-11-10
+
+**What's new**
+- Nothing new.
+
+**Fixed**
+- **The "Design package" footer no longer floats over the project settings form.** In the Project and Look tabs of the project settings, "Design package" and the "Save design as package..." button now sit under the last section, with the same margins as the form, instead of landing on top of the text under "Film languages".
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
 ## 0.14.0 - 2026-11-10
 
 **What's new**

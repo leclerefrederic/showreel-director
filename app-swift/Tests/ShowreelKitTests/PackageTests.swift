@@ -376,7 +376,7 @@ final class PackageTests: XCTestCase {
         XCTAssertEqual(f.decisions.background, .init(id: "aurora", mood: "calm")); XCTAssertEqual(f.decisions.moods, ["calm"]); XCTAssertEqual(f.decisions.effectsPack, "glass")
         XCTAssertEqual(f.decisions.formats, ["16:9"]); XCTAssertEqual(f.decisions.duration, 30); XCTAssertEqual(f.reelLanguages, ["en", "fr"])
         XCTAssertEqual(f.parameters.tone, "warm and direct"); XCTAssertEqual(f.parameters.controlLevel, "guided")
-        XCTAssertNil(f.conversationLanguage, "the conversation language is the user's, not the package's")
+        XCTAssertEqual(f.conversationLanguageSource, "system", "the conversation language is the Mac's, not the package's")
         XCTAssertEqual(f.package, ShowreelFile.PackageOrigin(id: e.manifest.id, version: "1.0", hash: e.manifest.hash, appliedAt: PackageLibrary.timestamp(t0)))
         XCTAssertEqual(f.unknown["futureKey"], .string("kept"), "keys the app does not know are preserved")
         XCTAssertTrue(try String(contentsOf: dest.root.appendingPathComponent("showreel.json")).contains("\"package\""))
@@ -459,7 +459,7 @@ final class PackageTests: XCTestCase {
         try PackageStart.start(e, library: lib, into: dest)
         let f = dest.loadShowreel()!
         let headers = WizardInterview.questions(for: f).compactMap { $0["header"] as? String }
-        XCTAssertEqual(headers, ["Conversation language", "About the film"])
+        XCTAssertEqual(headers, ["About the film"])
         let about = WizardInterview.questions(for: f).last?["question"] as? String
         XCTAssertTrue(about?.contains("tone comes from the design package") == true)
         let prompt = WizardInterview.prompt(projectName: "Film", conversationLanguage: nil, file: f)
@@ -471,10 +471,9 @@ final class PackageTests: XCTestCase {
         try fill(store)
         let e = try lib.add(try build()); try lib.confirm(e, by: nil)
         let dest = try newProject(); defer { try? FileManager.default.removeItem(at: dest.root) }
-        XCTAssertEqual(ProjectSetup.progress(dest.loadShowreel()!).line, "0 of 5 set")
+        XCTAssertEqual(ProjectSetup.progress(dest.loadShowreel()!).line, "0 of 4 set")
         try PackageStart.start(e, library: lib, into: dest)
-        XCTAssertEqual(ProjectSetup.progress(dest.loadShowreel()!).line, "4 of 5 set", "only the conversation language is left")
-        try dest.apply(.parameter(.conversationLanguage, "en"))
+        XCTAssertEqual(ProjectSetup.progress(dest.loadShowreel()!).line, "4 of 4 set", "the package set all four")
         XCTAssertTrue(ProjectSetup.isComplete(dest.loadShowreel()!))
     }
 

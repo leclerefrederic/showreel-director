@@ -194,3 +194,11 @@ phase T2 is built (the music's grid on the strip: lines over the frames at the s
 
 Rules in ShowreelKit: `MusicMarks.swift` (`MusicGrid`), `TransitionList.swift`, `Timeline.swift` (`FrameLayout`), `ProjectStore.swift` (`StudioSettings.gridVisible`)
 
+## FIX1 (app 0.14.1)
+The Design package footer sits under the project settings form (a ScrollView with several views and no stack overlaid them); a source scan keeps it from coming back. Details: docs/fix1-report.md.
+
+## CL1 (app 0.15.0)
+The conversation language comes from the Mac (stored once with its origin), no longer a question: the base configuration is four items, the Wizard and Clap's interview lose one question, the language stays editable under More. Details: docs/cl1-report.md.
+
+## RL1 (app 0.16.0)
+A rail with two groups and Clap as an entry, one right panel at a time independent of the centre, a full-height shell with the Film strip under the preview or at full width (`ShellLayout`), sizes stored apart from the placement, one reset icon, Shift-Command-A for Clap. Details: docs/rl1-report.md.

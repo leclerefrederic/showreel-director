@@ -297,10 +297,6 @@
         "base": {
           "type": "object",
           "properties": {
-            "conversationLanguage": {
-              "type": "string",
-              "description": "a language code, for example en"
-            },
             "reelLanguages": {
               "type": "string",
               "description": "language codes, comma-separated; the first is the master text"

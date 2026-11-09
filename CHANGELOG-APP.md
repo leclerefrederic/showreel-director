@@ -2,6 +2,18 @@
 
 Version of the Showreel Studio app (`app-swift/shared/app-version.json`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The skill and the project file format have their own numbers. Ship with `python3 tools/bump_app.py`, after writing the section of the new version in `RELEASE-NOTES-APP.md`.
 
+## 0.16.0 - 2026-11-09
+
+RL1: two rail groups, Clap in the rail, one right panel at a time, full-height shell, Film placement
+
+## 0.15.0 - 2026-11-09
+
+CL1: the conversation language comes from the Mac, no longer a question (base configuration: 4 items)
+
+## 0.14.1 - 2026-11-09
+
+FIX1: the Design package footer sits under the project settings form
+
 ## 0.14.0 - 2026-11-09
 
 DS1: design tokens, dark theme, view rail and rounded panels, no text under 11 pt
