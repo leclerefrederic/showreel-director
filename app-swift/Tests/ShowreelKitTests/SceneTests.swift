@@ -206,9 +206,10 @@ final class SceneTests: XCTestCase {
         let inbox = makeTempDir("inbox-sb"); defer { try? FileManager.default.removeItem(at: inbox) }
         let logo = inbox.appendingPathComponent("Acme Logo.svg"); try "<svg/>".write(to: logo, atomically: true, encoding: .utf8)
         try Assets.add([logo], to: store)
+        _ = try store.apply(.asset(id: "logo-01", status: .proposed, note: nil, licence: nil, scenes: nil))
         try add("one", "0", "3"); try store.apply(.scene(id: "S01", SceneEdit(assets: "logo-01")))
         XCTAssertEqual(Checks.run(area: "storyboard", store: store).first { $0.id == "storyboard.assets" }?.level, .tight)
-        try store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
         XCTAssertEqual(Checks.run(area: "storyboard", store: store).first { $0.id == "storyboard.assets" }?.level, .ok)
     }
 

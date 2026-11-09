@@ -304,6 +304,8 @@ public struct ShowreelFile: Codable, Equatable {
     public var scenes: [Scene]               // the library, in creation order
     public var storyboards: [Montage]         // the films cut from it; the first one is the master
     public var origin: Origin?
+    /// The tags of the resources (a logo, a wallpaper...), by resource ID: the app's own mechanics, the skill's manifest does not hold them.
+    public var resourceTags: [String: [String]]?
     public var unknown: [String: JSONValue] = [:]
 
     public init(name: String, created: String = ShowreelFile.today(), conversationLanguage: String? = nil,
@@ -322,7 +324,7 @@ public struct ShowreelFile: Codable, Equatable {
         self.storyboards = [Montage()]
     }
 
-    static let keys: Set<String> = ["schema", "formatRevision", "name", "created", "conversationLanguage", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin"]
+    static let keys: Set<String> = ["schema", "formatRevision", "name", "created", "conversationLanguage", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin", "resourceTags"]
 
     // A hand-edited or exported file may lack keys: every key but the schema falls back to a default.
     // `scenes` is an ordered array; the phase A form, a dictionary of review states keyed by ID, is read too.
@@ -339,6 +341,7 @@ public struct ShowreelFile: Codable, Equatable {
         decisions = try c.decodeIfPresent(Decisions.self, forKey: "decisions") ?? Decisions()
         gates = try c.decodeIfPresent([String: String].self, forKey: "gates") ?? [:]
         origin = try c.decodeIfPresent(Origin.self, forKey: "origin")
+        resourceTags = try c.decodeIfPresent([String: [String]].self, forKey: "resourceTags")
         if let list = try? c.decode([Scene].self, forKey: "scenes") {
             scenes = list
         } else if let legacy = try? c.decode([String: LegacyScene].self, forKey: "scenes") {
@@ -377,7 +380,7 @@ public struct ShowreelFile: Codable, Equatable {
     public func encode(to encoder: Encoder) throws {
         try Keep.encode(encoder, fields: [("schema", schema), ("formatRevision", formatRevision), ("name", name), ("created", created), ("conversationLanguage", conversationLanguage),
                                           ("reelLanguages", reelLanguages), ("step", step), ("parameters", parameters), ("decisions", decisions),
-                                          ("gates", gates), ("scenes", scenes), ("storyboards", storyboards), ("origin", origin)], unknown: unknown)
+                                          ("gates", gates), ("scenes", scenes), ("storyboards", storyboards), ("origin", origin), ("resourceTags", resourceTags)], unknown: unknown)
     }
 
     public static func today() -> String { dayString(Date()) }

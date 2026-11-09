@@ -342,8 +342,21 @@
     }
   },
   {
+    "name": "tag_resource",
+    "description": "Add or remove tags on a resource of the library (for example logo, wallpaper, placeholder). Tags are the user's own words; each change is a plain card the user accepts or refuses. The tag placeholder marks a resource as a stand-in: the skill's release gate lists it. Never use it on a file that needs attention (you cannot see those). To link a resource to a scene, use update_asset with its scenes, or add it to the scene's content: linking is done from the scene.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "the resource ID (from get_state)" },
+        "add": { "type": "array", "items": { "type": "string" }, "description": "tags to add" },
+        "remove": { "type": "array", "items": { "type": "string" }, "description": "tags to take away" }
+      },
+      "required": ["id"]
+    }
+  },
+  {
     "name": "update_asset",
-    "description": "Change one asset of the Resources block by its id (from get_state): status (proposed, approved, excluded, placeholder, hold; a hold needs a note), note, licence_note, or the scenes that use it (for example S01,S07). The user sees a plain card and accepts or refuses. Approving a file held for confidential data or a forbidden font licence is refused: that goes through the skill's organiser.",
+    "description": "Change one asset of the Resources block by its id (from get_state): status (proposed, approved, excluded, placeholder, hold; a hold needs a note), note, licence_note, or the scenes that use it (for example S01,S07). The user sees a plain card and accepts or refuses. The user sees four states (Available, Used in S01, Proposal, Needs attention): a file they add is approved at once if it passes the automatic checks, otherwise it is on hold and you cannot see or change it. Use status proposed with a note giving your reason to suggest a resource: the user approves it (it is then linked to the scenes you named) or declines it (it is kept as declined, so do not propose it again). Linking a resource to a scene is done from the scene (its content, or the scenes field here).",
     "input_schema": {
       "type": "object",
       "properties": {

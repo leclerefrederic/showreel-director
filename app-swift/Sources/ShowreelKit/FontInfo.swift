@@ -9,6 +9,14 @@ public struct FontInfo: Equatable, Sendable {
     public let italic: Bool
     /// The weights a variable font covers (wght axis), nil for a static file.
     public let weightRange: ClosedRange<Int>?
+    /// The licence text the font carries (name table, id 13), if any.
+    public let licence: String?
+    /// The embedding flag of the OS/2 table (fsType): the font's own say on whether it may be embedded in a document.
+    public let embeddingFlags: Int
+    /// Restricted licence embedding (bit 1): the font says it must not be embedded.
+    public var forbidsEmbedding: Bool { embeddingFlags & 0x0002 != 0 }
+    /// The licence is the open one: the font says so itself.
+    public var isOpenLicence: Bool { (licence ?? "").range(of: "Open Font License|OFL", options: [.regularExpression, .caseInsensitive]) != nil }
 
     public var isVariable: Bool { weightRange != nil }
 
@@ -40,8 +48,9 @@ public struct FontInfo: Equatable, Sendable {
             if let t = text, names[id] == nil || plat == 3 { names[id] = t }
         }
         guard let family = names[16] ?? names[1], !family.isEmpty else { return nil }
-        var weight = 400, italic = false
+        var weight = 400, italic = false, fsType = 0
         if let (oo, _) = tables["OS/2"] {
+            fsType = u16(d, oo + 8) ?? 0
             weight = u16(d, oo + 4) ?? 400
             italic = ((u16(d, oo + 62) ?? 0) & 1) == 1
         }
@@ -53,6 +62,6 @@ public struct FontInfo: Equatable, Sendable {
                 if String(decoding: d[a..<a + 4], as: UTF8.self) == "wght", let lo = u32(d, a + 4), let hi = u32(d, a + 12) { range = (lo >> 16)...(hi >> 16) }
             }
         }
-        return FontInfo(family: family, style: names[17] ?? names[2] ?? "", weight: weight, italic: italic, weightRange: range)
+        return FontInfo(family: family, style: names[17] ?? names[2] ?? "", weight: weight, italic: italic, weightRange: range, licence: names[13], embeddingFlags: fsType)
     }
 }

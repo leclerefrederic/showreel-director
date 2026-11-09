@@ -47,6 +47,8 @@ extension ProjectOperation {
         case .moveAsset(let id, _): return [.asset(id)]
         case .sceneLock(let ids, _): return ids.map { .scene($0) }
         case .addFontFiles(let p): return [.setting("look.fonts"), .setting("fonts." + p.dir)]
+        case .resource(let r):
+            switch r { case .addTag(let id, _), .removeTag(let id, _), .replaceFile(let id, _): return [.asset(id)]; case .renameTag: return [.setting("tags")] }
         }
     }
 
@@ -55,7 +57,7 @@ extension ProjectOperation {
     public var buildPolicy: BuildPolicy {
         switch self {
         case .parameter, .decisions, .asset, .gate, .scene, .addScene, .sceneEnabled, .moveScene, .sceneLook, .content, .resize, .moveCut, .transition,
-             .track, .grid, .gridSettings, .moveAsset, .sceneLock, .addFontFiles:
+             .track, .grid, .gridSettings, .moveAsset, .sceneLock, .addFontFiles, .resource:
             return .refused
         }
     }

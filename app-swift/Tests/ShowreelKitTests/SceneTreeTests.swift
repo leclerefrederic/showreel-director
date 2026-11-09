@@ -81,12 +81,13 @@ final class SceneTreeTests: XCTestCase {
         let song = inbox.appendingPathComponent("theme.mp3"); try Data(count: 9_000_000).write(to: song)
         let gone = inbox.appendingPathComponent("shot.png"); try "x".write(to: gone, atomically: true, encoding: .utf8)
         try Assets.add([logo, song, gone], to: store)
+        _ = try store.apply(.asset(id: "logo-01", status: .proposed, note: nil, licence: nil, scenes: nil))
         let ids = Assets.load(store).map { $0.id }
         try store.apply(.scene(id: "S01", SceneEdit(assets: ids.joined(separator: ", "))))
         let rows = Assets.load(store)
         func st(_ id: String) -> NodeStatus { Assets.nodeStatus(rows.first { $0.id == id }!, store: store) }
         XCTAssertEqual(st("logo-01"), .toApprove, "proposed: still to approve")
-        try store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
         XCTAssertEqual(Assets.nodeStatus(Assets.load(store).first { $0.id == "logo-01" }!, store: store), .approved)
         XCTAssertEqual(st("audio-01"), .overBudget, "a 9 MB sound is over the weight rule")
         let png = try XCTUnwrap(rows.first { $0.id == "shot-01" })

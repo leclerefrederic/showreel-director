@@ -23,10 +23,10 @@ final class MemoryTests: XCTestCase {
 
     func testEveryTypedOperationLeavesALineAndItsUndoAndRedoToo() throws {
         try Assets.add([make("Acme Logo.svg"), make("theme.mp3")], to: store)
-        try store.apply(.asset(id: "audio-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: "audio-01", status: .approved, note: nil, licence: nil, scenes: nil))
         let ops: [ProjectOperation] = [
             .parameter(.audience, "Developers"), .decisions([DecisionChange(.palette, "#000000, #FFFFFF, #FF0000")], title: nil),
-            .asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil), .gate("assets", passed: true), .scene(id: "S01", SceneEdit(visual: "A big logo")),
+            .asset(id: "logo-01", status: .excluded, note: nil, licence: nil, scenes: nil), .gate("assets", passed: true), .scene(id: "S01", SceneEdit(visual: "A big logo")),
             .addScene(id: "", SceneEdit(duration: "2", text: "Four")), .sceneEnabled(id: "S02", enabled: false, montage: nil), .moveScene(id: "S03", after: "start", montage: nil),
             .sceneLook(id: "S01", [DecisionChange(.background, Look.backgroundIDs()[0])]), .content(scene: "S01", .add(ContentEdit(type: "text", text: "More"), after: nil)),
             .content(scene: "S01", .update(item: "c1", ContentEdit(text: "Changed"))), .content(scene: "S01", .move(item: "c2", after: "start")), .content(scene: "S01", .remove(item: "c2")),

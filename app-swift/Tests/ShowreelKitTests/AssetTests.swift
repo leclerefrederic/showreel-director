@@ -47,7 +47,7 @@ final class AssetTests: XCTestCase {
         XCTAssertTrue(fm.fileExists(atPath: dir.appendingPathComponent("assets/prepared/logo-01-acme.svg").path), "an embeddable file also gets its typed copy")
         XCTAssertEqual(rows[0].file, "prepared/logo-01-acme.svg")
         XCTAssertEqual(rows[0].origin, "prepared")
-        XCTAssertEqual(rows[0].status, "proposed")
+        XCTAssertEqual(rows[0].status, "approved", "a file the user adds is theirs to use: available at once")
         XCTAssertEqual(rows[2].file, "", "a document is only listed")
         XCTAssertEqual(rows[2].notes, "not embedded")
         // the second logo gets the next number; ids are never reused after a removal from the list
@@ -76,14 +76,15 @@ final class AssetTests: XCTestCase {
         XCTAssertEqual(rows[0].status, "hold"); XCTAssertEqual(rows[0].origin, "not copied")
         XCTAssertFalse(FileManager.default.fileExists(atPath: dir.appendingPathComponent("assets/source/customers-real-data.csv").path), "sensitive files are not copied into the project")
         XCTAssertEqual(rows[1].status, "hold", "content that looks like credentials")
-        XCTAssertEqual(rows[2].status, "hold"); XCTAssertTrue(rows[2].notes.hasPrefix("low resolution"))
+        XCTAssertEqual(rows[2].status, "hold"); XCTAssertTrue(rows[2].notes.contains("resolution is low"), rows[2].notes)
         XCTAssertEqual(rows[2].file, "", "a held image is not copied to prepared")
-        XCTAssertEqual(rows[3].status, "proposed")
+        XCTAssertEqual(rows[3].status, "approved")
         XCTAssertThrowsError(try store.plan(.asset(id: "data-01", status: .approved, note: nil, licence: nil, scenes: nil)))
         // the user can accept a low-resolution image knowingly: its prepared copy is made then
-        try store.apply(.asset(id: "shot-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        XCTAssertThrowsError(try store.apply(.asset(id: "shot-01", status: .approved, note: nil, licence: nil, scenes: nil))) { XCTAssertTrue($0.localizedDescription.contains("accept the risk")) }
+        try store.apply(.asset(id: "shot-01", status: .approved, note: "accepted: it is only a stand-in", licence: nil, scenes: nil))
         let r = try XCTUnwrap(Assets.load(store).first { $0.id == "shot-01" })
-        XCTAssertEqual(r.status, "approved"); XCTAssertEqual(r.file, "prepared/shot-01-app-home.png"); XCTAssertEqual(r.notes, "")
+        XCTAssertEqual(r.status, "approved"); XCTAssertEqual(r.file, "prepared/shot-01-app-home.png"); XCTAssertEqual(r.notes, "accepted: it is only a stand-in")
         XCTAssertTrue(FileManager.default.fileExists(atPath: dir.appendingPathComponent("assets/prepared/shot-01-app-home.png").path))
     }
 

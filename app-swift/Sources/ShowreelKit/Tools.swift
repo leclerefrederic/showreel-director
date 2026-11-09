@@ -143,7 +143,15 @@ public final class Tools {
             return await addFontFiles(input)
         case "assemble_film":
             return await assembleFilm(input)
+        case "tag_resource":
+            let id = input["id"] as? String ?? ""
+            if Assets.load(store).first(where: { $0.id == id })?.hiddenFromClap == true { return "refused: that resource needs the user's attention: it is theirs to deal with" }
+            var out: [String] = []
+            for t in (input["add"] as? [String]) ?? [] { out.append(await operate(.resource(.addTag(id: id, tag: t)))) }
+            for t in (input["remove"] as? [String]) ?? [] { out.append(await operate(.resource(.removeTag(id: id, tag: t)))) }
+            return out.isEmpty ? "nothing to do: give add or remove" : out.joined(separator: "\n")
         case "update_asset":
+            if Assets.load(store).first(where: { $0.id == (input["id"] as? String ?? "") })?.hiddenFromClap == true { return "refused: that resource needs the user's attention: it is theirs to deal with, you cannot change it" }
             let st = (input["status"] as? String).flatMap { AssetStatus(rawValue: $0) }
             if input["status"] is String, st == nil { return "unknown status: use " + AssetStatus.allCases.map { $0.rawValue }.joined(separator: ", ") }
             return await operate(.asset(id: input["id"] as? String ?? "", status: st, note: input["note"] as? String,
@@ -187,6 +195,10 @@ public final class Tools {
     private func readFile(_ p: String, _ offset: Int, _ limit: Int) -> String {
         let f = abs(p)
         guard readable(f) else { return "refused: outside the project and skill folders" }
+        // the original of a file that needs attention stays where it was put, and stays unread
+        for r in Assets.load(store) where r.hiddenFromClap && !r.original.isEmpty {
+            if f.standardizedFileURL.path == project.appendingPathComponent("assets/source/" + r.original).standardizedFileURL.path { return "refused: that file needs the user's attention: you cannot read it" }
+        }
         guard let text = try? String(contentsOf: f, encoding: .utf8) else { return "not found or not text: \(p)" }
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         let slice = Array(lines.dropFirst(max(offset, 0)).prefix(max(limit, 0)))
@@ -403,7 +415,10 @@ public final class Tools {
             state["music"] = m
         }
         state["go"] = (store.loadShowreel()?.gates["review"] == "passed") ? "given by the user" : "not given: only the user can give it, with the Go button"
-        let assets = Assets.load(store)
+        let all = Assets.load(store)
+        let assets = all.filter { !$0.hiddenFromClap }          // a file that needs attention is not shown to Clap, not even by name
+        let attention = all.count - assets.count
+        if attention > 0 { state["assetsNeedingTheUsersAttention"] = "\(attention) file\(attention == 1 ? "" : "s"): the user is dealing with \(attention == 1 ? "it" : "them"); you cannot see or use \(attention == 1 ? "it" : "them")" }
         state["assets"] = assets.map { ["id": $0.id, "name": $0.name, "type": $0.type, "status": $0.status, "scenes": $0.scene, "note": $0.notes, "licenceNote": $0.licenceNote] }
         if let spec = ProcessSpec.load() {
             let f = store.loadShowreel()

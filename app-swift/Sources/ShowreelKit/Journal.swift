@@ -69,6 +69,7 @@ extension ProjectOperation {
         case .moveAsset: return "moveAsset"
         case .sceneLock: return "sceneLock"
         case .addFontFiles: return "addFontFiles"
+        case .resource: return "resource"
         }
     }
 
@@ -95,6 +96,8 @@ extension ProjectOperation {
         case .track(let a): return a ?? "none"
         case .sceneLock(let ids, _): return ids.joined(separator: " ")
         case .addFontFiles(let p): return p.family
+        case .resource(let r):
+            switch r { case .addTag(let id, _), .removeTag(let id, _), .replaceFile(let id, _): return id; case .renameTag(let a, _): return a }
         case .grid, .gridSettings: return "grid"
         case .moveAsset(let id, _): return id
         }

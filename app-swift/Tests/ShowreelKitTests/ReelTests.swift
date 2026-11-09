@@ -32,7 +32,7 @@ final class ReelTests: XCTestCase {
         let inbox = makeTempDir("inbox-w2"); defer { try? FileManager.default.removeItem(at: inbox) }
         let u = inbox.appendingPathComponent("theme.mp3"); try Data(count: 100).write(to: u)
         try Assets.add([u], to: store)
-        try store.apply(.asset(id: "audio-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: "audio-01", status: .approved, note: nil, licence: nil, scenes: nil))
         try store.apply(.track(asset: "audio-01"))
     }
 
@@ -141,11 +141,12 @@ final class ReelTests: XCTestCase {
         let u = inbox.appendingPathComponent("theme.mp3"); try Data(count: 100).write(to: u)
         let l = inbox.appendingPathComponent("Acme Logo.svg"); try "<svg/>".write(to: l, atomically: true, encoding: .utf8)
         try Assets.add([u, l], to: store)
+        _ = try store.apply(.asset(id: "audio-01", status: .proposed, note: nil, licence: nil, scenes: nil))
         XCTAssertThrowsError(try store.plan(.track(asset: "audio-01")), "proposed, not approved")
         XCTAssertThrowsError(try store.plan(.track(asset: "logo-01")), "not audio")
         XCTAssertThrowsError(try store.plan(.track(asset: "audio-09")))
         XCTAssertThrowsError(try store.plan(.track(asset: nil)), "there is none to remove")
-        try store.apply(.asset(id: "audio-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: "audio-01", status: .approved, note: nil, licence: nil, scenes: nil))
         let card = try store.plan(.track(asset: "audio-01"))
         XCTAssertEqual(card.changes, [Change("Music", "(none)", "theme.mp3")])
         try store.apply(.track(asset: "audio-01"))

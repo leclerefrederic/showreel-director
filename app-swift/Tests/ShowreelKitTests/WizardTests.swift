@@ -102,8 +102,9 @@ final class WizardTests: XCTestCase {
         let assetSteps = steps.filter { $0.id.hasPrefix("resources.asset.") }.map { $0.id }
         XCTAssertEqual(assetSteps, ["resources.asset.logo-01", "resources.asset.shot-01"], "a listed document needs no decision")
         let step = try XCTUnwrap(steps.first { $0.id == "resources.asset.logo-01" })
+        _ = try store.apply(.asset(id: "logo-01", status: .proposed, note: nil, licence: nil, scenes: nil))
         XCTAssertFalse(decided(step), "a proposed asset is not decided: nothing is pre-accepted")
-        try store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
         XCTAssertTrue(decided(step))
         try store.apply(.asset(id: "shot-01", status: .hold, note: "waiting for a better capture", licence: nil, scenes: nil))
         XCTAssertFalse(decided(try XCTUnwrap(steps.first { $0.id == "resources.asset.shot-01" })), "a hold is still open")

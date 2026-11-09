@@ -25,6 +25,7 @@ public enum ProjectDocs {
     }
 
     static func brief(_ f: ShowreelFile, _ assets: [AssetRow], _ extras: BriefExtras = .none) -> String? {
+        let assets = assets.filter { !$0.hiddenFromClap }          // a file that needs attention is not in a document Clap reads
         let p = f.parameters, d = f.decisions
         var out = [header, "", "# Brief: \(f.name)", ""]
         func block(_ title: String, _ lines: [String?]) {

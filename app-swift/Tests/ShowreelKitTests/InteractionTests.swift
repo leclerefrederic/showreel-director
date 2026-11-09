@@ -93,11 +93,11 @@ final class InteractionTests: XCTestCase {
 
     func testEveryTypedOperationUndoesAndRedoes() throws {
         try addAssets(["Acme Logo.svg", "theme.mp3"])
-        try store.apply(.asset(id: "audio-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: "audio-01", status: .approved, note: nil, licence: nil, scenes: nil))
         store.undoLog.clear()
         try roundTrip(.parameter(.audience, "Developers"))
         try roundTrip(.decisions([DecisionChange(.palette, "#000000, #FFFFFF, #FF0000")], title: nil))
-        try roundTrip(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        try roundTrip(.asset(id: "logo-01", status: .excluded, note: nil, licence: nil, scenes: nil))
         try roundTrip(.asset(id: "logo-01", status: nil, note: "a note", licence: nil, scenes: nil))
         try roundTrip(.gate("assets", passed: true))
         try roundTrip(.scene(id: "S01", SceneEdit(visual: "A big logo")))
@@ -162,7 +162,7 @@ final class InteractionTests: XCTestCase {
 
     func testAnExcludedResourceComesBackWithItsPreparedFile() throws {
         try addAssets(["Acme Logo.svg"])
-        try store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil)); store.undoLog.clear()
+        _ = try? store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil)); store.undoLog.clear()
         let row = Assets.load(store).first!, prepared = dir.appendingPathComponent("assets/" + row.file)
         XCTAssertTrue(FileManager.default.fileExists(atPath: prepared.path))
         try store.apply(.asset(id: "logo-01", status: .excluded, note: nil, licence: nil, scenes: nil))
@@ -300,6 +300,7 @@ final class InteractionTests: XCTestCase {
         XCTAssertEqual(scene("S01").content.last?.type, "audio", "at the end")
         try Drops.drop(.resource("audio-01"), on: .contentSlot(scene: "S02", before: nil), store: store)
         XCTAssertEqual(scene("S02").content.last?.type, "audio")
+        _ = try store.apply(.asset(id: "font-01", status: .approved, note: nil, licence: "OFL 1.1", scenes: nil))
         let v = Drops.verdict(.resource("font-01"), on: .contentSlot(scene: "S01", before: nil), store: store)
         XCTAssertTrue(v.text.contains("cannot be a content item"), v.text)
         // replacing the resource of an image item
@@ -426,7 +427,7 @@ final class InteractionTests: XCTestCase {
     func testAVerdictAgreesWithTheDropForEveryPairAndNeverChangesAThing() throws {
         try addAssets(["Acme Logo.svg", "theme.mp3", "client-photo.jpg"])
         try store.apply(.content(scene: "S01", .add(ContentEdit(type: "text", text: "Two"), after: nil)))
-        try store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil)); store.undoLog.clear()
+        _ = try? store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil)); store.undoLog.clear()
         let bg = Look.backgroundIDs()[0], eff = Look.effects().first { !Look.transitions().map { $0.name }.contains($0) }!
         let items: [DragItem] = [.resource("logo-01"), .resource("audio-01"), .resource("photo-01"), .resource("nope"), .background(bg), .look(LookPackages.all()[0].id), .effect(eff), .pack("Kinetic"),
                                  .transition(Look.transitions().first { !Look.isPreviewOnly($0.name) }!.name), .transition(Look.transitionsPreviewOnly().first!),

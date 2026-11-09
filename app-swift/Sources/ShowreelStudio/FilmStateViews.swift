@@ -77,8 +77,9 @@ extension ProjectModel {
 
 /// The small label that says a thumbnail is the quick draft, not the assembled film.
 struct PreviewTag: View {
+    var text = "Preview: a quick draft, not the assembled film"
     var body: some View {
-        Label("Preview: a quick draft, not the assembled film", systemImage: "eye").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+        Label(text, systemImage: "eye").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
             .padding(.horizontal, 8).padding(.vertical, 3).background(Color.primary.opacity(0.07), in: Capsule())
     }
 }

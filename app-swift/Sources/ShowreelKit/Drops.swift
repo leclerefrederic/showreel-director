@@ -300,7 +300,7 @@ public enum Drops {
                 guard let a = added.first else { throw AgentError.msg("nothing to add: folders and hidden files are skipped") }
                 guard a.type == "audio" else { throw AgentError.msg("\(a.name) is a \(a.type), not music: the music is an audio file") }
                 if a.status == "hold" { throw AgentError.msg("\(a.name) needs attention first (\(a.notes)): it was added to the resources, not used as the music") }
-                try store.apply(.asset(id: a.id, status: .approved, note: nil, licence: nil, scenes: nil))     // dropped as the music: that is the user's choice
+                if a.status != "approved" { try store.apply(.asset(id: a.id, status: .approved, note: nil, licence: nil, scenes: nil)) }     // dropped as the music: that is the user's choice
                 try store.apply(.track(asset: a.id))
                 used = a.name
             }

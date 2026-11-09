@@ -196,10 +196,11 @@ final class ContentTests: XCTestCase {
         // a hand-edited file with an effect the library does not have, and an unapproved resource
         let id = try logo()
         try store.apply(.content(scene: "S01", .add(ContentEdit(type: "image", resource: id), after: nil)))
+        _ = try store.apply(.asset(id: id, status: .proposed, note: nil, licence: nil, scenes: nil))
         XCTAssertTrue(contentCheck()?.detail.contains("proposed") == true, "a resource that is not approved")
         var f = file; f.scenes[0].content[0].animation = .init(mode: "effect", effect: "Zorp"); try store.save(f)
         XCTAssertEqual(contentCheck()?.level, .fail); XCTAssertTrue(contentCheck()?.detail.contains("Zorp") == true)
-        try store.apply(.asset(id: id, status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: id, status: .approved, note: nil, licence: nil, scenes: nil))
         XCTAssertFalse(contentCheck()?.detail.contains("proposed") == true)
     }
 

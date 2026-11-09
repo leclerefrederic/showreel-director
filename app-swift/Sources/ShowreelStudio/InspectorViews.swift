@@ -6,6 +6,7 @@ import SwiftUI
 
 struct CenterPane: View {
     @EnvironmentObject var project: ProjectModel
+    private var selectedResource: String? { if case .asset(let id) = project.selection { return id }; return nil }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,14 +19,18 @@ struct CenterPane: View {
                 .padding(.horizontal, 12).padding(.vertical, 6).background(.bar)
                 Divider()
                 BuildBlockView()
-            } else if project.showProjectSettings, project.settingsTab == .look {
-                DesignBoardView()          // the project's design system, live, while its look is being edited
             } else {
-                switch project.selection {
-                case .file(let p):
-                    if let t = project.tab(p) { EditorView(tab: t) } else { ViewerPane() }
-                case .preview: PreviewPane()
-                default: ViewerPane()
+                // what the centre shows, by one rule (ShowreelKit): the design system while the look is edited, else the resource selected in the Resources tab, else the film
+                switch Resources.viewerSubject(designBoardOpen: project.showProjectSettings && project.settingsTab == .look, resourcesTab: project.libraryTab == .resources, selectedResource: selectedResource) {
+                case .designBoard: DesignBoardView()
+                case .resource(let id): ResourcePreview(id: id)
+                case .film:
+                    switch project.selection {
+                    case .file(let p):
+                        if let t = project.tab(p) { EditorView(tab: t) } else { ViewerPane() }
+                    case .preview: PreviewPane()
+                    default: ViewerPane()
+                    }
                 }
             }
         }
@@ -503,40 +508,6 @@ struct SceneLookTab: View {
 }
 
 // MARK: a resource
-
-struct AssetInspector: View {
-    let id: String
-    @EnvironmentObject var project: ProjectModel
-    @State private var holding: AssetRow?
-    @State private var holdNote = ""
-
-    var body: some View {
-        if let row = project.assets.first(where: { $0.id == id }) {
-            VStack(alignment: .leading, spacing: 14) {
-                InspectorHeader(title: row.name, subtitle: "\(row.id) · \(row.type)")
-                AssetCard(row: row, onHold: { holding = row; holdNote = row.notes })
-                Text("Nothing is used in the film until you approve it.").font(.caption).foregroundStyle(.secondary)
-            }
-            .sheet(item: $holding) { r in
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Hold \(r.name)").font(.headline)
-                    Text("A held file is not used until you decide. Say why, so you and Clap remember.").font(.callout).foregroundStyle(.secondary)
-                    TextField("Why is it on hold?", text: $holdNote, axis: .vertical).lineLimit(2...4).textFieldStyle(.roundedBorder)
-                    HStack {
-                        Spacer()
-                        Button("Cancel") { holding = nil }.keyboardShortcut(.cancelAction)
-                        Button("Hold") { project.perform(.asset(id: r.id, status: .hold, note: holdNote, licence: nil, scenes: nil)); holding = nil }
-                            .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
-                            .disabled(holdNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                }
-                .padding(18).frame(width: 420)
-            }
-        } else {
-            Text("This resource is not in the project any more.").foregroundStyle(.secondary)
-        }
-    }
-}
 
 // MARK: a look element
 

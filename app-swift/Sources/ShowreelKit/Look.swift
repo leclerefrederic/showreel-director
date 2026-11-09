@@ -168,10 +168,13 @@ public enum FontLicense {
         guard let a = mine else {
             return Assessment(level: .tight, message: "\(name) is not in the free list and no font file was added: its licence is unknown. Add the file in Resources, or check that the licence allows embedding in a web page or app.")
         }
-        if a.notes.hasPrefix("font licence") || a.status == "hold" && a.notes.lowercased().contains("licen") {
-            return Assessment(level: .fail, message: "The licence of \(a.name) forbids embedding: \(a.notes). Exclude it or record what the licence really covers.")
-        }
         let file = store.root.appendingPathComponent("assets/source/" + a.original)
+        if a.status == "hold", a.notes.hasPrefix("font licence") {
+            if let d = try? Data(contentsOf: file), let t = fsType(of: d), restricted(t) {
+                return Assessment(level: .fail, message: "\(a.name) carries a flag that forbids embedding (installable embedding is not allowed). Say what the licence really covers, pick another font, or get a web or app licence.")
+            }
+            return Assessment(level: .tight, message: "\(a.name): its licence is not known. Say what it allows (embedding in a film) before it can be used.")
+        }
         if let d = try? Data(contentsOf: file), let t = fsType(of: d), restricted(t) {
             return Assessment(level: .fail, message: "\(a.name) carries a flag that forbids embedding (installable embedding is not allowed). Pick another font or get a web or app licence.")
         }

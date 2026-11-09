@@ -143,7 +143,7 @@ final class ChecksTests: XCTestCase {
         XCTAssertEqual(r.first { $0.id == "assets.hold" }?.level, .fail)
         XCTAssertNotEqual(try pythonAssetsCheck(), 0)
         // decide it: green here, and the organiser passes
-        try store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
         try store.apply(.asset(id: "data-01", status: .excluded, note: nil, licence: nil, scenes: nil))
         r = Checks.run(area: "resources", store: store)
         XCTAssertEqual(r.first { $0.id == "assets.hold" }?.level, .ok)

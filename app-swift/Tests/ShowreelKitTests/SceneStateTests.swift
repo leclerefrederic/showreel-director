@@ -130,16 +130,17 @@ final class SceneStateTests: XCTestCase {
         case .moveAsset: return "moveAsset"
         case .sceneLock: return "sceneLock"
         case .addFontFiles: return "addFontFiles"
+        case .resource: return "resource"
         }
     }
-    static let allKinds: Set<String> = ["parameter", "decisions", "asset", "gate", "scene", "addScene", "sceneEnabled", "moveScene", "sceneLook", "content", "resize", "moveCut", "transition", "track", "grid", "gridSettings", "moveAsset", "sceneLock", "addFontFiles"]
+    static let allKinds: Set<String> = ["parameter", "decisions", "asset", "gate", "scene", "addScene", "sceneEnabled", "moveScene", "sceneLook", "content", "resize", "moveCut", "transition", "track", "grid", "gridSettings", "moveAsset", "sceneLock", "addFontFiles", "resource"]
 
     /// A project with a locked S02 between two WIP scenes, a resource and an element in S02.
     func lockedProject() throws -> String {
         let inbox = makeTempDir("states-inbox"); defer { try? FileManager.default.removeItem(at: inbox) }
         let logo = inbox.appendingPathComponent("logo.png"); try Data([0x89, 0x50]).write(to: logo)
         try Assets.add([logo], to: store)
-        try store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
+        _ = try? store.apply(.asset(id: "logo-01", status: .approved, note: nil, licence: nil, scenes: nil))
         try store.apply(.content(scene: "S02", .add(ContentEdit(type: "text", text: "Second line"), after: nil)))
         try validate("S02")
         try store.apply(.sceneLock(ids: ["S02"], locked: true))
@@ -192,7 +193,7 @@ final class SceneStateTests: XCTestCase {
             .scene(id: "S02", SceneEdit(text: "x")), .addScene(id: "", SceneEdit(text: "x")), .sceneEnabled(id: "S02", enabled: false, montage: nil), .moveScene(id: "S02", after: "start", montage: nil),
             .sceneLook(id: "S02", []), .content(scene: "S02", .remove(item: item)), .resize(scene: "S02", duration: 5, ripple: true), .moveCut(before: "S01", after: "S02", at: 3),
             .transition(from: "S02", nil), .track(asset: nil), .grid(bpm: 100, firstBeat: 0), .gridSettings(snap: nil, ripple: true), .moveAsset(id: logo, after: "start"),
-            .sceneLock(ids: ["S02"], locked: false), .addFontFiles(FontPayload(family: "Fredoka", dir: "fredoka", files: []))]
+            .sceneLock(ids: ["S02"], locked: false), .addFontFiles(FontPayload(family: "Fredoka", dir: "fredoka", files: [])), .resource(.addTag(id: "x", tag: "t"))]
         XCTAssertEqual(Set(one.map(kind)), Self.allKinds, "an operation was added: say here what a locked scene does with it")
         // what changes a scene's insides must name that scene; the rest must not
         let touching = Set(one.filter { !store.scenesChanged(by: $0, in: file).isEmpty }.map(kind))

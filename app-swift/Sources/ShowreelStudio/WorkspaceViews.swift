@@ -207,69 +207,6 @@ struct LibraryRow<Content: View>: View {
     }
 }
 
-struct ResourcesLibrary: View {
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button { chooseFiles() } label: { Label("Add files...", systemImage: "plus") }
-                Spacer()
-                ValidateButton(gate: "assets", block: "library")
-            }
-            .padding(10)
-            ZStack {
-                if project.assets.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "square.and.arrow.down").font(.system(size: 30, weight: .light)).foregroundStyle(.secondary)
-                        Text("Drop files here").font(.headline)
-                        Text("Logos, screenshots, photos, fonts, music. Originals are copied into the project and never changed. Nothing is used until you approve it.")
-                            .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    }
-                    .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        let ids = project.assets.map { $0.id }
-                        VStack(spacing: 0) {
-                            ForEach(Array(project.assets.enumerated()), id: \.element.id) { n, a in
-                                VStack(spacing: 0) {
-                                    SlotGap(target: .assetSlot(before: a.id))
-                                    LibraryRow(selected: project.selection == .asset(a.id), action: { project.select(.asset(a.id)) }) {
-                                        HStack(spacing: 6) { Handle(); AssetRowView(row: a) }
-                                    }
-                                    .padding(.vertical, 1)
-                                    .dragSource(.resource(a.id), label: a.name, icon: a.symbolName)
-                                    .dropSlots(before: .assetSlot(before: a.id), after: .assetSlot(before: n + 1 < ids.count ? ids[n + 1] : nil))
-                                    .contextMenu { menu(a) }
-                                }
-                                .transition(Motion.appear)
-                            }
-                            SlotGap(target: .assetSlot(before: nil))
-                        }
-                        .animation(Motion.spring, value: ids)
-                        .padding(.horizontal, 6)
-                    }
-                }
-            }
-            .dropTarget(.resourceList)      // files from the Finder land here: added with the automatic checks
-        }
-    }
-
-    @ViewBuilder private func menu(_ a: AssetRow) -> some View {
-        if a.status == "proposed" || a.status == "placeholder" { Button("Approve") { project.setAssetStatus(a.id, .approved) } }
-        if a.status == "excluded" { Button("Put back") { project.setAssetStatus(a.id, .proposed) } }
-        else { Button("Exclude from the project", role: .destructive) { project.setAssetStatus(a.id, .excluded) } }
-        if let u = AssetFiles.url(a, in: project.root) { Divider(); Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([u]) } }
-    }
-
-    private func chooseFiles() {
-        let p = NSOpenPanel()
-        p.canChooseFiles = true; p.canChooseDirectories = false; p.allowsMultipleSelection = true
-        p.prompt = "Add"
-        if p.runModal() == .OK { project.addAssets(p.urls) }
-    }
-}
-
 extension AssetRow {
     var statusColor: Color {
         switch status {
@@ -291,33 +228,6 @@ extension AssetRow {
     }
 }
 
-struct AssetRowView: View {
-    let row: AssetRow
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        HStack(spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.06))
-                if let img = AssetFiles.thumbnail(row, in: project.root) { Image(nsImage: img).resizable().scaledToFit().padding(2) }
-                else { Image(systemName: row.symbolName).foregroundStyle(.secondary) }
-            }
-            .frame(width: 36, height: 28)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(row.name).font(.callout).lineLimit(1).truncationMode(.middle)
-                Text("\(row.id) · \(row.type)").font(.caption2).foregroundStyle(.secondary)
-                if row.type == "font", let d = FontUse.describe(row, store: project.store) { Text(d).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }
-            }
-            Spacer(minLength: 4)
-            BlockMarker(ref: .asset(row.id))
-            Text(row.status.capitalized).font(.caption2.weight(.semibold)).foregroundStyle(row.statusColor)
-        }
-        .opacity(row.status == "excluded" ? 0.5 : 1)
-        .temporaryVeil(.asset(row.id))
-    }
-}
-
-/// Where an asset's file is, and a thumbnail when it is an image.
 enum AssetFiles {
     private static let imageTypes: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "heic", "svg"]
 

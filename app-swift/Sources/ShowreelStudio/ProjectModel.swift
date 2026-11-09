@@ -216,6 +216,10 @@ final class ProjectModel: ObservableObject {
     @Published var assemblyError: String?
     @Published var generationOffer: PendingGeneration?
     @Published var fontOffer: PendingFontOffer?
+    /// The folded groups of the Resources list (remembered per project), the tag the list is filtered by, and a tag being renamed.
+    @Published var foldMemory: [String]?
+    @Published var tagFilter: String?
+    @Published var renamingTag: String?
     var fontSource: FontSource = GoogleFontsSource()
     private var genTask: Task<Void, Never>?
     weak var chat: ChatModel?
@@ -242,6 +246,7 @@ final class ProjectModel: ObservableObject {
         applyDirectly = s.applyDirectly
         mode = s.mode
         workspaceOpen = !s.setupRequired
+        foldMemory = s.collapsed
         showCopilot = !s.setupRequired || s.mode == StudioSettings.wizard
         decided = s.decided
         layout = s.layout ?? PanelLayout()

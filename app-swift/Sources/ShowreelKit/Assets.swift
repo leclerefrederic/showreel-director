@@ -167,10 +167,13 @@ public enum Assets {
                 let dst = uniqueURL(source, rel)
                 try fm.copyItem(at: url, to: dst)
                 row.original = dst.lastPathComponent
-                if let why = holdReason(url, rel: rel, type: type) {
-                    row.status = "hold"; row.notes = why
+                // the automatic checks, at once, with no AI and no key: a flagged file stays in source/ (no prepared copy) and needs attention
+                var flags = ResourceChecks.flags(dst, rel: rel, type: type)
+                if type == "font", let info = FontInfo.read(dst), info.isOpenLicence, !info.forbidsEmbedding { row.licenceNote = "the font states its own open licence: \(info.licence ?? "")"; flags = [] }
+                if !flags.isEmpty {
+                    row.status = "hold"; row.notes = holdNote(flags, type: type)
                 } else {
-                    if type == "font" { row.notes = "licence not checked by the app: check what it allows before approving" }
+                    row.status = "approved"                    // added by the user: it is theirs to use
                     try fm.createDirectory(at: prepared, withIntermediateDirectories: true)
                     let name = "\(id)-\(slug(rel, type: type)).\(url.pathExtension.lowercased())"
                     try fm.copyItem(at: dst, to: prepared.appendingPathComponent(name))
@@ -184,6 +187,7 @@ public enum Assets {
                 let dst = uniqueURL(source, rel)
                 try fm.copyItem(at: url, to: dst)
                 row.original = dst.lastPathComponent
+                row.status = "approved"
                 row.notes = "not embedded"
             }
             added.append(row)
@@ -200,6 +204,34 @@ public enum Assets {
         let base = (name as NSString).deletingPathExtension, ext = (name as NSString).pathExtension
         while fm.fileExists(atPath: u.path) { i += 1; u = dir.appendingPathComponent(ext.isEmpty ? "\(base)-\(i)" : "\(base)-\(i).\(ext)") }
         return u
+    }
+
+    /// The note of a flagged row. The skill's wording is kept where it has one (a name that suggests real data, a font licence), so that its manifest checks still read it.
+    static func holdNote(_ flags: [ResourceChecks.Flag], type: String) -> String {
+        if flags.contains(where: { $0.kind == .sensitive }) { return "name suggests real or confidential data: decide first (" + ResourceChecks.note(flags) + ")" }
+        return (type == "font" ? "font licence: " : "") + ResourceChecks.note(flags)
+    }
+
+    /// The corrected file takes the place of the one that was flagged: copied into source/, checked again; a clean one is prepared and available, a flagged one still needs attention.
+    public static func replace(_ id: String, with url: URL, in store: ProjectStore) throws {
+        var rows = load(store)
+        guard let i = rows.firstIndex(where: { $0.id == id }) else { throw AgentError.msg("unknown asset \(id)") }
+        let fm = FileManager.default
+        let assets = store.root.appendingPathComponent("assets"), source = assets.appendingPathComponent("source"), prepared = assets.appendingPathComponent("prepared")
+        try fm.createDirectory(at: source, withIntermediateDirectories: true)
+        let dst = uniqueURL(source, url.lastPathComponent)
+        try fm.copyItem(at: url, to: dst)
+        if !rows[i].file.isEmpty, rows[i].file.hasPrefix("prepared/") { try? fm.removeItem(at: assets.appendingPathComponent(rows[i].file)) }
+        rows[i].original = dst.lastPathComponent; rows[i].file = ""; rows[i].origin = "source"; rows[i].licenceNote = ""
+        let flags = ResourceChecks.flags(dst, rel: url.lastPathComponent, type: rows[i].type)
+        if flags.isEmpty {
+            let name = "\(rows[i].type)-\(rows[i].id.split(separator: "-").last.map(String.init) ?? "01")-\(slug(url.lastPathComponent, type: rows[i].type)).\(dst.pathExtension.lowercased())"
+            try fm.createDirectory(at: prepared, withIntermediateDirectories: true)
+            try? fm.removeItem(at: prepared.appendingPathComponent(name))
+            try fm.copyItem(at: dst, to: prepared.appendingPathComponent(name))
+            rows[i].file = "prepared/" + name; rows[i].origin = "prepared"; rows[i].status = "approved"; rows[i].notes = ""
+        } else { rows[i].status = "hold"; rows[i].notes = holdNote(flags, type: rows[i].type) }
+        try save(rows, store)
     }
 
     // MARK: changing a row
@@ -221,8 +253,8 @@ public enum Assets {
             if row.notes.hasPrefix("name suggests") {
                 return "\(row.id) looks like real or confidential data: paint over the sensitive parts in a copy and add it through the skill, or exclude it"
             }
-            if row.notes.hasPrefix("font licence") {
-                return "\(row.id): the font's licence forbids embedding: record what the licence covers through the skill first, or exclude it"
+            if (licence ?? row.licenceNote).trimmingCharacters(in: .whitespacesAndNewlines).lowercased().hasPrefix("unknown") {
+                return "\(row.name): with unknown rights the file stays on Needs attention. Say what you are allowed to do with it, or replace it"
             }
         }
         return nil
@@ -236,6 +268,19 @@ public enum Assets {
         if let why = refusal(for: rows[i], status: status, note: note, licence: licence) { throw AgentError.msg(why) }
         let fm = FileManager.default
         let assets = store.root.appendingPathComponent("assets")
+        if status == .approved, rows[i].status == "hold", !rows[i].original.isEmpty, rows[i].origin != "not copied" {
+            // a flagged file is used only once each flag is settled: the rights answered, the risk accepted with a reason, or the file replaced (a name that suggests real data is never accepted here)
+            let src = assets.appendingPathComponent("source").appendingPathComponent(rows[i].original)
+            let lic = (licence ?? rows[i].licenceNote).trimmingCharacters(in: .whitespacesAndNewlines), why = (note ?? rows[i].notes)
+            for f in ResourceChecks.flags(src, rel: rows[i].original, type: rows[i].type) {
+                switch f.kind {
+                case .sensitive: throw AgentError.msg("\(rows[i].name): \(f.reason). Replace the file with a copy without it, or leave it out")
+                case .quality where !why.hasPrefix("accepted:"): throw AgentError.msg("\(rows[i].name): \(f.reason). Replace the file, or accept the risk and say why")
+                case .rights where lic.isEmpty: throw AgentError.msg("\(rows[i].name): \(f.reason)")
+                default: break
+                }
+            }
+        }
         if let st = status {
             if st == .approved, rows[i].status == "hold", rows[i].file.isEmpty, embed.contains(rows[i].type), rows[i].origin != "not copied" {
                 let src = assets.appendingPathComponent("source").appendingPathComponent(rows[i].original)

@@ -2,6 +2,25 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.6.0 - 2026-11-09
+
+**What's new**
+- **A clearer Resources tab.** Files are grouped by type (Images, Sounds, Music, Fonts), then by state, and a group can be folded; the app remembers it for the project. The file you select is shown in the centre: the image, a sound or a piece of music with its tags, its cover and a small player, or a font as a specimen.
+- **Tags.** Give a resource tags (a logo, a wallpaper...), filter the list by tag, rename a tag everywhere. The tag "placeholder" marks a stand-in, and the release gate lists it as before.
+- **Four states.** Available, Used in S01, S07 (one clickable tag per scene; it is worked out from the scenes, you never type it), Proposal (Clap suggests it: Approve or Decline) and Needs attention.
+- **Automatic checks, no AI and no key.** A file you add is available at once. If something looks wrong (a low resolution, a heavy file, a name that suggests real data, a copyright notice in the file, a font whose licence is unknown or forbids embedding) it waits on Needs attention with the reason in plain words. It cannot be used, Clap cannot see it, and the build refuses it, until you replace it, accept the risk with a short reason, or answer what you are allowed to do with it.
+
+**Changed**
+- The permanent fields "Licence note", "Note" and "Used in scenes" and the status menu are gone. The rights question appears only for a flagged file.
+- A file you add is approved straight away when it is clean (it used to wait for your approval).
+- A font you drop in by hand now needs its licence answered; one added by the Add font files card does not.
+
+**What you need to do**
+- Nothing. Open an older project: its resources show in the new groups, with the states worked out from the manifest. Nothing in the files changes.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.16.0. macOS 13 or later.
+
 ## 0.5.1 - 2026-11-09
 
 **Changed**

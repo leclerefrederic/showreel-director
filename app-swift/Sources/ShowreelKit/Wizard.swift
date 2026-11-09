@@ -81,7 +81,7 @@ public enum Wizard {
             WizardStep(id: "resources.files", area: "resources", title: "Which files should the film be made from?",
                        help: "Logos, screenshots, photos, fonts, music. Drop them in. Nothing is used in the film until you approve it.", kind: .files),
         ]
-        for a in assets where !(a.file.isEmpty && a.status == "proposed" && a.notes == "not embedded") {
+        for a in assets where !(a.file.isEmpty && a.notes == "not embedded") {
             out.append(WizardStep(id: "resources.asset." + a.id, area: "resources", title: "Use \(a.name) in the film?",
                                   help: a.notes.isEmpty ? "Approve it to let the build use it, exclude it to keep it out, or hold it until you know." : a.notes,
                                   kind: .asset(a.id)))

@@ -103,6 +103,8 @@ Left, and why:
 
 ## Resources
 
+- **Built in R1 (2026-11-09).** Groups by type (Images, Sounds, Music, Fonts, Other) then by state with folding remembered per project, the preview of the selected resource in the centre (image, sound or music with its tags, cover and a small player, font specimen), tags (stored in `showreel.json`; "placeholder" is the manifest status shown as a tag), a derived "Used in" with clickable scene tags, the four states, Needs attention from automatic checks with the rights question or an accepted risk, and a flagged file hidden from Clap. The AI analysis of resources at adding (R2) is not built. The notes below are the owner's remarks that led to it.
+
 - Group the resources by type, then by status.
 - Types: Images, Sounds, Music.
 - The central zone is the preview of the selected resource.

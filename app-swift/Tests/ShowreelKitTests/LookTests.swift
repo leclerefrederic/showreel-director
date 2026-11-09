@@ -157,7 +157,7 @@ final class LookTests: XCTestCase {
         XCTAssertEqual(FontLicense.assess(name: "Locked Sans", assets: rows(), store: store).level, .fail, "the file's own flag forbids embedding")
         XCTAssertTrue(FontLicense.assess(name: "Locked Sans", assets: rows(), store: store).message.contains("forbids embedding"))
         XCTAssertEqual(FontLicense.assess(name: "Open Serif", assets: rows(), store: store).level, .tight, "allowed by the flag, but no licence note yet")
-        try store.apply(.asset(id: "font-02", status: nil, note: nil, licence: "web and app embedding included (invoice 12)", scenes: nil))
+        try store.apply(.asset(id: "font-02", status: .approved, note: nil, licence: "web and app embedding included (invoice 12)", scenes: nil))
         XCTAssertEqual(FontLicense.assess(name: "Open Serif", assets: rows(), store: store).level, .ok)
         // the look checks carry the warning to the block
         try store.apply(.decisions([DecisionChange(.titleFont, "Locked Sans"), DecisionChange(.textFont, "Poppins")], title: nil))

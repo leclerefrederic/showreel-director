@@ -72,7 +72,7 @@ final class FontFilesTests: XCTestCase {
         let row = try XCTUnwrap(try Assets.add([f], to: store).first)
         XCTAssertEqual(row.type, "font"); XCTAssertEqual(FontUse.describe(row, store: store), "Fredoka, 700. Used by Look: Titles")
         XCTAssertEqual(FontUse.state("Fredoka", store: store), .previewOnly, "a file that is not approved is not embedded")
-        XCTAssertThrowsError(try store.apply(.asset(id: row.id, status: .approved, note: nil, licence: nil, scenes: nil))) { XCTAssertTrue($0.localizedDescription.contains("needs its licence note")) }
+        XCTAssertThrowsError(try store.apply(.asset(id: row.id, status: .approved, note: nil, licence: nil, scenes: nil))) { XCTAssertTrue($0.localizedDescription.contains("licence note"), $0.localizedDescription) }
         XCTAssertNoThrow(try store.apply(.asset(id: row.id, status: .approved, note: nil, licence: "OFL 1.1, embedding allowed", scenes: nil)), "the licence given with the approval is enough")
         XCTAssertEqual(Assets.load(store).first?.status, "approved")
         // a titles font at 700 is covered by it; the text font is not

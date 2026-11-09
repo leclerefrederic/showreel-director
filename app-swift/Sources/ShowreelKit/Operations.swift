@@ -218,6 +218,8 @@ public enum ProjectOperation: Equatable, Sendable {
     case sceneLock(ids: [String], locked: Bool)
     /// The files of a free font, already downloaded after the user accepted the card: they go to assets/fonts/ and are approved for the reel.
     case addFontFiles(FontPayload)
+    /// A tag on a resource, a tag renamed, or a flagged file replaced by a corrected one.
+    case resource(ResourceOp)
 }
 
 public enum Operations {
@@ -328,6 +330,7 @@ extension ProjectStore {
         case .moveAsset(let id, let after): return try planMoveAsset(id, after: after).card
         case .sceneLock(let ids, let on): return try planLock(ids, locked: on).card
         case .addFontFiles(let p): return try planAddFontFiles(p).card
+        case .resource(let r): return try planResource(r).card
         case .gate(let key, let passed):
             let f = try needShowreel()
             guard ShowreelFile.gateKeys.contains(key) else { throw AgentError.msg("unknown gate \(key)") }
@@ -352,6 +355,7 @@ extension ProjectStore {
 
     /// The files an operation may delete, which the undo log keeps the bytes of (excluding a resource removes its prepared copy).
     private func filesToKeep(_ op: ProjectOperation) -> [String] {
+        if case .resource(.replaceFile(let id, _)) = op, let r = Assets.load(self).first(where: { $0.id == id }), r.file.hasPrefix("prepared/") { return ["assets/" + r.file] }
         guard case .asset(let id, let status, _, _, _) = op, status == .excluded, let r = Assets.load(self).first(where: { $0.id == id }), r.file.hasPrefix("prepared/") else { return [] }
         return ["assets/" + r.file]
     }
@@ -383,6 +387,7 @@ extension ProjectStore {
         case .moveAsset(let id, let after): try planMoveAsset(id, after: after).run()
         case .sceneLock(let ids, let on): try planLock(ids, locked: on).run()
         case .addFontFiles(let p): try planAddFontFiles(p).run()
+        case .resource(let r): try planResource(r).run()
         case .gate(let key, let passed):
             var f = try needShowreel()
             f.gates[key] = passed ? "passed" : "open"
