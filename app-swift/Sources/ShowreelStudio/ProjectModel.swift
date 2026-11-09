@@ -125,7 +125,14 @@ final class ProjectModel: ObservableObject {
     let store: ProjectStore
     @Published var tree: [FileNode] = []
     @Published var tabs: [EditorTab] = []
-    @Published var selection: Selection = .none
+    @Published var selection: Selection = .none {
+        didSet { if case .asset(let id) = selection { applySound(soundRule.selectionChanged(to: id)) } else { applySound(soundRule.selectionChanged(to: nil)) } }
+    }
+    /// Who has the sound of the window: a resource's preview, the assembled film or nobody (the rule is ShowreelKit's `SoundOwnership`).
+    @Published private(set) var soundOwner: SoundOwnership.Owner = .none
+    var soundRule = SoundOwnership()
+    /// The details of resources, read once off the main thread and kept until the file changes.
+    let detailsCache = ResourceDetailsCache()
     @Published var sceneTab: SceneTab = .settings
     /// The content item open in the Content tab (set by selecting its node in the tree).
     @Published var contentItem: String?
@@ -700,15 +707,15 @@ final class ProjectModel: ObservableObject {
     var isPlaying: Bool { playsBuiltFilm ? player.playing : draftPlaying }
 
     func togglePlay() {
-        // Play only ever plays the assembled film, never the draft thumbnails
-        if let u = Availability.play(film).why { react(StatusLine.refused(u.message)); return }
+        // Play only ever plays the assembled film, never the draft thumbnails; and never while a resource is previewed in the centre
+        if let u = filmPlayAvailability.why { react(StatusLine.refused(u.message)); return }
         if film.state == .stale, film.target == film.playable, !player.playing { assembleFilm(thenPlay: true); return }
         if !playsBuiltFilm, !isPlaying {
             selection = .none; viewerShowsDraft = false; centerMode = .viewer
             showToast("The assembled film is in the viewer now: press Play again.")
             return
         }
-        if playsBuiltFilm { player.toggle(); return }
+        if playsBuiltFilm { if !player.playing { applySound(soundRule.startFilm()); soundOwner = soundRule.owner } else { soundRule.stopped(.film); soundOwner = soundRule.owner }; player.toggle(); return }
         if draftPlaying { stopDraft(); return }
         guard let f = showreel else { return }
         let end = TimelineNav.filmLength(f)
@@ -1238,6 +1245,7 @@ extension ProjectModel {
                 react(StatusLine.assembled(r))
                 if thenPlay {
                     for _ in 0..<60 where !player.ready { try? await Task.sleep(nanoseconds: 100_000_000) }
+                    applySound(soundRule.startFilm())
                     player.play()
                 }
             } else {
@@ -1340,4 +1348,29 @@ extension ProjectModel {
         showCopilot = false
         refresh()
     }
+}
+
+
+// MARK: the sound of the window
+
+extension ProjectModel {
+    /// Whether a resource is shown in the centre (the preview, with its own player): the film's play controls then stand aside.
+    var isPreviewingResource: Bool {
+        var selected: String?
+        if case .asset(let id) = selection { selected = id }
+        if case .resource = Resources.viewerSubject(designBoardOpen: showProjectSettings && settingsTab == .look, resourcesTab: libraryTab == .resources, selectedResource: selected) { return centerMode == .viewer }
+        return false
+    }
+
+    /// What the film's Play controls can do now.
+    var filmPlayAvailability: Availability { Availability.playFilm(film, previewingResource: isPreviewingResource) }
+
+    func applySound(_ effects: [SoundOwnership.Effect]) {
+        for e in effects { if case .stopFilm = e { player.pause() } }
+        soundOwner = soundRule.owner
+    }
+
+    /// The preview of a resource starts: the film stops. Returns false for nothing; the preview reads `soundOwner` to know when to stop.
+    func previewStarted(_ id: String) { applySound(soundRule.startPreview(id)) }
+    func previewStopped(_ id: String) { soundRule.stopped(.resource(id)); soundOwner = soundRule.owner }
 }

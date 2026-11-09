@@ -4,7 +4,7 @@ import ImageIO
 
 /// What a sound file says about itself, read with no AI and no key (the system's audio file API): tags, the cover image, the length.
 public struct AudioMetadata: Equatable, Sendable {
-    public var title: String?, artist: String?, album: String?, copyright: String?
+    public var title: String?, artist: String?, album: String?, copyright: String?, year: String?, genre: String?
     public var duration: Double?
     public var artwork: Data?
 
@@ -17,6 +17,7 @@ public struct AudioMetadata: Equatable, Sendable {
         var dict: Unmanaged<CFDictionary>?
         if AudioFileGetProperty(f, kAudioFilePropertyInfoDictionary, &size, &dict) == noErr, let d = dict?.takeRetainedValue() as? [String: Any] {
             m.title = d["title"] as? String; m.artist = d["artist"] as? String; m.album = d["album"] as? String; m.copyright = d["copyright"] as? String
+            m.year = d["year"] as? String; m.genre = d["genre"] as? String
             if let s = d["approximate duration in seconds"] as? String, let n = Double(s) { m.duration = n } else if let n = d["approximate duration in seconds"] as? Double { m.duration = n }
         }
         var asize: UInt32 = 0

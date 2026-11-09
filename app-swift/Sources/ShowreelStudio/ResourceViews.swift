@@ -173,7 +173,7 @@ struct AssetInspector: View {
                 if state == .needsAttention { attention(row) }
                 if row.type == "font", let d = FontUse.describe(row, store: project.store) { Text(d).font(.callout).foregroundStyle(.secondary) }
                 tags(row)
-                if !row.notes.isEmpty, state != .needsAttention { Text(row.notes).font(.caption).foregroundStyle(.secondary) }
+                DetailsSection(row: row)
                 if state == .declined { Button("Put back") { project.setAssetStatus(row.id, .approved) }.help("It becomes available again") }
             }
             .readOnlyWhenBlocked(.asset(id))
@@ -286,33 +286,61 @@ struct AttentionBox: View {
 
 // MARK: the preview in the centre
 
-/// The selected resource, in the viewer: the image, the sound or the music with its tags, its cover and a small player, the font as a specimen.
+extension ProjectModel {
+    /// The details of a resource, read off the main thread (kept while the file does not change).
+    func loadDetails(_ row: AssetRow) async -> ResourceDetails {
+        let store = self.store, f = self.showreel, cache = detailsCache
+        let key = ResourceDetailsReader.identity(row, store: store) + "|" + row.status + "|" + row.licenceNote + "|" + row.notes + "|" + (f?.scenes.map { $0.id + ($0.content.contains { $0.resource == row.id } ? "*" : "") }.joined() ?? "")
+        if let d = cache.cached(key) { return d }
+        return await Task.detached(priority: .userInitiated) { cache.details(key) { ResourceDetailsReader.read(row, store: store, file: f) } }.value
+    }
+}
+
+/// The selected resource, in the viewer: the image, the sound or the music with its tags, its cover and a small player, the font as a specimen. It is made again, with a clean
+/// state and its own player, for every resource (its identity is the resource and its file), so what is shown and heard is always the selected one.
 struct ResourcePreview: View {
     let id: String
     @EnvironmentObject var project: ProjectModel
 
     var body: some View {
-        if let a = project.assets.first(where: { $0.id == id }), let url = AssetFiles.url(a, in: project.root) {
-            VStack(spacing: 12) {
-                PreviewTag(text: "Preview of the resource")
-                switch a.group {
-                case .images: image(a, url)
-                case .music, .sounds: AudioPreview(url: url, name: a.name)
-                case .fonts: FontSpecimen(row: a, url: url)
-                case .other: Image(systemName: a.symbolName).font(.system(size: 60, weight: .light)).foregroundStyle(.secondary)
-                }
-                Text(a.name).font(.headline)
-                Text(a.state(in: project.showreel).title).font(.callout).foregroundStyle(.secondary)
-            }
-            .padding(20).frame(maxWidth: .infinity, maxHeight: .infinity)
+        if let a = project.assets.first(where: { $0.id == id }), let url = ResourceDetailsReader.fileURL(a, store: project.store) {
+            let identity = ResourceDetailsReader.identity(a, store: project.store)
+            ResourcePreviewBody(row: a, url: url).id(identity)
         } else {
-            Text("This resource has no file to show.").foregroundStyle(.secondary)
+            Text("This resource has no file to show.").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
+}
 
-    @ViewBuilder private func image(_ a: AssetRow, _ url: URL) -> some View {
+struct ResourcePreviewBody: View {
+    let row: AssetRow
+    let url: URL
+    @EnvironmentObject var project: ProjectModel
+    @State private var details: ResourceDetails?
+
+    var body: some View {
+        VStack(spacing: 12) {
+            PreviewTag(text: "Preview of the resource")
+            switch row.group {
+            case .images: image
+            case .music, .sounds: AudioPreview(resource: row.id, url: url)
+            case .fonts: FontSpecimen(row: row, url: url)
+            case .other: Image(systemName: row.symbolName).font(.system(size: 60, weight: .light)).foregroundStyle(.secondary)
+            }
+            Text(row.name).font(.headline)
+            Text(row.state(in: project.showreel).title).font(.callout).foregroundStyle(.secondary)
+            if let d = details {
+                if !d.summary.isEmpty { Text(d.summary).font(.callout.monospacedDigit()).foregroundStyle(.secondary).textSelection(.enabled) }
+                ForEach(d.warnings, id: \.self) { Label($0, systemImage: "location.fill").font(.caption).foregroundStyle(.orange) }
+            } else { HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Reading the file\u{2026}").font(.caption).foregroundStyle(.secondary) } }
+        }
+        .padding(20).frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task { details = await project.loadDetails(row) }
+    }
+
+    @ViewBuilder private var image: some View {
         if let img = NSImage(contentsOf: url) { Image(nsImage: img).resizable().scaledToFit().frame(maxWidth: 760, maxHeight: 428).clipShape(RoundedRectangle(cornerRadius: 8)) }
-        else { Image(systemName: a.symbolName).font(.system(size: 60, weight: .light)).foregroundStyle(.secondary) }
+        else { Image(systemName: row.symbolName).font(.system(size: 60, weight: .light)).foregroundStyle(.secondary) }
     }
 }
 
@@ -322,44 +350,78 @@ final class SimplePlayer: ObservableObject {
     @Published var playing = false
     @Published var time = 0.0
     @Published var duration = 0.0
-    func load(_ url: URL) { player = try? AVAudioPlayer(contentsOf: url); duration = player?.duration ?? 0; player?.prepareToPlay() }
+    /// The file could not be opened for playing here.
+    @Published var failed = false
+    var onStop: (() -> Void)?
+
+    func load(_ url: URL) {
+        stop()
+        player = try? AVAudioPlayer(contentsOf: url)
+        failed = player == nil
+        duration = player?.duration ?? 0; time = 0
+        player?.prepareToPlay()
+    }
     func toggle() {
         guard let p = player else { return }
-        if p.isPlaying { p.pause(); playing = false; timer?.invalidate() }
-        else { p.play(); playing = true; timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self, let p = self.player else { return }
-            self.time = p.currentTime; if !p.isPlaying { self.playing = false; self.timer?.invalidate() } } }
+        if p.isPlaying { pause() }
+        else {
+            p.play(); playing = true
+            timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                guard let self = self, let p = self.player else { return }
+                self.time = p.currentTime
+                if !p.isPlaying { self.pause() }
+            }
+        }
     }
+    private func pause() { player?.pause(); timer?.invalidate(); timer = nil; if playing { playing = false; onStop?() } }
     func seek(_ t: Double) { player?.currentTime = t; time = t }
-    func stop() { player?.stop(); timer?.invalidate(); playing = false }
-    deinit { timer?.invalidate() }
+    /// Stops, goes back to the start and lets go of the file.
+    func stop() {
+        player?.stop(); player?.currentTime = 0; timer?.invalidate(); timer = nil
+        let was = playing; playing = false; time = 0
+        if was { onStop?() }
+    }
+    deinit { timer?.invalidate(); player?.stop() }
 }
 
 struct AudioPreview: View {
+    let resource: String
     let url: URL
-    let name: String
+    @EnvironmentObject var project: ProjectModel
     @StateObject private var player = SimplePlayer()
     @State private var meta: AudioMetadata?
+    @State private var loading = true
 
     var body: some View {
         VStack(spacing: 12) {
             if let d = meta?.artwork, let img = NSImage(data: d) { Image(nsImage: img).resizable().scaledToFit().frame(width: 220, height: 220).clipShape(RoundedRectangle(cornerRadius: 10)) }
             else { Image(systemName: "music.note").font(.system(size: 70, weight: .light)).foregroundStyle(.secondary).frame(width: 220, height: 160) }
             VStack(spacing: 2) {
-                if let t = meta?.title, !t.isEmpty { Text(t).font(.title3.weight(.semibold)) }
-                if let a = meta?.artist, !a.isEmpty { Text(a).foregroundStyle(.secondary) }
-                if let al = meta?.album, !al.isEmpty { Text(al).font(.caption).foregroundStyle(.secondary) }
-                if meta?.title == nil && meta?.artist == nil { Text("No tags in this file.").font(.caption).foregroundStyle(.secondary) }
+                if loading { HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Loading\u{2026}").font(.caption).foregroundStyle(.secondary) } }
+                else {
+                    if let t = meta?.title, !t.isEmpty { Text(t).font(.title3.weight(.semibold)) }
+                    if let a = meta?.artist, !a.isEmpty { Text(a).foregroundStyle(.secondary) }
+                    if let al = meta?.album, !al.isEmpty { Text(al).font(.caption).foregroundStyle(.secondary) }
+                    if meta?.title == nil && meta?.artist == nil { Text("No tags in this file.").font(.caption).foregroundStyle(.secondary) }
+                }
             }
             HStack(spacing: 10) {
-                Button { player.toggle() } label: { Image(systemName: player.playing ? "pause.fill" : "play.fill").frame(width: 18) }
-                Slider(value: Binding(get: { player.time }, set: { player.seek($0) }), in: 0...max(player.duration, 0.1)).frame(maxWidth: 360)
-                Text(String(format: "%.0f / %.0f s", player.time, player.duration)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                Button { player.toggle(); if player.playing { project.previewStarted(resource) } } label: { Image(systemName: player.playing ? "pause.fill" : "play.fill").frame(width: 18) }
+                    .disabledWithReason(loading ? "Loading the file" : player.failed ? "This file cannot be played here" : nil)
+                Slider(value: Binding(get: { player.time }, set: { player.seek($0) }), in: 0...max(player.duration, 0.1)).frame(maxWidth: 360).disabled(loading || player.failed)
+                Text(player.duration > 0 ? "\(DetailFormat.duration(player.time)) / \(DetailFormat.duration(player.duration))" : "0:00").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
             }
         }
-        .onAppear { meta = AudioMetadata.read(url); player.load(url) }
-        .onDisappear { player.stop() }
-        .onChange(of: url) { _ in player.stop(); meta = AudioMetadata.read(url); player.load(url) }
+        .task {
+            loading = true
+            let u = url
+            meta = await Task.detached { AudioMetadata.read(u) }.value
+            player.onStop = { [resource] in project.previewStopped(resource) }
+            player.load(u)
+            loading = false
+        }
+        .onChange(of: project.soundOwner) { o in if o != .resource(resource), player.playing { player.stop() } }      // the film started, or another preview did
+        .onDisappear { player.stop(); project.previewStopped(resource) }
     }
 }
 
@@ -376,7 +438,42 @@ struct FontSpecimen: View {
             Text("A title in this font").font(.custom(family, size: 40).weight(.bold))
             Text("A line of text reads like this, at the size a viewer sees it.").font(.custom(family, size: 18))
             if let i = info { Text(i.family + " \u{00B7} weight " + (i.weightRange.map { "\($0.lowerBound) to \($0.upperBound)" } ?? "\(i.weight)") + (i.italic ? " \u{00B7} italic" : "")).font(.caption).foregroundStyle(.secondary) }
-            if let d = FontUse.describe(row, store: project.store), info == nil { Text(d).font(.caption).foregroundStyle(.secondary) }
         }
+    }
+}
+
+/// The Details section of the inspector: what the file says about itself, in groups of label and value. Right-click copies a value.
+struct DetailsSection: View {
+    let row: AssetRow
+    @EnvironmentObject var project: ProjectModel
+    @State private var details: ResourceDetails?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Details").font(.headline)
+                Spacer()
+                if let u = ResourceDetailsReader.fileURL(row, store: project.store) { Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([u]) }.buttonStyle(.borderless).font(.caption) }
+            }
+            if let d = details {
+                ForEach(d.warnings, id: \.self) { Label($0, systemImage: "location.fill").font(.callout).foregroundStyle(.orange) }
+                ForEach(d.groups, id: \.title) { g in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(g.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 10, verticalSpacing: 3) {
+                            ForEach(g.rows, id: \.label) { r in
+                                GridRow {
+                                    Text(r.label).font(.caption).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
+                                    Text(r.value).font(.caption).foregroundStyle(r.emphasis ? Color.orange : .primary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                                        .contextMenu { Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(r.value, forType: .string) } }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else { HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Reading the file\u{2026}").font(.caption).foregroundStyle(.secondary) } }
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .task(id: ResourceDetailsReader.identity(row, store: project.store) + row.status + row.licenceNote + row.notes) { details = await project.loadDetails(row) }
     }
 }

@@ -128,7 +128,7 @@ struct StripToolbar: View {
                     .background(Color.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
             .buttonStyle(.plain).help(project.isPlaying ? "Pause (space)" : "Play the assembled film from the playhead (space, while the pointer is over the strip)")
-            .disabledWithReason(Availability.play(project.film).reasonText, way: Availability.play(project.film).wayText)
+            .disabledWithReason(project.filmPlayAvailability.reasonText, way: project.filmPlayAvailability.wayText)
             Button { project.stepScene(by: 1) } label: { Image(systemName: "forward.end.fill") }.buttonStyle(.borderless).help("Next scene (right arrow)")
             Text(TimelineNav.timecode(project.playhead)).font(.system(size: 13, weight: .semibold, design: .monospaced)).foregroundStyle(StripColor.text)
                 .frame(minWidth: 52, alignment: .trailing)

@@ -13,6 +13,10 @@ public struct FontInfo: Equatable, Sendable {
     public let licence: String?
     /// The embedding flag of the OS/2 table (fsType): the font's own say on whether it may be embedded in a document.
     public let embeddingFlags: Int
+    /// The number of glyphs (maxp), 0 when the file does not say.
+    public let glyphCount: Int
+    /// "TrueType" or "OpenType (CFF)".
+    public let format: String
     /// Restricted licence embedding (bit 1): the font says it must not be embedded.
     public var forbidsEmbedding: Bool { embeddingFlags & 0x0002 != 0 }
     /// The licence is the open one: the font says so itself.
@@ -36,6 +40,8 @@ public struct FontInfo: Equatable, Sendable {
             guard let off = u32(d, r + 8), let len = u32(d, r + 12), r + 16 <= d.count else { return nil }
             tables[String(decoding: d[r..<r + 4], as: UTF8.self)] = (off, len)
         }
+        let glyphs = tables["maxp"].flatMap { u16(d, $0.0 + 4) } ?? 0
+        let format = tag == 0x4F54544F ? "OpenType (CFF)" : "TrueType"
         guard let (no, _) = tables["name"], let count = u16(d, no + 2), let so = u16(d, no + 4) else { return nil }
         var names: [Int: String] = [:]
         for i in 0..<count {
@@ -62,6 +68,6 @@ public struct FontInfo: Equatable, Sendable {
                 if String(decoding: d[a..<a + 4], as: UTF8.self) == "wght", let lo = u32(d, a + 4), let hi = u32(d, a + 12) { range = (lo >> 16)...(hi >> 16) }
             }
         }
-        return FontInfo(family: family, style: names[17] ?? names[2] ?? "", weight: weight, italic: italic, weightRange: range, licence: names[13], embeddingFlags: fsType)
+        return FontInfo(family: family, style: names[17] ?? names[2] ?? "", weight: weight, italic: italic, weightRange: range, licence: names[13], embeddingFlags: fsType, glyphCount: glyphs, format: format)
     }
 }

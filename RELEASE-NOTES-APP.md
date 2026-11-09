@@ -2,6 +2,20 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.7.0 - 2026-11-09
+
+**What's new**
+- **Details of a resource, by type.** Under the preview in the centre, one line says what matters (for example "1920 × 1080 · PNG · 245 KB", "3:42 · MP3 · 320 kbps · stereo · 8.4 MB", "Fredoka · 300 to 700 · TTF · 189 KB"). The inspector has a Details section in groups (File, Media, Tags, Rights): for an image the dimensions, aspect ratio, resolution, colour profile and transparency, and a warning when it contains location data; for music and sounds the duration, format, bit rate, sample rate, channels and tags (title, artist, album, year, genre, copyright, cover size), with the tempo when the project already analysed that file; for a font the family, weight, italic, glyph count, format, embedding flag and declared licence; for any file its size, folder, dates and state, with the reason it needs attention and the rights answer. Right-click a value to copy it. Reading is done in the background and kept until the file changes.
+
+**Fixed**
+- The preview of a music or sound resource plays the file you selected, starts clean (position, tags and cover) whenever you select another resource, and no longer mixes with the playback of the film: only one of them has the sound at a time, and the film's play controls say "Previewing a resource" until you select a scene.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.16.0. macOS 13 or later.
+
 ## 0.6.0 - 2026-11-09
 
 **What's new**
