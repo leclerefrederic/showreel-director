@@ -7,7 +7,7 @@ public enum Composition {
     /// attention and an excluded one cannot be an element: they stay linked, and show as such.
     public static func gaps(_ f: ShowreelFile, _ rows: [AssetRow]) -> [(scene: Int, asset: AssetRow, type: String)] {
         var out: [(scene: Int, asset: AssetRow, type: String)] = []
-        for (si, s) in f.scenes.enumerated() where !s.archived {
+        for (si, s) in f.scenes.enumerated() where !s.archived && !s.isLocked {          // a locked scene is never completed behind its back
             for r in rows where r.sceneIDs.contains(s.id) && r.status != "excluded" && r.status != "hold" {
                 guard let t = ContentRules.elementType(for: r.type), !s.content.contains(where: { $0.resource == r.id }) else { continue }
                 out.append((si, r, t))

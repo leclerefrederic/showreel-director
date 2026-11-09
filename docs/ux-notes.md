@@ -30,6 +30,7 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 - Panels (library, inspector, storyboard strip) must resize freely with no imposed maximum, only a sensible minimum; sizes remembered per project. Requested by the owner and added to the W3a pass as a separate item.
 
 - The Library window opens at launch by default (built in phase T).
+- History belongs to Clap: memory, sessions and journal are reached from the Clap tab, not from project settings. Le titre de l'onglet est "Ask Clap" avec une icône.
 
 ## Library, Scenes tab
 
@@ -127,3 +128,4 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 ## Build and preview
 
 ## Deliver
+

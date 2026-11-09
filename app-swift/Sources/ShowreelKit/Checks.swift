@@ -285,14 +285,15 @@ public enum Checks {
         let live = SceneRules.live(f)
         if live.isEmpty { return [r("any", "Scenes", .pending, "No scene to review yet.")] }
         var out = live.map { s -> CheckResult in
-            switch s.status {
-            case "ok": return r(s.id, "\(s.id) reviewed", .ok, "OK" + (s.note.isEmpty ? "" : ": " + s.note))
-            case "modify": return r(s.id, "\(s.id) reviewed", .tight, "to modify" + (s.note.isEmpty ? "" : ": " + s.note))
-            default: return r(s.id, "\(s.id) reviewed", .pending, "not reviewed yet")
+            switch s.state {
+            case .validated: return r(s.id, "\(s.id) reviewed", .ok, "Validated" + (s.note.isEmpty ? "" : ": " + s.note))
+            case .locked: return r(s.id, "\(s.id) reviewed", .ok, "Locked" + (s.note.isEmpty ? "" : ": " + s.note))
+            case .wip where s.toModify: return r(s.id, "\(s.id) reviewed", .tight, "to modify: " + s.note)
+            default: return r(s.id, "\(s.id) reviewed", .pending, "WIP: not validated yet")
             }
         }
-        let left = live.filter { $0.status != "ok" }
-        out.insert(left.isEmpty ? r("all", "Every scene on is OK", .ok, "ready for the Go") : r("all", "Every scene on is OK", .pending, "\(left.count) of \(live.count) still to decide"), at: 0)
+        let left = live.filter { !$0.state.isReviewed }
+        out.insert(left.isEmpty ? r("all", "Every scene on is Validated", .ok, "ready for the Go") : r("all", "Every scene on is Validated", .pending, "\(left.count) of \(live.count) still to decide"), at: 0)
         return out
     }
 

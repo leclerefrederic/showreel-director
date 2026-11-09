@@ -210,6 +210,8 @@ public enum ProjectOperation: Equatable, Sendable {
     case gridSettings(snap: String?, ripple: Bool?)
     /// Puts a resource after another one in the resources list ("start" for first). Only the order of the list changes.
     case moveAsset(id: String, after: String)
+    /// Locks Validated scenes, or unlocks Locked ones (back to Validated), as one card.
+    case sceneLock(ids: [String], locked: Bool)
 }
 
 public enum Operations {
@@ -228,7 +230,7 @@ public enum Operations {
         for s in b.scenes where !ida.contains(s.id) { out.append(Change("Scene \(s.id)", "(none)", s.text.isEmpty ? "added" : s.text)) }
         for s in b.scenes {
             guard let o = a.scenes.first(where: { $0.id == s.id }), o != s else { continue }
-            if o.status != s.status { out.append(Change("Scene \(s.id) status", o.status, s.status)) }
+            if o.status != s.status { out.append(Change("Scene \(s.id) status", o.state.title, s.state.title)) }
             if o.archived != s.archived { out.append(Change("Scene \(s.id) archive", o.archived ? "archived" : "in the library", s.archived ? "archived" : "in the library")) }
             if o.text != s.text { out.append(Change("Text of \(s.id)", shown(o.text), shown(s.text))) }
             if o.duration != s.duration || o.visual != s.visual || o.feeling != s.feeling || o.handoff != s.handoff {
@@ -262,6 +264,7 @@ extension ProjectStore {
 
     /// What the operation would change, without changing anything. Throws when it is not allowed.
     public func plan(_ op: ProjectOperation) throws -> OperationCard {
+        if let why = lockRefusal(op) { throw AgentError.msg(why) }
         switch op {
         case .parameter(let key, let value):
             let f = try needShowreel()
@@ -307,6 +310,7 @@ extension ProjectStore {
         case .grid(let b, let s): return try planGrid(bpm: b, firstBeat: s).card
         case .gridSettings(let s, let r): return try planGridSettings(snap: s, ripple: r).card
         case .moveAsset(let id, let after): return try planMoveAsset(id, after: after).card
+        case .sceneLock(let ids, let on): return try planLock(ids, locked: on).card
         case .gate(let key, let passed):
             let f = try needShowreel()
             guard ShowreelFile.gateKeys.contains(key) else { throw AgentError.msg("unknown gate \(key)") }
@@ -360,6 +364,7 @@ extension ProjectStore {
         case .grid(let b, let s): try planGrid(bpm: b, firstBeat: s).run()
         case .gridSettings(let s, let r): try planGridSettings(snap: s, ripple: r).run()
         case .moveAsset(let id, let after): try planMoveAsset(id, after: after).run()
+        case .sceneLock(let ids, let on): try planLock(ids, locked: on).run()
         case .gate(let key, let passed):
             var f = try needShowreel()
             f.gates[key] = passed ? "passed" : "open"

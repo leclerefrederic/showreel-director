@@ -12,7 +12,7 @@ public struct SceneEdit: Equatable, Sendable {
     public var handoff: String?
     public var inCuts: String?
     public var note: String?
-    public var status: String?        // open, ok, modify, ditched (ditched archives the scene and switches it off everywhere)
+    public var status: String?        // wip, validated, ditched (the old open, ok, modify are read too; ditched archives the scene and switches it off everywhere)
     public var archived: Bool?        // true archives (the "delete" of the library); false brings it back, still switched off
     public var controlLevel: String?  // auto, guided, precise; empty: the project's
     public var assets: String?        // ids of the linked assets, comma-separated (the manifest's scene column)
@@ -107,7 +107,7 @@ extension ShowreelFile {
 }
 
 public enum SceneRules {
-    public static let statuses = ["open", "ok", "modify", "ditched"]
+    public static let statuses = SceneState.allCases.map { $0.rawValue }
 
     /// The next free ID: one past the highest number ever used, archived scenes included. IDs are never reused or renumbered.
     public static func nextID(_ scenes: [ShowreelFile.Scene]) -> String {
@@ -159,12 +159,13 @@ public enum SceneRules {
         set("Handoff", e.handoff, s.handoff) { s.handoff = $0 }
         set("In cuts", e.inCuts, s.inCuts) { s.inCuts = $0 }
         set("Note", e.note, s.note) { s.note = $0 }
-        if let st = e.status {
-            guard statuses.contains(st) else { throw AgentError.msg("unknown status \"\(st)\": use open, ok, modify or ditched") }
-            if st != s.status { ch.append(Change("Status", s.status, st)); s.status = st }
-        } else if s.status == "ok", ch.contains(where: { filmFields.contains($0.label) }) {
-            // a reviewed scene that changes needs a new review
-            ch.append(Change("Status", "ok", "open")); s.status = "open"
+        if let raw = e.status {
+            guard let st = SceneState.parse(raw) else { throw AgentError.msg("unknown state \"\(raw)\": use wip, validated or ditched") }
+            guard st != .locked else { throw AgentError.msg("a scene is locked with the lock operation, once it is validated") }
+            if st != s.state { ch.append(Change("State", s.state.title, st.title)); s.status = st.rawValue }
+        } else if s.state == .validated, ch.contains(where: { filmFields.contains($0.label) }) {
+            // a validated scene that changes needs a new review
+            ch.append(Change("State", SceneState.validated.title, SceneState.wip.title)); s.status = SceneState.wip.rawValue
         }
         return ch
     }
@@ -273,7 +274,7 @@ extension ProjectStore {
         var changes = changes
         var out = g
         var reopen = false
-        if f.gates["review"] == "passed", extraFilmChange || SceneRules.signature(f) != SceneRules.signature(g) || g.film.contains(where: { $0.status != "ok" }) {
+        if f.gates["review"] == "passed", extraFilmChange || SceneRules.signature(f) != SceneRules.signature(g) || g.film.contains(where: { !$0.state.isReviewed }) {
             reopen = true
             changes.append(Change("Go", "given", "to be given again"))
         }
@@ -341,8 +342,8 @@ extension ProjectStore {
         let live = SceneRules.live(f)
         if live.isEmpty { return "there is no scene on in the storyboard yet" }
         if f.gates["storyboard"] != "passed" { return "the storyboard is not validated yet" }
-        let notOK = live.filter { $0.status != "ok" }
-        if !notOK.isEmpty { return "every scene must be OK first (\(notOK.map { $0.id }.joined(separator: ", ")) \(notOK.count == 1 ? "is" : "are") not)" }
+        let notOK = live.filter { !$0.state.isReviewed }
+        if !notOK.isEmpty { return "every scene must be Validated first (\(notOK.map { $0.id }.joined(separator: ", ")) \(notOK.count == 1 ? "is" : "are") not)" }
         return nil
     }
 }

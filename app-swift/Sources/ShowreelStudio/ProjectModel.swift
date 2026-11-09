@@ -90,9 +90,9 @@ enum LibraryTab: String, CaseIterable, Identifiable {
     var title: String { rawValue.capitalized }
 }
 
-/// The two parts of the project settings panel.
+/// The two parts of the project settings panel (the history belongs to Clap: see `ClapSection`).
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case project, look, history
+    case project, look
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
 }
@@ -100,7 +100,13 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 enum InspectorTab: String, CaseIterable, Identifiable {
     case inspector, copilot, files
     var id: String { rawValue }
-    var title: String { rawValue.capitalized }
+    var title: String { self == .copilot ? ClapMark.title : rawValue.capitalized }
+}
+
+/// The four parts of the Ask Clap tab: the conversation, then what Clap keeps of the project (memory, sessions, journal).
+enum ClapSection: String, CaseIterable, Identifiable {
+    case conversation = "Conversation", memory = "Mémoire", sessions = "Séances", journal = "Journal"
+    var id: String { rawValue }
 }
 
 /// What the centre of the workspace shows: the selection, or the build and its player.
@@ -156,6 +162,7 @@ final class ProjectModel: ObservableObject {
     @Published var lookSection: LookSection?
     @Published var showCatalogue = false
     @Published var inspectorTab: InspectorTab = .inspector
+    @Published var clapSection: ClapSection = .conversation
     @Published var centerMode: CenterMode = .viewer
     @Published var lookKind: LookKind = .looks
     /// Beginner mode walks the wizard first and ends in the workspace; Expert opens the workspace at once.
@@ -198,7 +205,7 @@ final class ProjectModel: ObservableObject {
     @Published private(set) var outdated = false
     @Published var updateBannerDismissed = false
     @Published var showUpdateSheet = false
-    /// What the project remembers, what was done and the sessions: loaded for the History tab of the project settings.
+    /// What the project remembers, what was done and the sessions: loaded for the history parts of the Ask Clap tab.
     @Published private(set) var memory: [MemoryEntry] = []
     @Published private(set) var journalEntries: [JournalEntry] = []
     @Published private(set) var sessionRows: [SessionRow] = []
@@ -273,10 +280,10 @@ final class ProjectModel: ObservableObject {
         if store.needsSetup, mode == StudioSettings.beginner, let f = showreel, ProjectSetup.isComplete(f) { try? store.finishSetup() }
         needsSetup = store.needsSetup
         if fitAll, viewportWidth > 1 { fitFilm(remember: false) }          // the film got longer or shorter: the strip still shows all of it
-        if showProjectSettings && settingsTab == .history { reloadHistory() }
+        if inspectorTab == .copilot && clapSection != .conversation { reloadHistory() }
     }
 
-    /// Reads the journal, the memory and the sessions again (when the History tab is in front, and when Clap writes to the memory).
+    /// Reads the journal, the memory and the sessions again (when a history part of the Ask Clap tab is in front, and when Clap writes to the memory).
     func reloadHistory() {
         memory = store.memoryEntries(); journalEntries = store.journal.entries(); sessionRows = Sessions.rows(store)
     }
@@ -326,7 +333,7 @@ final class ProjectModel: ObservableObject {
     private func finishGeneration(_ v: String) {
         generating = false
         guard Versions.list(store).contains(v) else {
-            error = "The copilot did not write \(v) (project.json and main.js). See what it said in the chat, then try again."
+            error = "Clap did not write \(v) (project.json and main.js). See what it said in the chat, then try again."
             refresh(); return
         }
         runChecks(v)
@@ -556,7 +563,7 @@ final class ProjectModel: ObservableObject {
         if selection.sceneID == id { selection = .none }
     }
 
-    func restoreScene(_ id: String) { perform(.scene(id: id, SceneEdit(status: "open", archived: false))) }
+    func restoreScene(_ id: String) { perform(.scene(id: id, SceneEdit(status: "wip", archived: false))) }
 
     // MARK: the timeline (phase S): the rules are ShowreelKit's `TimelineScale` and `TimelineNav`
 

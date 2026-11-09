@@ -3,8 +3,6 @@ import SwiftUI
 
 extension ShowreelFile.Scene {
     var durationLabel: String { duration.map { "\(ProjectDocs.seconds($0)) s" } ?? "no duration" }
-    var statusColor: Color { switch status { case "ok": return .green; case "modify": return .orange; case "ditched": return .secondary; default: return .blue } }
-    var statusSymbol: String { switch status { case "ok": return "checkmark.circle.fill"; case "modify": return "pencil.circle.fill"; case "ditched": return "xmark.circle"; default: return "circle" } }
 }
 
 /// The form of one scene of the library, one tab at a time (all of it when `tab` is nil, as in the wizard). Typed here, recorded with Save as
@@ -66,10 +64,11 @@ struct SceneForm: View {
                     }
                 }
                 HStack {
-                    Button("Save scene") { if let e = edit { project.perform(.scene(id: id, e)) } }.buttonStyle(.borderedProminent).disabled(edit == nil)
+                    Button("Save scene") { if let e = edit { project.perform(.scene(id: id, e)) } }.buttonStyle(.borderedProminent).disabled(edit == nil || s.isLocked)
                     Button("Revert") { load(force: true) }.disabled(edit == nil)
                 }
-                if s.status == "ok", shows(.settings) || shows(.composition) { Text("Changing the text or the duration sends this scene back to review.").font(.caption).foregroundStyle(.secondary) }
+                if s.isLocked { Label("Locked: nothing in this scene can change. Unlock it from its badge or the Review block.", systemImage: "lock.fill").font(.caption).foregroundStyle(.secondary) }
+                else if s.state == .validated, shows(.settings) || shows(.composition) { Text("Changing the text or the duration sends this scene back to WIP.").font(.caption).foregroundStyle(.secondary) }
             }
             .onAppear { load(force: false) }
             .onChange(of: project.showreel) { _ in load(force: false) }
@@ -117,7 +116,7 @@ struct SceneListEditor: View {
             HStack {
                 Button { if project.addScene(), let n = project.showreel?.scenes.last { selected = n.id } } label: { Label("Add scene", systemImage: "plus") }
                 Button { draft() } label: { Label("Draft with AI", systemImage: "sparkles") }
-                    .help("Optional. The copilot proposes scenes as cards you accept or refuse.")
+                    .help("Optional. Clap proposes scenes as cards you accept or refuse.")
             }
             if scenes.isEmpty {
                 Text("No scene yet. Add one, or draft with the AI.").font(.callout).foregroundStyle(.secondary).padding(.vertical, 20)
@@ -130,7 +129,7 @@ struct SceneListEditor: View {
                                 SlotGap(target: .librarySlot(before: s.id))
                                 HStack(spacing: 8) {
                                     Handle()
-                                    Image(systemName: s.statusSymbol).foregroundStyle(s.statusColor)
+                                    SceneStateBadge(scene: s)
                                     Text(s.id).font(.callout.monospaced().weight(.semibold))
                                     VStack(alignment: .leading, spacing: 0) {
                                         Text(s.name ?? (s.text.isEmpty ? "(no text)" : s.text)).lineLimit(1).font(.callout)
@@ -190,7 +189,7 @@ struct GoPanel: View {
                 Text("The build may start. If you change a scene, the Go is taken back and must be given again.").font(.callout).foregroundStyle(.secondary)
                 Button("Take the Go back") { project.perform(.gate("review", passed: false)) }
             } else {
-                Text(blocker.map { "Not yet: \($0)." } ?? "Every scene is OK or ditched. The build never starts without your Go, and the app never gives it for you.")
+                Text(blocker.map { "Not yet: \($0)." } ?? "Every scene is Validated or ditched. The build never starts without your Go, and the app never gives it for you.")
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Button("Give the Go") { confirming = true }.buttonStyle(.borderedProminent).disabled(blocker != nil)
             }
@@ -228,7 +227,7 @@ struct GoButton: View {
     }
 }
 
-/// Mark one scene OK, MODIFY or DITCH, with a note.
+/// Review one scene: OK (Validated), MODIFY (WIP with a note) or DITCH, a note, and the lock switch. Validated is not Locked.
 struct SceneDecision: View {
     let id: String
     @EnvironmentObject var project: ProjectModel
@@ -243,12 +242,17 @@ struct SceneDecision: View {
             VStack(alignment: .leading, spacing: 8) {
                 TextField("Note (what to change, or why)", text: $note, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
                 HStack {
-                    Button("OK") { decide("ok") }.buttonStyle(.borderedProminent).tint(.green).disabled(s.status == "ok" && note == s.note)
-                    Button("MODIFY") { decide("modify") }.tint(.orange).disabled(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("DITCH", role: .destructive) { ditching = true }
+                    Button("OK") { decide("validated") }.buttonStyle(.borderedProminent).tint(.green).disabled(s.isLocked || (s.state == .validated && note == s.note))
+                    Button("MODIFY") { decide("wip") }.tint(.orange).disabled(s.isLocked || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("DITCH", role: .destructive) { ditching = true }.disabled(s.isLocked)
                     Spacer()
                 }
-                if note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { Text("MODIFY needs a note that says what to change.").font(.caption).foregroundStyle(.secondary) }
+                if !s.isLocked, note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { Text("MODIFY needs a note that says what to change.").font(.caption).foregroundStyle(.secondary) }
+                Toggle(isOn: Binding(get: { s.isLocked }, set: { project.perform(.sceneLock(ids: [id], locked: $0)) })) { Label("Locked", systemImage: "lock") }
+                    .toggleStyle(.switch).disabled(!s.isLocked && s.state != .validated)
+                Text(s.isLocked ? "Locked: its content, duration and look cannot change. Unlock it to change the review. Its place in the film still moves."
+                                : "Validated is not Locked: a validated scene goes back to WIP when it changes. Lock it (once validated) to refuse any change.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             .onAppear { if loadedFor != id { note = s.note; loadedFor = id } }
             .onChange(of: project.showreel) { _ in if loadedFor != id { note = s.note; loadedFor = id } }

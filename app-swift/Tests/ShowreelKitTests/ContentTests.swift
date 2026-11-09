@@ -141,9 +141,9 @@ final class ContentTests: XCTestCase {
         try store.apply(.gate("storyboard", passed: true)); try store.apply(.gate("review", passed: true))
         let card = try store.plan(.content(scene: "S01", .add(ContentEdit(type: "text", text: "More"), after: nil)))
         XCTAssertTrue(card.changes.contains(Change("Go", "given", "to be given again")))
-        XCTAssertTrue(card.changes.contains(Change("Status", "ok", "open")))
+        XCTAssertTrue(card.changes.contains(Change("State", "Validated", "WIP")))
         try store.apply(.content(scene: "S01", .add(ContentEdit(type: "text", text: "More"), after: nil)))
-        XCTAssertEqual(file.gates["review"], "open"); XCTAssertEqual(file.scenes[0].status, "open")
+        XCTAssertEqual(file.gates["review"], "open"); XCTAssertEqual(file.scenes[0].status, "wip")
         // priority alone is a change of the film too
         try store.apply(.scene(id: "S01", SceneEdit(status: "ok"))); try store.apply(.gate("review", passed: true))
         try store.apply(.content(scene: "S01", .move(item: "c2", after: "start")))

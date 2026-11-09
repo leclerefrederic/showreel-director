@@ -156,7 +156,7 @@ struct WizardStepView: View {
             Button("Back") { project.wizardBack() }.disabled(index == 0)
             Spacer()
             Button { suggest() } label: { Label(step.kind == .scenes ? "Draft with AI" : "Suggest with AI", systemImage: "sparkles") }
-                .help("Optional. The copilot suggests a value as a card you accept or refuse.")
+                .help("Optional. Clap suggests a value as a card you accept or refuse.")
             Button("Decide later") { project.wizardNext() }
             Button(nextTitle) { next() }
                 .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
@@ -412,7 +412,7 @@ struct ConnectAIHelp: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Suggest with AI needs a key", systemImage: "sparkles").font(.headline)
-            Text("This button asks the copilot for a suggestion, shown as a card you accept or refuse. To use it, connect an AI in Settings: paste an API key (it is kept in the macOS Keychain) or set a gateway.")
+            Text("This button asks Clap for a suggestion, shown as a card you accept or refuse. To use it, connect an AI in Settings: paste an API key (it is kept in the macOS Keychain) or set a gateway.")
                 .font(.callout)
             Text("You do not need it. Every question can be answered by hand, and the wizard goes on without it.").font(.callout).foregroundStyle(.secondary)
             HStack {

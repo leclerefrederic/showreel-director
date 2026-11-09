@@ -186,7 +186,7 @@ final class WorkspaceDataTests: XCTestCase {
         try giveGo()
         try store.apply(.scene(id: "S01", SceneEdit(duration: "4")))
         XCTAssertEqual(file.gates["review"], "open", "so does a duration")
-        XCTAssertEqual(file.scenes[0].status, "open", "and the changed scene goes back to review")
+        XCTAssertEqual(file.scenes[0].status, "wip", "and the changed scene goes back to review")
         try store.apply(.scene(id: "S01", SceneEdit(status: "ok")))
         try giveGo()
         try store.apply(.scene(id: "S01", SceneEdit(note: "remark")))

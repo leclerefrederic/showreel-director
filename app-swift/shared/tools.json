@@ -327,7 +327,7 @@
   },
   {
     "name": "add_scene",
-    "description": "Create a scene in the scene library, with the next free ID (or the ID you give, S04b style, if it is free); it is switched on at the end of the master storyboard, or after the scene you name in `after`. Propose one scene per call, in order, with a duration in seconds and a line short enough for the reading budget (about 3 s for a line of six to eight words). The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, an archived scene keeps its ID. Changing the text, duration or look of a scene the user already marked OK sends it back to review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
+    "description": "Create a scene in the scene library, with the next free ID (or the ID you give, S04b style, if it is free); it is switched on at the end of the master storyboard, or after the scene you name in `after`. Propose one scene per call, in order, with a duration in seconds and a line short enough for the reading budget (about 3 s for a line of six to eight words). The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, an archived scene keeps its ID. Changing the text, duration or look of a scene the user already validated sends it back to WIP, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -369,12 +369,11 @@
         "status": {
           "type": "string",
           "enum": [
-            "open",
-            "ok",
-            "modify",
+            "wip",
+            "validated",
             "ditched"
           ],
-          "description": "only the user decides OK in the app; ditched keeps the ID marked"
+          "description": "wip (the default) or ditched; only the user validates in the app"
         },
         "assets": {
           "type": "string",
@@ -393,7 +392,7 @@
   },
   {
     "name": "update_scene",
-    "description": "Change one scene of the library by its ID (from get_state): duration, text, image and motion, feeling, passage note, cuts, note, status, archive, linked assets, or its position in the master storyboard. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, an archived or ditched scene keeps its ID. Changing the text, duration or look of a scene the user already marked OK sends it back to review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
+    "description": "Change one scene of the library by its ID (from get_state): duration, text, image and motion, feeling, passage note, cuts, note, status, archive, linked assets, or its position in the master storyboard. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, an archived or ditched scene keeps its ID. Changing the text, duration or look of a scene the user already validated sends it back to WIP, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button. A locked scene refuses every change here (the answer says so): offer to unlock it with lock_scene instead of trying again.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -434,12 +433,11 @@
         "status": {
           "type": "string",
           "enum": [
-            "open",
-            "ok",
-            "modify",
+            "wip",
+            "validated",
             "ditched"
           ],
-          "description": "only the user decides OK in the app; ditched archives the scene and switches it off everywhere"
+          "description": "wip (the default; with a note it means 'to modify'), validated (only the user validates in the app) or ditched (archives the scene and switches it off everywhere). Locking is lock_scene."
         },
         "assets": {
           "type": "string",
@@ -528,6 +526,34 @@
       "required": [
         "id",
         "after"
+      ]
+    }
+  },
+  {
+    "name": "lock_scene",
+    "description": "Lock or unlock scenes by ID. A Locked scene refuses every change to what is inside it (text and content, duration, look overrides, linked resources, dropping something on it, stretching its edge in the reel) from you and from the user, with a reason; only its place in the montage (move_scene, enable_scene) and its transitions can still change. Only a Validated scene can be locked (a lock never validates a scene); unlocking gives back Validated. The user sees a plain card (before and after) and accepts or refuses. Never try to modify a locked scene: if the user's request needs it, say the scene is locked and offer to unlock it (one card), then wait for their answer.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "scenes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "the scene IDs (from get_state)"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "true locks, false unlocks"
+        },
+        "reason": {
+          "type": "string",
+          "description": "optional: why you propose this, in a few plain words. It is kept in the project's journal. Never put a personal detail, a key or a password in it."
+        }
+      },
+      "required": [
+        "scenes",
+        "locked"
       ]
     }
   },

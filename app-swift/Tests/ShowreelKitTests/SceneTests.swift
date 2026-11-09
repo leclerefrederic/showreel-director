@@ -72,7 +72,7 @@ final class SceneTests: XCTestCase {
         XCTAssertThrowsError(try store.plan(.scene(id: "S01", SceneEdit(text: "new"))), "no change")
         XCTAssertThrowsError(try store.plan(.scene(id: "S01", SceneEdit(duration: "0"))), "a duration is above zero")
         try store.apply(.scene(id: "S01", SceneEdit(note: "shorter", status: "modify")))
-        XCTAssertEqual(scenes[0].status, "modify"); XCTAssertEqual(scenes[0].note, "shorter")
+        XCTAssertEqual(scenes[0].status, "wip"); XCTAssertEqual(scenes[0].note, "shorter"); XCTAssertTrue(scenes[0].toModify, "MODIFY is WIP with its note")
         XCTAssertEqual(try store.plan(.scene(id: "S01", SceneEdit(status: "ditched"))).title, "Ditch S01")
         // a stale card is refused
         let stale = try store.plan(.scene(id: "S01", SceneEdit(text: "mine")))
@@ -83,11 +83,11 @@ final class SceneTests: XCTestCase {
     func testEditingAReviewedSceneSendsItBackToReview() throws {
         try add("fine", "0", "4"); try store.apply(.scene(id: "S01", SceneEdit(status: "ok")))
         let card = try store.plan(.scene(id: "S01", SceneEdit(text: "changed")))
-        XCTAssertTrue(card.changes.contains(Change("Status", "ok", "open")))
+        XCTAssertTrue(card.changes.contains(Change("State", "Validated", "WIP")))
         try store.apply(.scene(id: "S01", SceneEdit(note: "a remark")))                    // a note alone keeps OK
-        XCTAssertEqual(scenes[0].status, "ok")
+        XCTAssertEqual(scenes[0].status, "validated")
         try store.apply(.scene(id: "S01", SceneEdit(text: "changed")))
-        XCTAssertEqual(scenes[0].status, "open")
+        XCTAssertEqual(scenes[0].status, "wip")
     }
 
     func testLinkedResourcesAreTheManifestsSceneColumn() throws {

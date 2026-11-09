@@ -39,11 +39,11 @@ struct CopilotHeader: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Label("Copilot", systemImage: "sparkles").font(.headline)
+            Label(ClapMark.title, systemImage: ClapMark.symbol).font(.headline)
             Spacer()
             Toggle("Apply directly", isOn: $project.applyDirectly)
                 .toggleStyle(.checkbox)
-                .help("Off: the copilot's edits to your files wait for your OK as a diff. On: they are written at once (the history keeps the old version).")
+                .help("Off: Clap's edits to your files wait for your OK as a diff. On: they are written at once (the history keeps the old version).")
             Button { model.reset() } label: { Image(systemName: "square.and.pencil") }
                 .help("New conversation (the old one stays in .studio/chat)")
                 .buttonStyle(.borderless)
@@ -64,7 +64,7 @@ struct WelcomeView: View {
             Image(systemName: "film.stack")
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.secondary)
-            Text("Your copilot")
+            Text(ClapMark.title)
                 .font(.title2.weight(.semibold))
             Text("Ask for a draft, an explanation or a fix. Edits to your files come as a diff you accept or refuse.")
                 .font(.callout)
@@ -82,7 +82,7 @@ struct Composer: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            TextField("Ask the copilot...", text: $model.draft, axis: .vertical)
+            TextField("Ask Clap...", text: $model.draft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...6)
                 .padding(.vertical, 8)
@@ -317,7 +317,7 @@ struct OperationCardView: View {
     var body: some View {
         if let o = item.operation {
             VStack(alignment: .leading, spacing: 10) {
-                Label(o.card.title, systemImage: "slider.horizontal.3").font(.headline)
+                Label(o.card.title, systemImage: ClapMark.symbol).font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(o.card.changes.enumerated()), id: \.offset) { _, c in ChangeRow(change: c) }
                 }
@@ -342,13 +342,13 @@ struct OperationCardView: View {
     }
 }
 
-/// Without a key the copilot panel says so and how to connect one. Nothing else in the app waits for it.
+/// Without a key the Ask Clap panel says so and how to connect one. Nothing else in the app waits for it.
 struct ConnectAIView: View {
     @EnvironmentObject var model: ChatModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("The copilot is off", systemImage: "sparkles").font(.headline)
+            Label("Clap is off", systemImage: ClapMark.symbol).font(.headline)
             Text("It answers questions, suggests values and makes changes that you accept or refuse. You can build a project by hand without it. Only generating the film (Build) needs an AI.")
                 .font(.callout).foregroundStyle(.secondary)
             Button("Connect AI") { AppSettingsWindow.open() }.buttonStyle(.borderedProminent)

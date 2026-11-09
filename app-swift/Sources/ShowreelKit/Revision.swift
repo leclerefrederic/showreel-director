@@ -46,6 +46,8 @@ public enum ProjectFormat {
         }
         let rawScenes = raw["scenes"] as? [[String: Any]] ?? []
         let noContent = rawScenes.filter { $0["content"] == nil && !(($0["text"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.compactMap { $0["id"] as? String }
+        let oldStates = rawScenes.filter { ["ok", "open", "modify"].contains($0["status"] as? String ?? "open") }.compactMap { $0["id"] as? String }
+        if !oldStates.isEmpty { changes.append("Review states become WIP, Validated and Locked: OK \u{2192} Validated, open and modify \u{2192} WIP (the note of a modify stays) in \(ids(oldStates))") }
         if !noContent.isEmpty { changes.append("The words of \(ids(noContent)) become the first element of the scene (colour and animation stay auto)") }
         let legacy = rawScenes.filter { $0["duration"] == nil && ($0["start"] != nil && $0["end"] != nil) }.compactMap { $0["id"] as? String }
         if !legacy.isEmpty { changes.append("\(ids(legacy)): the length is taken from the old start and end (a start that differs from the order is kept)") }

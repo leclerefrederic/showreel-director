@@ -110,7 +110,7 @@ public enum ProjectDocs {
         let rows = order.compactMap { id in f.scenes.first { $0.id == id } }.map { s -> [String] in
             var time = s.archived ? "" : "off"
             if let t = timed[s.id] { time = (t.start != nil && t.end != nil) ? "\(seconds(t.start!))-\(seconds(t.end!)) s" : "" }
-            let status = s.archived ? (s.status == "ditched" ? "ditched" : "archived") : s.status
+            let status = s.archived ? (s.state == .ditched ? "ditched" : "archived") : SceneState.canonical(s.status)
             return [s.id, time, s.text] + langs.map { s.texts[$0] ?? "" } + [visualColumn(s), s.feeling, s.handoff] + (cuts ? [s.inCuts] : [])
                 + extras.map { s.extra[$0] ?? "" } + [status] + (notes ? [s.note] : [])
         }
@@ -282,6 +282,7 @@ enum MarkdownRead {
             func cell(_ c: Int?) -> String { c.flatMap { $0 < r.count ? r[$0] : nil } ?? "" }
             let id = cell(cid).trimmingCharacters(in: .whitespaces)
             guard !id.isEmpty else { continue }
+            let kept = old.first { $0.id == id && $0.isLocked }          // a locked scene is not rewritten from a table: only its place in the montage follows
             var s = old.first { $0.id == id } ?? ShowreelFile.Scene(id: id)
             let time = cell(ctime).lowercased()
             var off = time.contains("off")
@@ -296,9 +297,10 @@ enum MarkdownRead {
             if cstatus != nil {
                 let st = cell(cstatus).lowercased()
                 if st == "archived" { s.archived = true }
-                else if ShowreelFile.Scene.statuses.contains(st) { s.status = st; s.archived = st == "ditched" }
+                else if let state = SceneState.parse(st), state != .locked { s.status = state.rawValue; s.archived = state == .ditched }          // a lock is never given by a table
             }
             if cnote != nil { s.note = cell(cnote) }
+            if let k = kept { s = k }
             if s.archived { off = true }
             var texts: [String: String] = [:], extra: [String: String] = [:]
             for (i, h) in table.header.enumerated() where !known.contains(i) {
@@ -318,8 +320,10 @@ enum MarkdownRead {
             scenes.append(s); items.append(item)
         }
         for o in old where !scenes.contains(where: { $0.id == o.id }) {
-            var d = o; d.status = "ditched"; d.archived = true; scenes.append(d)
-            if var it = oldItems.first(where: { $0.scene == o.id }) { it.enabled = false; items.append(it) }
+            var d = o
+            if !o.isLocked { d.status = SceneState.ditched.rawValue; d.archived = true }
+            scenes.append(d)
+            if var it = oldItems.first(where: { $0.scene == o.id }) { if !o.isLocked { it.enabled = false }; items.append(it) }
         }
         f.scenes = scenes
         if f.storyboards.isEmpty { f.storyboards = [ShowreelFile.Montage(format: f.decisions.formats?.first)] }

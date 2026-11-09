@@ -4,6 +4,6 @@
 
 | ID  | Time  | On-screen text           | fr                       | Image and motion    | Feeling and tension | Handoff   | In cuts  | Sound    | Status  | Note    |
 | --- | ----- | ------------------------ | ------------------------ | ------------------- | ------------------- | --------- | -------- | -------- | ------- | ------- |
-| S01 | 0-4 s | Notes, finally calm      | Des notes enfin sereines | Logo rises from ink | calm, 1/5           | wipe left | 15s, 45s | soft pad | open    |         |
-| S02 | 4-9 s | Capture anything \| fast | Tout capturer            | Cards fly in        | curious, 2/5        | cut       | 45s      | tick     | modify  | shorter |
+| S01 | 0-4 s | Notes, finally calm      | Des notes enfin sereines | Logo rises from ink | calm, 1/5           | wipe left | 15s, 45s | soft pad | wip     |         |
+| S02 | 4-9 s | Capture anything \| fast | Tout capturer            | Cards fly in        | curious, 2/5        | cut       | 45s      | tick     | wip     | shorter |
 | S03 |       |                          |                          |                     |                     |           |          |          | ditched |         |

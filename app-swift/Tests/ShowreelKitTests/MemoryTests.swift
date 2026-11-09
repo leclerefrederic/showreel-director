@@ -434,10 +434,18 @@ final class MemoryTests: XCTestCase {
     func testTheViewsShowTheHistoryAndTheChatBuildsItsPromptFromTheMemory() throws {
         let v = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/ShowreelStudio")
         func src(_ n: String) throws -> String { try String(contentsOf: v.appendingPathComponent(n), encoding: .utf8) }
-        XCTAssertTrue(try src("ProjectModel.swift").contains("case project, look, history"), "a History tab beside Project and Look")
+        let pm = try src("ProjectModel.swift")
+        XCTAssertTrue(pm.contains("case project, look\n"), "the project settings keep Project and Look only: the history belongs to Clap")
+        XCTAssertFalse(pm.contains("case project, look, history"))
+        XCTAssertTrue(pm.contains("case conversation = \"Conversation\", memory = \"Mémoire\", sessions = \"Séances\", journal = \"Journal\""), "the Ask Clap selector")
+        XCTAssertTrue(pm.contains("self == .copilot ? ClapMark.title"), "the tab is titled Ask Clap")
         let h = try src("HistoryViews.swift")
-        for need in ["What Clap knows", "Sessions", "Journal", "JournalFilter.apply(", "project.openJournal(entry)", "project.addMemory(", "project.deleteMemory(", "Transcript", "Confirm"] { XCTAssertTrue(h.contains(need), need) }
-        XCTAssertTrue(try src("ProjectSettingsPanel.swift").contains("case .history: HistoryPanel()"))
+        for need in ["WhatClapKnows", "SessionsList", "JournalList", "JournalFilter.apply(", "project.openJournal(entry)", "project.addMemory(", "project.deleteMemory(", "Transcript", "Confirm"] { XCTAssertTrue(h.contains(need), need) }
+        XCTAssertFalse(try src("ProjectSettingsPanel.swift").contains("HistoryPanel"), "no History entry in the project settings")
+        let iv = try src("InspectorViews.swift")
+        XCTAssertTrue(iv.contains("case .copilot: AskClapPane()") && iv.contains("ClapHistoryPane(section: project.clapSection)"))
+        XCTAssertTrue(h.contains("case .memory: WhatClapKnows()") && h.contains("case .sessions: SessionsList()") && h.contains("case .journal: JournalList()"))
+        XCTAssertTrue(h.contains("static let title = \"Ask Clap\""))
         let c = try src("ChatModel.swift")
         XCTAssertFalse(c.contains("ChatStore.seed("), "the old conversation is not replayed to the model")
         XCTAssertTrue(c.contains("history: []")); XCTAssertTrue(c.contains("func endSession()")); XCTAssertTrue(c.contains("Sessions.summarize(")); XCTAssertTrue(c.contains("func memoryNote("))

@@ -28,10 +28,10 @@ struct BuildPanel: View {
                 Button { project.startBuild(with: chat) } label: { Label("Build a new version", systemImage: "hammer") }
                     .buttonStyle(.borderedProminent)
                     .disabled(!BuildRunner.canBuild(project.store) || !settings.hasKey || project.buildBusy || chat.running)
-                    .help("The copilot writes \(Versions.next(project.store)) from your storyboard and decisions, then the app builds and tests it.")
+                    .help("Clap writes \(Versions.next(project.store)) from your storyboard and decisions, then the app builds and tests it.")
                 if project.generating {
                     ProgressView().controlSize(.small)
-                    Text("The copilot is writing \(project.buildVersion ?? "the version")...").font(.callout).foregroundStyle(.secondary)
+                    Text("Clap is writing \(project.buildVersion ?? "the version")...").font(.callout).foregroundStyle(.secondary)
                     Button("Stop") { chat.stop() }
                 } else if project.testing {
                     ProgressView().controlSize(.small)
@@ -39,7 +39,7 @@ struct BuildPanel: View {
                 }
             }
             if !BuildRunner.canBuild(project.store) {
-                Text("The Go comes first: give it in the Scene editor once every scene is OK or ditched.").font(.caption).foregroundStyle(.secondary)
+                Text("The Go comes first: give it in the Scene editor once every scene is Validated or ditched.").font(.caption).foregroundStyle(.secondary)
             }
             if !project.versions.isEmpty { versionsRow }
             if let r = project.buildReport { report(r) }

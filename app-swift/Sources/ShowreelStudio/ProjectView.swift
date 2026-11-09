@@ -78,8 +78,8 @@ struct ProjectView: View {
             }
             ToolbarItemGroup(placement: .primaryAction) {
                 if inWizard {
-                    Button { project.showCopilot.toggle() } label: { Label("Copilot", systemImage: "sidebar.right") }
-                        .help(project.showCopilot ? "Hide the copilot" : "Show the copilot")
+                    Button { project.showCopilot.toggle() } label: { Label(ClapMark.title, systemImage: "sidebar.right") }
+                        .help(project.showCopilot ? "Hide Clap" : "Show Clap")
                     Button { if project.needsSetup { project.finishSetup() } else { project.workspaceOpen = true } } label: { Label("Workspace", systemImage: "rectangle.split.3x1") }
                         .help(project.needsSetup ? "The workspace opens when the base configuration is complete: languages, formats, duration and a look" : "Open the editing workspace")
                         .disabled(project.showreel.map { project.needsSetup && !ProjectSetup.isComplete($0) } ?? true)

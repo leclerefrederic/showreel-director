@@ -67,7 +67,7 @@ extension ProjectStore {
             g.storyboards[0].items[k].start = at
             lines.append(Change("\(tl[i + 1].scene.id) start", "follows \(id)", "stays at \(ProjectDocs.seconds(at)) s"))
         }
-        if g.scenes[si].status == "ok" { g.scenes[si].status = "open"; lines.append(Change("Status", "ok", "open")) }
+        if g.scenes[si].state == .validated { g.scenes[si].status = SceneState.wip.rawValue; lines.append(Change("State", SceneState.validated.title, SceneState.wip.title)) }
         return finish(title: "Set the duration of \(id)", changes: lines, from: f, to: g)
     }
 
@@ -85,7 +85,7 @@ extension ProjectStore {
         g.scenes[ia].duration = newA; g.scenes[ib].duration = newB
         if let k = g.storyboards[0].items.firstIndex(where: { $0.scene == after }), g.storyboards[0].items[k].start != nil { g.storyboards[0].items[k].start = t }
         var lines = [Change("\(before) duration", ProjectDocs.seconds(a) + " s", ProjectDocs.seconds(newA) + " s"), Change("\(after) duration", ProjectDocs.seconds(b) + " s", ProjectDocs.seconds(newB) + " s")]
-        for k in [ia, ib] where g.scenes[k].status == "ok" { g.scenes[k].status = "open"; lines.append(Change("\(g.scenes[k].id) status", "ok", "open")) }
+        for k in [ia, ib] where g.scenes[k].state == .validated { g.scenes[k].status = SceneState.wip.rawValue; lines.append(Change("\(g.scenes[k].id) state", SceneState.validated.title, SceneState.wip.title)) }
         return finish(title: "Move the cut between \(before) and \(after)", changes: lines, from: f, to: g)
     }
 

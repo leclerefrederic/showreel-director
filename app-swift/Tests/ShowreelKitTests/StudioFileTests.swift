@@ -65,7 +65,7 @@ final class StudioFileTests: XCTestCase {
     func testOldSceneDictionaryIsRead() throws {
         let f = try ShowreelFile.decode("{\"schema\":1,\"name\":\"Old\",\"scenes\":{\"S02\":{\"status\":\"modify\",\"note\":\"shorter\"},\"S01\":{\"status\":\"ok\",\"note\":\"\"}}}")
         XCTAssertEqual(f.scenes.map { $0.id }, ["S01", "S02"])
-        XCTAssertEqual(f.scenes[1].status, "modify")
+        XCTAssertEqual(f.scenes[1].status, "wip"); XCTAssertTrue(f.scenes[1].toModify); XCTAssertEqual(f.scenes[0].status, "validated")
         XCTAssertEqual(f.scenes[1].note, "shorter")
         // saving writes the array form
         let out = try f.encoded()

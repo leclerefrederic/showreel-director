@@ -91,7 +91,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         let prior = history.load()
         if !prior.isEmpty { history.startNewSession() }       // what was said before is in the transcripts, the summaries and the memory: the prompt is built from those
         records = []
-        items = prior.isEmpty ? [] : [ChatItem(kind: .notice, text: "Clap remembers what was decided: see History in the project settings. The earlier conversation is there too.")]
+        items = prior.isEmpty ? [] : [ChatItem(kind: .notice, text: "Clap remembers what was decided: see Mémoire, Séances and Journal in the Ask Clap tab. The earlier conversation is there too.")]
         project.store.sessionID = history.sessionID
         idleTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.checkIdle() }
         if let key = settings.keyIfLoaded { catchUpSummaries(key: key) }
@@ -150,7 +150,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !running else { return }
-        guard let key = settings.apiKey() else { notice("Connect an AI to talk to the copilot. Everything else works without one."); return }
+        guard let key = settings.apiKey() else { notice("Connect an AI to talk to Clap. Everything else works without one."); return }
         draft = ""
         if sessionEnded { history.startNewSession(); records = []; sessionEnded = false; project.store.sessionID = history.sessionID }      // after a long pause: a new session
         lastActivity = Date()
@@ -187,8 +187,8 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     /// Sends a message on the user's behalf (the wizard's "Suggest with AI"). The copilot answers with a card to accept or refuse.
     @discardableResult
     func ask(prompt: String, onDone: (() -> Void)? = nil) -> Bool {
-        guard !running else { notice("The copilot is busy: wait for it to finish."); return false }
-        guard settings.hasKey else { notice("Connect an AI to talk to the copilot. Everything else works without one."); return false }
+        guard !running else { notice("Clap is busy: wait for it to finish."); return false }
+        guard settings.hasKey else { notice("Connect an AI to talk to Clap. Everything else works without one."); return false }
         draft = prompt
         self.onDone = onDone
         send()

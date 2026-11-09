@@ -177,7 +177,7 @@ enum SelfCheck {
         defer { try? fm.removeItem(at: sb) }
         let bs = ProjectStore(root: sb)
         if (try? bs.create(name: "Selftest", conversationLanguage: "en", reelLanguages: ["en"])) != nil, let r = Skill.root() {
-            try? bs.apply(.addScene(id: "", SceneEdit(duration: "4", text: "Hello", status: "ok")))
+            try? bs.apply(.addScene(id: "", SceneEdit(duration: "4", text: "Hello", status: "validated")))
             try? bs.apply(.gate("storyboard", passed: true))
             check(bs.loadShowreel()?.scenes.first?.id == "S01" && bs.loadShowreel()?.gates["review"] == nil && !BuildRunner.canBuild(bs), "scenes are added with stable IDs, and the Go is never deduced")
             check((try? bs.apply(.gate("review", passed: true))) != nil && BuildRunner.canBuild(bs), "the Go is given by an explicit operation")
@@ -200,7 +200,7 @@ enum SelfCheck {
         check(migrated?.scenes.first?.duration == 4 && migrated?.storyboards.first?.items.map { $0.enabled } == [true, false] && migrated?.scenes[1].archived == true,
               "a phase T file migrates into a scene library and one montage (ditched = archived and off)")
         if bs.loadShowreel() != nil {
-            try? bs.apply(.addScene(id: "", SceneEdit(duration: "3", text: "Second", status: "ok")))
+            try? bs.apply(.addScene(id: "", SceneEdit(duration: "3", text: "Second", status: "validated")))
             try? bs.apply(.gate("review", passed: true))
             try? bs.apply(.moveScene(id: "S02", after: "start", montage: nil))
             check(bs.loadShowreel()?.film.map { $0.id } == ["S02", "S01"] && bs.loadShowreel()?.gates["review"] == "open", "reordering the storyboard is an operation, and takes the Go back")

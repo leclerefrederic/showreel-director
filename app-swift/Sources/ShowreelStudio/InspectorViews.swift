@@ -191,19 +191,35 @@ struct InspectorPane: View {
     var body: some View {
         VStack(spacing: 0) {
             Picker("", selection: $project.inspectorTab) {
-                ForEach(InspectorTab.allCases.filter { $0 != .files || settings.advanced }) { Text($0.title).tag($0) }
+                ForEach(InspectorTab.allCases.filter { $0 != .files || settings.advanced }) { tab in
+                    if tab == .copilot { Label(tab.title, systemImage: ClapMark.symbol).tag(tab) } else { Text(tab.title).tag(tab) }
+                }
             }
             .pickerStyle(.segmented).labelsHidden().padding(10)
             Divider()
             switch project.inspectorTab {
             case .inspector: InspectorContent()
-            case .copilot: ChatView()
+            case .copilot: AskClapPane()
             case .files: FilesInspector()
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .onChange(of: settings.advanced) { on in
             if !on { if project.inspectorTab == .files { project.inspectorTab = .inspector }; if case .file = project.selection { project.selection = .none } }
+        }
+    }
+}
+
+/// The Ask Clap tab: a selector on top (conversation, memory, sessions, journal) and the part chosen below.
+struct AskClapPane: View {
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Picker("", selection: $project.clapSection) { ForEach(ClapSection.allCases) { Text($0.rawValue).tag($0) } }
+                .pickerStyle(.segmented).labelsHidden().padding(.horizontal, 10).padding(.bottom, 8)
+            Divider()
+            if project.clapSection == .conversation { ChatView() } else { ClapHistoryPane(section: project.clapSection) }
         }
     }
 }
@@ -339,7 +355,10 @@ struct SceneInspector: View {
                                 .onTapGesture(count: 2) { editingName = true }
                                 .help("Double-click to name the scene. The ID never changes.")
                         }
-                        Text(s.archived ? "Archived" : "\(s.durationLabel) · \(s.status)").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 4) {
+                            if !s.archived { SceneStateBadge(scene: s, size: 12) }
+                            Text(s.archived ? "Archived" : "\(s.durationLabel) · \(s.state.title)").font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                     Button { project.selection = .none } label: { Label("Project", systemImage: "slider.horizontal.3") }
@@ -497,7 +516,7 @@ struct AssetInspector: View {
             .sheet(item: $holding) { r in
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Hold \(r.name)").font(.headline)
-                    Text("A held file is not used until you decide. Say why, so you and the copilot remember.").font(.callout).foregroundStyle(.secondary)
+                    Text("A held file is not used until you decide. Say why, so you and Clap remember.").font(.callout).foregroundStyle(.secondary)
                     TextField("Why is it on hold?", text: $holdNote, axis: .vertical).lineLimit(2...4).textFieldStyle(.roundedBorder)
                     HStack {
                         Spacer()

@@ -359,7 +359,7 @@ struct FrameView: View {
             LinearGradient(colors: [.black.opacity(0.55), .clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom).allowsHitTesting(false)
             if let r = e.label { label(e.mode).frame(maxWidth: r.width, alignment: .leading).offset(x: r.minX, y: r.minY) }
             if let r = e.status {
-                Image(systemName: scene.statusSymbol).font(.system(size: 12)).foregroundStyle(scene.statusColor).frame(width: r.width, height: r.height)
+                SceneStateBadge(scene: scene, size: 12).frame(width: r.width, height: r.height)
                     .background(.black.opacity(0.6), in: Circle()).offset(x: r.minX, y: r.minY)
             }
             if let r = e.eye {

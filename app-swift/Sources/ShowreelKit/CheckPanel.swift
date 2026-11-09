@@ -79,7 +79,7 @@ public enum CheckPanel {
         case "storyboard.times":
             return f?.timeline().first { $0.length == nil }.map { .scene($0.scene.id, tab: "settings") } ?? .storyboard
         case "review.all":
-            return f?.film.first { $0.status != "ok" }.map { .scene($0.id, tab: "settings") } ?? .storyboard
+            return f?.film.first { !$0.state.isReviewed }.map { .scene($0.id, tab: "settings") } ?? .storyboard
         case "reel.transition-length", "reel.transition-text": return firstScene(in: r.detail).map { .transition(from: $0) } ?? .storyboard
         case "reel.starts": return firstScene(in: r.detail).map { .scene($0, tab: "settings") } ?? .music
         case "reel.music", "reel.drop", "reel.calm", "reel.length": return .music

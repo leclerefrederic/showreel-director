@@ -345,7 +345,8 @@ struct ScenesLibrary: View {
             HStack {
                 Button { project.addScene() } label: { Label("New scene", systemImage: "plus") }
                 Button { draft() } label: { Label("Draft with AI", systemImage: "sparkles") }
-                    .help("Optional. The copilot proposes scenes as cards you accept or refuse.")
+                    .help("Optional. Clap proposes scenes as cards you accept or refuse.")
+                LockAllValidatedButton()
                 Spacer()
             }
             .padding(10)
@@ -452,7 +453,7 @@ struct SceneRowView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: scene.statusSymbol).foregroundStyle(scene.statusColor)
+            SceneStateBadge(scene: scene)
             Text(scene.id).font(.callout.monospaced().weight(.semibold))
             VStack(alignment: .leading, spacing: 0) {
                 InlineEdit(text: scene.name ?? "", placeholder: "Name this scene",

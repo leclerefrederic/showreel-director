@@ -38,8 +38,8 @@ public enum BuildRunner {
         var out: [CheckResult] = []
         let live = SceneRules.live(f)
         out.append(live.isEmpty ? r("scenes", "Scenes", .pending, "No scene yet: write the storyboard first.") : r("scenes", "Scenes", .ok, "\(live.count) scene\(live.count == 1 ? "" : "s")"))
-        let notOK = live.filter { $0.status != "ok" }
-        if !live.isEmpty { out.append(notOK.isEmpty ? r("reviewed", "Scene review", .ok, "every scene is OK") : r("reviewed", "Scene review", .pending, "\(notOK.map { $0.id }.joined(separator: ", ")) still to review")) }
+        let notOK = live.filter { !$0.state.isReviewed }
+        if !live.isEmpty { out.append(notOK.isEmpty ? r("reviewed", "Scene review", .ok, "every scene is Validated or Locked") : r("reviewed", "Scene review", .pending, "\(notOK.map { $0.id }.joined(separator: ", ")) still to review")) }
         let go = f.gates["review"] == "passed"
         out.append(go ? r("go", "The Go", .ok, "given by you") : r("go", "The Go", .pending, "not given: the build never starts without it. Give it in the Scene editor."))
         let held = Assets.load(store).filter { $0.status == "hold" }
@@ -62,9 +62,11 @@ public enum BuildRunner {
             let parts = DecisionKey.sceneKeys.filter { f.isOverridden($0, for: sc) }.map { "\($0.title.lowercased()) \(f.effective($0, for: sc))" }
             return parts.isEmpty ? nil : "\(sc.id): " + parts.joined(separator: "; ")
         }
+        let lockedIDs = (f?.film ?? []).filter { $0.isLocked }.map { $0.id }
+        let lockedLine = lockedIDs.isEmpty ? "" : " Locked scenes (\(lockedIDs.joined(separator: ", "))): the user fixed them, so keep what they contain (words, content, length, look) exactly as storyboard.md, film.json and this message give it."
         let overrideLine = overrides.isEmpty ? "" : " Scenes with their own look (they override the style sheet for that scene only): " + overrides.joined(separator: " | ") + "."
         return """
-        The user pressed Go in the app: the storyboard is validated and every scene is OK. Write the new version folder \(version)/ now.
+        The user pressed Go in the app: the storyboard is validated and every scene is Validated or Locked.\(lockedLine) Write the new version folder \(version)/ now.
 
         Do this:
         1. Read the state with get_state, read storyboard.md, style-sheet.md and brief.md of the project, and read the skill's references/build-guide.md, references/steps-3-to-6.md (Step 3) and references/engine.md.

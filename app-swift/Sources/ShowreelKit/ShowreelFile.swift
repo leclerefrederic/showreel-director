@@ -7,7 +7,7 @@ public struct ShowreelFile: Codable, Equatable {
     public static let currentSchema = 1
     /// The revision of the file's shape that this app writes. A file without `formatRevision` is revision 0 (every file made before revisions existed).
     /// Revision 1: the scene library with montages, the content list of each scene, a resource linked to a scene being one of its elements.
-    public static let currentRevision = 1
+    public static let currentRevision = 2
     public static let gateKeys = ["interview", "assets", "style", "storyboard", "review", "build", "verify", "publish"]
 
     public struct Fonts: Codable, Equatable, Sendable {
@@ -132,7 +132,7 @@ public struct ShowreelFile: Codable, Equatable {
         public var handoff: String              // the note of the passage to the next scene
         public var inCuts: String
         public var extra: [String: String]      // any other storyboard column
-        public var status: String               // open, ok, modify, ditched
+        public var status: String               // wip, validated, locked, ditched (a file from before revision 2 says open, ok, modify: read as wip, validated, wip)
         public var note: String
         public var archived: Bool
         /// What this scene does differently from the project's look: background (id, mood), palette, fonts. Absent: everything is inherited.
@@ -148,13 +148,18 @@ public struct ShowreelFile: Codable, Equatable {
 
         public init(id: String, duration: Double? = nil, text: String = "", texts: [String: String] = [:], visual: String = "",
                     feeling: String = "", handoff: String = "", inCuts: String = "", extra: [String: String] = [:],
-                    status: String = "open", note: String = "", archived: Bool = false, content: [ContentItem] = [], controlLevel: String? = nil) {
+                    status: String = "wip", note: String = "", archived: Bool = false, content: [ContentItem] = [], controlLevel: String? = nil) {
             self.content = content; self.controlLevel = controlLevel
             self.id = id; self.duration = duration; self.text = text; self.texts = texts; self.visual = visual
-            self.feeling = feeling; self.handoff = handoff; self.inCuts = inCuts; self.extra = extra; self.status = status; self.note = note
+            self.feeling = feeling; self.handoff = handoff; self.inCuts = inCuts; self.extra = extra; self.status = SceneState.canonical(status); self.note = note
             self.archived = archived
         }
-        public static let statuses = ["open", "ok", "modify", "ditched"]
+        public static let statuses = SceneState.allCases.map { $0.rawValue }
+        /// The review state, as the rules read it (an unknown word counts as WIP).
+        public var state: SceneState { SceneState.parse(status) ?? .wip }
+        public var isLocked: Bool { state == .locked }
+        /// WIP with a note: the scene was sent back with something to change.
+        public var toModify: Bool { state == .wip && !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         /// What the user reads: the ID, and the name beside it when there is one.
         public var label: String { (name ?? "").isEmpty ? id : "\(id) \u{00B7} \(name!)" }
         static let keys: Set<String> = ["id", "name", "duration", "text", "texts", "visual", "feeling", "handoff", "inCuts", "extra", "status", "note", "archived", "overrides", "content", "controlLevel", "start", "end"]
@@ -173,7 +178,7 @@ public struct ShowreelFile: Codable, Equatable {
             handoff = try c.decodeIfPresent(String.self, forKey: "handoff") ?? ""
             inCuts = try c.decodeIfPresent(String.self, forKey: "inCuts") ?? ""
             extra = try c.decodeIfPresent([String: String].self, forKey: "extra") ?? [:]
-            status = try c.decodeIfPresent(String.self, forKey: "status") ?? "open"
+            status = SceneState.canonical(try c.decodeIfPresent(String.self, forKey: "status") ?? "wip")
             note = try c.decodeIfPresent(String.self, forKey: "note") ?? ""
             archived = try c.decodeIfPresent(Bool.self, forKey: "archived") ?? (status == "ditched")
             overrides = try c.decodeIfPresent(Decisions.self, forKey: "overrides")
@@ -337,7 +342,7 @@ public struct ShowreelFile: Codable, Equatable {
         if let list = try? c.decode([Scene].self, forKey: "scenes") {
             scenes = list
         } else if let legacy = try? c.decode([String: LegacyScene].self, forKey: "scenes") {
-            scenes = legacy.keys.sorted().map { Scene(id: $0, status: legacy[$0]?.status ?? "open", note: legacy[$0]?.note ?? "") }
+            scenes = legacy.keys.sorted().map { Scene(id: $0, status: SceneState.canonical(legacy[$0]?.status ?? "wip"), note: legacy[$0]?.note ?? "") }
         } else {
             scenes = []
         }

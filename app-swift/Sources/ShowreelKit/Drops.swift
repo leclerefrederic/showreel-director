@@ -316,6 +316,7 @@ public enum Drops {
         if let s = sceneID {
             guard let sc = f.scenes.first(where: { $0.id == s }) else { throw AgentError.msg("unknown scene \(s)") }
             guard !sc.archived else { throw AgentError.msg("\(s) is archived: bring it back first") }
+            guard !sc.isLocked else { throw AgentError.msg(SceneLock.reason(s)) }
         }
         let n = urls.count
         let title = (n == 1 ? "Add \(urls[0].lastPathComponent)" : n == 0 ? "Add the files" : "Add \(n) files") + (sceneID.map { " to \($0)" } ?? " to the resources")

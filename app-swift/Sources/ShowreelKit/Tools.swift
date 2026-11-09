@@ -127,6 +127,10 @@ public final class Tools {
             return await operate(.sceneEnabled(id: input["id"] as? String ?? "", enabled: on, montage: input["montage"] as? String))
         case "move_scene":
             return await operate(.moveScene(id: input["id"] as? String ?? "", after: input["after"] as? String ?? "", montage: input["montage"] as? String))
+        case "lock_scene":
+            guard let on = input["locked"] as? Bool else { return "locked must be true or false" }
+            let ids = (input["scenes"] as? [String]) ?? (input["scenes"] as? String).map { ParameterKey.list($0, lowercase: false) } ?? []
+            return await operate(.sceneLock(ids: ids, locked: on))
         case "update_asset":
             let st = (input["status"] as? String).flatMap { AssetStatus(rawValue: $0) }
             if input["status"] is String, st == nil { return "unknown status: use " + AssetStatus.allCases.map { $0.rawValue }.joined(separator: ", ") }

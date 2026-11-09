@@ -15,7 +15,7 @@
   { "id": "brief",      "name": "Brief",                 "gate": "Brief",                  "gateKey": null,         "block": "inspector",  "area": "project",    "built": true,  "produces": ["brief.md"] },
   { "id": "style",      "name": "Style sheet",           "gate": "Style sheet",            "gateKey": "style",      "block": "inspector",  "area": "look",       "built": true,  "produces": ["style-sheet.md"] },
   { "id": "storyboard", "name": "Storyboard",            "gate": "Storyboard",             "gateKey": "storyboard", "block": "storyboard", "area": "storyboard", "built": true,  "produces": ["storyboard.md"] },
-  { "id": "review",     "name": "Scene review",          "gate": "Scene review",           "gateKey": "review",     "block": "storyboard", "area": "scene",      "built": true,  "produces": [] },
+  { "id": "review",     "name": "Scene review",          "gate": "Scene review",           "gateKey": "review",     "block": "storyboard", "area": "scene",      "built": true,  "produces": [], "states": ["wip", "validated", "locked", "ditched"] },
   { "id": "looktest",   "name": "Look test",             "gate": "Look test",              "gateKey": null,         "block": "inspector",  "area": "look",       "built": false, "produces": [] },
   { "id": "build",      "name": "Build",                 "gate": "Build",                  "gateKey": "build",      "block": "build",      "area": "build",      "built": true,  "produces": ["vN/dist"] },
   { "id": "verify",     "name": "Verify",                "gate": "Verify",                 "gateKey": "verify",     "block": "build",      "area": "build",      "built": true,  "produces": ["qa/"] },

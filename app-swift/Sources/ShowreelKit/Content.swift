@@ -339,7 +339,7 @@ extension ProjectStore {
         let textBefore = s.text
         s.syncMasterText()
         if s.text != textBefore { changes.append(Change("\(sceneID) on-screen text", textBefore.isEmpty ? "(empty)" : textBefore, s.text.isEmpty ? "(empty)" : s.text)) }
-        if s.status == "ok" { changes.append(Change("Status", "ok", "open")); s.status = "open" }   // a changed scene is reviewed again
+        if s.state == .validated { changes.append(Change("State", SceneState.validated.title, SceneState.wip.title)); s.status = SceneState.wip.rawValue }   // a changed scene is reviewed again
         g.scenes[si] = s
         var assetsChanged = false
         if let r = linked, let k = rows.firstIndex(where: { $0.id == r }) {

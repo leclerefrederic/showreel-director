@@ -33,7 +33,7 @@ final class InteractionTests: XCTestCase {
         try store.apply(.scene(id: "S01", SceneEdit(name: "  Opening  ")))
         XCTAssertEqual(scene("S01").id, "S01"); XCTAssertEqual(scene("S01").name, "Opening"); XCTAssertEqual(scene("S01").label, "S01 \u{00B7} Opening")
         XCTAssertEqual(scene("S02").label, "S02", "no name: the ID alone")
-        XCTAssertEqual(scene("S01").status, "ok", "a label is not a change to the film: no new review")
+        XCTAssertEqual(scene("S01").status, "validated", "a label is not a change to the film: no new review")
         XCTAssertEqual(file.gates["review"], "passed", "and the Go stays given")
         XCTAssertEqual(ProjectDocs.storyboard(file), docs, "storyboard.md does not depend on the name")
         XCTAssertEqual(Film.text(file), film, "nor does the montage the build reads")
@@ -140,9 +140,9 @@ final class InteractionTests: XCTestCase {
         store.undoLog.clear()
         let given = texts()
         try store.apply(.resize(scene: "S02", duration: 5, ripple: true))
-        XCTAssertEqual(file.gates["review"], "open", "the change took the Go back"); XCTAssertEqual(scene("S02").status, "open")
+        XCTAssertEqual(file.gates["review"], "open", "the change took the Go back"); XCTAssertEqual(scene("S02").status, "wip")
         try store.undo()
-        XCTAssertEqual(texts(), given); XCTAssertEqual(file.gates["review"], "passed", "the Go is given again by the undo"); XCTAssertEqual(scene("S02").status, "ok")
+        XCTAssertEqual(texts(), given); XCTAssertEqual(file.gates["review"], "passed", "the Go is given again by the undo"); XCTAssertEqual(scene("S02").status, "validated")
         try store.redo()
         XCTAssertEqual(file.gates["review"], "open")
         try store.undo()
@@ -157,7 +157,7 @@ final class InteractionTests: XCTestCase {
         XCTAssertEqual(file.gates["review"], "passed")
         // a review decision
         try store.apply(.scene(id: "S01", SceneEdit(note: "shorter", status: "modify"))); try store.undo()
-        XCTAssertEqual(scene("S01").status, "ok"); XCTAssertEqual(scene("S01").note, "")
+        XCTAssertEqual(scene("S01").status, "validated"); XCTAssertEqual(scene("S01").note, "")
     }
 
     func testAnExcludedResourceComesBackWithItsPreparedFile() throws {

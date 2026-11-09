@@ -85,7 +85,7 @@ final class ReelTests: XCTestCase {
         try store.apply(.gate("storyboard", passed: true)); try store.apply(.gate("review", passed: true))
         let card = try store.plan(.resize(scene: "S02", duration: 5, ripple: true))
         XCTAssertTrue(card.changes.contains(Change("Go", "given", "to be given again")))
-        XCTAssertTrue(card.changes.contains(Change("Status", "ok", "open")))
+        XCTAssertTrue(card.changes.contains(Change("State", "Validated", "WIP")))
         try store.apply(.resize(scene: "S02", duration: 5, ripple: true))
         XCTAssertEqual(file.gates["review"], "open")
         try store.apply(.scene(id: "S02", SceneEdit(status: "ok"))); try store.apply(.gate("review", passed: true))

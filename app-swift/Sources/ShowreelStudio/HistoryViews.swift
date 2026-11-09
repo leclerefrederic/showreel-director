@@ -1,24 +1,33 @@
 import ShowreelKit
 import SwiftUI
 
-/// The History tab of the project settings: the sessions with their summaries, the journal of every operation, and what Clap knows about the project. The
+/// The history parts of the Ask Clap tab: what Clap knows about the project, the sessions with their summaries and the journal of every operation. The
 /// data and the rules are ShowreelKit's (`Journal`, `Sessions`, `MemoryRules`); the views only show them and relay the user's edits.
-struct HistoryPanel: View {
-    enum Part: String, CaseIterable, Identifiable { case knows = "What Clap knows", sessions = "Sessions", journal = "Journal"; var id: String { rawValue } }
+struct ClapHistoryPane: View {
+    let section: ClapSection
     @EnvironmentObject var project: ProjectModel
-    @State private var part: Part = .knows
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Picker("", selection: $part) { ForEach(Part.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented).labelsHidden()
-            switch part {
-            case .knows: WhatClapKnows()
-            case .sessions: SessionsList()
-            case .journal: JournalList()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                switch section {
+                case .memory: WhatClapKnows()
+                case .sessions: SessionsList()
+                case .journal: JournalList()
+                case .conversation: EmptyView()
+                }
             }
+            .padding(14).frame(maxWidth: .infinity, alignment: .leading)
         }
         .onAppear { project.reloadHistory() }
+        .onChange(of: section) { _ in project.reloadHistory() }
     }
+}
+
+/// The Clap mark: one icon and one title wherever Clap appears (tab, header, proposal cards). `movieclapper` needs macOS 14; the minimum is 13.
+enum ClapMark {
+    static let title = "Ask Clap"
+    static var symbol: String { if #available(macOS 14, *) { return "movieclapper" } else { return "wand.and.stars" } }
 }
 
 // MARK: what Clap knows

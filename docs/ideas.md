@@ -13,3 +13,4 @@ Ideas for Showreel Studio that are not in the current phase. Nothing here is bui
 - 2026-11-09: build without the AI when every attribute of a scene's content is fixed (declarative scenes).
 - 2026-11-09: interface language chosen from the system or the project's conversation language.
 - 2026-11-09: several montages (cuts: master, short, vertical) shown in the app, sharing one scene library.
+- 2026-11-09: let the AI write each scene as its own module file (scenes/S01.js) with a deterministic assembler in the skill's scripts, so that the app can reassemble main.js without AI and regenerate one scene only (the premise of phase V, see docs/overnight-report.md).
