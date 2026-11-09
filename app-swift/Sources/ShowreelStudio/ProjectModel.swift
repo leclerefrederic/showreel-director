@@ -83,6 +83,13 @@ struct PendingDrop: Identifiable {
     let message: String
 }
 
+/// A change of the global look that would redraw locked scenes: it waits for the user's choice on a card (apply anyway, or refuse).
+struct PendingLookChange: Identifiable {
+    let id = UUID()
+    let operation: ProjectOperation
+    let card: OperationCard
+}
+
 /// The library holds assets only: the resources and the scenes. The look is a project setting, and its catalogues are picked where they are used.
 enum LibraryTab: String, CaseIterable, Identifiable {
     case resources, scenes, checks
@@ -105,7 +112,7 @@ enum InspectorTab: String, CaseIterable, Identifiable {
 
 /// The four parts of the Ask Clap tab: the conversation, then what Clap keeps of the project (memory, sessions, journal).
 enum ClapSection: String, CaseIterable, Identifiable {
-    case conversation = "Conversation", memory = "Mémoire", sessions = "Séances", journal = "Journal"
+    case conversation = "Conversation", memory = "Memory", sessions = "Sessions", journal = "Journal"
     var id: String { rawValue }
 }
 
@@ -200,6 +207,7 @@ final class ProjectModel: ObservableObject {
     @Published var toast: Toast?
     @Published var renaming: String?
     @Published var pendingDrop: PendingDrop?
+    @Published var pendingLook: PendingLookChange?
     /// The base configuration of a new project is not done: the workspace stays closed. And: the file is of an older revision (nothing was written on opening).
     @Published private(set) var needsSetup = false
     @Published private(set) var outdated = false
@@ -333,9 +341,11 @@ final class ProjectModel: ObservableObject {
     private func finishGeneration(_ v: String) {
         generating = false
         guard Versions.list(store).contains(v) else {
-            error = "Clap did not write \(v) (project.json and main.js). See what it said in the chat, then try again."
+            error = "Clap did not write \(v) (project.json and the scene files). See what it said in the chat, then try again."
             refresh(); return
         }
+        // what each scene file was generated from, so that a later change can tell which scenes are stale (nothing shows it yet)
+        try? SceneModules.recordGeneration(version: v, store: store)
         runChecks(v)
     }
 
@@ -859,7 +869,25 @@ final class ProjectModel: ObservableObject {
     /// Applies a change the user made in a block. Errors are shown, never swallowed.
     @discardableResult
     func perform(_ op: ProjectOperation) -> Bool {
-        do { try store.apply(op); refresh(); LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step); return true }
+        // a change of the global look that locked scenes inherit is shown on its card first (the rule is ShowreelKit's)
+        if case .decisions = op, let card = try? store.plan(op), card.lockWarning != nil {
+            pendingLook = PendingLookChange(operation: op, card: card)
+            return false
+        }
+        return carryOut(op)
+    }
+
+    func confirmPendingLook() {
+        guard let p = pendingLook else { return }
+        pendingLook = nil
+        carryOut(p.operation, expecting: p.card)
+    }
+
+    func cancelPendingLook() { pendingLook = nil }
+
+    @discardableResult
+    private func carryOut(_ op: ProjectOperation, expecting card: OperationCard? = nil) -> Bool {
+        do { try store.apply(op, expecting: card); refresh(); LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step); return true }
         catch { self.error = error.localizedDescription; refresh(); return false }
     }
 

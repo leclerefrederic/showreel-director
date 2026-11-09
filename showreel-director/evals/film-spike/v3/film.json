@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "scenes": [
+    { "name": "S01", "t": 0, "duration": 3, "transition": { "type": "Push", "duration": 0.8 } },
+    { "name": "S02", "t": 3, "duration": 3, "transition": { "type": "Iris", "duration": 0.8 } },
+    { "name": "S03", "t": 6, "duration": 3 }
+  ]
+}

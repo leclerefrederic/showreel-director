@@ -30,6 +30,8 @@ public final class Tools {
     public let skill: URL
     public let ui: AgentUI
     public let store: ProjectStore
+    /// The model that writes a scene file for `generate_scenes` (the agent's own transport; a test scripts it). nil: that tool is not available.
+    public var sceneTransport: MessagesTransport?
 
     public init(project: URL, skill: URL, ui: AgentUI) {
         self.project = project; self.skill = skill; self.ui = ui
@@ -131,6 +133,8 @@ public final class Tools {
             guard let on = input["locked"] as? Bool else { return "locked must be true or false" }
             let ids = (input["scenes"] as? [String]) ?? (input["scenes"] as? String).map { ParameterKey.list($0, lowercase: false) } ?? []
             return await operate(.sceneLock(ids: ids, locked: on))
+        case "generate_scenes":
+            return await generateScenes(input)
         case "update_asset":
             let st = (input["status"] as? String).flatMap { AssetStatus(rawValue: $0) }
             if input["status"] is String, st == nil { return "unknown status: use " + AssetStatus.allCases.map { $0.rawValue }.joined(separator: ", ") }
@@ -253,8 +257,10 @@ public final class Tools {
             store.noteRefused(op, card: nil, author: "clap", note: "not allowed: \(error.localizedDescription)")
             return "refused: \(error.localizedDescription)"
         }
-        let summary = card.title + ": " + card.changes.map { "\($0.label) \($0.before) -> \($0.after)" }.joined(separator: "; ")
-        if store.settings.applyDirectly {
+        var summary = card.title + ": " + card.changes.map { "\($0.label) \($0.before) -> \($0.after)" }.joined(separator: "; ")
+        if let w = card.lockWarning { summary += " (" + w.headline + ")" }
+        // apply-directly never covers a change that redraws locked scenes: the owner of the project sees the card first
+        if store.settings.applyDirectly, card.lockWarning == nil {
             do { try store.apply(op, author: "clap", reason: reason); return "applied directly (the user chose this for the project): \(summary)" } catch { return "error: \(error.localizedDescription)" }
         }
         guard await ui.proposeOperation(card) else {
@@ -262,6 +268,20 @@ public final class Tools {
             return "refused by the user: \(card.title) was not applied. Ask what they want instead."
         }
         do { try store.apply(op, expecting: card, author: "clap", reason: reason); return "accepted and applied: \(summary)" } catch { return error.localizedDescription }
+    }
+
+    /// Writes the scene file of one or several scenes of a version, after a card the user accepts (each scene is one model call, so it costs). Nothing else is written.
+    private func generateScenes(_ input: [String: Any]) async -> String {
+        guard let transport = sceneTransport else { return "not available: there is no model connection for this" }
+        let ids = (input["scenes"] as? [String]) ?? (input["scenes"] as? String).map { ParameterKey.list($0, lowercase: false) } ?? []
+        guard let version = (input["version"] as? String) ?? Versions.list(store).last else { return "refused: there is no version yet. Build one first." }
+        let card: OperationCard
+        do { card = try SceneGeneration.plan(ids, version: version, store: store) } catch { return "refused: \(error.localizedDescription)" }
+        guard await ui.proposeOperation(card) else { return "refused by the user: nothing was generated. Ask what they want instead." }
+        do {
+            try await SceneGeneration.generate(ids, version: version, store: store, skill: skill, transport: transport, author: "clap")
+            return "generated \(ids.joined(separator: ", ")) in \(version): only those scene files were written. The app assembles and checks the film when the user builds again."
+        } catch { return "not generated: \(error.localizedDescription)" }
     }
 
     // MARK: the project's memory

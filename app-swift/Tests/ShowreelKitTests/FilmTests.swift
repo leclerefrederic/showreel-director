@@ -52,11 +52,11 @@ final class FilmTests: XCTestCase {
     func testTheBuildMessageQuotesTheMontageAndAsksForTheFilmFormat() throws {
         try store.apply(.transition(from: "S01", TransitionEdit(type: "Push", duration: 0.5)))
         let p = BuildRunner.prompt(version: "v1", store: store)
-        for needle in ["engine/main.film.template.js", "v1/film.json already exists", "do not edit it", "one scene module per scene", "SRF.fromData(MODULES",
-                       "never copy them into main.js", "Read references/engine.md (Film layer)", "\"name\" : \"S01\"", "\"type\" : \"Push\"", "do not draw transitions yourself"] {
+        for needle in ["engine/scene.template.js", "engine/reel.template.js", "v1/film.json already exists", "do not edit it", "one file per scene", "v1/scenes/<ID>.js",
+                       "never copy starts, durations or transitions", "Read references/engine.md (Scene files)", "Do not write main.js", "\"name\" : \"S01\"", "\"type\" : \"Push\"", "do not draw transitions yourself"] {
             XCTAssertTrue(p.contains(needle), needle)
         }
-        XCTAssertFalse(p.contains("engine/main.template.js"), "the old format is not what the message asks for")
+        XCTAssertFalse(p.contains("engine/main.template.js") || p.contains("main.film.template"), "the old formats are not what the message asks for")
         XCTAssertTrue(p.contains("The Go") == false && p.contains("The user pressed Go"))
     }
 

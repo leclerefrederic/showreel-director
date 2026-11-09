@@ -5,4 +5,4 @@ Plain test colours and no wording of any look: it only proves the mechanics. `to
 `scripts/test_film.js` checks that a transition draws both scenes at once and that the output is the same on every run.
 Build it by hand: `python3 scripts/build.py evals/film-spike/v1`, then `node scripts/harness.js evals/film-spike/v1/dist/index.html`.
 
-`v1` writes the montage in main.js (`SRF.film`); `v2` takes it from `film.json` (`SRF.fromData`), the way the app's Build works.
+`v1` writes the montage in main.js (`SRF.film`); `v2` takes it from `film.json` (`SRF.fromData`), the way the app's Build works; `v3` is the scene-file format: `film.json`, `scenes/S01.js` to `S03.js` and `reel.js`, with no `main.js` (`scripts/assemble.py` makes it, `build.py` runs it) and the same three scenes as `v2`, so that it draws the same pixels. `scripts/test_assemble.py` tests the assembler on it.

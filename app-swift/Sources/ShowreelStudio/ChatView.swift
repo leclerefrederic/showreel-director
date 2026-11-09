@@ -321,12 +321,13 @@ struct OperationCardView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(o.card.changes.enumerated()), id: \.offset) { _, c in ChangeRow(change: c) }
                 }
+                if let w = o.card.lockWarning { LockedLookNotice(warning: w) }
                 switch o.status {
                 case .pending:
                     HStack {
                         Spacer()
                         Button("Refuse") { model.resolveOperation(item.id, accept: false) }
-                        Button("Accept") { model.resolveOperation(item.id, accept: true) }
+                        Button(o.card.lockWarning == nil ? "Accept" : "Apply anyway") { model.resolveOperation(item.id, accept: true) }
                             .buttonStyle(.borderedProminent)
                     }
                 case .accepted:

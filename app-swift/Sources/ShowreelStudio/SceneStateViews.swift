@@ -61,3 +61,37 @@ struct LockAllValidatedButton: View {
             .help(op == nil ? "No validated scene to lock" : "Lock every validated scene: nothing in them can change until you unlock them. Their place in the film still moves.")
     }
 }
+
+/// The warning a card carries when a change of the global look would redraw locked scenes. The words are ShowreelKit's.
+struct LockedLookNotice: View {
+    let warning: LockedLookWarning
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(warning.headline, systemImage: "lock.fill").font(.callout.weight(.semibold))
+            Text(warning.advice).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+/// The card of a global look change that touches locked scenes: before and after, the warning, then Apply anyway or Cancel.
+struct LockedLookSheet: View {
+    let pending: PendingLookChange
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(pending.card.title, systemImage: "paintpalette").font(.headline)
+            VStack(alignment: .leading, spacing: 8) { ForEach(Array(pending.card.changes.enumerated()), id: \.offset) { _, c in ChangeRow(change: c) } }
+            if let w = pending.card.lockWarning { LockedLookNotice(warning: w) }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { project.cancelPendingLook() }.keyboardShortcut(.cancelAction)
+                Button("Apply anyway") { project.confirmPendingLook() }.buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(20).frame(width: 420)
+    }
+}

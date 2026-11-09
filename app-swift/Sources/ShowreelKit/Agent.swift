@@ -18,6 +18,7 @@ public final class Agent {
         self.messages = history
         self.ui = ui
         self.tools = Tools(project: project, skill: sp.root, ui: ui)
+        self.tools.sceneTransport = self.transport
         // what the project remembers, as data, from its own files: the same whichever model is used and however often the project was reopened
         var text = sp.text
         if let resume = ProjectResume.block(store: ProjectStore(root: project)) { text += "\n\n" + resume }

@@ -2,7 +2,7 @@
 name: "showreel-director"
 description: "Produce a motion-design showreel or short animated video for a product, brand or story. Starts with an interview (conversation language and on-screen language first, English by default) that settles purpose, audience, story, voice, look, motion, music, length, formats, languages and assets before any production. Use whenever the user asks for a showreel, reel, animated video, motion graphics, kinetic typography, animated logo or intro, explainer or promo video, lyric video or product teaser, with or without a style, music, script or format in mind. Not for PowerPoint or slide decks, static graphics or editing existing footage. Also use it to iterate on an existing reel (restyle, new track, other format, translation, timing feedback) and when the user asks what this skill can do, how it works, or which text, transition or other effects it knows."
 metadata:
-  version: "0.14.2"
+  version: "0.15.0"
 ---
 
 # Showreel director
@@ -63,7 +63,7 @@ Other files: `engine/effects-lab-sample.html` (neutral ready-made lab: open it a
     MANIFEST.csv   one row per file: id, file, original, origin, type, status, licence note, scene, notes
   analysis/        beats.json + env.json from the audio analysis
   brief.md  style-sheet.md  storyboard.md      archive/ holds replaced versions (storyboard_v1.md)
-  v1/ v2/ ...      one folder per build: project.json, main.js, dist/ (index.html and exports named <slug>_<vN>_<mode>_<lang>.<ext>)
+  v1/ v2/ ...      one folder per build: project.json, main.js (or, in the scene-file format, film.json, scenes/<ID>.js, reel.js and an assembled main.js), dist/ (index.html and exports named <slug>_<vN>_<mode>_<lang>.<ext>)
   qa/              temporary pages named by kind: contact-*, cards-*, decision-*, lab-*
 ```
 

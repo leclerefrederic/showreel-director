@@ -70,8 +70,8 @@ public enum BuildRunner {
 
         Do this:
         1. Read the state with get_state, read storyboard.md, style-sheet.md and brief.md of the project, and read the skill's references/build-guide.md, references/steps-3-to-6.md (Step 3) and references/engine.md.
-        2. Write \(version)/project.json starting from engine/project.template.json, and \(version)/main.js starting from engine/main.film.template.js (the film format), with write_file. Paths in project.json are relative to \(version)/. \(version)/film.json already exists: the app wrote it from the montage (below); do not edit it.
-        3. main.js is in the film format: one scene module per scene, an object keyed by the scene IDs, each `S01(g, lt, c) {...}` drawing with its own local time lt, and ONE call `SRF.fromData(MODULES, {palette, background, overlay})` that reads the starts, durations and transitions from film.json: never copy them into main.js. Read references/engine.md (Film layer) first. What crosses scenes (a background sequence, music reaction, persistent elements) goes in `background(g, t, c)` and `overlay(g, t, c)`, functions of the film time. The scenes are those of film.json (scenes marked off or archived are not in the film). The modules implement the on-screen text in each reel language (\(langs.isEmpty ? "the language of the brief" : langs)), the palette, the fonts, the background and the effects pack or moods the user chose, and the linked approved assets.\(overrideLine) The film lasts \(dur). Every scene honours ctx.reduced.
+        2. Write \(version)/project.json starting from engine/project.template.json, with write_file. Paths in project.json are relative to \(version)/. \(version)/film.json already exists: the app wrote it from the montage (below); do not edit it. Do not write main.js: scripts/assemble.py makes it from the files below, and the app runs it.
+        3. The film is in the scene-file format: write one file per scene, \(version)/scenes/<ID>.js for every scene of film.json (named by its ID, starting from engine/scene.template.js), and \(version)/reel.js (starting from engine/reel.template.js) for what belongs to the whole film. A scene file is the body of a function that ends with `return function render(g, lt, c) {...}`, drawing with its own local time lt; never copy starts, durations or transitions into any file. What crosses scenes (a background sequence, music reaction, persistent elements) goes in reel.js as `background(g, t, c)` and `overlay(g, t, c)`, functions of the film time, with the palette handed to the transitions and the declarations of window.SHOWREEL. Read references/engine.md (Scene files) first. The scenes are those of film.json (scenes marked off or archived are not in the film). The files implement the on-screen text in each reel language (\(langs.isEmpty ? "the language of the brief" : langs)), the palette, the fonts, the background and the effects pack or moods the user chose, and the linked approved assets.\(overrideLine) The film lasts \(dur). Every scene honours ctx.reduced.
         4. Scene content. Each scene lists what it contains, in processing priority: treat the items from the first to the last, the earlier ones win conflicts of time, space and emphasis (this priority is not the stacking order on screen, which you decide unless an instruction fixes it). Every attribute is marked FIXED (the user chose it: honour it strictly, exactly as written) or AUTO (decide it yourself from the style sheet, the effect packs and the brief). If the feasibility or the reading budget fail, simplify or drop the last items first and say so in your answer.
         \(contentBrief(f))
         5. The montage, exactly as the app wrote it to \(version)/film.json (starts and durations in seconds, the transition from a scene to the next one; a scene without one is cut on the beat), and the music grid:
@@ -136,8 +136,8 @@ public enum BuildRunner {
         let vdir = store.root.appendingPathComponent(version)
         let scripts = skill.appendingPathComponent("scripts")
         guard FileManager.default.fileExists(atPath: vdir.appendingPathComponent("project.json").path),
-              FileManager.default.fileExists(atPath: vdir.appendingPathComponent("main.js").path) else {
-            return BuildReport(version: version, steps: [r("make", "Build \(version)", .fail, "\(version) has no project.json or main.js yet.")])
+              FileManager.default.fileExists(atPath: vdir.appendingPathComponent("main.js").path) || SceneModules.usesSceneFiles(version: version, store: store) else {
+            return BuildReport(version: version, steps: [r("make", "Build \(version)", .fail, "\(version) has no project.json, and neither main.js nor a scenes/ folder, yet.")])
         }
         var steps: [CheckResult] = []
         func tail(_ s: String, _ n: Int = 700) -> String { let t = s.trimmingCharacters(in: .whitespacesAndNewlines); return t.count > n ? "..." + t.suffix(n) : t }
@@ -150,6 +150,11 @@ public enum BuildRunner {
         }
         let weight = b.out.split(separator: "\n").last.map(String.init) ?? "built"
         steps.append(r("make", "Build \(version)", .ok, tail(weight, 200)))
+        // scene-file format: a scene with no usable file is a placeholder frame in the film, said here instead of hidden (the older format has no such step)
+        if SceneModules.usesSceneFiles(version: version, store: store) {
+            let gone = SceneModules.ungenerated(version: version, store: store)
+            if !gone.isEmpty { steps.append(r("scenes", "Scene files", .tight, "\(gone.joined(separator: ", ")) not generated: shown as an empty frame with its ID until its file is written")) }
+        }
 
         let html = vdir.appendingPathComponent("dist/index.html")
         if let h = await Shell.run("node \(q(scripts.appendingPathComponent("harness.js"))) \(q(html))", in: store.root, timeout: 240) {

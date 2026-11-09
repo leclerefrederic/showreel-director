@@ -31,6 +31,8 @@ Order of the per-block rework: Project and wizard, Resources, Look, Storyboard a
 
 - The Library window opens at launch by default (built in phase T).
 - History belongs to Clap: memory, sessions and journal are reached from the Clap tab, not from project settings. Le titre de l'onglet est "Ask Clap" avec une icône.
+- Selector labels are in English (Conversation, Memory, Sessions, Journal).
+- A global look change warns on its card about locked scenes that inherit it; the owner decides.
 
 ## Library, Scenes tab
 

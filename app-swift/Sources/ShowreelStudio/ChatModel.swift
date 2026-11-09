@@ -91,7 +91,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         let prior = history.load()
         if !prior.isEmpty { history.startNewSession() }       // what was said before is in the transcripts, the summaries and the memory: the prompt is built from those
         records = []
-        items = prior.isEmpty ? [] : [ChatItem(kind: .notice, text: "Clap remembers what was decided: see Mémoire, Séances and Journal in the Ask Clap tab. The earlier conversation is there too.")]
+        items = prior.isEmpty ? [] : [ChatItem(kind: .notice, text: "Clap remembers what was decided: see Memory, Sessions and Journal in the Ask Clap tab. The earlier conversation is there too.")]
         project.store.sessionID = history.sessionID
         idleTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.checkIdle() }
         if let key = settings.keyIfLoaded { catchUpSummaries(key: key) }

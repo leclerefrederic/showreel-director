@@ -17,6 +17,7 @@
 - Refactoring: shared helpers `scripts/_common.py` (Python page builders) and `scripts/_reel.js` (harness and exporter).
 - Demo reel moved out of the packaged skill (`demo/` at the repository root).
 - Showreel Studio, native macOS app (`app-swift/`): SwiftUI chat with question cards, preview pane for the pickers and the reel, Keychain key storage, gateway endpoint (Bearer or x-api-key), launch-time environment check with guided install (`tools/setup-env.sh`), screenshot tool so the model can look at the preview, skill fingerprint and capability contract kept in step with the skill (`tools/check.py`).
+- Scene files: one `scenes/<ID>.js` per scene, assembled into `main.js` without AI (`scripts/assemble.py`, run by `build.py`), a visible placeholder for a scene with no file, per-scene generation and per-scene fingerprints in the app (no interface yet); a version with only a `main.js` builds as before.
 
 ## Next
 - Studio known limit: fonts picked from the free list are reduced previews in the app bundle, so a built reel falls back to a system font unless the user approves the real font file in Resources. To fix: fetch the full font at build time (`scripts/fetch_font.py`) or bundle full files.

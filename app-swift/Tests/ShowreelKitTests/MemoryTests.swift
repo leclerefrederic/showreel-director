@@ -437,7 +437,7 @@ final class MemoryTests: XCTestCase {
         let pm = try src("ProjectModel.swift")
         XCTAssertTrue(pm.contains("case project, look\n"), "the project settings keep Project and Look only: the history belongs to Clap")
         XCTAssertFalse(pm.contains("case project, look, history"))
-        XCTAssertTrue(pm.contains("case conversation = \"Conversation\", memory = \"Mémoire\", sessions = \"Séances\", journal = \"Journal\""), "the Ask Clap selector")
+        XCTAssertTrue(pm.contains("case conversation = \"Conversation\", memory = \"Memory\", sessions = \"Sessions\", journal = \"Journal\""), "the Ask Clap selector")
         XCTAssertTrue(pm.contains("self == .copilot ? ClapMark.title"), "the tab is titled Ask Clap")
         let h = try src("HistoryViews.swift")
         for need in ["WhatClapKnows", "SessionsList", "JournalList", "JournalFilter.apply(", "project.openJournal(entry)", "project.addMemory(", "project.deleteMemory(", "Transcript", "Confirm"] { XCTAssertTrue(h.contains(need), need) }

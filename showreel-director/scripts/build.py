@@ -2,6 +2,7 @@
 """Build one self-contained HTML from project.json + engine files.
 
 Usage: python3 build.py PROJECT_DIR [--out FILE]
+A version folder with a scenes/ folder is first assembled into main.js by assemble.py (film.json + scenes/*.js + reel.js); one with only main.js builds as it is.
 Inlines: CSS tokens, fonts (woff2 base64, falls back to the raw file), the track (base64), beat map and
 envelopes (from analysis_dir/beats.json + env.json), core.js + kit.js (window.SR, window.SRK), backgrounds.js when main.js uses SRB, film.js + transitions.js when it uses SRF (film.json next to project.json goes to SR.data.film), main.js, player.js. Prints a weight report and
 fails if the budget in project.json is exceeded. No track: omit "track" (the reel then runs silent).
@@ -10,6 +11,7 @@ import argparse, base64, json, os, re, sys
 sys.dont_write_bytecode = True  # no __pycache__ inside the skill folder
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _common as C
+import assemble as ASM
 
 ENGINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine")
 
@@ -56,6 +58,9 @@ def main():
         if cut not in (cfg.get("cuts") or {}): sys.exit(f"unknown cut {cut!r}; declared cuts: {', '.join((cfg.get('cuts') or {}).keys()) or 'none'}")
         cfg = dict(cfg); cfg.update(cfg["cuts"][cut])
     guard_assets(cfg, root, a.allow_unlisted)
+    # scene-file format: a scenes/ folder next to film.json is assembled into main.js (no AI); a version with only a main.js builds as it is
+    if ASM.uses_scene_files(root):
+        asm = ASM.assemble(root, main=cfg.get("main", "main.js")); print(ASM.summary(asm))
     report = []
     data = {"beats": [], "dur": 60, "env": None, "downbeat_offset": 0}
     track_tag = ""

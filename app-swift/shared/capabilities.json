@@ -24,7 +24,7 @@
   {
    "need": "Pick the look on screens",
    "provided": true,
-   "via": "the project settings panel (Look is a list of six rows, each opening its editor with a back button; while it is open the viewer shows the project's design system as a read-only board, and each editor pins the current choice as a large card above the other options: the looks board, a palette editor with a contrast check, fonts with licence warnings, the default background and its mood, motion moods and the effects pack, each previewed by the same engine as the reel); the catalogues are picked where they are used, with the engine's previews (a background in a scene's Look tab, an animation on an item or in the scene's Effects tab, a scene transition in the transition inspector, the six preview-only transitions shown but never chosen) and an optional floating Catalogue (looks, palettes, backgrounds, effects, transitions) to drag onto a scene, an item or a marker; update_decision changes the global look as plain cards the user accepts or refuses"
+   "via": "the project settings panel (Look is a list of six rows, each opening its editor with a back button; while it is open the viewer shows the project's design system as a read-only board, and each editor pins the current choice as a large card above the other options: the looks board, a palette editor with a contrast check, fonts with licence warnings, the default background and its mood, motion moods and the effects pack, each previewed by the same engine as the reel); the catalogues are picked where they are used, with the engine's previews (a background in a scene's Look tab, an animation on an item or in the scene's Effects tab, a scene transition in the transition inspector, the six preview-only transitions shown but never chosen) and an optional floating Catalogue (looks, palettes, backgrounds, effects, transitions) to drag onto a scene, an item or a marker; update_decision changes the global look as plain cards the user accepts or refuses; a global change that would redraw locked scenes inheriting it (not those with their own look) lists them on the card, with the choice to apply anyway or refuse, for the user's own edits as for Clap's"
   },
   {
    "need": "Write the storyboard, review each scene and give the go on screens",
@@ -55,6 +55,11 @@
    "need": "Persist or share a page",
    "provided": false,
    "fallback": "no hosted pages: deliver the HTML file and say how to share it"
+  },
+  {
+   "need": "Assemble the reel from its scene files",
+   "provided": true,
+   "via": "the build runs scripts/assemble.py (through build.py) on the version folder: film.json, one scenes/<ID>.js per scene and reel.js become main.js without any AI, deterministically; a scene without a usable file is a visible placeholder listed in assembly.json; Clap's generate_scenes tool writes the file of one or several scenes only (a card to confirm, never a locked scene), and .studio/build.json records what each scene file was generated from, so a scene is not generated, up to date or stale (not shown in the interface yet)"
   },
   {
    "need": "Run scripts",

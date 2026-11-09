@@ -17,7 +17,7 @@
   { "id": "storyboard", "name": "Storyboard",            "gate": "Storyboard",             "gateKey": "storyboard", "block": "storyboard", "area": "storyboard", "built": true,  "produces": ["storyboard.md"] },
   { "id": "review",     "name": "Scene review",          "gate": "Scene review",           "gateKey": "review",     "block": "storyboard", "area": "scene",      "built": true,  "produces": [], "states": ["wip", "validated", "locked", "ditched"] },
   { "id": "looktest",   "name": "Look test",             "gate": "Look test",              "gateKey": null,         "block": "inspector",  "area": "look",       "built": false, "produces": [] },
-  { "id": "build",      "name": "Build",                 "gate": "Build",                  "gateKey": "build",      "block": "build",      "area": "build",      "built": true,  "produces": ["vN/dist"] },
+  { "id": "build",      "name": "Build",                 "gate": "Build",                  "gateKey": "build",      "block": "build",      "area": "build",      "built": true,  "produces": ["vN/scenes", "vN/dist"] },
   { "id": "verify",     "name": "Verify",                "gate": "Verify",                 "gateKey": "verify",     "block": "build",      "area": "build",      "built": true,  "produces": ["qa/"] },
   { "id": "publish",    "name": "Deliver",               "gate": "Publish or share",       "gateKey": "publish",    "block": "deliver",    "area": "deliver",    "built": false, "produces": ["exports"] }
  ]

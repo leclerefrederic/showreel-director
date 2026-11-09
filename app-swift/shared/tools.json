@@ -233,6 +233,29 @@
     }
   },
   {
+    "name": "generate_scenes",
+    "description": "Write the scene file (vN/scenes/<ID>.js) of one or several scenes of a version, and only those files: the other scene files, film.json and reel.js are not touched. Each scene is one model call, so the user sees a card (the files that will be written, what each is now) and accepts or refuses before anything is asked. A Locked scene is refused with its reason (offer to unlock it with lock_scene first), like an archived scene, a scene that is off in the montage, or a version in the older single main.js format. Use it to redo one scene after the user changed it or asked for another approach; building a whole version stays the Build button's job. The app assembles and checks the film when the user builds again.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "scenes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "the scene IDs (from get_state)"
+        },
+        "version": {
+          "type": "string",
+          "description": "the version folder, for example v2; the latest one when omitted"
+        }
+      },
+      "required": [
+        "scenes"
+      ]
+    }
+  },
+  {
     "name": "update_asset",
     "description": "Change one asset of the Resources block by its id (from get_state): status (proposed, approved, excluded, placeholder, hold; a hold needs a note), note, licence_note, or the scenes that use it (for example S01,S07). The user sees a plain card and accepts or refuses. Approving a file held for confidential data or a forbidden font licence is refused: that goes through the skill's organiser.",
     "input_schema": {
@@ -295,7 +318,7 @@
   },
   {
     "name": "update_decision",
-    "description": "Change one decision of the Look block. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Keys: palette (colours as #RRGGBB, comma-separated, in the order background, text, accent, accent 2; at most 6), titleFont and textFont (a font name; prefer the free list of the skill, a font that is not in it is flagged for its licence), background (an id of the engine's backgrounds), backgroundMood (punch, playful, tech, clean, cinematic or deadpan: how an animated background reacts to music), moods (one or two mood packs of the effects catalogue, comma-separated) and effectsPack (one pack). An empty value clears the decision. Unknown ids are refused with the list of valid ones.",
+    "description": "Change one decision of the Look block. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Keys: palette (colours as #RRGGBB, comma-separated, in the order background, text, accent, accent 2; at most 6), titleFont and textFont (a font name; prefer the free list of the skill, a font that is not in it is flagged for its licence), background (an id of the engine's backgrounds), backgroundMood (punch, playful, tech, clean, cinematic or deadpan: how an animated background reacts to music), moods (one or two mood packs of the effects catalogue, comma-separated) and effectsPack (one pack). An empty value clears the decision. Unknown ids are refused with the list of valid ones. When locked scenes inherit what changes, the card lists them and apply-directly does not skip it.",
     "input_schema": {
       "type": "object",
       "properties": {

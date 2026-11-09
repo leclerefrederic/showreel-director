@@ -329,7 +329,7 @@ final class BuildTests: XCTestCase {
     func testPromptIsTheBuildInstructionAndNeverTheGo() throws {
         try store.apply(.parameter(.duration, "30")); try store.apply(.parameter(.reelLanguages, "en, fr"))
         let p = BuildRunner.prompt(version: "v2", store: store)
-        for needle in ["v2/project.json", "v2/main.js", "get_state", "build-guide.md", "approved assets", "30 s", "en, fr", "Do not write outside v2/", "do not run build.py"] {
+        for needle in ["v2/project.json", "v2/scenes/<ID>.js", "get_state", "build-guide.md", "approved assets", "30 s", "en, fr", "Do not write outside v2/", "do not run build.py"] {
             XCTAssertTrue(p.contains(needle), needle)
         }
         XCTAssertTrue(p.contains("The user pressed Go"), "the instruction exists only because the user pressed Go")

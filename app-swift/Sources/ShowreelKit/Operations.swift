@@ -12,7 +12,9 @@ public struct Change: Equatable, Sendable {
 public struct OperationCard: Equatable, Sendable {
     public let title: String
     public let changes: [Change]
-    public init(title: String, changes: [Change]) { self.title = title; self.changes = changes }
+    /// Set when the change redraws locked scenes that inherit it (a change of the global look): the card says so, and the user decides.
+    public let lockWarning: LockedLookWarning?
+    public init(title: String, changes: [Change], lockWarning: LockedLookWarning? = nil) { self.title = title; self.changes = changes; self.lockWarning = lockWarning }
 }
 
 /// The fields of the Project block, by the name the copilot uses.
@@ -277,14 +279,16 @@ extension ProjectStore {
             let f = try needShowreel()
             var g = f
             var ch: [Change] = []
+            var changed: [DecisionKey] = []
             for d in list {
                 let before = d.key.current(g)
                 try d.key.set(d.value, in: &g)
                 let after = d.key.current(g)
-                if before != after { ch.append(Change(d.key.title, Operations.shown(before), Operations.shown(after))) }
+                if before != after { ch.append(Change(d.key.title, Operations.shown(before), Operations.shown(after))); changed.append(d.key) }
             }
             guard !ch.isEmpty else { throw AgentError.msg("no change: the look already is that") }
-            return OperationCard(title: title ?? (ch.count == 1 ? "Set " + ch[0].label.lowercased() : "Change the look"), changes: ch)
+            return OperationCard(title: title ?? (ch.count == 1 ? "Set " + ch[0].label.lowercased() : "Change the look"), changes: ch,
+                                 lockWarning: LockedLook.warning(changing: changed, in: f))
         case .asset(let id, let status, let note, let licence, let scenes):
             let rows = Assets.load(self)
             guard let r = rows.first(where: { $0.id == id }) else { throw AgentError.msg("unknown asset \(id)") }
@@ -325,7 +329,7 @@ extension ProjectStore {
     /// Performs an operation. With `expecting`, it first checks that the project still is what the card was made from.
     public func apply(_ op: ProjectOperation, expecting card: OperationCard? = nil, author: String = "user", reason: String? = nil) throws {
         let now = try plan(op)
-        if let c = card, c.changes != now.changes { throw AgentError.msg("not applied: the project changed since the proposal was made. Read the state again and propose again.") }
+        if let c = card, c.changes != now.changes || c.lockWarning != now.lockWarning { throw AgentError.msg("not applied: the project changed since the proposal was made. Read the state again and propose again.") }
         try recording(now.title, backup: filesToKeep(op)) {
             try perform(op)
             if linksResources(op) { try completeComposition(reopenGo: true) }     // a linked resource is an element of the scene
