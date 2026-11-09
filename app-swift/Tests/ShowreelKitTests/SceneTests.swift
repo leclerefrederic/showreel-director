@@ -327,16 +327,6 @@ final class BuildTests: XCTestCase {
         XCTAssertEqual(Versions.next(store), "v11")
     }
 
-    func testPromptIsTheBuildInstructionAndNeverTheGo() throws {
-        try store.apply(.parameter(.duration, "30")); try store.apply(.parameter(.reelLanguages, "en, fr"))
-        let p = BuildRunner.prompt(version: "v2", store: store)
-        for needle in ["v2/project.json", "v2/scenes/<ID>.js", "get_state", "build-guide.md", "approved assets", "30 s", "en, fr", "Do not write outside v2/", "do not run build.py"] {
-            XCTAssertTrue(p.contains(needle), needle)
-        }
-        XCTAssertTrue(p.contains("The user pressed Go"), "the instruction exists only because the user pressed Go")
-        XCTAssertFalse(p.lowercased().contains("api key") || p.contains("sk-"))
-    }
-
     func skipUnlessToolsExist() async throws {
         let r = await Shell.run("command -v python3 && command -v node && node -e \"require('jsdom')\"", in: dir, timeout: 30)
         try XCTSkipUnless(r?.status == 0, "python3, node and jsdom are needed (run the app's setup check)")

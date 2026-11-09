@@ -70,6 +70,8 @@ public enum SceneModules {
         var films: [String: FilmRecord]?
         /// Per version: what its frame (project.json, reel.js) was written from.
         var frames: [String: String]?
+        /// Per version: the scenes whose file failed its own test, even after its repair (the file was removed), with the first error.
+        var failed: [String: [String: String]]?
     }
 
     static func bookURL(_ store: ProjectStore) -> URL { store.root.appendingPathComponent(".studio/build.json") }
@@ -85,19 +87,27 @@ public enum SceneModules {
     public static func recordGeneration(version: String, scenes ids: [String]? = nil, store: ProjectStore) throws {
         guard let f = store.loadShowreel() else { throw AgentError.msg("there is no readable showreel.json") }
         var book = loadBook(store)
-        var rows = book.versions[version] ?? [:]
+        var rows = book.versions[version] ?? [:], failed = book.failed ?? [:]
         for s in f.film where ids?.contains(s.id) ?? true {
             guard let m = moduleHash(version: version, scene: s.id, store: store) else { rows[s.id] = nil; continue }
+            failed[version]?[s.id] = nil
             rows[s.id] = Record(inputs: inputs(of: s, in: f), module: m, passage: passage(of: s, in: f), context: context(of: s, in: f, store: store), contract: contractFingerprint(), tested: rows[s.id]?.module == m ? rows[s.id]?.tested : nil)
         }
         book.versions[version] = rows
+        book.failed = failed.filter { !$0.value.isEmpty }.isEmpty ? nil : failed.filter { !$0.value.isEmpty }
         try save(book, store)
     }
+
+    /// The scene's file failed its test even after its repair and was removed: said, so that the next plan can give that as the reason.
+    public static func noteFailure(version: String, scene: String, error: String, store: ProjectStore) {
+        var book = loadBook(store); var m = book.failed ?? [:]; m[version, default: [:]][scene] = error; book.failed = m; try? save(book, store)
+    }
+    public static func failure(version: String, scene: String, store: ProjectStore) -> String? { loadBook(store).failed?[version]?[scene] }
 
     /// Forgets what was recorded about the scenes of a version (after a start over).
     public static func forget(version: String, store: ProjectStore) throws {
         var book = loadBook(store)
-        book.versions[version] = nil; book.films?[version] = nil; book.results?[version] = nil
+        book.versions[version] = nil; book.films?[version] = nil; book.results?[version] = nil; book.failed?[version] = nil
         try save(book, store)
     }
 
@@ -133,22 +143,18 @@ public enum SceneModules {
         let a = MusicAnalysis.load(root: store.root); cache[u.path] = (stamp, a); return a
     }
 
-    /// The file of a scene passed its test (or a version that was built and tested green holds it): it can be reused without being written again.
-    public static func markTested(version: String, scene: String, ok: Bool, store: ProjectStore) {
+    /// The file of a scene passed its own test with no code error: only this lets a Build take it over without writing it again. (`ok: false` records nothing: a file that
+    /// failed its test is removed, and the failure is kept by `noteFailure`.)
+    public static func markTested(version: String, scene: String, ok: Bool = true, store: ProjectStore) {
+        guard ok else { return }
         var book = loadBook(store)
         guard var r = book.versions[version]?[scene] else { return }
-        r.tested = ok; book.versions[version]?[scene] = r
+        r.tested = true; book.versions[version]?[scene] = r
         try? save(book, store)
     }
 
-    static func trusted(_ r: Record, version: String, store: ProjectStore) -> Bool { r.tested ?? (loadBook(store).results?[version]?.ok == true) }
-
-    /// A scene file of `version` that a new version may take over: written from the scene's present inputs, not edited by hand, tested with no code error.
-    public static func reusable(scene: ShowreelFile.Scene, version: String, in f: ShowreelFile, store: ProjectStore) -> Bool {
-        guard let r = record(version: version, scene: scene.id, store: store) else { return false }
-        let st = status(of: scene, version: version, in: f, store: store)
-        return st.state == .upToDate && !st.moduleEdited && trusted(r, version: version, store: store)
-    }
+    /// The record of the scene says its file passed its own test. One rule, with no fallback on what a version's result says.
+    public static func isTested(version: String, scene: String, store: ProjectStore) -> Bool { record(version: version, scene: scene, store: store)?.tested == true }
 
     /// Copies the file of a scene and its record from one version to another, as they are.
     public static func carryOver(scene id: String, from: String, to: String, store: ProjectStore) throws {

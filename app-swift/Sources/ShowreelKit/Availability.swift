@@ -88,8 +88,13 @@ public struct SceneRun: Equatable, Sendable {
     public var warningCount = 0
     /// The scene's file failed its own test, even after its one repair: it is an empty frame in the film (`failure` has the error).
     public var failedTest = false
+    /// When the scene entered its present state, and when the last content of its request arrived (to say how long it has been quiet).
+    public var phaseStarted: Date?
+    public var lastData: Date?
     public init() {}
     public func elapsed(now: Date = Date()) -> TimeInterval { started.map { (finished ?? now).timeIntervalSince($0) } ?? 0 }
+    /// How long the scene has been in its present state.
+    public func inPhase(now: Date = Date()) -> TimeInterval { phaseStarted.map { now.timeIntervalSince($0) } ?? 0 }
 }
 
 public final class ProjectActivity: @unchecked Sendable {
@@ -110,6 +115,10 @@ public final class ProjectActivity: @unchecked Sendable {
         /// A Build one scene at a time: the steps in order ("reel" first, then the scenes) and the state of each.
         public var order: [String] = []
         public var runs: [String: SceneRun] = [:]
+        /// A line about what the Build is doing again by itself ("Connection lost on S07, retrying (1 of 2)"); nil when nothing is.
+        public var notice: String?
+        /// The layout warnings found by the scenes' own tests, by scene: kept after a stop, so that they can be listed.
+        public var layoutWarnings: [String: [String]] { Dictionary(uniqueKeysWithValues: runs.compactMap { $0.value.warningCount > 0 ? ($0.key, $0.value.warnings) : nil }) }
         public init(version: String, phase: Phase, started: Date = Date(), total: Int? = nil) { self.version = version; self.phase = phase; self.started = started; self.total = total }
     }
     public enum ClapWork: Equatable, Sendable { case thinking, applying([ElementRef]) }
@@ -153,6 +162,13 @@ public final class ProjectActivity: @unchecked Sendable {
         observer?(s)
     }
     public func reset() { update { $0 = Snapshot() } }
+
+    private var hook: (() -> Void)?
+    /// What stops the work in progress that no task of the window owns (a generation Clap started). Set by that work while it runs, cleared at its end.
+    public func setCancelHook(_ h: (() -> Void)?) { guardLock.lock(); hook = h; guardLock.unlock() }
+    /// Stops that work if there is some. true: there was something to stop.
+    @discardableResult
+    public func cancelRunning() -> Bool { guardLock.lock(); let h = hook; guardLock.unlock(); h?(); return h != nil }
     public func addProposal(_ p: Pending) { update { $0.proposals.removeAll { $0.id == p.id }; $0.proposals.append(p) } }
     public func removeProposal(_ id: String) { update { $0.proposals.removeAll { $0.id == id } } }
 }

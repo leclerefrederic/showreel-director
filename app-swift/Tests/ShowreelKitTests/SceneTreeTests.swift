@@ -113,8 +113,8 @@ final class SceneTreeTests: XCTestCase {
         XCTAssertTrue(state.contains("storyboards"))
     }
 
-    func testBuildPromptListsSceneOverrides() throws {
+    func testTheScenePromptListsSceneOverrides() throws {
         try store.apply(.sceneLook(id: "S01", [DecisionChange(.background, "duotone")]))
-        XCTAssertTrue(BuildRunner.prompt(version: "v1", store: store).contains("S01: background duotone"))
+        XCTAssertTrue(SceneGeneration.prompt(scene: "S01", version: "v1", store: store, skill: try XCTUnwrap(Skill.root())).contains("Background: duotone"))
     }
 }

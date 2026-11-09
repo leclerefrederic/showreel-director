@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var bearer = false
     @State private var modelName = ""
     @State private var idle = ""
+    @State private var requestMinutes = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,6 +24,8 @@ struct SettingsView: View {
                 Section("Advanced") {
                     TextField("No-answer timeout (seconds)", text: $idle, prompt: Text("\(Int(AgentLimits.idleTimeout))"))
                         .help("A request is cut, and said so, when the API sends nothing for this long. At least 5.")
+                    TextField("Longest request (minutes)", text: $requestMinutes, prompt: Text("\(Int(AgentLimits.requestTimeout / 60))"))
+                        .help("A request is cut, and said so, when it takes longer than this, whatever the API keeps sending. At least 1. A request that was cut is asked again up to \(AgentLimits.stepRetries) times.")
                 }
                 Section("Skill") {
                     LabeledContent("Version", value: (Skill.version().map { $0 + " " } ?? "") + "(" + Skill.fingerprint() + ")")
@@ -40,6 +43,7 @@ struct SettingsView: View {
                 Button("Save") {
                     model.save(key: key, url: url, bearer: bearer, modelName: modelName)
                     if let n = Double(idle.trimmingCharacters(in: .whitespaces)) { model.idleTimeout = n } else if idle.isEmpty { model.idleTimeout = AgentLimits.idleTimeout }
+                    if let n = Double(requestMinutes.trimmingCharacters(in: .whitespaces)) { model.requestMinutes = n } else if requestMinutes.isEmpty { model.requestMinutes = AgentLimits.requestTimeout / 60 }
                     close()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -54,6 +58,7 @@ struct SettingsView: View {
             bearer = model.bearer
             modelName = model.modelName
             idle = model.idleTimeout == AgentLimits.idleTimeout ? "" : String(Int(model.idleTimeout))
+            requestMinutes = model.requestMinutes == AgentLimits.requestTimeout / 60 ? "" : String(Int(model.requestMinutes))
         }
     }
 

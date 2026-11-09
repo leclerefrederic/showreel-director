@@ -51,13 +51,12 @@ final class FilmTests: XCTestCase {
 
     func testTheBuildMessageQuotesTheMontageAndAsksForTheFilmFormat() throws {
         try store.apply(.transition(from: "S01", TransitionEdit(type: "Push", duration: 0.5)))
-        let p = BuildRunner.prompt(version: "v1", store: store)
-        for needle in ["engine/scene.template.js", "engine/reel.template.js", "v1/film.json already exists", "do not edit it", "one file per scene", "v1/scenes/<ID>.js",
-                       "never copy starts, durations or transitions", "Read references/engine.md (Scene files)", "Do not write main.js", "\"name\" : \"S01\"", "\"type\" : \"Push\"", "do not draw transitions yourself"] {
+        let p = BuildJob.frame(version: "v1", store: store, skill: try XCTUnwrap(Skill.root()))
+        for needle in ["v1/film.json already exists", "do not repeat it", "Do not write main.js", "\"name\" : \"S01\"", "\"type\" : \"Push\"", "do not draw transitions yourself"] {
             XCTAssertTrue(p.contains(needle), needle)
         }
         XCTAssertFalse(p.contains("engine/main.template.js") || p.contains("main.film.template"), "the old formats are not what the message asks for")
-        XCTAssertTrue(p.contains("The Go") == false && p.contains("The user pressed Go"))
+        XCTAssertFalse(p.contains("The Go"))
     }
 
     // MARK: transitions that cannot be chosen
@@ -73,7 +72,7 @@ final class FilmTests: XCTestCase {
         // a montage edited by hand with one of them is flagged and the build message says to use a cut
         var f = file; f.storyboards[0].items[0].transition = .init(type: "Curtain", duration: 0.5); try store.save(f)
         XCTAssertEqual(Checks.run(area: "storyboard", store: store).first { $0.id == "reel.transition-length" }?.level, .fail)
-        XCTAssertTrue(BuildRunner.prompt(version: "v1", store: store).contains("a preview-only transition"))
+        XCTAssertTrue(BuildJob.frame(version: "v1", store: store, skill: try XCTUnwrap(Skill.root())).contains("a preview-only transition"))
     }
 
     func testTheListIsWhatTheProbeFinds() async throws {
@@ -101,7 +100,7 @@ final class FilmTests: XCTestCase {
         // what Build does first: the version folder with the montage in it, then the message
         let v = Versions.next(store)
         try Film.write(version: v, store: store)
-        let prompt = BuildRunner.prompt(version: v, store: store)
+        let prompt = BuildJob.frame(version: v, store: store, skill: try XCTUnwrap(Skill.root()))
         XCTAssertTrue(prompt.contains("\(v)/film.json"))
         // the scripted model writes project.json and main.js in the film format (no montage in main.js)
         let project = "{\"title\": \"Fake\", \"main\": \"main.js\", \"duration\": 9, \"fonts\": [], \"tokens\": {}, \"weight_budget_mb\": 5}"

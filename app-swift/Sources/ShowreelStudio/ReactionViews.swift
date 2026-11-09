@@ -37,7 +37,7 @@ extension ProjectModel {
         alert.addButton(withTitle: a.confirm)
         guard alert.runModal() == .alertSecondButtonReturn else { return false }
         if c == .quit, a.proposals > 0 { chat?.journalUnanswered() }           // the process ends right after: the journal is written here
-        if a.cancelsBuild { cancelBuild() }
+        if a.cancelsBuild { cancelBuild(by: c == .quit ? "quitting the app" : c == .closeWindow ? "closing the window" : "leaving the project (\(c.rawValue))") }
         if a.interruptsClap || (a.proposals > 0 && c != .quit) { chat?.stop() }
         return true
     }
@@ -277,16 +277,18 @@ struct BuildProgressPanel: View {
                 let scenes = b.order.filter { $0 != BuildJob.frameStep }
                 let hasRuns = !scenes.isEmpty
                 let p = BuildProgress.scenes(version: b.version, store: project.store)
-                let step = b.phase == .generating ? "Clap is writing the film" : b.phase == .testing ? "Assembling and testing" : "Stopping the build\u{2026}"
+                let testingID = b.phase == .generating ? b.order.first { b.runs[$0]?.state == .testing } : nil          // a scene (or the frame) is being tested: no request is in flight
+                let step = b.phase == .generating ? (testingID.map { "Testing " + ($0 == BuildJob.frameStep ? "the frame" : $0) } ?? "Clap is writing the film") : b.phase == .testing ? "Assembling and testing" : "Stopping the build\u{2026}"
                 let current = b.current ?? ""
                 let scene = b.phase == .generating ? (hasRuns ? BuildProgress.sceneLine(done: b.done, total: scenes.count) : BuildProgress.sceneLine(done: p.done, total: p.total)) : nil
-                let phase = b.phase == .generating ? b.clapPhase?.word : nil
+                let phase = b.phase == .generating && testingID == nil ? b.clapPhase?.word : nil
+                let testTime = testingID.flatMap { b.runs[$0] }.map { BuildProgress.elapsed($0.inPhase(now: ctx.date)) }
                 let time = BuildProgress.elapsed(ctx.date.timeIntervalSince(b.started))
-                let usage = b.phase == .generating ? (hasRuns ? BuildProgress.tokensLine(b.outputTokens) : BuildProgress.usageLine(turns: b.turns, outputTokens: b.outputTokens)) : nil
+                let usage = b.phase == .generating && testingID == nil ? (hasRuns ? BuildProgress.tokensLine(b.outputTokens) : BuildProgress.usageLine(turns: b.turns, outputTokens: b.outputTokens)) : nil
                 if compact {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.mini)
-                        Text(([b.version, scene, phase, usage].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.caption)
+                        Text(([b.version, scene, phase, usage, testingID == nil ? nil : step, testTime, b.notice].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.caption)
                         Button("Cancel build") { project.cancelBuild() }.buttonStyle(.borderless).font(.caption.weight(.semibold)).help(cancelHelp(b))
                     }
                 } else {
@@ -299,7 +301,8 @@ struct BuildProgressPanel: View {
                         }
                         if hasRuns, b.phase == .generating { ProgressView(value: Double(b.done), total: Double(max(scenes.count, 1))) }
                         else if p.total > 0, b.phase == .generating { ProgressView(value: Double(p.done), total: Double(p.total)) }
-                        Text(([step, scene, phase, usage].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.callout).foregroundStyle(.secondary)
+                        Text(([step, scene, phase, usage, testTime].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.callout).foregroundStyle(.secondary)
+                        if let n = b.notice { Label(n, systemImage: "arrow.clockwise").font(.callout).foregroundStyle(.orange) }
                         if b.phase == .generating, hasRuns {
                             VStack(alignment: .leading, spacing: 2) {
                                 ForEach(b.order, id: \.self) { id in
@@ -341,6 +344,9 @@ struct StepRow: View {
         .help(run.failure ?? "")
     }
 
+    /// "no data for 25 s" once nothing has come for a while: a request that is alive but quiet looks like this.
+    private var quiet: String? { run.lastData.map { now.timeIntervalSince($0) }.flatMap { $0 > 20 ? "no data for \(Int($0)) s" : nil } }
+
     private var symbol: String {
         switch run.state { case .waiting: return "circle"; case .writing: return "pencil.circle.fill"; case .testing: return "checkmark.shield"; case .repairing: return "wrench.and.screwdriver.fill"
         case .done: return run.warningCount > 0 ? "checkmark.circle" : "checkmark.circle.fill"; case .failed: return "exclamationmark.triangle.fill" }
@@ -351,9 +357,9 @@ struct StepRow: View {
     private var detail: String {
         switch run.state {
         case .waiting: return "waiting"
-        case .writing: return ["writing" + (phase.map { " (\($0.lowercased()))" } ?? ""), BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now))].compactMap { $0 }.joined(separator: " \u{00B7} ")
-        case .testing: return "testing"
-        case .repairing: return ["repairing", BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now))].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        case .writing: return ["writing" + (phase.map { " (\($0.lowercased()))" } ?? ""), BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now)), quiet].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        case .testing: return "testing \u{00B7} " + BuildProgress.elapsed(run.inPhase(now: now))
+        case .repairing: return ["repairing", BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now)), quiet].compactMap { $0 }.joined(separator: " \u{00B7} ")
         case .done: return run.kept ? "kept" : ["done", run.warningCount > 0 ? "\(run.warningCount) layout warning\(run.warningCount == 1 ? "" : "s")" : nil, BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now))].compactMap { $0 }.joined(separator: " \u{00B7} ")
         case .failed: return run.failedTest ? "failed (test): " + (run.failure ?? "") : (run.failure ?? "failed")
         }

@@ -33,3 +33,5 @@ Ideas for Showreel Studio that are not in the current phase. Nothing here is bui
 - Remettre un budget par Build (jetons, durée, coût estimé) avant de distribuer l'app.
 - Build: write independent scenes in parallel (two or three requests at once) once the per-scene Build is trusted.
 - Test the scenes in parallel (two or three at once) when scenes are written in parallel.
+- 2026-11-09 (BA2): ask again, after a short wait, a request that the API refused with 429 or 529 (overloaded); today the Build stops there and Continue resumes it.
+- 2026-11-09 (BA2): kill the children of a command the app runs (process group), not only the shell; a grandchild that ignores SIGTERM can outlive a cancelled test.

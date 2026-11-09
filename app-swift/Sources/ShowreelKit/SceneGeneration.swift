@@ -132,9 +132,23 @@ public enum SceneGeneration {
     }
 
     /// Generates the modules of `ids` in `version`: asks the model once per scene, then writes those files and nothing else (and records them in
-    /// `.studio/build.json`). Nothing is written when a scene is refused or the model fails or does not return a scene file for one of them.
+    /// `.studio/build.json`), then tests each file on its own and records the ones that pass, like the Build does. Nothing is written when a scene is refused or the model fails
+    /// or does not return a scene file for one of them.
     @discardableResult
     public static func generate(_ ids: [String], version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, author: String = "user", overwriting: Set<String> = [], fixing: [String: [String]] = [:]) async throws -> [String] {
+        try await generateTested(ids, version: version, store: store, skill: skill, transport: transport, author: author, overwriting: overwriting, fixing: fixing).ids
+    }
+
+    /// `generate`, with what each scene's own test found (nil: it could not run here). `activity.cancelRunning()` stops it, whoever started it.
+    public static func generateTested(_ ids: [String], version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, author: String = "user", overwriting: Set<String> = [], fixing: [String: [String]] = [:]) async throws -> (ids: [String], tests: [String: SceneTestResult?]) {
+        let act = store.activity
+        let work = Task { try await body(ids, version: version, store: store, skill: skill, transport: transport, author: author, overwriting: overwriting, fixing: fixing) }
+        act.setCancelHook { work.cancel() }
+        defer { act.setCancelHook(nil) }
+        return try await withTaskCancellationHandler(operation: { try await work.value }, onCancel: { work.cancel() })
+    }
+
+    private static func body(_ ids: [String], version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, author: String, overwriting: Set<String>, fixing: [String: [String]]) async throws -> (ids: [String], tests: [String: SceneTestResult?]) {
         _ = try plan(ids, version: version, store: store)
         // a file edited by hand is only written again when the caller confirmed it (a card that said so, or the extra line of the player's card)
         let unconfirmed = handEdited(ids, version: version, store: store).filter { !overwriting.contains($0) }
@@ -147,16 +161,18 @@ public enum SceneGeneration {
             x.order = ids; x.runs = Dictionary(uniqueKeysWithValues: ids.map { ($0, SceneRun()) }); b.build = x
         }
         defer { act.update { $0.build = nil } }
+        store.logBuild(version, "Generate started", note: ids.joined(separator: ", "))
         var out: [(String, String)] = []
         for (n, id) in ids.enumerated() {
             try Task.checkCancellation()
-            act.update { $0.build?.done = n; $0.build?.current = id; $0.build?.runs[id]?.state = .writing; $0.build?.runs[id]?.started = Date() }
+            act.update { $0.build?.done = n; $0.build?.current = id; $0.build?.runs[id]?.state = .writing; $0.build?.runs[id]?.started = Date(); $0.build?.runs[id]?.phaseStarted = Date(); $0.build?.runs[id]?.lastData = Date() }
             // a fix carries the layout warnings of the scene and the file as it is; it is one generation of this scene, never a loop
             let revision = fixing[id].flatMap { w in (try? String(contentsOf: SceneModules.url(version: version, scene: id, store: store), encoding: .utf8)).map { Revision(file: $0, warnings: w) } }
             do { out.append((id, try await scene(id, version: version, store: store, skill: skill, transport: transport, revision: revision))) }
             catch {
                 act.update { $0.build?.runs[id]?.state = .failed; $0.build?.runs[id]?.finished = Date(); $0.build?.runs[id]?.failure = error.localizedDescription }
-                if error is CancellationError { throw error }
+                if error is CancellationError || (error as? URLError)?.code == .cancelled { store.logBuild(version, "Generate cancelled", note: id); throw CancellationError() }
+                store.logBuild(version, "Generate stopped at \(id)", note: error.localizedDescription)
                 throw AgentError.msg(error.localizedDescription + ": nothing was written")          // a generation writes all its files or none
             }
             act.update { $0.build?.runs[id]?.state = .done; $0.build?.runs[id]?.finished = Date() }
@@ -168,6 +184,19 @@ public enum SceneGeneration {
         for (id, js) in out { try js.write(to: dir.appendingPathComponent("\(id).js"), atomically: true, encoding: .utf8) }
         try SceneModules.recordGeneration(version: version, scenes: ids, store: store)
         store.noteEvent(author: author, op: "generate", target: ids.joined(separator: ","), title: ids.count == 1 ? "Generate \(ids[0]) in \(version)" : "Generate \(ids.count) scenes in \(version)")
-        return ids
+        // each file is tested on its own, as in a Build, and recorded when it passes: only that lets a later Build take it over
+        var tests: [String: SceneTestResult?] = [:]
+        for id in ids {
+            if Task.isCancelled { break }
+            act.update { $0.build?.runs[id]?.state = .testing; $0.build?.runs[id]?.phaseStarted = Date() }
+            let r = await SceneTest.run(scene: id, version: version, store: store, skill: skill)
+            if Task.isCancelled { break }
+            tests[id] = r
+            if let r = r {
+                if r.ok { SceneModules.markTested(version: version, scene: id, store: store) }
+                store.logBuild(version, "Test of \(id): \(r.codeCount) code error\(r.codeCount == 1 ? "" : "s"), \(r.warningCount) layout warning\(r.warningCount == 1 ? "" : "s")", note: (r.codeErrors + r.warnings).prefix(3).joined(separator: "; "))
+            }
+        }
+        return (ids, tests)
     }
 }

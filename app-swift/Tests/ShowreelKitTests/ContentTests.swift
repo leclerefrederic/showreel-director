@@ -236,17 +236,17 @@ final class ContentTests: XCTestCase {
         XCTAssertEqual(f.scenes[0].content[0].text, "Hello again"); XCTAssertEqual(f.scenes[0].content[0].color.role, "accent", "its fixed colour stays")
     }
 
-    func testTheBuildMessageListsItemsInPriorityWithFixedAndAuto() throws {
+    func testTheScenePromptListsItemsInPriorityWithFixedAndAuto() throws {
         try store.apply(.scene(id: "S01", SceneEdit(controlLevel: "guided")))
         try store.apply(.content(scene: "S01", .update(item: "c1", ContentEdit(color: "accent", instruction: "land on the beat"))))
         try store.apply(.content(scene: "S01", .add(ContentEdit(type: "text", text: "Second", animation: "Pop", params: "speed=2"), after: "start")))
-        let p = BuildRunner.prompt(version: "v1", store: store)
+        let p = SceneGeneration.prompt(scene: "S01", version: "v1", store: store, skill: try XCTUnwrap(Skill.root()))
         XCTAssertTrue(p.contains("S01 (control level guided):"))
         let a = try XCTUnwrap(p.range(of: "1. text \u{201C}Second\u{201D}")), b = try XCTUnwrap(p.range(of: "2. text \u{201C}Hello\u{201D}"))
         XCTAssertLessThan(a.lowerBound, b.lowerBound, "priority order")
         XCTAssertTrue(p.contains("colour: FIXED Text (#FFFFFF); animation: FIXED Pop (speed=2)"), "guided: a new item has its colour fixed by default")
         XCTAssertTrue(p.contains("colour: FIXED Accent (#F2AA4C); animation: AUTO; instruction: \u{201C}land on the beat\u{201D}"))
-        for needle in ["FIXED", "AUTO", "honour it strictly", "drop the last items first", "not the stacking order"] { XCTAssertTrue(p.contains(needle), needle) }
+        for needle in ["FIXED", "AUTO", "honoured exactly", "processing priority"] { XCTAssertTrue(p.contains(needle), needle) }
     }
 
     func testToolsAddUpdateMoveRemove() async throws {

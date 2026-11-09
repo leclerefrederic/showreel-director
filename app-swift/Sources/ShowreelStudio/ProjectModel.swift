@@ -237,7 +237,6 @@ final class ProjectModel: ObservableObject {
     @Published var layoutWarnings: [String: [String]] = [:]
     @Published var showLayoutWarnings = false
     @Published var fontsAtBuild: PendingFontsAtBuild?
-    var checkingFonts = false
     /// The folded groups of the Resources list (remembered per project), the tag the list is filtered by, and a tag being renamed.
     @Published var foldMemory: [String]?
     @Published var tagFilter: String?
@@ -276,6 +275,7 @@ final class ProjectModel: ObservableObject {
         if let m = s.timeline, m.fitAll == false { timeline = TimelineScale.Viewport(pps: TimelineScale.clamp(m.pps ?? 60), scroll: max(0, m.scroll ?? 0)); fitAll = false }
         dnd.onRefused = { [weak self] why in self?.showToast(why, error: true) }
         store.activity.reset()
+        Versions.pruneHusks(store, keep: BuildJob.pending(store))          // the empty folders of Builds that stopped before their first file
         store.activity.observer = { [weak self] s in DispatchQueue.main.async { self?.activity = s } }
         OpenProjects.shared.register(self)
     }
@@ -371,10 +371,13 @@ final class ProjectModel: ObservableObject {
 
     /// Cancel build: the request in flight is cancelled at once, the files already written stay in their version folder (the Build can be continued from the Build tab), and the
     /// film stays at its last working version. While the testing runs it is dropped: nothing is lost, it can be run again.
-    func cancelBuild() {
+    /// `by` says who asked for it, for the journal and the log: "button", "closing the window", "quitting"...
+    func cancelBuild(by: String = "button") {
         guard let b = store.activity.snapshot.build else { return }
-        if genTask != nil {                                  // a generation of some scenes: its request is cancelled, nothing is written
+        store.logBuild(b.version, "Cancel asked by \(by)", note: "phase \(b.phase.rawValue)" + (b.current.map { ", at \($0)" } ?? ""))
+        if genTask != nil || (b.phase == .generating && buildTask == nil) {          // a generation of some scenes (the window's or Clap's): its request is cancelled, nothing is written
             genTask?.cancel()
+            store.activity.cancelRunning()
             store.activity.update { $0.build?.phase = .cancelling }
             return
         }
@@ -394,16 +397,17 @@ final class ProjectModel: ObservableObject {
         guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it from the toolbar once every scene is OK."; return }
         guard !buildBusy else { return }
         self.chat = chat
+        Versions.pruneHusks(store, keep: BuildJob.pending(store))          // a Build that stopped before its first file leaves nothing behind
         askAboutFonts { [weak self] in self?.offerBuild() }
     }
 
     /// The card of the Build: the version to continue when one stopped, else the next one.
-    private func offerBuild(overwrite: Set<String> = []) {
+    private func offerBuild(overwrite: Set<String> = [], skip: Set<String> = []) {
         guard let skill = Skill.root() else { error = "The skill folder was not found."; return }
         let resuming = BuildJob.pending(store)
         let v = resuming ?? Versions.next(store)
-        let plan = BuildJob.plan(version: v, store: store, overwrite: overwrite)
-        buildOffer = PendingBuild(version: v, plan: plan, card: BuildJob.card(plan, store: store, skill: skill, resuming: resuming != nil), resuming: resuming != nil, overwrite: overwrite)
+        let plan = BuildJob.plan(version: v, store: store, skip: skip, overwrite: overwrite)
+        buildOffer = PendingBuild(version: v, plan: plan, card: BuildJob.card(plan, store: store, skill: skill, resuming: resuming != nil), resuming: resuming != nil, overwrite: overwrite, skip: skip)
     }
 
     /// The line that asks before a hand edit is overwritten: ticking it adds the scene to the scenes that are written.
@@ -411,7 +415,7 @@ final class ProjectModel: ObservableObject {
         guard let o = buildOffer else { return }
         var ov = o.overwrite
         if ov.contains(id) { ov.remove(id) } else { ov.insert(id) }
-        offerBuild(overwrite: ov)
+        offerBuild(overwrite: ov, skip: o.skip)
     }
 
     /// Nothing changed since the last build: no request is made; the newest version is assembled again (it takes the montage, transitions and music as they are now).
@@ -421,7 +425,7 @@ final class ProjectModel: ObservableObject {
     func rewriteEverything() {
         guard let o = buildOffer else { return }
         buildOffer = nil
-        runBuild(o.version, skip: [], options: BuildJob.Options(force: true))
+        runBuild(o.version, skip: [], options: BuildJob.Options(force: true), by: "Rewrite everything")
     }
 
     /// The user said no to "Start over" is the default; yes removes what the stopped Build wrote in its version (film.json stays) and offers the Build again.
@@ -433,23 +437,25 @@ final class ProjectModel: ObservableObject {
     }
 
     /// Yes on the card: the files are written one request at a time, then the film is assembled, built and tested by the app with no AI.
-    func confirmBuild() { guard let o = buildOffer else { return }; buildOffer = nil; runBuild(o.version, skip: [], options: BuildJob.Options(overwrite: o.overwrite)) }
+    func confirmBuild() { guard let o = buildOffer else { return }; buildOffer = nil; runBuild(o.version, skip: o.skip, options: BuildJob.Options(overwrite: o.overwrite), by: o.resuming ? "Continue" : "Build a new version") }
 
-    /// Continue after a stop: from the first scene missing. `skip` leaves aside a scene that failed (it stays a placeholder frame until it is generated).
+    /// Continue after a stop, from the alert: the same card as the Build tab's "Continue" (what is written, the calls and the cost), then the yes. `skip` leaves aside a scene
+    /// that failed (it stays a placeholder frame until it is generated).
     func resumeBuild(skip: Set<String> = []) {
-        guard !buildBusy, let v = BuildJob.pending(store) else { return }
-        runBuild(v, skip: skip, options: nil)
+        guard !buildBusy, BuildJob.pending(store) != nil else { return }
+        offerBuild(skip: skip)
     }
 
-    private func runBuild(_ v: String, skip: Set<String>, options: BuildJob.Options?) {
+    private func runBuild(_ v: String, skip: Set<String>, options: BuildJob.Options?, by: String = "button") {
         guard let skill = Skill.root(), let key = AppSettings.shared.apiKey() else { error = "Connect an AI first (Settings, Command-,)."; return }
         do { try Film.write(version: v, store: store) } catch { self.error = "Could not write \(v)/film.json: \(error.localizedDescription)"; return }   // the exact montage, for the build to read
         let s = AppSettings.shared
         let transport = AnthropicTransport(apiKey: key, model: s.modelName, baseURL: s.baseURL, bearer: s.bearer)
-        transport.idleTimeout = s.idleTimeout
+        s.configure(transport)
         buildVersion = v; generating = true; buildReport = nil
         store.activity.update { $0.build = .init(version: v, phase: .generating) }          // from here every change is refused, with its reason, until the end
         inspectorTab = .copilot; centerMode = .build
+        store.logBuild(v, "Build asked by \(by)")
         chat?.report("Build \(v): one request for the frame of the film, one for each scene, then the app assembles and tests it.")
         buildTask = Task { @MainActor in
             let outcome = await BuildJob.run(version: v, store: store, skill: skill, transport: transport, skip: skip, options: options)
@@ -461,7 +467,7 @@ final class ProjectModel: ObservableObject {
     /// The layout warnings that the scenes' own tests found in this Build, kept for the end card.
     private func gatherWarnings(_ v: String) {
         guard let b = store.activity.snapshot.build, b.version == v else { return }
-        layoutWarnings = Dictionary(uniqueKeysWithValues: b.runs.compactMap { $0.value.warningCount > 0 ? ($0.key, $0.value.warnings) : nil })
+        layoutWarnings = b.layoutWarnings
     }
 
     /// "Fix this scene": one generation of this scene with its warnings as the instruction, behind a confirmation card. A locked scene is never offered.
@@ -476,15 +482,6 @@ final class ProjectModel: ObservableObject {
         } catch { showToast(error.localizedDescription, error: true) }
     }
 
-    /// After a fix: the scene's own test again, no AI. Its warnings are replaced by what it finds now.
-    private func retest(_ ids: [String], version: String, skill: URL) async {
-        for id in ids {
-            guard let r = await SceneTest.run(scene: id, version: version, store: store, skill: skill) else { continue }
-            if r.warningCount > 0 { layoutWarnings[id] = r.warnings } else { layoutWarnings[id] = nil }
-            store.noteEvent(author: "app", op: "build", target: version, title: "Test of \(id) after the fix: \(r.codeCount) code errors, \(r.warningCount) layout warnings", note: (r.codeErrors + r.warnings).prefix(3).joined(separator: "; "))
-        }
-    }
-
     private func finishJob(_ outcome: JobOutcome, _ v: String) {
         generating = false
         let kept = BuildProgress.lastWorking(store).map { "the film stays at \($0)" } ?? "the film has no working version yet"
@@ -494,9 +491,9 @@ final class ProjectModel: ObservableObject {
             showToast("Build cancelled. The \(n) scene\(n == 1 ? "" : "s") written stay in \(v), not built; \(kept). Continue it from the Build tab.", undoable: false)
             refresh(); reloadTree()
         case .stopped(let stop):
+            gatherWarnings(v)                                    // before the activity is cleared: the scenes already written keep their warnings
             store.activity.update { $0.build = nil }
             chat?.report(stop.message)
-            gatherWarnings(v)
             buildFailure = BuildFailureAlert(message: stop.message + " \(kept.prefix(1).uppercased() + kept.dropFirst()).", step: stop.step, failedTests: stop.failedTests)
             refresh(); reloadTree()
         case .completed:
@@ -507,7 +504,12 @@ final class ProjectModel: ObservableObject {
 
     /// Builds the version with the skill's scripts and tests it. No AI: usable on a version that already exists.
     func runChecks(_ v: String) {
-        guard !buildBusy || (generating == false && store.activity.snapshot.build?.phase == .generating), let skill = Skill.root() else { return }
+        guard !buildBusy || (generating == false && store.activity.snapshot.build?.phase == .generating) else { return }
+        guard let skill = Skill.root() else {
+            store.activity.update { $0.build = nil }             // nothing runs: the project is editable again, and it says why
+            showToast("The skill folder was not found: the version cannot be built and tested.", error: true)
+            return
+        }
         testing = true; buildVersion = v
         store.activity.update { $0.build = .init(version: v, phase: .testing, started: $0.build?.started ?? Date()) }
         testTask = Task { @MainActor in
@@ -1350,7 +1352,7 @@ extension ProjectModel {
     /// With `thenPlay`, the film plays when it is ready (Play on a stale film).
     func assembleFilm(thenPlay: Bool = false) {
         if let u = Availability.assemble(film, in: activity).why { react(StatusLine.refused(u.message)); return }
-        guard !assembling, fontsAtBuild == nil, !checkingFonts, skill() != nil, film.target != nil else { return }
+        guard !assembling, fontsAtBuild == nil, skill() != nil, film.target != nil else { return }
         askAboutFonts { [weak self] in self?.reallyAssemble(thenPlay: thenPlay) }
     }
 
@@ -1384,7 +1386,7 @@ extension ProjectModel {
     /// Before a Build or an Assemble: when a font of the Look has no file, the card asks (download and continue, continue with a system font, cancel). When nothing is
     /// missing, `go` runs at once and nothing is asked.
     func askAboutFonts(_ go: @escaping () -> Void) {
-        guard fontsAtBuild == nil, !checkingFonts else { return }
+        guard fontsAtBuild == nil else { return }
         guard !FontsAtBuild.missing(store).isEmpty else { go(); return }
         // the card is built from the skill's manifest: no network until the user says yes
         if let q = FontsAtBuild.prepare(store) { fontsAtBuild = PendingFontsAtBuild(question: q, then: go) } else { go() }
@@ -1430,11 +1432,12 @@ extension ProjectModel {
         generationOffer = nil
         let s = AppSettings.shared
         let transport = AnthropicTransport(apiKey: key, model: s.modelName, baseURL: s.baseURL, bearer: s.bearer)
+        s.configure(transport)
         genTask = Task { @MainActor in
             do {
-                let ids = try await SceneGeneration.generate(g.all, version: g.version, store: store, skill: skill, transport: transport, overwriting: g.overwrite, fixing: g.fixes)
-                react(StatusLine.generated(ids))
-                await retest(ids, version: g.version, skill: skill)
+                let r = try await SceneGeneration.generateTested(g.all, version: g.version, store: store, skill: skill, transport: transport, overwriting: g.overwrite, fixing: g.fixes)
+                react(StatusLine.generated(r.ids))
+                for (id, t) in r.tests { if let t, t.warningCount > 0 { layoutWarnings[id] = t.warnings } else { layoutWarnings[id] = nil } }
             } catch is CancellationError {
                 showToast("Generation cancelled. Nothing was written.")
             } catch {
@@ -1462,6 +1465,8 @@ struct PendingBuild: Identifiable {
     let id = UUID(); let version: String; let plan: BuildJob.Plan; let card: OperationCard; let resuming: Bool
     /// The hand-edited scenes the user ticked: they are written again.
     var overwrite: Set<String> = []
+    /// The scenes left aside for now ("Continue the build" after a scene failed its test).
+    var skip: Set<String> = []
 }
 
 struct FontFailure: Identifiable {

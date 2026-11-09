@@ -8,6 +8,8 @@ final class JobModel: MessagesTransport, OutputBudgeted, @unchecked Sendable {
     var idleTimeout: TimeInterval = 90
     private(set) var asked: [String] = []          // the step of each request: "reel" or the scene ID
     var failOn: [String: Error] = [:]
+    /// A step whose first `times` requests fail with `error` and then work (a connection that comes back).
+    var flaky: [String: (error: Error, times: Int)] = [:]
     var readFirst = false                          // answer the first request of each step with a read_file call
     var onRequest: ((String) -> Void)?
     /// What the model writes for a scene, given its step and the whole request; the default is a fine file.
@@ -20,6 +22,7 @@ final class JobModel: MessagesTransport, OutputBudgeted, @unchecked Sendable {
         onRequest?(step)
         if messages.count == 1 { asked.append(step); prompts[step, default: []].append(p) }
         if let e = failOn[step] { throw e }
+        if let f = flaky[step], f.times > 0 { flaky[step] = (f.error, f.times - 1); throw f.error }
         onOutput?(400)
         if readFirst, !read.contains(step) { read.insert(step); return ([toolUse("r-\(step)", "read_file", ["path": "references/engine.md", "limit": 5])], "tool_use") }
         if step == BuildJob.frameStep { return ([["type": "text", "text": "```json\n{\"title\": \"T\", \"tokens\": {}, \"fonts\": []}\n```\n```js\nreturn { palette: { bg: '#000', fg: '#fff', accent: '#f00', accent2: '#0f0' }, show: {} };\n```"]], "end_turn") }
@@ -149,7 +152,7 @@ final class BG1Tests: XCTestCase {
         defer { SceneWriter.phaseHook = nil }
         _ = await BuildJob.run(version: v, store: store, skill: skill, transport: m)
         XCTAssertEqual(Array(phases.prefix(5)), [.preparing, .writing, .reading, .preparing, .writing], "wait for the first token (Preparing), tokens (Writing), a read tool (Reading), then again")
-        XCTAssertEqual(store.activity.snapshot.build?.clapPhase, .preparing)
+        XCTAssertNil(store.activity.snapshot.build?.clapPhase, "no request is in flight at the end: the panel does not say Preparing")
     }
 
     func testASceneThatFailsKeepsTheOthersAndSaysWhichAndWhy() async throws {
@@ -161,8 +164,7 @@ final class BG1Tests: XCTestCase {
         XCTAssertTrue(exists("v1/scenes/S01.js")); XCTAssertFalse(exists("v1/scenes/S02.js")); XCTAssertFalse(exists("v1/scenes/S03.js"))
         XCTAssertEqual(store.activity.snapshot.build?.runs["S02"]?.state, .failed)
         XCTAssertEqual(store.activity.snapshot.build?.runs["S03"]?.state, .waiting)
-        let line = try XCTUnwrap(store.journal.entries().last(where: { $0.op == "build" }))
-        XCTAssertEqual(line.title, "Build v1 stopped at S02: idle-timeout")
+        XCTAssertTrue(store.journal.entries().contains { $0.op == "build" && $0.title == "Build v1 stopped at S02: idle-timeout" })
         // continue: only the missing ones are asked, S01 is not written again
         let again = JobModel()
         let out2 = await BuildJob.run(version: v, store: store, skill: skill, transport: again)

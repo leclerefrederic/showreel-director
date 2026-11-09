@@ -289,15 +289,6 @@ final class SceneStateTests: XCTestCase {
         XCTAssertTrue(defs.contains("lock_scene"))
     }
 
-    func testTheBuildMessageFlagsLockedScenes() throws {
-        try validate("S01", "S02", "S03")
-        XCTAssertFalse(BuildRunner.prompt(version: "v1", store: store).contains("Locked scenes"))
-        try store.apply(.sceneLock(ids: ["S02", "S03"], locked: true))
-        let p = BuildRunner.prompt(version: "v1", store: store)
-        XCTAssertTrue(p.contains("Locked scenes (S02, S03)"), "the AI is told which scenes are fixed")
-        XCTAssertTrue(p.contains("every scene is Validated or Locked"))
-    }
-
     // MARK: the menu of the badge
 
     func testTheBadgeMenuOffersWhatEachStateCanReach() throws {

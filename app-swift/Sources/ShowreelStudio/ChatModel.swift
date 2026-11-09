@@ -127,9 +127,9 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         summarisedHere.insert(id); sessionEnded = true
         let store = project.store, project = self.project
         if let key = settings.keyIfLoaded {
-            let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer, idle = settings.idleTimeout
+            let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer, idle = settings.idleTimeout, req = settings.requestMinutes * 60
             Task.detached {
-                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer); t.idleTimeout = idle
+                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer); t.idleTimeout = idle; t.requestTimeout = req
                 let s = await Sessions.summarize(records: recs, journal: store.journal.entries().filter { $0.session == id }, transport: t)
                 _ = try? Sessions.finish(store, id: id, summary: s, messages: recs.count)
                 DispatchQueue.main.async { project.reloadHistory() }
@@ -143,13 +143,13 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     private func catchUpSummaries(key: String) {
         guard catchUp == nil else { return }
         let store = project.store, root = project.root, current = history.sessionID, project = self.project
-        let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer, idle = settings.idleTimeout
+        let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer, idle = settings.idleTimeout, req = settings.requestMinutes * 60
         catchUp = Task.detached { [weak self] in
             let have = Set(Sessions.load(store).filter { ($0.summary ?? "").isEmpty == false }.map { $0.id })
             for id in ChatStore.sessionIDs(root: root) where id != current && !have.contains(id) {
                 let recs = ChatStore.records(root: root, session: id)
                 guard recs.contains(where: { $0.role == "user" }) else { continue }
-                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer); t.idleTimeout = idle
+                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer); t.idleTimeout = idle; t.requestTimeout = req
                 let s = await Sessions.summarize(records: recs, journal: store.journal.entries().filter { $0.session == id }, transport: t)
                 _ = try? Sessions.finish(store, id: id, summary: s, messages: recs.count)
             }
@@ -197,7 +197,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
                     if self.agent == nil || self.agentGeneration != generation {
                         // the project's memory, what it refused and the last summaries come from its files, as data: nothing of the old conversation is replayed
                         self.agent = try Agent(apiKey: key, model: self.settings.modelName, baseURL: self.settings.baseURL, bearer: self.settings.bearer,
-                                               project: self.project.root, ui: self, history: [], idleTimeout: self.settings.idleTimeout)
+                                               project: self.project.root, ui: self, history: [], idleTimeout: self.settings.idleTimeout, requestTimeout: self.settings.requestMinutes * 60)
                         self.agentGeneration = generation
                     }
                     return .success(self.agent!)

@@ -17,6 +17,26 @@ public enum Versions {
         return "v\(n + 1)"
     }
 
+    /// Version folders that hold only what the app wrote before anything of value (film.json, an empty scenes/ folder, notes of the assembler): a Build that stopped before its first
+    /// file. They are removed, except `keep` (the version a Build could continue). Returns what was removed.
+    @discardableResult
+    public static func pruneHusks(_ store: ProjectStore, keep: String? = nil) -> [String] {
+        let fm = FileManager.default
+        let names = (try? fm.contentsOfDirectory(atPath: store.root.path)) ?? []
+        var gone: [String] = []
+        for n in names.filter({ $0.range(of: #"^v\d+$"#, options: .regularExpression) != nil && $0 != keep }).sorted(by: { Int($0.dropFirst())! < Int($1.dropFirst())! }) {
+            let dir = store.root.appendingPathComponent(n)
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: dir.path, isDirectory: &isDir), isDir.boolValue, let items = try? fm.contentsOfDirectory(atPath: dir.path) else { continue }
+            let mine: Set<String> = [Film.fileName, "assembly.json", "fonts.json", ".DS_Store", SceneModules.folder]
+            guard items.allSatisfy({ mine.contains($0) }) else { continue }
+            if items.contains(SceneModules.folder), !((try? fm.contentsOfDirectory(atPath: dir.appendingPathComponent(SceneModules.folder).path)) ?? ["x"]).isEmpty { continue }
+            do { try fm.removeItem(at: dir); try? SceneModules.forget(version: n, store: store); gone.append(n) } catch { continue }
+        }
+        if !gone.isEmpty { store.logBuild(gone.joined(separator: ", "), "Removed empty version folder\(gone.count == 1 ? "" : "s") \(gone.joined(separator: ", "))", note: "a Build had stopped before writing anything but film.json") }
+        return gone
+    }
+
     public static func distURL(_ store: ProjectStore, _ version: String) -> URL { store.root.appendingPathComponent(version + "/dist/index.html") }
     public static func hasDist(_ store: ProjectStore, _ version: String) -> Bool { FileManager.default.fileExists(atPath: distURL(store, version).path) }
 }
@@ -52,38 +72,7 @@ public enum BuildRunner {
         return f.gates["review"] == "passed" && !SceneRules.live(f).isEmpty
     }
 
-    /// The message that asks the existing agent to write the version folder. The app runs the build and the tests itself afterwards.
-    /// The whole-film brief: the montage, the content of every scene, the overrides and the transitions in one text (the frame's request and the scenes' requests take their parts from the same helpers).
-    public static func prompt(version: String, store: ProjectStore) -> String {
-        let f = store.loadShowreel()
-        let dur = f?.decisions.duration.map { ProjectDocs.seconds($0) + " s" } ?? "the end of the last scene"
-        let langs = (f?.reelLanguages ?? []).joined(separator: ", ")
-        let overrides = (f?.film ?? []).compactMap { sc -> String? in
-            guard let f = f, sc.overrides != nil else { return nil }
-            let parts = DecisionKey.sceneKeys.filter { f.isOverridden($0, for: sc) }.map { "\($0.title.lowercased()) \(f.effective($0, for: sc))" }
-            return parts.isEmpty ? nil : "\(sc.id): " + parts.joined(separator: "; ")
-        }
-        let lockedIDs = (f?.film ?? []).filter { $0.isLocked }.map { $0.id }
-        let lockedLine = lockedIDs.isEmpty ? "" : " Locked scenes (\(lockedIDs.joined(separator: ", "))): the user fixed them, so keep what they contain (words, content, length, look) exactly as storyboard.md, film.json and this message give it."
-        let overrideLine = overrides.isEmpty ? "" : " Scenes with their own look (they override the style sheet for that scene only): " + overrides.joined(separator: " | ") + "."
-        return """
-        The user pressed Go in the app: the storyboard is validated and every scene is Validated or Locked.\(lockedLine) Write the new version folder \(version)/ now.
-
-        Do this:
-        1. Read the state with get_state, read storyboard.md, style-sheet.md and brief.md of the project, and read the skill's references/build-guide.md, references/steps-3-to-6.md (Step 3) and references/engine.md.
-        2. Write \(version)/project.json starting from engine/project.template.json, with write_file. Paths in project.json are relative to \(version)/. \(version)/film.json already exists: the app wrote it from the montage (below); do not edit it. Do not write main.js: scripts/assemble.py makes it from the files below, and the app runs it.
-        3. The film is in the scene-file format: write one file per scene, \(version)/scenes/<ID>.js for every scene of film.json (named by its ID, starting from engine/scene.template.js), and \(version)/reel.js (starting from engine/reel.template.js) for what belongs to the whole film. A scene file is the body of a function that ends with `return function render(g, lt, c) {...}`, drawing with its own local time lt; never copy starts, durations or transitions into any file. What crosses scenes (a background sequence, music reaction, persistent elements) goes in reel.js as `background(g, t, c)` and `overlay(g, t, c)`, functions of the film time, with the palette handed to the transitions and the declarations of window.SHOWREEL. Read references/engine.md (Scene files) first. The scenes are those of film.json (scenes marked off or archived are not in the film). The files implement the on-screen text in each reel language (\(langs.isEmpty ? "the language of the brief" : langs)), the palette, the fonts, the background and the effects pack or moods the user chose, and the linked approved assets.\(overrideLine) The film lasts \(dur). Every scene honours ctx.reduced.
-        4. Scene content. Each scene lists what it contains, in processing priority: treat the items from the first to the last, the earlier ones win conflicts of time, space and emphasis (this priority is not the stacking order on screen, which you decide unless an instruction fixes it). Every attribute is marked FIXED (the user chose it: honour it strictly, exactly as written) or AUTO (decide it yourself from the style sheet, the effect packs and the brief). If the feasibility or the reading budget fail, simplify or drop the last items first and say so in your answer.
-        \(contentBrief(f))
-        5. The montage, exactly as the app wrote it to \(version)/film.json (starts and durations in seconds, the transition from a scene to the next one; a scene without one is cut on the beat), and the music grid:
-        \(filmBrief(f))
-        \(reelBrief(f, store: store))
-        6. Use only approved assets listed in assets/MANIFEST.csv, from assets/prepared or assets/generated. The fonts of the Look are embedded by the app (it writes \(version)/fonts.json from the approved font files): do not list them in project.json, set their family names exactly as the Look gives them in tokens and in the drawing code, and do not embed any other font file. Add the formats of the brief (16:9 as d, 9:16 as m).
-        7. Do not change any decision, scene or asset, do not run build.py, the harness or the smoke test (the app runs them next and shows the user the result), and do not give or assume any Go beyond this one. Do not write outside \(version)/.
-        Answer in two short lines: what you built, and anything you could not do.
-        """
-    }
-
+    /// The whole-film brief is no longer one message: the frame's request (`BuildJob.frame`) and each scene's (`SceneGeneration.prompt`) take their parts from the three helpers below.
     /// The content items of every scene that is on, in priority order, with each attribute marked fixed or auto and the instructions.
     static func contentBrief(_ f: ShowreelFile?) -> String {
         guard let f = f else { return "" }

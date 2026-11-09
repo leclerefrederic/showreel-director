@@ -32,6 +32,7 @@ public enum SceneTest {
     public static func run(scene id: String, version: String, store: ProjectStore, skill: URL) async -> SceneTestResult? {
         if let o = override { return await o(id, version) }
         let fm = FileManager.default
+        let frame = id == BuildJob.frameStep          // the frame is tested with no scene in it (every scene is an empty frame), the whole film's checks
         let scratch = store.root.appendingPathComponent(".scenetest-\(version)-\(id)")          // next to the versions, so that ../assets and ../analysis resolve
         try? fm.removeItem(at: scratch)
         defer { try? fm.removeItem(at: scratch) }
@@ -39,17 +40,18 @@ public enum SceneTest {
         do {
             try fm.createDirectory(at: scratch.appendingPathComponent(SceneModules.folder), withIntermediateDirectories: true)
             for n in ["project.json", "reel.js", Film.fileName, "fonts.json"] where fm.fileExists(atPath: src.appendingPathComponent(n).path) { try fm.copyItem(at: src.appendingPathComponent(n), to: scratch.appendingPathComponent(n)) }
-            try fm.copyItem(at: SceneModules.url(version: version, scene: id, store: store), to: scratch.appendingPathComponent("\(SceneModules.folder)/\(id).js"))
+            if !frame { try fm.copyItem(at: SceneModules.url(version: version, scene: id, store: store), to: scratch.appendingPathComponent("\(SceneModules.folder)/\(id).js")) }
         } catch { return nil }
         let scripts = skill.appendingPathComponent("scripts")
+        if Task.isCancelled { return nil }
         guard let b = await Shell.run("python3 \(BuildRunner.q(scripts.appendingPathComponent("build.py"))) \(BuildRunner.q(scratch))", in: store.root, timeout: 180) else { return nil }
         if b.status != 0 { let t = (b.err.isEmpty ? b.out : b.err).trimmingCharacters(in: .whitespacesAndNewlines); return SceneTestResult(codeErrors: ["build failed: " + clip(t, limit: 400)], warnings: [], codeCount: 1, warningCount: 0) }
         // the assembler says why a file could not be used (not valid JavaScript, no return): the page would only show an empty frame
-        if let d = try? Data(contentsOf: scratch.appendingPathComponent("assembly.json")), let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
+        if !frame, let d = try? Data(contentsOf: scratch.appendingPathComponent("assembly.json")), let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
            let rows = o["scenes"] as? [[String: Any]], let row = rows.first(where: { ($0["id"] as? String) == id }), (row["status"] as? String) != "module" {
             return SceneTestResult(codeErrors: ["the scene file cannot be used: \(row["message"] as? String ?? row["status"] as? String ?? "invalid")"], warnings: [], codeCount: 1, warningCount: 0)
         }
-        guard let h = await Shell.run("node \(BuildRunner.q(scripts.appendingPathComponent("harness.js"))) \(BuildRunner.q(scratch.appendingPathComponent("dist/index.html"))) --scene \(id)", in: store.root, timeout: 240) else { return nil }
+        guard let h = await Shell.run("node \(BuildRunner.q(scripts.appendingPathComponent("harness.js"))) \(BuildRunner.q(scratch.appendingPathComponent("dist/index.html")))" + (frame ? "" : " --scene \(id)"), in: store.root, timeout: 240) else { return nil }
         if h.status == 127 { return nil }
         return parse(h.out)
     }

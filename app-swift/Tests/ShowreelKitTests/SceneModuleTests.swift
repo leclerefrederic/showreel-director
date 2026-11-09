@@ -160,7 +160,7 @@ final class SceneModuleTests: XCTestCase {
         let yes = await tools.run("generate_scenes", ["scenes": ["S01", "S02"]]).text
         XCTAssertTrue(yes.hasPrefix("generated S01, S02 in v1"), yes); XCTAssertNotNil(bytes("v1/scenes/S02.js")); XCTAssertNil(bytes("v1/scenes/S03.js"))
         XCTAssertTrue(Tools.definitions.contains { ($0["name"] as? String) == "generate_scenes" })
-        XCTAssertEqual(store.journal.entries().last?.author, "clap")
+        XCTAssertEqual(store.journal.entries().last { $0.op == "generate" }?.author, "clap")
     }
 
     // MARK: fingerprints and states

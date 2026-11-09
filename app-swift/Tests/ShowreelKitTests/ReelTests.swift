@@ -259,10 +259,10 @@ final class ReelTests: XCTestCase {
 
     // MARK: the build message and the tools
 
-    func testBuildMessageMentionsTransitionsAndTheGrid() throws {
+    func testTheFrameRequestMentionsTransitionsAndTheGrid() throws {
         try attachTrack(); try writeAnalysis()
         try store.apply(.transition(from: "S01", TransitionEdit(type: "Push", duration: 0.5, instruction: "match cut on the card")))
-        let p = BuildRunner.prompt(version: "v1", store: store)
+        let p = BuildJob.frame(version: "v1", store: store, skill: try XCTUnwrap(Skill.root()))
         XCTAssertTrue(p.contains("S01 -> S02: Push 0.5 s \u{201C}match cut on the card\u{201D}"), p)
         XCTAssertTrue(p.contains("overlaps the end of the outgoing scene") && p.contains("length does not change"))
         XCTAssertTrue(p.contains("Music grid, constant tempo: 120 BPM, first beat 0 s, 12 bars"))

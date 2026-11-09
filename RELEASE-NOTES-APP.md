@@ -2,6 +2,30 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.10.3 - 2026-11-09
+
+**What's new**
+- **Every request has a time limit that a keep-alive cannot extend.** A request is cut when no text or tool argument arrives for 120 s, even if the API keeps sending its pings ("No content from the API for 120 s on S04, only keep-alive pings"), and when it lasts longer than 8 minutes ("Request exceeded 8 min"). The 8 minutes are a setting (Settings, Advanced, "Longest request (minutes)"). A stream that closes before the API says the answer is complete is a lost connection, no longer a finished answer.
+- **A cut request is asked again by itself**, up to 2 more times, with a short wait: the panel says "Connection lost on S07, retrying (1 of 2)" and the journal has a line per try. A request writes nothing until a scene is complete, so asking again only costs the request. After the tries the scene fails and the Build ends on "Continue vN".
+- **The Build leaves a trail.** The journal and `~/Library/Logs/ShowreelStudio/build.log` have a line for the start of the Build, the start and the end of each request (seconds, bytes, content tokens, pings, stop reason, cause), each retry, each Cancel (and who asked: the button, closing the window, quitting) and the end.
+- **The panel says what is really happening.** While a scene is tested it says "Testing S04" with the time, no longer "Preparing" with a frozen counter; a request that is alive but quiet says "no data for 25 s".
+- **One rule for "tested".** A scene is taken over from an earlier version only when its own record says it passed its test. "Generate" and "Fix this scene" now test the scene after writing it and record the result, like the Build. A scene that was never tested (for example one that was generated before this version) is tested again at the next Build, with no request, and written only if the test fails.
+- **The card gives the true reason for each scene**: "its content or look changed", "the brief or the music under it changed", "never tested: tested now, no request", "the previous build was not reliable: tested again, no request", "its test failed", "edited by hand", "never written".
+- **The frame of the film is tested once, before any scene.** A defect in reel.js stops the Build there, with its own error, instead of making every scene fail.
+- **Continue from the "Build stopped" alert shows the same card** as the Build tab (what is written, the calls, the cost) before it asks anything.
+
+**Changed**
+- Cancel during the last scene's test no longer goes on to assemble the film. Cancel now also stops a generation that Clap started, and any command the app runs (the tests, the assembly) is stopped when it is cancelled or when its time is up (SIGTERM, then SIGKILL after 3 s).
+- After a stop, the layout warnings of the scenes already written are kept and listed.
+- Folders of Builds that stopped before writing anything but film.json (v1 to v4 in some projects) are removed when the app opens the project and when the next Build starts.
+- The old one-message Build brief is gone (only self-tests read it).
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
 ## 0.10.2 - 2026-11-09
 
 **What's new**

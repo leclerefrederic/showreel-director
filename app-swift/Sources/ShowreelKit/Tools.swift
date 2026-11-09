@@ -455,38 +455,65 @@ public final class Tools {
 public enum Shell {
     public struct Result: Sendable { public let status: Int32; public let out: String; public let err: String; public let timedOut: Bool }
 
-    public static func run(_ cmd: String, in dir: URL, timeout seconds: Double) async -> Result? {
-        await withCheckedContinuation { (cont: CheckedContinuation<Result?, Never>) in
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            p.arguments = ["-l", "-c", "[ -f \"$HOME/.zshrc\" ] && source \"$HOME/.zshrc\" >/dev/null 2>&1; " + Tools.envSetup + cmd]
-            p.currentDirectoryURL = dir
-            var env = ProcessInfo.processInfo.environment
-            env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")
-            p.environment = env
-            let outPipe = Pipe(), errPipe = Pipe()
-            p.standardOutput = outPipe; p.standardError = errPipe
-            let buf = OutputBuffer()
-            outPipe.fileHandleForReading.readabilityHandler = { h in
-                let d = h.availableData
-                if d.isEmpty { h.readabilityHandler = nil } else { buf.add(d, isErr: false) }
-            }
-            errPipe.fileHandleForReading.readabilityHandler = { h in
-                let d = h.availableData
-                if d.isEmpty { h.readabilityHandler = nil } else { buf.add(d, isErr: true) }
-            }
-            p.terminationHandler = { proc in
-                outPipe.fileHandleForReading.readabilityHandler = nil
-                errPipe.fileHandleForReading.readabilityHandler = nil
-                buf.add(outPipe.fileHandleForReading.readDataToEndOfFile(), isErr: false)
-                buf.add(errPipe.fileHandleForReading.readDataToEndOfFile(), isErr: true)
-                let (o, e) = buf.text()
-                cont.resume(returning: Result(status: proc.terminationStatus, out: o, err: e, timedOut: buf.timedOut))
-            }
-            do { try p.run() } catch { cont.resume(returning: nil); return }
-            DispatchQueue.global().asyncAfter(deadline: .now() + seconds) {
-                if p.isRunning { buf.timedOut = true; p.terminate() }
-            }
+    /// Stops a process: SIGTERM, and SIGKILL after `grace` seconds if it is still there.
+    final class Killer: @unchecked Sendable {
+        private let lock = NSLock(); private var proc: Process?; private var cancelled = false
+        static let grace: TimeInterval = 3
+        func attach(_ p: Process) { lock.lock(); proc = p; let c = cancelled; lock.unlock(); if c { Self.stop(p) } }
+        /// The task was cancelled: the process is stopped (or never started, if it was not yet).
+        func cancel() { lock.lock(); cancelled = true; let p = proc; lock.unlock(); if let p { Self.stop(p) } }
+        static func stop(_ p: Process) {
+            if p.isRunning { p.terminate() }
+            DispatchQueue.global().asyncAfter(deadline: .now() + grace) { if p.isRunning { kill(p.processIdentifier, SIGKILL) } }
         }
+    }
+
+    /// What is left in a pipe, read without waiting for a writer that is still there (a child of the shell that outlived it must not hold the result).
+    static func drain(_ h: FileHandle) -> Data {
+        let fd = h.fileDescriptor
+        _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
+        var out = Data(), buf = [UInt8](repeating: 0, count: 65536)
+        while true { let n = read(fd, &buf, buf.count); if n <= 0 { break }; out.append(buf, count: n) }
+        return out
+    }
+
+    /// Runs a command; stops at `timeout` (SIGTERM, then SIGKILL) and when the calling task is cancelled.
+    public static func run(_ cmd: String, in dir: URL, timeout seconds: Double) async -> Result? {
+        let killer = Killer()
+        return await withTaskCancellationHandler(operation: {
+            await withCheckedContinuation { (cont: CheckedContinuation<Result?, Never>) in
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: "/bin/zsh")
+                p.arguments = ["-l", "-c", "[ -f \"$HOME/.zshrc\" ] && source \"$HOME/.zshrc\" >/dev/null 2>&1; " + Tools.envSetup + cmd]
+                p.currentDirectoryURL = dir
+                var env = ProcessInfo.processInfo.environment
+                env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")
+                p.environment = env
+                let outPipe = Pipe(), errPipe = Pipe()
+                p.standardOutput = outPipe; p.standardError = errPipe
+                let buf = OutputBuffer()
+                outPipe.fileHandleForReading.readabilityHandler = { h in
+                    let d = h.availableData
+                    if d.isEmpty { h.readabilityHandler = nil } else { buf.add(d, isErr: false) }
+                }
+                errPipe.fileHandleForReading.readabilityHandler = { h in
+                    let d = h.availableData
+                    if d.isEmpty { h.readabilityHandler = nil } else { buf.add(d, isErr: true) }
+                }
+                p.terminationHandler = { proc in
+                    outPipe.fileHandleForReading.readabilityHandler = nil
+                    errPipe.fileHandleForReading.readabilityHandler = nil
+                    buf.add(drain(outPipe.fileHandleForReading), isErr: false)
+                    buf.add(drain(errPipe.fileHandleForReading), isErr: true)
+                    let (o, e) = buf.text()
+                    cont.resume(returning: Result(status: proc.terminationStatus, out: o, err: e, timedOut: buf.timedOut))
+                }
+                do { try p.run() } catch { cont.resume(returning: nil); return }
+                killer.attach(p)
+                DispatchQueue.global().asyncAfter(deadline: .now() + seconds) {
+                    if p.isRunning { buf.timedOut = true; Killer.stop(p) }
+                }
+            }
+        }, onCancel: { killer.cancel() })
     }
 }

@@ -239,16 +239,16 @@ enum SelfCheck {
             check(bs.loadShowreel()?.film.map { $0.id } == ["S02"] && bs.loadShowreel()?.library.count == 2, "switching a scene off keeps it in the library")
             check(bs.read("storyboard.md")?.contains("off") == true, "storyboard.md is generated from the library and the montage")
             try? bs.apply(.content(scene: "S02", .add(ContentEdit(type: "text", text: "More", color: "accent", animation: "Pop"), after: nil)))
-            check(bs.loadShowreel()?.scenes.first { $0.id == "S02" }?.content.last?.animation.effect == "Pop" && BuildRunner.prompt(version: "v2", store: bs).contains("animation: FIXED Pop"),
+            check(bs.loadShowreel()?.scenes.first { $0.id == "S02" }?.content.last?.animation.effect == "Pop" && SceneGeneration.prompt(scene: "S02", version: "v2", store: bs, skill: Skill.root()!).contains("animation: FIXED Pop"),
                   "a content item is an operation, and the build message lists it with its fixed attributes")
             try? bs.apply(.sceneEnabled(id: "S01", enabled: true, montage: nil))
             if let lead = bs.loadShowreel()?.film.first?.id {
                 try? bs.apply(.transition(from: lead, TransitionEdit(type: "Push", duration: 0.5)))
                 try? bs.apply(.resize(scene: lead, duration: 6, ripple: true))
                 check(bs.loadShowreel()?.storyboards.first?.items.first { $0.scene == lead }?.transition.type == "Push" && bs.loadShowreel()?.scenes.first { $0.id == lead }?.duration == 6
-                      && BuildRunner.prompt(version: "v2", store: bs).contains("Push 0.5 s"), "a transition and a duration are operations, and the build message lists the transition")
+                      && BuildJob.frame(version: "v2", store: bs, skill: Skill.root()!).contains("Push 0.5 s"), "a transition and a duration are operations, and the build message lists the transition")
             }
-            check(Film.data(bs.loadShowreel()!)["scenes"] is [[String: Any]] && BuildRunner.prompt(version: "v2", store: bs).contains("v2/scenes/<ID>.js") && Look.transitionsPreviewOnly().count == 6
+            check(Film.data(bs.loadShowreel()!)["scenes"] is [[String: Any]] && BuildJob.frame(version: "v2", store: bs, skill: Skill.root()!).contains("v2/film.json already exists") && Look.transitionsPreviewOnly().count == 6
                   && (try? bs.apply(.transition(from: bs.loadShowreel()?.film.first?.id ?? "S01", TransitionEdit(type: "Morph")))) == nil, "the build message quotes the montage (film.json) and a preview-only transition cannot be chosen")
             try? bs.apply(.sceneLook(id: "S02", [DecisionChange(.background, "duotone")]))
             if let f = bs.loadShowreel(), let sc = f.scenes.first(where: { $0.id == "S02" }) {

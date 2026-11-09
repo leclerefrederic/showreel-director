@@ -40,12 +40,67 @@ public enum AgentLimits {
     public static let loopGuardSteps = 1000
     /// Seconds without a single byte from the stream (headers, events, even the API's pings) after which a request is cut and said so. The default of the advanced setting.
     public static let idleTimeout: TimeInterval = 90
+    /// Seconds without any text or tool argument (the API's keep-alive pings do not count) after which a request is cut. The default of the rule; not a setting.
+    public static let contentTimeout: TimeInterval = 120
+    /// The longest one request may take, in seconds (8 minutes). The default of the advanced setting.
+    public static let requestTimeout: TimeInterval = 480
+    /// How many times a step is asked again after a cut (a lost connection, a closed stream, one of the two rules above): the first try, then this many more.
+    public static let stepRetries = 2
+    /// Seconds to wait before asking again (tests set it to 0).
+    nonisolated(unsafe) public static var retryDelay: TimeInterval = 3
 }
 
 /// The request was cut because the stream said nothing for `seconds`.
 public struct IdleTimeout: Error, LocalizedError, Equatable, Sendable {
     public let seconds: Int
     public var errorDescription: String? { "No answer from the API for \(seconds) s" }
+}
+
+/// No text and no tool argument came for `seconds`, whatever else the stream said (`pingsOnly`: only keep-alive pings came).
+public struct ContentTimeout: Error, LocalizedError, Equatable, Sendable {
+    public let seconds: Int
+    public let pingsOnly: Bool
+    public var step: String?
+    public var errorDescription: String? { "No content from the API for \(seconds) s" + (step.map { " on \($0)" } ?? "") + (pingsOnly ? ", only keep-alive pings" : "") }
+}
+
+/// One request took longer than the maximum.
+public struct RequestTooLong: Error, LocalizedError, Equatable, Sendable {
+    public let seconds: Int
+    public var step: String?
+    public var errorDescription: String? {
+        let t = seconds % 60 == 0 ? "\(seconds / 60) min" : "\(seconds) s"
+        return "Request exceeded \(t)" + (step.map { " on \($0)" } ?? "")
+    }
+}
+
+/// The connection dropped, or the stream closed before the API said the answer was complete.
+public struct ConnectionLost: Error, LocalizedError, Equatable, Sendable {
+    public let detail: String
+    public var step: String?
+    public var errorDescription: String? { "Connection lost" + (step.map { " on \($0)" } ?? "") + (detail.isEmpty ? "" : " (\(detail))") }
+}
+
+/// What the Build asks again by itself: a cut, never an answer of the API (a 4xx, a refusal) or the user's stop.
+public func isCut(_ e: Error) -> Bool { e is IdleTimeout || e is ContentTimeout || e is RequestTooLong || e is ConnectionLost }
+
+/// What one request did, for the journal and the log.
+public struct RequestStats: Equatable, Sendable {
+    public var seconds: Double = 0
+    public var bytes = 0
+    public var pings = 0
+    public var contentTokens = 0
+    public var stopReason: String?
+    /// "ok", "idle", "no-content", "too-long", "connection-lost", "http <status>", "cancelled" or "error".
+    public var cause = "ok"
+    public var line: String { "\(String(format: "%.0f", seconds)) s, \(bytes) bytes, \(contentTokens) content tokens, \(pings) ping\(pings == 1 ? "" : "s"), stop_reason \(stopReason ?? "none"), \(cause)" }
+}
+
+/// A transport with the two time rules and a record of its last request (the real one).
+public protocol RequestWatched: AnyObject {
+    var contentTimeout: TimeInterval { get set }
+    var requestTimeout: TimeInterval { get set }
+    var lastRequest: RequestStats? { get }
 }
 
 /// What the API says when `max_tokens` is more than the model accepts, and what to do about it.

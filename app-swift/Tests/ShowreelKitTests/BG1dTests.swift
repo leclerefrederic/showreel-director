@@ -53,7 +53,7 @@ final class BG1dTests: XCTestCase {
         try store.apply(.scene(id: "S02", SceneEdit(text: "Two, changed")))
         try next()
         let p = BuildJob.plan(version: "v2", store: store)
-        XCTAssertEqual(p.write, ["S02"]); XCTAssertEqual(p.reuse.keys.sorted(), ["S01", "S03"]); XCTAssertEqual(p.reasons["S02"], "its content, look or music changed")
+        XCTAssertEqual(p.write, ["S02"]); XCTAssertEqual(p.reuse.keys.sorted(), ["S01", "S03"]); XCTAssertEqual(p.reasons["S02"], "its content or look changed")
         let c = BuildJob.card(p, store: store, skill: skill, resuming: false)
         XCTAssertEqual(c.title, "Build v2: 1 scene will be written, 2 reused unchanged")
         XCTAssertTrue(c.changes.contains { $0.after.contains("1 model call,") && $0.after.contains("about 1 min") }, "the cost and time are those of the written scene only")
@@ -69,12 +69,13 @@ final class BG1dTests: XCTestCase {
     }
 
     func testAScenesThatWasNeverWrittenOrFailedItsTestIsWritten() async throws {
-        try FileManager.default.removeItem(at: dir.appendingPathComponent("v1/scenes/S03.js"))       // never written (or removed after a failed test)
-        SceneModules.markTested(version: "v1", scene: "S01", ok: false, store: store)               // its file failed its test
+        try FileManager.default.removeItem(at: dir.appendingPathComponent("v1/scenes/S03.js"))       // never written
+        try FileManager.default.removeItem(at: dir.appendingPathComponent("v1/scenes/S01.js"))       // removed after its test failed in the Build of v2
         try next()
+        SceneModules.noteFailure(version: "v2", scene: "S01", error: "boom", store: store)
         let p = BuildJob.plan(version: "v2", store: store)
         XCTAssertEqual(p.write, ["S01", "S03"]); XCTAssertEqual(p.reuse.keys.sorted(), ["S02"])
-        XCTAssertEqual(p.reasons["S01"], "failed its test"); XCTAssertTrue(p.reasons["S03"]?.hasPrefix("no file yet") == true)
+        XCTAssertEqual(p.reasons["S01"], "its test failed"); XCTAssertEqual(p.reasons["S03"], "never written")
     }
 
     func testAHandEditedSceneIsWrittenOnlyWithTheConfirmation() async throws {

@@ -25,6 +25,15 @@ final class AppSettings: ObservableObject {
         set { objectWillChange.send(); defaults.set(max(5, newValue), forKey: "idleTimeout") }
     }
 
+    /// The longest one request may take, in minutes (advanced setting; the default is `AgentLimits.requestTimeout`).
+    var requestMinutes: Double {
+        get { let v = defaults.double(forKey: "requestMinutes"); return v >= 1 ? v : AgentLimits.requestTimeout / 60 }
+        set { objectWillChange.send(); defaults.set(max(1, newValue), forKey: "requestMinutes") }
+    }
+
+    /// The time rules of the settings on a transport.
+    func configure(_ t: AnthropicTransport) { t.idleTimeout = idleTimeout; t.requestTimeout = requestMinutes * 60 }
+
     init() { hasKey = keyExists() }
 
     private func envKey() -> String? {

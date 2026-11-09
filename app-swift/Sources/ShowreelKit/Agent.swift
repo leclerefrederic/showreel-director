@@ -12,9 +12,9 @@ public final class Agent {
 
     /// `transport` defaults to the real API; `history` seeds the conversation (a previous session of the project).
     public init(apiKey: String, model: String, baseURL: String = "", bearer: Bool = false, project: URL, ui: AgentUI,
-                transport: MessagesTransport? = nil, history: [[String: Any]] = [], idleTimeout: TimeInterval = AgentLimits.idleTimeout) throws {
+                transport: MessagesTransport? = nil, history: [[String: Any]] = [], idleTimeout: TimeInterval = AgentLimits.idleTimeout, requestTimeout: TimeInterval = AgentLimits.requestTimeout) throws {
         let sp = try Skill.systemPrompt(project: project, lang: nil)
-        let t = transport ?? { let a = AnthropicTransport(apiKey: apiKey, model: model, baseURL: baseURL, bearer: bearer); a.idleTimeout = idleTimeout; return a }()
+        let t = transport ?? { let a = AnthropicTransport(apiKey: apiKey, model: model, baseURL: baseURL, bearer: bearer); a.idleTimeout = idleTimeout; a.requestTimeout = requestTimeout; return a }()
         self.transport = t
         self.messages = history
         self.ui = ui
