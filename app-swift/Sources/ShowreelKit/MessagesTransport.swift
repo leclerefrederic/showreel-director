@@ -8,11 +8,18 @@ public protocol MessagesTransport {
 }
 
 /// The real transport: the Messages API over URLSession, server-sent events.
-public struct AnthropicTransport: MessagesTransport {
+public final class AnthropicTransport: MessagesTransport, OutputBudgeted, @unchecked Sendable {   // the only mutable state is `maxTokens`, behind a lock
     let apiKey: String
     let model: String
     let baseURL: String
     let bearer: Bool
+    private let lock = NSLock()
+    private var cap = AgentBudget.standard.maxTokens
+    /// The output cap of the next requests; the agent raises it for a Build and puts it back.
+    public var maxTokens: Int {
+        get { lock.lock(); defer { lock.unlock() }; return cap }
+        set { lock.lock(); cap = newValue; lock.unlock() }
+    }
 
     public init(apiKey: String, model: String, baseURL: String = "", bearer: Bool = false) {
         self.apiKey = apiKey
@@ -32,7 +39,7 @@ public struct AnthropicTransport: MessagesTransport {
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         req.timeoutInterval = 300
         let body: [String: Any] = [
-            "model": model, "max_tokens": 8000, "stream": true,
+            "model": model, "max_tokens": maxTokens, "stream": true,
             "system": system, "tools": tools, "messages": messages,
         ]
         req.httpBody = jsonData(body)

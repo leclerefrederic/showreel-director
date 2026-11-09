@@ -35,21 +35,33 @@ public final class Agent {
     private var isAborted: Bool { lock.lock(); defer { lock.unlock() }; return aborted }
     private func resetAbort() { lock.lock(); aborted = false; lock.unlock() }
 
-    /// `context` is a short line about the project's state (step, open gates, file in front of the user), sent with the message.
-    public func send(_ text: String, context: String? = nil) async throws {
+    /// `context` is a short line about the project's state (step, open gates, file in front of the user), sent with the message. `budget` is what this request may use
+    /// (steps and output tokens per answer); the result says how the turn ended, so that a stop that is not a normal end can be told to the user.
+    @discardableResult
+    public func send(_ text: String, context: String? = nil, budget: AgentBudget = .standard) async throws -> AgentStop {
         resetAbort()
         let first: String = context.map { "[Studio context] \($0)\n\n" + text } ?? text
         messages.append(["role": "user", "content": first])
+        let budgeted = transport as? OutputBudgeted
+        budgeted?.maxTokens = budget.maxTokens
+        defer { budgeted?.maxTokens = AgentBudget.standard.maxTokens }
         var turn = 0
-        while turn < 60 && !isAborted {
+        while turn < budget.maxTurns && !isAborted {
             turn += 1
             pruneImages(keep: 3)
             let (content, stop) = try await transport.stream(system: system, tools: Tools.definitions, messages: messages,
                                                              onText: { [ui] in ui.text($0) })
-            if !content.isEmpty { messages.append(["role": "assistant", "content": content]) }
+            // a tool call cut by the output cap is incomplete: it is neither run nor kept in the history
+            let kept = stop == "max_tokens" ? content.filter { ($0["type"] as? String) != "tool_use" } : content
+            if !kept.isEmpty { messages.append(["role": "assistant", "content": kept]) }
             ui.endText()
+            if stop == "max_tokens" { return .tokenLimit(budget.maxTokens) }
             let uses = content.filter { ($0["type"] as? String) == "tool_use" }
-            if stop != "tool_use" || uses.isEmpty { return }
+            if stop != "tool_use" || uses.isEmpty {
+                if stop == "refusal" { return .refused }
+                if stop != "end_turn" && stop != "tool_use" && stop != "stop_sequence" { return .other(stop) }
+                return content.isEmpty ? .emptyReply : .finished
+            }
             var results: [[String: Any]] = []
             for u in uses {
                 let name = u["name"] as? String ?? ""
@@ -69,8 +81,9 @@ public final class Agent {
             }
             messages.append(["role": "user", "content": results])
         }
-        ui.text("\n[stopped]")
+        if isAborted { ui.text("\n[stopped]"); ui.endText(); return .cancelled }
         ui.endText()
+        return .turnLimit(budget.maxTurns)
     }
 
     /// Screenshots are heavy: keep the last few in the history and replace older ones by a short note.

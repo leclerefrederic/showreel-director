@@ -2,6 +2,20 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.9.2 - 2026-11-09
+
+**Fixed**
+- **"Clap did not write v2" now says why.** A Build whose agent stopped without writing the version used to end on an alert that sent you to a chat that said nothing. The agent stopped quietly when an answer reached the output cap (8000 tokens): a long Build writes a file per scene, and a tool call cut in the middle was dropped without a word. The alert, the chat and the project's journal now name the cause: the output limit (with its size), the steps limit, a refusal, an empty reply, an error of the API (with its code) or an answer with no file. A cut tool call is never run and never kept.
+- **A Build of a long film gets more room.** The output cap and the number of steps grow with the scenes (a film of 15 scenes gets 32000 tokens and 100 steps), up to a ceiling that is never removed. A question to Clap keeps the usual size.
+- **A way on after each stop.** "Try again", and, when the limit was the cause, **Generate the scenes one by one**, which asks Clap for one file per answer. Nothing stays frozen, and a version folder that holds only what the app wrote (film.json) is removed, so the next Build reuses its name instead of piling up empty versions. What Clap did write stays, and the message says so.
+- **The journal** gets one line per stopped Build ("Build v2 stopped: token-limit") with the message.
+
+**What you need to do**
+- Nothing. If a Build of the trailer fails again, the message tells you why.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.1. macOS 13 or later.
+
 ## 0.9.1 - 2026-11-09
 
 **What's new**

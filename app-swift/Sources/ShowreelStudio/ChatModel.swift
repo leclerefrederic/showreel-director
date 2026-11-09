@@ -68,7 +68,11 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     private var stopping = false
     /// The request that just ended was stopped by the user (Stop, Cancel build, closing): a build in progress is then cancelled, not tested.
     private(set) var stoppedByUser = false
-    private var failure: String?
+    /// The error the last request ended with (nil when it ended); and how the agent's turn ended.
+    private(set) var failure: String?
+    private(set) var lastStop: AgentStop = .finished
+    /// What the next request may use (a Build asks for more than a question).
+    private var budget = AgentBudget.standard
     var activity: ProjectActivity { project.store.activity }
     @Published var previewURL: URL?
     @Published var previewTitle = "Preview"
@@ -169,7 +173,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     /// Sends a message to the model. An app instruction (`origin` "app") goes to the model and into the transcript like any message, but the conversation shows only
     /// its neutral `status` line, never its text.
-    private func dispatch(_ text: String, origin: String?, status: String?) {
+    private func dispatch(_ text: String, origin: String?, status: String?, budget: AgentBudget = .standard) {
         guard let key = settings.apiKey() else { notice("Connect an AI to talk to Clap. Everything else works without one."); return }
         if sessionEnded { history.startNewSession(); records = []; sessionEnded = false; project.store.sessionID = history.sessionID }      // after a long pause: a new session
         lastActivity = Date()
@@ -181,11 +185,12 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         remember(record)
         assistantIdx = nil; stepsIdx = nil
         running = true; scrollTick += 1
-        stopping = false; failure = nil; lastEnd = nil
+        stopping = false; failure = nil; lastEnd = nil; lastStop = .finished; self.budget = budget
         activity.update { $0.clap = .thinking }
         catchUpSummaries(key: key)
         let context = project.contextLine
         let generation = settings.generation
+        let asksForResult = onDone != nil
         sendTask = Task { [weak self] in
             guard let self = self else { return }
             await self.catchUp?.value               // the summaries of the earlier sessions are in the prompt of this one
@@ -203,7 +208,12 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
             switch built {
             case .failure(let e): self.failure = e.localizedDescription; self.postNotice("Error: \(e.localizedDescription)")
             case .success(let a):
-                do { try await a.send(text, context: context) } catch {
+                do {
+                    let stop = try await a.send(text, context: context, budget: budget)
+                    self.lastStop = stop
+                    // a request that is not a Build says here why it stopped; a Build says it in its own message
+                    if let line = stop.line, !self.stopping, !asksForResult { self.postNotice("Clap stopped: " + line) }
+                } catch {
                     if self.stopping { self.postNotice("Stopped.") } else { self.failure = error.localizedDescription; self.postNotice("Error: \(error.localizedDescription)") }
                 }
             }
@@ -213,11 +223,11 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     /// Sends a message on the user's behalf (the wizard's "Suggest with AI"). The copilot answers with a card to accept or refuse.
     @discardableResult
-    func ask(prompt: String, status: String = "Request sent to Clap", onDone: (() -> Void)? = nil) -> Bool {
+    func ask(prompt: String, status: String = "Request sent to Clap", budget: AgentBudget = .standard, onDone: (() -> Void)? = nil) -> Bool {
         guard !running else { notice("Clap is busy: wait for it to finish."); return false }
         guard settings.hasKey else { notice("Connect an AI to talk to Clap. Everything else works without one."); return false }
         self.onDone = onDone
-        dispatch(prompt.trimmingCharacters(in: .whitespacesAndNewlines), origin: ChatRecord.appOrigin, status: status)
+        dispatch(prompt.trimmingCharacters(in: .whitespacesAndNewlines), origin: ChatRecord.appOrigin, status: status, budget: budget)
         return running
     }
 
@@ -312,6 +322,9 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         if accept, let c = card { project.reactToAccepted(c) }
         scrollTick += 1
     }
+
+    /// A line of the app in the conversation (why a request ended without its result).
+    func report(_ t: String) { notice(t) }
 
     private func notice(_ t: String) {
         items.append(ChatItem(kind: .notice, text: t)); scrollTick += 1

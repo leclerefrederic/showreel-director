@@ -91,6 +91,16 @@ struct ProjectView: View {
             Alert(title: Text("The files of \(f.family) could not be added"), message: Text(f.text),
                   primaryButton: .default(Text("Try again")) { if let r = f.retry { r() } else { project.addFontFiles(f.family) } }, secondaryButton: .cancel(Text("Close")))
         }
+        .alert(item: $project.buildFailure) { f in
+            let retry = { if let c = project.chat { project.startBuild(with: c) } }
+            let oneByOne = { if let c = project.chat { project.startBuild(with: c, oneByOne: true) } }
+            return f.remedy == .oneByOne
+                ? Alert(title: Text("The Build stopped"), message: Text(f.message),
+                        primaryButton: .default(Text("Generate the scenes one by one"), action: oneByOne),
+                        secondaryButton: .default(Text("Try again"), action: retry))
+                : Alert(title: Text("The Build stopped"), message: Text(f.message),
+                        primaryButton: .default(Text("Try again"), action: retry), secondaryButton: .cancel(Text("Close")))
+        }
         .sheet(item: $project.historyFor) { tab in HistoryView(tab: tab) }
         .sheet(isPresented: Binding(get: { project.reimport != nil }, set: { if !$0 { project.reimport = nil } })) { ReimportSheet() }
         // a drop that would replace a scene's look asks first; saying no changes nothing

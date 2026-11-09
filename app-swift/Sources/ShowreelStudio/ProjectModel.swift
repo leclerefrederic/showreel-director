@@ -229,6 +229,8 @@ final class ProjectModel: ObservableObject {
     @Published var generationOffer: PendingGeneration?
     @Published var fontOffer: PendingFontOffer?
     @Published var fontFailure: FontFailure?
+    /// Why a Build ended without writing its version, with the way on.
+    @Published var buildFailure: BuildFailureAlert?
     @Published var fontsAtBuild: PendingFontsAtBuild?
     var checkingFonts = false
     /// The folded groups of the Resources list (remembered per project), the tag the list is filtered by, and a tag being renamed.
@@ -383,13 +385,13 @@ final class ProjectModel: ObservableObject {
     }
 
     /// The Go is given and nothing is running: the copilot may write the next version. Needs a key (this is the one step that does).
-    func startBuild(with chat: ChatModel) {
+    func startBuild(with chat: ChatModel, oneByOne: Bool = false) {
         guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it from the toolbar once every scene is OK."; return }
         guard !buildBusy else { return }
-        askAboutFonts { [weak self] in self?.beginBuild(with: chat) }
+        askAboutFonts { [weak self] in self?.beginBuild(with: chat, oneByOne: oneByOne) }
     }
 
-    private func beginBuild(with chat: ChatModel) {
+    private func beginBuild(with chat: ChatModel, oneByOne: Bool) {
         guard !buildBusy else { return }
         let v = Versions.next(store)
         do { try Film.write(version: v, store: store) } catch { self.error = "Could not write \(v)/film.json: \(error.localizedDescription)"; return }   // the exact montage, for the build to read
@@ -398,7 +400,7 @@ final class ProjectModel: ObservableObject {
         buildReport = nil
         buildCancelled = false; self.chat = chat
         store.activity.update { $0.build = .init(version: v, phase: .generating) }          // from here every change is refused, with its reason, until the end
-        let sent = chat.ask(prompt: BuildRunner.prompt(version: v, store: store), status: "Build requested") { [weak self] in self?.finishGeneration(v) }
+        let sent = chat.ask(prompt: BuildRunner.prompt(version: v, store: store, oneByOne: oneByOne), status: oneByOne ? "Build requested, one file per answer" : "Build requested", budget: BuildRunner.budget(store: store)) { [weak self] in self?.finishGeneration(v) }
         if !sent { generating = false; store.activity.update { $0.build = nil } } else { inspectorTab = .copilot; centerMode = .build }       // the user sees what the copilot does
     }
 
@@ -412,9 +414,11 @@ final class ProjectModel: ObservableObject {
             refresh(); reloadTree(); return
         }
         guard Versions.list(store).contains(v) else {
-            store.activity.update { $0.build = nil }
-            error = "Clap did not write \(v) (project.json and the scene files). See what it said in the chat, then try again. Nothing is frozen any more."
-            refresh(); return
+            // the cause is said in the chat, in the alert and in the journal; nothing stays frozen and an empty stub folder is removed
+            let why = BuildStop.conclude(version: v, store: store, stop: chat?.lastStop ?? .finished, failure: chat?.failure)
+            chat?.report(why.message)
+            buildFailure = BuildFailureAlert(message: why.message, remedy: why.remedy)
+            refresh(); reloadTree(); return
         }
         // what each scene file was generated from, so that a later change can tell which scenes are stale (nothing shows it yet)
         try? SceneModules.recordGeneration(version: v, store: store)
@@ -1359,6 +1363,10 @@ extension ProjectModel {
 }
 
 /// A font lookup or download that failed, shown with Try again.
+struct BuildFailureAlert: Identifiable {
+    let id = UUID(); let message: String; let remedy: BuildFailure.Remedy
+}
+
 struct FontFailure: Identifiable {
     let id = UUID(); let family: String; let text: String
     /// What Try again does; by default, the lookup of the font again.

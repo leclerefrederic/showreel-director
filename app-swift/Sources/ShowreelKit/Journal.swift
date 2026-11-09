@@ -192,6 +192,7 @@ public enum JournalLinks {
         case "transition": return .transition(from: first)
         case "track", "grid", "gridSettings": return .music
         case "update", "restore", "reimport", "package": return .project
+        case "build": return .build
         default: return nil
         }
     }

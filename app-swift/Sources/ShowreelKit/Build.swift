@@ -53,7 +53,8 @@ public enum BuildRunner {
     }
 
     /// The message that asks the existing agent to write the version folder. The app runs the build and the tests itself afterwards.
-    public static func prompt(version: String, store: ProjectStore) -> String {
+    /// `oneByOne`: the retry after an answer that was too long: one file per answer.
+    public static func prompt(version: String, store: ProjectStore, oneByOne: Bool = false) -> String {
         let f = store.loadShowreel()
         let dur = f?.decisions.duration.map { ProjectDocs.seconds($0) + " s" } ?? "the end of the last scene"
         let langs = (f?.reelLanguages ?? []).joined(separator: ", ")
@@ -79,9 +80,13 @@ public enum BuildRunner {
         \(reelBrief(f, store: store))
         6. Use only approved assets listed in assets/MANIFEST.csv, from assets/prepared or assets/generated. The fonts of the Look are embedded by the app (it writes \(version)/fonts.json from the approved font files): do not list them in project.json, set their family names exactly as the Look gives them in tokens and in the drawing code, and do not embed any other font file. Add the formats of the brief (16:9 as d, 9:16 as m).
         7. Do not change any decision, scene or asset, do not run build.py, the harness or the smoke test (the app runs them next and shows the user the result), and do not give or assume any Go beyond this one. Do not write outside \(version)/.
+        \(oneByOne ? "8. Write the files one per answer: call write_file once for project.json, wait for the result, then once for reel.js, then once for each scene file in film order. Never put two files in one answer: the previous attempt ran out of room." : "")
         Answer in two short lines: what you built, and anything you could not do.
         """
     }
+
+    /// The room the agent gets for a Build of the film's scenes.
+    public static func budget(store: ProjectStore) -> AgentBudget { .build(scenes: store.loadShowreel()?.film.count ?? 0) }
 
     /// The content items of every scene that is on, in priority order, with each attribute marked fixed or auto and the instructions.
     static func contentBrief(_ f: ShowreelFile?) -> String {
