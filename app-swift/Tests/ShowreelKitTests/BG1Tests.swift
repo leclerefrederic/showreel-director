@@ -10,16 +10,20 @@ final class JobModel: MessagesTransport, OutputBudgeted, @unchecked Sendable {
     var failOn: [String: Error] = [:]
     var readFirst = false                          // answer the first request of each step with a read_file call
     var onRequest: ((String) -> Void)?
+    /// What the model writes for a scene, given its step and the whole request; the default is a fine file.
+    var sceneText: ((String, String) -> String)?
+    private(set) var prompts: [String: [String]] = [:]
     private var read: Set<String> = []
     func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]], onText: (String) -> Void) async throws -> (content: [[String: Any]], stop: String) {
         let p = (messages.first?["content"] as? String) ?? ""
         let step = p.range(of: #"scenes/(S\d+)\.js"#, options: .regularExpression).map { String(p[$0].dropFirst(7).dropLast(3)) } ?? BuildJob.frameStep
         onRequest?(step)
-        if messages.count == 1 { asked.append(step) }
+        if messages.count == 1 { asked.append(step); prompts[step, default: []].append(p) }
         if let e = failOn[step] { throw e }
         onOutput?(400)
         if readFirst, !read.contains(step) { read.insert(step); return ([toolUse("r-\(step)", "read_file", ["path": "references/engine.md", "limit": 5])], "tool_use") }
         if step == BuildJob.frameStep { return ([["type": "text", "text": "```json\n{\"title\": \"T\", \"tokens\": {}, \"fonts\": []}\n```\n```js\nreturn { palette: { bg: '#000', fg: '#fff', accent: '#f00', accent2: '#0f0' }, show: {} };\n```"]], "end_turn") }
+        if let t = sceneText { return ([["type": "text", "text": "```js\n" + t(step, p) + "\n```"]], "end_turn") }
         return ([["type": "text", "text": "```js\nconst { clamp } = SR;\nreturn function render(g, lt, c) { g.fillText('\(step)', 40, 40 + SRK.slam + clamp(lt, 0, 1)); };\n```"]], "end_turn")
     }
 }
@@ -35,8 +39,9 @@ final class BG1Tests: XCTestCase {
         try? store.create(name: "BG", conversationLanguage: "en", reelLanguages: ["en"])
         for t in ["One", "Two", "Three"] { try? store.apply(.addScene(id: "", SceneEdit(duration: "3", text: t, status: "validated"))) }
         _ = try? Film.write(version: v, store: store)
+        SceneTest.override = { _, _ in SceneTestResult(codeErrors: [], warnings: [], codeCount: 0, warningCount: 0) }       // the scene tests are the next suite's: here they are clean and instant
     }
-    override func tearDown() { try? FileManager.default.removeItem(at: dir) }
+    override func tearDown() { SceneTest.override = nil; try? FileManager.default.removeItem(at: dir) }
     func exists(_ rel: String) -> Bool { FileManager.default.fileExists(atPath: dir.appendingPathComponent(rel).path) }
 
     // MARK: the contract comes from the skill
@@ -97,14 +102,14 @@ final class BG1Tests: XCTestCase {
         try store.apply(.sceneLock(ids: ["S02"], locked: true))
         _ = try Film.write(version: "v2", store: store)
         let p = BuildJob.plan(version: "v2", store: store)
-        XCTAssertEqual(p.carry, ["S02": "v1"]); XCTAssertEqual(p.write, ["S01", "S03"])
+        XCTAssertEqual(p.reuse, ["S02": "v1"]); XCTAssertEqual(p.locked, ["S02"]); XCTAssertEqual(p.write, ["S01", "S03"])
     }
 
     func testTheCardSaysTheCallsAndAnEstimate() throws {
         let p = BuildJob.plan(version: v, store: store)
         let c = BuildJob.card(p, store: store, skill: skill, resuming: false)
-        XCTAssertEqual(c.title, "Build v1: 4 calls, one scene at a time")
-        XCTAssertTrue(c.changes.contains { $0.after.contains("4 model calls") && $0.after.contains("(an estimate)") })
+        XCTAssertEqual(c.title, "Build v1: 3 scenes will be written, 0 reused unchanged")
+        XCTAssertTrue(c.changes.contains { $0.after.contains("4 model calls") && $0.after.contains("about 4 min") && $0.after.contains("(an estimate)") })
         XCTAssertTrue(c.changes.contains { $0.before.contains("assembled with no AI") })
     }
 

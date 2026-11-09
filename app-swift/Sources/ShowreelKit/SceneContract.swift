@@ -19,11 +19,66 @@ public enum SceneContract {
 
     static func read(_ skill: URL, _ path: String) -> String { (try? String(contentsOf: skill.appendingPathComponent(path), encoding: .utf8)) ?? "" }
 
+    // MARK: the exact form of the engine's objects
+
+    /// What each name exported by a script is, read from the script itself: a function (with its parameters), an object (with its functions) or a plain value. `export` is the
+    /// assignment that exposes them (`G.SR = {`), `prefix` how a scene reaches them (`SR`).
+    static func shapes(of js: String, export: String, prefix: String) -> String {
+        guard let a = js.range(of: export), let b = js.range(of: "}", range: a.upperBound..<js.endIndex) else { return "" }
+        // an entry is `name` or `name: other` (exposed under another name)
+        let entries = js[a.upperBound..<b.lowerBound].split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        let names = entries.map { $0.split(separator: ":").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? $0 }
+        let local = Dictionary(uniqueKeysWithValues: entries.map { e -> (String, String) in
+            let p = e.split(separator: ":").map { $0.trimmingCharacters(in: .whitespaces) }
+            return (p[0], p.count > 1 ? p[1] : p[0])
+        })
+        func regex(_ p: String) -> NSRegularExpression? { try? NSRegularExpression(pattern: p) }
+        func first(_ re: NSRegularExpression?, _ n: String) -> NSTextCheckingResult? { re?.firstMatch(in: js, range: NSRange(js.startIndex..., in: js)) }
+        func group(_ m: NSTextCheckingResult, _ i: Int) -> String { Range(m.range(at: i), in: js).map { String(js[$0]) } ?? "" }
+        var lines: [String] = []
+        for n in names {
+            let q = NSRegularExpression.escapedPattern(for: local[n] ?? n)
+            if let m = first(regex(#"(?:const|let|var)\s+"# + q + #"\s*=\s*\{"#), n), let open = Range(m.range, in: js)?.upperBound {
+                // an object: its functions are the keys whose value is an arrow function; the block ends at the matching brace
+                var depth = 1, i = open
+                while i < js.endIndex, depth > 0 { if js[i] == "{" { depth += 1 } else if js[i] == "}" { depth -= 1 }; i = js.index(after: i) }
+                let body = String(js[open..<i])
+                let keys = regex(#"(?:^|[,{\s])([A-Za-z_]\w*)\s*:\s*(?:\(?([\w\s,=]*)\)?\s*=>|function)"#)?.matches(in: body, range: NSRange(body.startIndex..., in: body)) ?? []
+                let fns = keys.compactMap { k -> (String, String)? in
+                    guard let r = Range(k.range(at: 1), in: body) else { return nil }
+                    return (String(body[r]), Range(k.range(at: 2), in: body).map { String(body[$0]).trimmingCharacters(in: .whitespaces) } ?? "")
+                }
+                if fns.isEmpty { lines.append("\(prefix).\(n): an object (data), not a function") }
+                else {
+                    let ex = ([fns.first, fns.last].compactMap { $0 }.map { "\(prefix).\(n).\($0.0)(\($0.1))" }).joined(separator: ", ")
+                    lines.append("\(prefix).\(n): an object, never a function. Its functions: \(fns.map { $0.0 }.joined(separator: ", ")). Call them as \(ex), never \(prefix).\(n)(...)")
+                }
+            } else if let m = first(regex(#"(?:const|let|var)\s+"# + q + #"\s*=\s*(?:\(([^)]*)\)|([A-Za-z_]\w*))\s*=>"#), n) {
+                let params = group(m, 1).isEmpty ? group(m, 2) : group(m, 1)
+                lines.append("\(prefix).\(n)(\(params)): a function")
+            } else if let m = first(regex(#"function\s+"# + q + #"\s*\(([^)]*)\)"#), n) {
+                lines.append("\(prefix).\(n)(\(group(m, 1))): a function")
+            } else if let m = first(regex(#"(?:const|let|var)\s+"# + q + #"\s*=\s*([A-Za-z_][\w]*(?:\.[A-Za-z_]\w*)+)\s*;"#), n) {
+                lines.append("\(prefix).\(n)(...): a function (the same as \(group(m, 1)))")          // an alias of another function, such as `const ex = SR.ease.outExpo`
+            } else { lines.append("\(prefix).\(n): a value (data)") }
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// The form of `SR` (engine/core.js) and `SRK` (engine/kit.js), read from the two scripts.
+    static func engineShapes(skill: URL) -> String {
+        let sr = shapes(of: read(skill, "engine/core.js"), export: "G.SR = {", prefix: "SR")
+        let kit = shapes(of: read(skill, "engine/kit.js"), export: "G.SRK = {", prefix: "SRK")
+        let note = "A scene file takes what it needs with `const { clamp, ease } = SR;` and then writes `ease.out3(t)`: an object's function is always called through the object."
+        return [sr.isEmpty ? "" : "window.SR:\n" + sr, kit.isEmpty ? "" : "window.SRK:\n" + kit, note].filter { !$0.isEmpty }.joined(separator: "\n")
+    }
+
     /// The parts of the contract, in the order they are given: (title, text). Each comes from one file of the skill.
     public static func parts(skill: URL) -> [(title: String, text: String)] {
         let engine = read(skill, "references/engine.md")
         return [("The scene file (references/engine.md, Scene files)", section("Scene files", in: engine)),
                 ("What the engine provides (references/engine.md)", section("What the engine provides", in: engine)),
+                ("Exact form of the engine's names (read from engine/core.js and engine/kit.js)", engineShapes(skill: skill)),
                 ("Drawing helpers SRK (header of engine/kit.js)", header(of: read(skill, "engine/kit.js"))),
                 ("Backgrounds SRB (header of engine/backgrounds.js)", header(of: read(skill, "engine/backgrounds.js"))),
                 ("Starting point (engine/scene.template.js)", read(skill, "engine/scene.template.js").trimmingCharacters(in: .whitespacesAndNewlines))]

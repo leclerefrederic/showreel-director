@@ -233,6 +233,9 @@ final class ProjectModel: ObservableObject {
     @Published var buildFailure: BuildFailureAlert?
     /// The card of the Build, waiting for the yes.
     @Published var buildOffer: PendingBuild?
+    /// The layout warnings of the scenes tested in the last Build (text outside the stage, text over text), by scene. A matter of taste: listed, never repaired by themselves.
+    @Published var layoutWarnings: [String: [String]] = [:]
+    @Published var showLayoutWarnings = false
     @Published var fontsAtBuild: PendingFontsAtBuild?
     var checkingFonts = false
     /// The folded groups of the Resources list (remembered per project), the tag the list is filtered by, and a tag being renamed.
@@ -395,12 +398,30 @@ final class ProjectModel: ObservableObject {
     }
 
     /// The card of the Build: the version to continue when one stopped, else the next one.
-    private func offerBuild() {
+    private func offerBuild(overwrite: Set<String> = []) {
         guard let skill = Skill.root() else { error = "The skill folder was not found."; return }
         let resuming = BuildJob.pending(store)
         let v = resuming ?? Versions.next(store)
-        let plan = BuildJob.plan(version: v, store: store)
-        buildOffer = PendingBuild(version: v, plan: plan, card: BuildJob.card(plan, store: store, skill: skill, resuming: resuming != nil), resuming: resuming != nil)
+        let plan = BuildJob.plan(version: v, store: store, overwrite: overwrite)
+        buildOffer = PendingBuild(version: v, plan: plan, card: BuildJob.card(plan, store: store, skill: skill, resuming: resuming != nil), resuming: resuming != nil, overwrite: overwrite)
+    }
+
+    /// The line that asks before a hand edit is overwritten: ticking it adds the scene to the scenes that are written.
+    func toggleBuildOverwrite(_ id: String) {
+        guard let o = buildOffer else { return }
+        var ov = o.overwrite
+        if ov.contains(id) { ov.remove(id) } else { ov.insert(id) }
+        offerBuild(overwrite: ov)
+    }
+
+    /// Nothing changed since the last build: no request is made; the newest version is assembled again (it takes the montage, transitions and music as they are now).
+    func assembleInsteadOfBuild() { buildOffer = nil; assembleFilm() }
+
+    /// "Rewrite everything", after its own confirmation: every scene that is not locked is written again, whatever its state.
+    func rewriteEverything() {
+        guard let o = buildOffer else { return }
+        buildOffer = nil
+        runBuild(o.version, skip: [], options: BuildJob.Options(force: true))
     }
 
     /// The user said no to "Start over" is the default; yes removes what the stopped Build wrote in its version (film.json stays) and offers the Build again.
@@ -412,15 +433,15 @@ final class ProjectModel: ObservableObject {
     }
 
     /// Yes on the card: the files are written one request at a time, then the film is assembled, built and tested by the app with no AI.
-    func confirmBuild() { guard let o = buildOffer else { return }; buildOffer = nil; runBuild(o.version, skip: []) }
+    func confirmBuild() { guard let o = buildOffer else { return }; buildOffer = nil; runBuild(o.version, skip: [], options: BuildJob.Options(overwrite: o.overwrite)) }
 
     /// Continue after a stop: from the first scene missing. `skip` leaves aside a scene that failed (it stays a placeholder frame until it is generated).
     func resumeBuild(skip: Set<String> = []) {
         guard !buildBusy, let v = BuildJob.pending(store) else { return }
-        runBuild(v, skip: skip)
+        runBuild(v, skip: skip, options: nil)
     }
 
-    private func runBuild(_ v: String, skip: Set<String>) {
+    private func runBuild(_ v: String, skip: Set<String>, options: BuildJob.Options?) {
         guard let skill = Skill.root(), let key = AppSettings.shared.apiKey() else { error = "Connect an AI first (Settings, Command-,)."; return }
         do { try Film.write(version: v, store: store) } catch { self.error = "Could not write \(v)/film.json: \(error.localizedDescription)"; return }   // the exact montage, for the build to read
         let s = AppSettings.shared
@@ -431,9 +452,36 @@ final class ProjectModel: ObservableObject {
         inspectorTab = .copilot; centerMode = .build
         chat?.report("Build \(v): one request for the frame of the film, one for each scene, then the app assembles and tests it.")
         buildTask = Task { @MainActor in
-            let outcome = await BuildJob.run(version: v, store: store, skill: skill, transport: transport, skip: skip)
+            let outcome = await BuildJob.run(version: v, store: store, skill: skill, transport: transport, skip: skip, options: options)
             buildTask = nil
             finishJob(outcome, v)
+        }
+    }
+
+    /// The layout warnings that the scenes' own tests found in this Build, kept for the end card.
+    private func gatherWarnings(_ v: String) {
+        guard let b = store.activity.snapshot.build, b.version == v else { return }
+        layoutWarnings = Dictionary(uniqueKeysWithValues: b.runs.compactMap { $0.value.warningCount > 0 ? ($0.key, $0.value.warnings) : nil })
+    }
+
+    /// "Fix this scene": one generation of this scene with its warnings as the instruction, behind a confirmation card. A locked scene is never offered.
+    func fixLayout(_ id: String) {
+        guard let v = BuildProgress.lastWorking(store) ?? versions.last, let w = layoutWarnings[id] else { return }
+        if let f = showreel, let why = SceneGeneration.refusal(id, version: v, in: f, store: store) { showToast(why, error: true); return }
+        do {
+            var g = PendingGeneration(version: v, card: try SceneGeneration.plan([id], version: v, store: store), ids: [id], excluded: [], handEdited: [])
+            g.fixes = [id: w]
+            showLayoutWarnings = false
+            generationOffer = g
+        } catch { showToast(error.localizedDescription, error: true) }
+    }
+
+    /// After a fix: the scene's own test again, no AI. Its warnings are replaced by what it finds now.
+    private func retest(_ ids: [String], version: String, skill: URL) async {
+        for id in ids {
+            guard let r = await SceneTest.run(scene: id, version: version, store: store, skill: skill) else { continue }
+            if r.warningCount > 0 { layoutWarnings[id] = r.warnings } else { layoutWarnings[id] = nil }
+            store.noteEvent(author: "app", op: "build", target: version, title: "Test of \(id) after the fix: \(r.codeCount) code errors, \(r.warningCount) layout warnings", note: (r.codeErrors + r.warnings).prefix(3).joined(separator: "; "))
         }
     }
 
@@ -448,9 +496,11 @@ final class ProjectModel: ObservableObject {
         case .stopped(let stop):
             store.activity.update { $0.build = nil }
             chat?.report(stop.message)
-            buildFailure = BuildFailureAlert(message: stop.message + " \(kept.prefix(1).uppercased() + kept.dropFirst()).", step: stop.step)
+            gatherWarnings(v)
+            buildFailure = BuildFailureAlert(message: stop.message + " \(kept.prefix(1).uppercased() + kept.dropFirst()).", step: stop.step, failedTests: stop.failedTests)
             refresh(); reloadTree()
         case .completed:
+            gatherWarnings(v)
             runChecks(v)
         }
     }
@@ -1290,6 +1340,8 @@ struct PendingGeneration: Identifiable {
     let excluded: [(id: String, reason: String)]
     let handEdited: [String]
     var overwrite: Set<String> = []
+    /// A fix of layout warnings: the warnings each scene is told to put right.
+    var fixes: [String: [String]] = [:]
     var all: [String] { ids + handEdited.filter { overwrite.contains($0) } }
 }
 
@@ -1380,8 +1432,9 @@ extension ProjectModel {
         let transport = AnthropicTransport(apiKey: key, model: s.modelName, baseURL: s.baseURL, bearer: s.bearer)
         genTask = Task { @MainActor in
             do {
-                let ids = try await SceneGeneration.generate(g.all, version: g.version, store: store, skill: skill, transport: transport, overwriting: g.overwrite)
+                let ids = try await SceneGeneration.generate(g.all, version: g.version, store: store, skill: skill, transport: transport, overwriting: g.overwrite, fixing: g.fixes)
                 react(StatusLine.generated(ids))
+                await retest(ids, version: g.version, skill: skill)
             } catch is CancellationError {
                 showToast("Generation cancelled. Nothing was written.")
             } catch {
@@ -1398,12 +1451,17 @@ struct BuildFailureAlert: Identifiable {
     let id = UUID(); let message: String
     /// The step that failed: a scene ID, or "reel" (the film's frame, which cannot be left aside).
     let step: String
+    /// The scenes that failed their own test: "Continue the build" leaves all of them aside.
+    var failedTests: [String] = []
     var canSkip: Bool { step != BuildJob.frameStep }
+    var skip: Set<String> { failedTests.isEmpty ? [step] : Set(failedTests) }
 }
 
 /// The card of a Build before the yes: the version, what it will write and ask, and whether it continues one that stopped.
 struct PendingBuild: Identifiable {
     let id = UUID(); let version: String; let plan: BuildJob.Plan; let card: OperationCard; let resuming: Bool
+    /// The hand-edited scenes the user ticked: they are written again.
+    var overwrite: Set<String> = []
 }
 
 struct FontFailure: Identifiable {

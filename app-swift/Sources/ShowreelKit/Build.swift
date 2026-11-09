@@ -148,6 +148,7 @@ public enum BuildRunner {
         }
         var steps: [CheckResult] = []
         var threeD = false
+        var layoutWarnings = 0, layoutLines: [String] = []
         let embeddedFonts = FontEmbedding.write(version: version, store: store)         // the Look's approved font files, for build.py to embed (only the weights used)
         func tail(_ s: String, _ n: Int = 700) -> String { let t = s.trimmingCharacters(in: .whitespacesAndNewlines); return t.count > n ? "..." + t.suffix(n) : t }
 
@@ -172,8 +173,15 @@ public enum BuildRunner {
             let lines = h.out.split(separator: "\n").map(String.init)
             threeD = hasThreeD(harnessOutput: lines)
             let issues = lines.first { $0.hasPrefix("issues:") }.flatMap { Int($0.dropFirst(7).trimmingCharacters(in: .whitespaces)) }
+            let sorted = SceneTest.parse(h.out)             // the harness sorts what it finds: code errors (they fail the test) and layout warnings (a matter of taste)
             if h.status == 127 || issues == nil && h.status != 0 && h.err.contains("not found") {
                 steps.append(r("harness", "Logic test", .fail, "node is not available: run the setup check. " + tail(h.err, 200)))
+            } else if let t = sorted {
+                let counts = "\(t.codeCount) code error\(t.codeCount == 1 ? "" : "s"), \(t.warningCount) layout warning\(t.warningCount == 1 ? "" : "s")"
+                if t.ok { steps.append(r("harness", "Logic test", .ok, counts + ": no exception, no value that is not a number")) }
+                else { steps.append(r("harness", "Logic test", .fail, counts + ": " + tail(t.codeErrors.joined(separator: "\n")))) }
+                // layout warnings (text outside the stage, text over text) are said apart: they are for the user to judge, they do not fail the test
+                if t.warningCount > 0 { layoutWarnings = t.warningCount; layoutLines = t.warnings }
             } else if issues == 0 {
                 steps.append(r("harness", "Logic test", .ok, "0 issues: no exception, no text outside the stage, no collision"))
             } else {
@@ -184,6 +192,7 @@ public enum BuildRunner {
         // A film with 3D scenes: the Node host has no WebGL, so the logic test could not draw them and says so in one line. The logic test stays green for what it checks (0 issues);
         // this separate step says what it could not see. It is a warning: it blocks neither the build gate nor the verify gate.
         if threeD { steps.append(r("3d", "3D scenes", .tight, threeDNote)) }
+        if layoutWarnings > 0 { steps.append(r("layout", "Layout warnings", .tight, "\(layoutWarnings) layout warning\(layoutWarnings == 1 ? "" : "s"): " + tail(layoutLines.prefix(4).joined(separator: "\n"), 400))) }
 
         if let s = await Shell.run("node \(q(scripts.appendingPathComponent("smoke_player.js"))) \(q(html))", in: store.root, timeout: 120) {
             let lines = s.out.split(separator: "\n").map(String.init)

@@ -2,6 +2,15 @@
 
 What each version of the Showreel Director skill (`showreel-director.skill`) changes for you, newest first. The short register that the repository checks is `CHANGELOG.md`. The same skill is built into Showreel Studio; the app's own notes are in `RELEASE-NOTES-APP.md`.
 
+## 0.18.2 - 2026-11-09
+
+**Changed**
+- The logic test sorts what it finds. Its report now prints `code errors: N` and `layout warnings: M` after `issues: N`: a code error is an exception while drawing, a scene file that throws when the film loads, or a value that is not a number; a layout warning is text outside the stage or text over text, which is a matter of taste and sometimes wanted. Each listed line says its kind, and the same error repeated on every frame of a scene is listed once with its count (60 identical lines become one with "x60"). The exit code and the `issues:` line are unchanged.
+- The engine reference says the exact form of `ease`: an object of functions (`ease.out3(t)`, `ease.outExpo(t)`), never `ease(t)`, and gives the signatures of `clamp` and `lerp`. The build guide describes `--scene ID` as the quick test of one scene file after writing it.
+
+**What you need to do**
+- Reinstall the `.skill`.
+
 ## 0.18.1 - 2026-11-09
 
 **Fixed**

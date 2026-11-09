@@ -2,6 +2,41 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.10.2 - 2026-11-09
+
+**What's new**
+- **A Build writes only the scenes that changed.** A scene whose file is up to date (nothing it was written from has changed: its content, its look, the brief, the music under it) and that passed its test is copied from the previous version, with no request. A locked scene is copied too. A scene that changed, was never written or failed its test is written. Changing one word in one scene now costs one request, not fifteen.
+- **The card says it plainly**: "Build v6: 1 scene will be written, 14 reused unchanged (2 locked)", with the calls, the cost and the time for the written scenes only. When nothing changed it says "Nothing changed since the last build" and offers only **Assemble** (free): it puts the montage, transitions and music as they are now into the film.
+- **A scene you edited by hand** that is out of date is kept as it is unless you tick it on the card (like Generate).
+- **Rewrite everything**, with its own confirmation and its cost (all the requests), writes every scene that is not locked again, and the frame of the film. A Build that continues after a stop keeps that choice.
+- The frame of the film (project.json, reel.js) is reused too when what it is written from is unchanged.
+- The journal has one line per scene: "S05 written" or "S03 reused from v4".
+
+**Changed**
+- If the scene contract changed since a scene was written, the card says so ("2 reused scenes were written under an older contract") but does not rewrite them by itself: they passed their test. Rewrite everything applies the new contract.
+- The first Build after this update writes the frame again (older versions did not record what it was written from).
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
+## 0.10.1 - 2026-11-09
+
+**What's new**
+- **Each scene is tested right after it is written.** The skill's own logic test runs on that one scene (no AI, no cost) the moment its file is saved. The scene's line in the Build panel goes through "testing", then "done" or "failed (test)". The scenes are tested one after the other as the Build goes.
+- **A scene that crashes is rewritten once, automatically.** A code error (an exception, a scene that does not load, a value that is not a number) sends Clap the exact error, the scene and its file, with a request to write that scene only: the panel says "repairing". Never more than one rewrite per scene and per Build. If the second try fails too, the scene is marked "failed (test)" with the error and left as an empty frame, the Build carries on with the other scenes, and it ends with "Continue" (Try again writes the scene again, Continue the build leaves it aside).
+- **The contract Clap is given says the exact form of the engine's names.** `ease` is an object of functions (`ease.out3(t)`), never `ease(t)`; the list comes from the engine's own file when the request is made, and a test compares it with the engine as it really is. This is the error that stopped a scene of the trailer on every frame.
+- **Layout warnings are listed, not repaired.** Text over text or outside the screen is a matter of taste, so nothing is rewritten by itself. The panel counts them per scene, the end of the Build says "3 scenes have layout warnings" with **Show them**, and each scene there has **Fix this scene**: one new generation of that scene with the warnings as its instruction, after a confirmation card (a locked scene cannot be fixed).
+- **The final test no longer drowns you.** It reports "0 code errors, 6 layout warnings" instead of "66 issues", and the layout warnings appear as an orange note, not as a failed test.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
 ## 0.10.0 - 2026-11-09
 
 **What's new**

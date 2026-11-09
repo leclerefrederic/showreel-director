@@ -93,10 +93,11 @@ struct ProjectView: View {
         }
         .alert("The Build stopped", isPresented: Binding(get: { project.buildFailure != nil }, set: { if !$0 { project.buildFailure = nil } }), presenting: project.buildFailure) { f in
             Button("Try again") { project.resumeBuild() }
-            if f.canSkip { Button("Continue the build") { project.resumeBuild(skip: [f.step]) } }
+            if f.canSkip { Button("Continue the build") { project.resumeBuild(skip: f.skip) } }
             Button("Close", role: .cancel) {}
-        } message: { f in Text(f.message + (f.canSkip ? "\n\nTry again writes it again. Continue the build goes on with the other scenes and leaves this one as an empty frame until it is generated." : "")) }
+        } message: { f in Text(f.message + (f.canSkip ? "\n\nTry again writes it again. Continue the build goes on and leaves it as an empty frame until it is generated." : "")) }
         .sheet(item: $project.buildOffer) { BuildConfirmSheet(pending: $0) }
+        .sheet(isPresented: $project.showLayoutWarnings) { LayoutWarningsSheet() }
         .sheet(item: $project.historyFor) { tab in HistoryView(tab: tab) }
         .sheet(isPresented: Binding(get: { project.reimport != nil }, set: { if !$0 { project.reimport = nil } })) { ReimportSheet() }
         // a drop that would replace a scene's look asks first; saying no changes nothing

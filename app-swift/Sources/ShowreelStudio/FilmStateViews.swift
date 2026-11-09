@@ -192,29 +192,86 @@ struct GenerateScenesSheet: View {
     }
 }
 
-/// The card of "Build a new version": what will be written and asked, one request at a time, with a rough cost. Nothing is asked of the AI before the yes. A Build that stopped is
-/// offered to continue, or to start over after a confirmation.
+/// The card of "Build a new version": how many scenes are written and why, how many are reused unchanged, the calls and a rough cost. Nothing is asked of the AI before the yes.
+/// A Build that stopped is offered to continue, or to start over after a confirmation. When nothing changed, only Assemble is offered.
 struct BuildConfirmSheet: View {
     let pending: PendingBuild
     @EnvironmentObject var project: ProjectModel
     @State private var confirmOver = false
+    @State private var confirmAll = false
+
+    private var unlocked: Int { project.showreel?.film.filter { !$0.isLocked }.count ?? 0 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(pending.card.title, systemImage: ClapMark.symbol).font(.headline)
+            if pending.plan.unchanged {
+                Text("Every scene is up to date. Assemble puts the montage, the transitions and the music as they are now into the film, with no request.").font(.callout)
+            }
             VStack(alignment: .leading, spacing: 8) { ForEach(Array(pending.card.changes.enumerated()), id: \.offset) { _, c in ChangeRow(change: c) } }
-            Text("The project is read-only while the film is written. Each file is saved as soon as it is written, so a stop loses only the scene being written. Cancel build stops it; you can continue from where it stopped.").font(.caption).foregroundStyle(.secondary)
+            ForEach(pending.plan.handEdited, id: \.self) { id in
+                Toggle(isOn: Binding(get: { pending.overwrite.contains(id) }, set: { _ in project.toggleBuildOverwrite(id) })) {
+                    Text("\(id) was edited by hand and is out of date. Write it again too, and overwrite my edit.").font(.callout)
+                }.toggleStyle(.checkbox)
+            }
+            if !pending.plan.unchanged {
+                Text("The project is read-only while the film is written. Each file is saved as soon as it is written, so a stop loses only the scene being written. Cancel build stops it; you can continue from where it stopped.").font(.caption).foregroundStyle(.secondary)
+            }
             HStack {
                 if pending.resuming { Button("Start over\u{2026}") { confirmOver = true }.help("Remove what this Build already wrote and begin again") }
+                Button("Rewrite everything\u{2026}") { confirmAll = true }
+                    .disabledWithReason(unlocked == 0 ? "Every scene is locked" : nil, way: "Unlock a scene to write it again")
+                    .help("Write every scene that is not locked again, whatever its state")
                 Spacer()
                 Button("Cancel", role: .cancel) { project.buildOffer = nil }.keyboardShortcut(.cancelAction)
-                Button(pending.resuming ? "Continue the build" : "Build \(pending.version)") { project.confirmBuild() }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                if pending.plan.unchanged {
+                    Button("Assemble") { project.assembleInsteadOfBuild() }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                } else {
+                    Button(pending.resuming ? "Continue the build" : "Build \(pending.version)") { project.confirmBuild() }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                }
             }
         }
-        .padding(20).frame(width: 480)
+        .padding(20).frame(width: 520)
         .alert("Start \(pending.version) over?", isPresented: $confirmOver) {
             Button("Start over", role: .destructive) { project.startOverBuild() }
             Button("Keep what is written", role: .cancel) {}
         } message: { Text("The scene files, project.json and reel.js already written in \(pending.version) are removed, including any scene file you edited by hand. film.json stays.") }
+        .alert("Rewrite all \(unlocked) scenes?", isPresented: $confirmAll) {
+            Button("Rewrite everything", role: .destructive) { project.rewriteEverything() }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("That is \(unlocked + 1) requests (the frame of the film and \(unlocked) scene\(unlocked == 1 ? "" : "s"), about \(unlocked + 1) min) even for scenes that did not change. Locked scenes are kept. Edits you made by hand in the scenes that are not locked are lost.") }
+    }
+}
+
+/// The layout warnings found by the scenes' own tests, scene by scene. They are a matter of taste (a text that overlaps may be wanted): nothing is repaired by itself, and
+/// "Fix this scene" is one generation of that scene, with the warnings as its instruction, behind a confirmation card. A locked scene cannot be fixed.
+struct LayoutWarningsSheet: View {
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Layout warnings", systemImage: "exclamationmark.triangle").font(.headline)
+            if project.layoutWarnings.isEmpty { Text("None left.").foregroundStyle(.secondary) }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(project.layoutWarnings.keys.sorted(), id: \.self) { id in
+                        let list = project.layoutWarnings[id] ?? []
+                        let locked = project.showreel?.scenes.first { $0.id == id }?.isLocked == true
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("\(id): \(list.count) warning\(list.count == 1 ? "" : "s")").font(.callout.weight(.semibold))
+                                Spacer()
+                                Button("Fix this scene") { project.fixLayout(id) }
+                                    .disabledWithReason(locked ? "\(id) is locked" : nil, way: "Unlock the scene first")
+                            }
+                            ForEach(Array(list.prefix(4).enumerated()), id: \.offset) { _, w in Text(w).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
+                        }
+                    }
+                }
+            }.frame(maxHeight: 320)
+            Text("A text that overlaps or leaves the stage is sometimes wanted, so nothing is changed unless you ask. Fixing a scene writes it again (one request) after a card.").font(.caption).foregroundStyle(.secondary)
+            HStack { Spacer(); Button("Close") { project.showLayoutWarnings = false }.keyboardShortcut(.cancelAction) }
+        }
+        .padding(20).frame(width: 520)
     }
 }

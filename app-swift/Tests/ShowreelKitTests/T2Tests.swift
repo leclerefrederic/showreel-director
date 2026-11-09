@@ -269,6 +269,6 @@ final class ThreeDTests: XCTestCase {
         XCTAssertTrue(add.contains("never promise the MP4") && add.contains("Offer 3D only when depth is the point"))
         let port = try String(contentsOf: try XCTUnwrap(Skill.root()).appendingPathComponent("references/portability.md"), encoding: .utf8)
         XCTAssertTrue(port.contains("3D scenes") && port.contains("MP4"))
-        XCTAssertEqual(Skill.version(), "0.18.1")
+        XCTAssertTrue(Skill.version()?.hasPrefix("0.18.") == true, "the 3D words come with the 0.18 line of the skill")
     }
 }

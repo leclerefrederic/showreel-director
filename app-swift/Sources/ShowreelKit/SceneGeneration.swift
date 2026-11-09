@@ -58,7 +58,15 @@ public enum SceneGeneration {
     static func contract(skill: URL) -> String { SceneContract.text(skill: skill) }
 
     /// The request for one scene: the contract, the scene's content, length and look, its neighbours and the transitions around it, the style sheet and the brief.
-    public static func prompt(scene id: String, version: String, store: ProjectStore, skill: URL) -> String {
+    /// What a rewrite is told about the file it replaces: the exact errors of its test and the file as written, or the layout warnings to put right.
+    public struct Revision: Equatable, Sendable {
+        public let file: String
+        public let errors: [String]
+        public let warnings: [String]
+        public init(file: String, errors: [String] = [], warnings: [String] = []) { self.file = file; self.errors = errors; self.warnings = warnings }
+    }
+
+    public static func prompt(scene id: String, version: String, store: ProjectStore, skill: URL, revision: Revision? = nil) -> String {
         guard let f = store.loadShowreel(), let s = f.scenes.first(where: { $0.id == id }) else { return "" }
         let tl = f.timeline()
         let i = tl.firstIndex { $0.scene.id == id }
@@ -90,7 +98,16 @@ public enum SceneGeneration {
 
         Brief:
         \(doc("brief.md"))
+        \(revisionText(revision))
         """
+    }
+
+    static func revisionText(_ r: Revision?) -> String {
+        guard let r = r else { return "" }
+        var t = "\nThis scene was written before and the file is below."
+        if !r.errors.isEmpty { t += " It FAILED its test with these exact errors:\n" + r.errors.map { "- " + $0 }.joined(separator: "\n") + "\nWrite the whole file again so that these errors cannot happen (check the exact form of the engine's names in the contract: an object is never called as a function), keeping the scene's content and look." }
+        if !r.warnings.isEmpty { t += " Its test found layout problems to put right:\n" + r.warnings.map { "- " + $0 }.joined(separator: "\n") + "\nWrite the whole file again with the text inside the stage and no text over other text, keeping everything else." }
+        return t + "\nThe file as it is:\n```js\n" + r.file + "\n```"
     }
 
     /// The JavaScript of the model's answer: the first fenced block, or the whole text when there is no fence.
@@ -108,8 +125,8 @@ public enum SceneGeneration {
     }
 
     /// The JavaScript of one scene, from one request (it may read files first). The step is tracked in the project's activity.
-    static func scene(_ id: String, version: String, store: ProjectStore, skill: URL, transport: MessagesTransport) async throws -> String {
-        let answer = try await SceneWriter.answer(step: id, system: system, prompt: prompt(scene: id, version: version, store: store, skill: skill), store: store, skill: skill, transport: transport)
+    static func scene(_ id: String, version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, revision: Revision? = nil) async throws -> String {
+        let answer = try await SceneWriter.answer(step: id, system: system, prompt: prompt(scene: id, version: version, store: store, skill: skill, revision: revision), store: store, skill: skill, transport: transport)
         guard let js = extract(answer) else { throw AgentError.msg("the model did not return a scene file for \(id)") }
         return js
     }
@@ -117,7 +134,7 @@ public enum SceneGeneration {
     /// Generates the modules of `ids` in `version`: asks the model once per scene, then writes those files and nothing else (and records them in
     /// `.studio/build.json`). Nothing is written when a scene is refused or the model fails or does not return a scene file for one of them.
     @discardableResult
-    public static func generate(_ ids: [String], version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, author: String = "user", overwriting: Set<String> = []) async throws -> [String] {
+    public static func generate(_ ids: [String], version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, author: String = "user", overwriting: Set<String> = [], fixing: [String: [String]] = [:]) async throws -> [String] {
         _ = try plan(ids, version: version, store: store)
         // a file edited by hand is only written again when the caller confirmed it (a card that said so, or the extra line of the player's card)
         let unconfirmed = handEdited(ids, version: version, store: store).filter { !overwriting.contains($0) }
@@ -134,7 +151,9 @@ public enum SceneGeneration {
         for (n, id) in ids.enumerated() {
             try Task.checkCancellation()
             act.update { $0.build?.done = n; $0.build?.current = id; $0.build?.runs[id]?.state = .writing; $0.build?.runs[id]?.started = Date() }
-            do { out.append((id, try await scene(id, version: version, store: store, skill: skill, transport: transport))) }
+            // a fix carries the layout warnings of the scene and the file as it is; it is one generation of this scene, never a loop
+            let revision = fixing[id].flatMap { w in (try? String(contentsOf: SceneModules.url(version: version, scene: id, store: store), encoding: .utf8)).map { Revision(file: $0, warnings: w) } }
+            do { out.append((id, try await scene(id, version: version, store: store, skill: skill, transport: transport, revision: revision))) }
             catch {
                 act.update { $0.build?.runs[id]?.state = .failed; $0.build?.runs[id]?.finished = Date(); $0.build?.runs[id]?.failure = error.localizedDescription }
                 if error is CancellationError { throw error }

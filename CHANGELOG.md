@@ -2,6 +2,10 @@
 
 Version of the skill (`metadata.version` in `showreel-director/SKILL.md`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The Studio file format has its own number (`schema` in `showreel.json`). Ship with `python3 tools/bump.py`.
 
+## 0.18.2 - 2026-11-09
+
+the logic test sorts code errors and layout warnings (one line per repeated error); ease documented as an object
+
 ## 0.18.1 - 2026-11-09
 
 player test no longer fails on 3D films; portability says 3D is judged in the player

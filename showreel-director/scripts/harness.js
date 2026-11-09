@@ -7,10 +7,14 @@
    Reports: exceptions, non-finite values in drawing calls, text drawn outside the stage (tracks translate/scale/save/restore,
    skips rotated text), text collisions (two texts overlapping for 3+ consecutive samples; widths are estimated, so treat as leads),
    strings drawn per scene (spot untranslated text), near-empty frames.
+   It sorts what it finds in two kinds: code errors (an exception while drawing, a scene file that throws at load, a non-finite value) and layout warnings (text outside the
+   stage, text collisions: a matter of taste, sometimes wanted). The report prints `code errors: N` and `layout warnings: M` after `issues: N`; identical errors repeated on
+   every frame are listed once with their count. The exit code is 1 when there is any issue, as before.
    It cannot judge looks: still look at contact sheets. */
 const { makeOpt, loadReel, registerFonts, stubImage, report3D } = require('./_reel');
 const args = process.argv.slice(2), file = args[0], opt = makeOpt(args);
 const step = parseFloat(opt('--step', '0.25')), only = opt('--scene', null);
+const loadErrors = []; const consoleError = console.error; console.error = (...a) => { loadErrors.push(a.join(' ')); consoleError(...a); };   // a scene file that throws at load is only logged by the page: count it
 const offscreen = [];   // stub canvases the film layer asked for (transitions draw two scenes into them): same stub as the main one, emptied every frame
 const { html, S, SR, DUR, sandbox } = loadReel(file, stubImage, (w, h) => { const ctx = mkCtx(); const c = { width: w, height: h, getContext: () => ctx }; offscreen.push(ctx); return c; });
 // Text measurement: with @napi-rs/canvas available (NODE_PATH) the embedded fonts are registered and measureText is real, so wrapping
@@ -23,7 +27,10 @@ try {
   console.log('text measured with real fonts (' + nf + ' embedded font(s) registered)');
 } catch (e) { console.log('text widths are estimated (install @napi-rs/canvas and set NODE_PATH for real measurements)'); }
 const modes = opt('--modes', Object.keys(S.formats).join(',')).split(','), langs = opt('--langs', S.languages.map(l => l.id).join(',')).split(',');
-const overlapRun = {}; let issues = [], strings = {}, empty = 0, frames = 0, cur = '', seen = new Set(), stageRect = null;
+const overlapRun = {}; let issues = [], kinds = [], codeErrors = 0, layoutWarnings = 0, strings = {}, empty = 0, frames = 0, cur = '', seen = new Set(), stageRect = null;
+console.error = consoleError;
+for (const e of loadErrors) if (/^scene [^:]+: error/.test(e) && (!only || e.startsWith('scene ' + only + ':'))) add('code', e);
+function add(kind, msg) { issues.push(msg); kinds.push(kind); if (kind === 'code') codeErrors++; else layoutWarnings++; }
 const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
 function mkCtx() {
   let ops = 0, M = [1, 0, 0, 1, 0, 0], stack = []; const texts = [];
@@ -44,7 +51,7 @@ function mkCtx() {
       if (k in target) return target[k];
       return (...a) => {
         ops++;
-        for (const v of a) if (typeof v === 'number' && !isFinite(v)) issues.push(`${cur}: ${String(k)}(${a.join(',')}) has non-finite value`);
+        for (const v of a) if (typeof v === 'number' && !isFinite(v)) add('code', `${cur}: ${String(k)}(${a.join(',')}) has non-finite value`);
         if ((k === 'fillText' || k === 'strokeText') && typeof a[0] === 'string') {
           const [sc, rest] = cur.split('|'), key = rest.split(' ')[0];
           (strings[sc] = strings[sc] || new Set()).add(`${key}: ${a[0]}`);
@@ -56,7 +63,7 @@ function mkCtx() {
             const top = bl === 'middle' ? yy - fsz * .375 : bl === 'top' ? yy : bl === 'bottom' ? yy - fsz * .75 : yy - fsz * .75;
             if (al > .5 && String(a[0]).trim()) texts.push({ s: String(a[0]), l: left, r: left + w, t: top, b: top + fsz * .75 });
             if (left < stageRect.l - 2 || left + w > stageRect.r + 2) {
-              const id = `${sc}|${key}|${a[0]}`; if (!seen.has(id)) { seen.add(id); issues.push(`${cur}: text outside stage "${a[0]}" (${Math.round(left - stageRect.l)}..${Math.round(left + w - stageRect.r)} px)`); }
+              const id = `${sc}|${key}|${a[0]}`; if (!seen.has(id)) { seen.add(id); add('layout', `${cur}: text outside stage "${a[0]}" (${Math.round(left - stageRect.l)}..${Math.round(left + w - stageRect.r)} px)`); }
             }
           }
         }
@@ -77,7 +84,7 @@ for (const mode of modes) for (const lang of langs) {
     offscreen.forEach(o => { o.__texts.length = 0; });
     if (only && !(sc && (sc.scene.name === only || sc.scene.id === only))) continue;
     const before = g.__ops;
-    try { SR.drawFrame(g, W, H, t, { mode, lang, reduced: args.includes('--reduced'), music: /id="trackdata"/.test(html) && !args.includes('--silent') }); } catch (e) { issues.push(`${cur}: EXCEPTION ${e.message}`); }
+    try { SR.drawFrame(g, W, H, t, { mode, lang, reduced: args.includes('--reduced'), music: /id="trackdata"/.test(html) && !args.includes('--silent') }); } catch (e) { add('code', `${cur}: EXCEPTION ${e.message}`); }
     frames++; if (g.__ops - before < 4) empty++;
     const T = g.__texts, hit = new Set();
     for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) {
@@ -85,16 +92,22 @@ for (const mode of modes) for (const lang of langs) {
       const ox = Math.min(A.r, B.r) - Math.max(A.l, B.l), oy = Math.min(A.b, B.b) - Math.max(A.t, B.t);
       if (ox > 0 && oy > 0 && ox * oy > .35 * Math.min((A.r - A.l) * (A.b - A.t), (B.r - B.l) * (B.b - B.t))) {
         const key = `${lang}/${mode}|${sc ? sc.scene.name : '-'}|${A.s}|${B.s}`; hit.add(key); overlapRun[key] = (overlapRun[key] || 0) + 1;
-        if (overlapRun[key] === 3) issues.push(`${cur}: text collision "${A.s}" over "${B.s}"`);
+        if (overlapRun[key] === 3) add('layout', `${cur}: text collision "${A.s}" over "${B.s}"`);
       }
     }
     for (const k of Object.keys(overlapRun)) if (!hit.has(k)) overlapRun[k] = 0;
     T.length = 0;
   }
 }
-if (only && !frames) issues.push(`scene filter: no frame belongs to a scene named "${only}"`);
+if (only && !frames) add('code', `scene filter: no frame belongs to a scene named "${only}"`);
 console.log(`frames rendered: ${frames}  (modes ${modes}, langs ${langs}, step ${step}s, duration ${DUR}s)`);
-console.log(`issues: ${issues.length}`); issues.slice(0, 30).forEach(i => console.log('  ' + i));
+console.log(`issues: ${issues.length}`);
+console.log(`code errors: ${codeErrors}`); console.log(`layout warnings: ${layoutWarnings}`);
+{ // the same exception on every frame of a scene is one line with its count; each line says its kind
+  const groups = new Map();
+  issues.forEach((m, i) => { const key = kinds[i] + '|' + m.replace(/^[^:]*\|[^ ]* t=[\d.]+: /, '').replace(/"[^"]*"/g, '"…"'); const g = groups.get(key); if (g) g.n++; else groups.set(key, { kind: kinds[i], msg: m, n: 1 }); });
+  [...groups.values()].slice(0, 30).forEach(g => console.log(`  ${g.kind}: ${g.msg}${g.n > 1 ? ' (x' + g.n + ')' : ''}`));
+}
 console.log(`near-empty frames: ${empty}`);
 report3D(sandbox, 'rendered');
 console.log('strings per scene:'); for (const [sc, set] of Object.entries(strings)) console.log(`  ${sc}: ${[...set].slice(0, 6).join(' / ')}${set.size > 6 ? ' …' : ''}`);

@@ -342,17 +342,20 @@ struct StepRow: View {
     }
 
     private var symbol: String {
-        switch run.state { case .waiting: return "circle"; case .writing: return "pencil.circle.fill"; case .done: return "checkmark.circle.fill"; case .failed: return "exclamationmark.triangle.fill" }
+        switch run.state { case .waiting: return "circle"; case .writing: return "pencil.circle.fill"; case .testing: return "checkmark.shield"; case .repairing: return "wrench.and.screwdriver.fill"
+        case .done: return run.warningCount > 0 ? "checkmark.circle" : "checkmark.circle.fill"; case .failed: return "exclamationmark.triangle.fill" }
     }
     private var tint: Color {
-        switch run.state { case .waiting: return .secondary; case .writing: return .accentColor; case .done: return .green; case .failed: return .red }
+        switch run.state { case .waiting: return .secondary; case .writing, .testing, .repairing: return .accentColor; case .done: return run.warningCount > 0 ? .orange : .green; case .failed: return .red }
     }
     private var detail: String {
         switch run.state {
         case .waiting: return "waiting"
         case .writing: return ["writing" + (phase.map { " (\($0.lowercased()))" } ?? ""), BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now))].compactMap { $0 }.joined(separator: " \u{00B7} ")
-        case .done: return run.kept ? "kept" : [ "done", BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now))].compactMap { $0 }.joined(separator: " \u{00B7} ")
-        case .failed: return run.failure ?? "failed"
+        case .testing: return "testing"
+        case .repairing: return ["repairing", BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now))].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        case .done: return run.kept ? "kept" : ["done", run.warningCount > 0 ? "\(run.warningCount) layout warning\(run.warningCount == 1 ? "" : "s")" : nil, BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now))].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        case .failed: return run.failedTest ? "failed (test): " + (run.failure ?? "") : (run.failure ?? "failed")
         }
     }
 }

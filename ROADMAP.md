@@ -38,6 +38,8 @@
 - Look board and font picker previews show titles at regular weight only.
 - The 3D layer is not verified by the test host (no WebGL in Node): a film with 3D scenes is judged in the player, and the app has no MP4 export for it.
 - No ceiling on the agent: a Build that loops costs until Cancel build (the output is the model's maximum, the steps are guarded at 1 000).
+- A scene is tested on its own: what only shows in the whole film (a transition that hides a text, rhythm and coherence between scenes, a scene that is fine alone and wrong beside its neighbour) is still judged by the user and by the test of the whole film; the layout warnings of the last Build are kept for the session only.
+- A Build reuses a scene when what it was written from is unchanged (its content, look, brief and the music under it, relative to its start). What a neighbour does to it (a transition's free instruction, the scene next to it) does not make it stale, and a change of the scene contract is said on the card without rewriting.
 - An MP4 bakes the beat reaction in; a muted version needs its own export (`--silent`).
 - Text measurement is an estimate without the `@napi-rs/canvas` package.
 - Lab category tabs, counter and GIF tooltip are not translatable.

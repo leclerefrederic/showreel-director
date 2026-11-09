@@ -75,7 +75,7 @@ public enum ClapPhase: String, Sendable { case reading, preparing, writing
 
 /// One step of a Build: the frame of the film ("reel": project.json and reel.js) or one scene file.
 public struct SceneRun: Equatable, Sendable {
-    public enum State: String, Sendable { case waiting, writing, done, failed }
+    public enum State: String, Sendable { case waiting, writing, testing, repairing, done, failed }
     public var state: State = .waiting
     public var tokens = 0
     public var started: Date?
@@ -83,6 +83,11 @@ public struct SceneRun: Equatable, Sendable {
     public var failure: String?
     /// Done without a call: the file was already there and up to date, or a locked scene's file was carried over.
     public var kept = false
+    /// The layout warnings of the scene's own test (text outside the stage, collisions): listed, never repaired by themselves.
+    public var warnings: [String] = []
+    public var warningCount = 0
+    /// The scene's file failed its own test, even after its one repair: it is an empty frame in the film (`failure` has the error).
+    public var failedTest = false
     public init() {}
     public func elapsed(now: Date = Date()) -> TimeInterval { started.map { (finished ?? now).timeIntervalSince($0) } ?? 0 }
 }

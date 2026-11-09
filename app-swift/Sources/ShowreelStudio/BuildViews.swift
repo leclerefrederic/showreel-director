@@ -32,6 +32,15 @@ struct BuildPanel: View {
                     .help("Clap writes \(Versions.next(project.store)) from your storyboard and decisions, then the app builds and tests it.")
             }
             BuildProgressPanel()
+            if !project.layoutWarnings.isEmpty, project.activity.build == nil {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
+                    Text("\(project.layoutWarnings.count) scene\(project.layoutWarnings.count == 1 ? " has" : "s have") layout warnings").font(.callout.weight(.semibold))
+                    Spacer()
+                    Button("Show them") { project.showLayoutWarnings = true }
+                }
+                .padding(10).background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+            }
             if !BuildRunner.canBuild(project.store) {
                 Text("The Go comes first: give it in the Scene editor once every scene is Validated or ditched.").font(.caption).foregroundStyle(.secondary)
             }

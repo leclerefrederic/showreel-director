@@ -46,6 +46,12 @@ public enum SceneModules {
         public var module: String
         /// What the scene's passages (the free instructions of the transitions into and out of it) said when it was generated.
         public var passage: String?
+        /// What else the scene was written under: the brief and the music under it (relative to the scene's start). A change makes the scene out of date; a record without it does not.
+        public var context: String?
+        /// The scene contract (what Clap was told about the engine) at the time. A change is said on the card, never a reason by itself to rewrite.
+        public var contract: String?
+        /// The file passed its own test with no code error. Nil: not known (a file written before this was recorded).
+        public var tested: Bool?
     }
 
     /// The result of the last build and test of a version: the page exists and the checks were green.
@@ -62,6 +68,8 @@ public enum SceneModules {
         var versions: [String: [String: Record]] = [:]
         var results: [String: VersionResult]?
         var films: [String: FilmRecord]?
+        /// Per version: what its frame (project.json, reel.js) was written from.
+        var frames: [String: String]?
     }
 
     static func bookURL(_ store: ProjectStore) -> URL { store.root.appendingPathComponent(".studio/build.json") }
@@ -80,7 +88,7 @@ public enum SceneModules {
         var rows = book.versions[version] ?? [:]
         for s in f.film where ids?.contains(s.id) ?? true {
             guard let m = moduleHash(version: version, scene: s.id, store: store) else { rows[s.id] = nil; continue }
-            rows[s.id] = Record(inputs: inputs(of: s, in: f), module: m, passage: passage(of: s, in: f))
+            rows[s.id] = Record(inputs: inputs(of: s, in: f), module: m, passage: passage(of: s, in: f), context: context(of: s, in: f, store: store), contract: contractFingerprint(), tested: rows[s.id]?.module == m ? rows[s.id]?.tested : nil)
         }
         book.versions[version] = rows
         try save(book, store)
@@ -91,6 +99,86 @@ public enum SceneModules {
         var book = loadBook(store)
         book.versions[version] = nil; book.films?[version] = nil; book.results?[version] = nil
         try save(book, store)
+    }
+
+    /// The scene contract as the app gives it to Clap, as a short fingerprint (empty when the skill cannot be found).
+    public static func contractFingerprint() -> String {
+        guard let sk = Skill.root() else { return "" }
+        return hex(SHA256.hash(data: Data((SceneContract.text(skill: sk) + SceneGeneration.system).utf8)).prefix(8))
+    }
+
+    /// The brief's free text and the music under the scene, as one fingerprint. The music is taken relative to the scene's start (the tempo, the bars, a drop or a break inside it,
+    /// whether it starts on a bar), so that a scene that only moves by a whole bar is not out of date.
+    public static func context(of scene: ShowreelFile.Scene, in f: ShowreelFile, store: ProjectStore) -> String {
+        let p = f.parameters
+        var parts = [p.audience ?? "", p.message ?? "", p.tone ?? "", f.reelLanguages.joined(separator: ",")]
+        if f.decisions.track?.file != nil, let a = cachedAnalysis(store), let t = f.timeline().first(where: { $0.scene.id == scene.id }), let st = t.start, let en = t.end {
+            func r(_ x: Double) -> String { String(format: "%.1f", x - st) }
+            parts.append("bpm \(Int(a.bpm.rounded()))|\(a.gridKind(st) ?? "off")")
+            parts.append(a.bars.filter { $0 >= st - MusicAnalysis.tolerance && $0 < en - MusicAnalysis.tolerance }.map(r).joined(separator: ","))
+            parts.append(a.dropBars.filter { $0 < a.bars.count && a.bars[$0] >= st && a.bars[$0] < en }.map { r(a.bars[$0]) }.joined(separator: ","))
+            parts.append(a.breakdowns.filter { $0.start < en && $0.end > st }.map { r($0.start) + "-" + r($0.end) }.joined(separator: ","))
+        }
+        return hex(SHA256.hash(data: Data(parts.joined(separator: "\u{1}").utf8)).prefix(8))
+    }
+
+    private static let cacheLock = NSLock()
+    nonisolated(unsafe) private static var cache: [String: (stamp: Date, a: MusicAnalysis?)] = [:]
+    /// The music analysis of the project, read again only when its file changed (the states of the scenes ask for it often).
+    static func cachedAnalysis(_ store: ProjectStore) -> MusicAnalysis? {
+        let u = store.root.appendingPathComponent(MusicAnalysis.beatsPath)
+        let stamp = ((try? FileManager.default.attributesOfItem(atPath: u.path))?[.modificationDate] as? Date) ?? .distantPast
+        cacheLock.lock(); defer { cacheLock.unlock() }
+        if let c = cache[u.path], c.stamp == stamp { return c.a }
+        let a = MusicAnalysis.load(root: store.root); cache[u.path] = (stamp, a); return a
+    }
+
+    /// The file of a scene passed its test (or a version that was built and tested green holds it): it can be reused without being written again.
+    public static func markTested(version: String, scene: String, ok: Bool, store: ProjectStore) {
+        var book = loadBook(store)
+        guard var r = book.versions[version]?[scene] else { return }
+        r.tested = ok; book.versions[version]?[scene] = r
+        try? save(book, store)
+    }
+
+    static func trusted(_ r: Record, version: String, store: ProjectStore) -> Bool { r.tested ?? (loadBook(store).results?[version]?.ok == true) }
+
+    /// A scene file of `version` that a new version may take over: written from the scene's present inputs, not edited by hand, tested with no code error.
+    public static func reusable(scene: ShowreelFile.Scene, version: String, in f: ShowreelFile, store: ProjectStore) -> Bool {
+        guard let r = record(version: version, scene: scene.id, store: store) else { return false }
+        let st = status(of: scene, version: version, in: f, store: store)
+        return st.state == .upToDate && !st.moduleEdited && trusted(r, version: version, store: store)
+    }
+
+    /// Copies the file of a scene and its record from one version to another, as they are.
+    public static func carryOver(scene id: String, from: String, to: String, store: ProjectStore) throws {
+        let dst = url(version: to, scene: id, store: store)
+        try FileManager.default.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? FileManager.default.removeItem(at: dst)
+        try FileManager.default.copyItem(at: url(version: from, scene: id, store: store), to: dst)
+        var book = loadBook(store)
+        if let r = book.versions[from]?[id] { var rows = book.versions[to] ?? [:]; rows[id] = r; book.versions[to] = rows; try save(book, store) }
+    }
+
+    /// What a version's frame (project.json, reel.js) is written from: the project's look, its name, languages, formats, duration, track and the list of scenes.
+    public static func frameInputs(_ f: ShowreelFile) -> String {
+        var parts = [f.name, f.reelLanguages.joined(separator: ","), (f.decisions.formats ?? []).joined(separator: ","), String(f.decisions.duration ?? 0), f.decisions.track?.file ?? "",
+                     f.film.map { $0.id }.joined(separator: ",")]
+        parts += DecisionKey.allCases.map { "\($0.rawValue)=\($0.current(f))" }
+        return hex(SHA256.hash(data: Data(parts.joined(separator: "\u{1}").utf8)).prefix(8))
+    }
+    public static func recordFrame(version: String, store: ProjectStore) {
+        guard let f = store.loadShowreel() else { return }
+        var book = loadBook(store); var m = book.frames ?? [:]; m[version] = frameInputs(f); book.frames = m; try? save(book, store)
+    }
+    public static func frameRecord(version: String, store: ProjectStore) -> String? { loadBook(store).frames?[version] }
+    public static func carryFrame(from: String, to: String, store: ProjectStore) throws {
+        let fm = FileManager.default
+        for n in ["project.json", "reel.js"] {
+            let dst = store.root.appendingPathComponent("\(to)/\(n)"); try? fm.removeItem(at: dst)
+            try fm.copyItem(at: store.root.appendingPathComponent("\(from)/\(n)"), to: dst)
+        }
+        recordFrame(version: to, store: store)
     }
 
     static func save(_ book: Book, _ store: ProjectStore) throws {
@@ -164,7 +252,8 @@ public enum SceneModules {
     public static func status(of scene: ShowreelFile.Scene, version: String, in f: ShowreelFile, store: ProjectStore) -> Status {
         guard let m = moduleHash(version: version, scene: scene.id, store: store) else { return Status(state: .notGenerated, moduleEdited: false) }
         guard let r = record(version: version, scene: scene.id, store: store) else { return Status(state: .stale, moduleEdited: false) }
-        return Status(state: r.inputs == inputs(of: scene, in: f) ? .upToDate : .stale, moduleEdited: r.module != m)
+        let same = r.inputs == inputs(of: scene, in: f) && (r.context == nil || r.context == context(of: scene, in: f, store: store))
+        return Status(state: same ? .upToDate : .stale, moduleEdited: r.module != m)
     }
 
     /// The state of every scene that is in the film, by ID.
