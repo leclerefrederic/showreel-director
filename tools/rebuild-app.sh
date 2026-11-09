@@ -3,6 +3,7 @@
 # Usage: tools/rebuild-app.sh [--no-open]
 set -e
 cd "$(dirname "$0")/../app-swift"
+./make-app.sh --check-only          # the build must be valid before anything is closed
 pkill -x ShowreelStudio 2>/dev/null || true
 ./make-app.sh
 bash ../tools/verify-bundle.sh build/ShowreelStudio.app || exit 1

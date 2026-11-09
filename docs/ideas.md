@@ -3,6 +3,7 @@
 Ideas for Showreel Studio that are not in the current phase. Nothing here is built, estimated or scheduled until the owner moves an item into `docs/studio-spec.md`. Add one line per idea, newest first, with the date.
 
 - 2026-11-10: voice mode for the copilot: push-to-talk with on-device speech recognition (Apple Speech, `requiresOnDeviceRecognition`, microphone and speech usage strings in Info.plist), optional spoken replies (AVSpeechSynthesizer), spoken accept or refuse on the proposal cards. Nothing leaves the Mac for recognition. Today the system dictation (Edit, Start Dictation) already works in the copilot field.
+- 2026-11-10: `tools/rebuild-app.sh --debug`: a debug .app (a build of 3 to 6 s instead of 35 s) to judge a screen during a phase, the release build kept for the end of the phase.
 - 2026-11-10: scroll a list or the reel by itself when a drag nears its edge (today the wheel or trackpad scrolls while dragging).
 - 2026-11-10: drag a font from the Look tab onto a scene (it needs a title or text choice: a small menu on drop).
 - 2026-11-10: shape items in a scene's content (rectangles, lines) with the same fixed or auto attributes.

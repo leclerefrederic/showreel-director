@@ -6,9 +6,9 @@ cd "$(dirname "$0")"
 SCRATCH="$HOME/Library/Developer/ShowreelStudio/build"
 swift build -c release --scratch-path "$SCRATCH"
 BIN="$(swift build -c release --scratch-path "$SCRATCH" --show-bin-path)/ShowreelStudio"
-# swift build can report success while an edited file failed to compile: refuse a binary older than the sources.
-STALE=$(find Sources -name '*.swift' -newer "$BIN" | head -1)
-if [ -n "$STALE" ]; then echo "build is stale: $STALE is newer than the binary"; exit 1; fi
+# swift build can report success while an edited file failed to compile: refuse a binary that is not the build of the sources as they are now (by content).
+bash ../tools/build_fresh.sh "$BIN" Sources "$SCRATCH/sources.hash" || exit 1
+if [ "$1" = "--check-only" ]; then echo "BUILD VALID"; exit 0; fi
 APP="build/ShowreelStudio.app"
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/"
