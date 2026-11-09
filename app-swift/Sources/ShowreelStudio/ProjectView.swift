@@ -32,24 +32,16 @@ struct ProjectView: View {
     @EnvironmentObject var settings: AppSettings
     @Environment(\.openWindow) private var openWindow
 
-    /// The guided path shows while it has not led to the workspace, and while a new project's base configuration is not done.
-    private var inWizard: Bool { project.mode == StudioSettings.beginner && (!project.workspaceOpen || project.needsSetup) }
-    /// In Expert mode a new project first shows one compact form with the same data.
-    private var inSetupForm: Bool { project.mode == StudioSettings.expert && project.needsSetup }
+    /// A new project's base configuration is not done: Clap's interview (Wizard) or the form (Manual) shows, never the workspace.
+    private var inSetup: Bool { project.needsSetup || !project.workspaceOpen }
 
     var body: some View {
         VStack(spacing: 0) {
             if let offer = project.importOffer { ImportBanner(offer: offer) }
             if !project.docIssues.isEmpty { DocBanner() }
             if project.outdated && !project.updateBannerDismissed { OutdatedBanner() }
-            if inSetupForm {
-                SetupFormView()
-            } else if inWizard {
-                HSplitView {
-                    WizardView().frame(minWidth: 560)
-                    if project.showCopilot { ChatView().frame(minWidth: 340, idealWidth: 400) }
-                }
-                .dragDropRoot(project)
+            if inSetup {
+                if project.mode == StudioSettings.wizard { WizardStartView() } else { SetupFormView() }
             } else {
                 WorkspaceView()
             }
@@ -69,29 +61,14 @@ struct ProjectView: View {
                 Button { openWindow(id: "library") } label: { Label("Library", systemImage: "books.vertical") }
                     .help("Project library")
             }
-            ToolbarItem(placement: .principal) {
-                Picker("Mode", selection: $project.mode) {
-                    Text("Beginner").tag(StudioSettings.beginner)
-                    Text("Expert").tag(StudioSettings.expert)
-                }
-                .pickerStyle(.segmented).frame(width: 200)
-                .help("Beginner: a guided path that ends in the workspace. Expert: the workspace at once. Switching loses nothing.")
-            }
             ToolbarItem(placement: .status) {
                 HStack(spacing: 10) { BuildProgressPanel(compact: true); ClapActivityChip() }
             }
             ToolbarItemGroup(placement: .primaryAction) {
-                if inWizard {
-                    Button { project.showCopilot.toggle() } label: { Label(ClapMark.title, systemImage: "sidebar.right") }
-                        .help(project.showCopilot ? "Hide Clap" : "Show Clap")
-                    Button { if project.needsSetup { project.finishSetup() } else { project.workspaceOpen = true } } label: { Label("Workspace", systemImage: "rectangle.split.3x1") }
-                        .help(project.needsSetup ? "The workspace opens when the base configuration is complete: languages, formats, duration and a look" : "Open the editing workspace")
-                        .disabled(project.showreel.map { project.needsSetup && !ProjectSetup.isComplete($0) } ?? true)
+                if inSetup {
+                    Button { project.finishSetup() } label: { Label("Workspace", systemImage: "rectangle.split.3x1") }
+                        .disabledWithReason(project.showreel.map { ProjectSetup.isComplete($0) ? nil : "The base configuration is not complete: " + ProjectSetup.progress($0).line } ?? "This project has no data yet", way: "Set the rest, then the workspace opens")
                 } else {
-                    if project.mode == StudioSettings.beginner {
-                        Button { project.workspaceOpen = false; project.resumeWizard() } label: { Label("Guide", systemImage: "list.number") }
-                            .help("Back to the guided path")
-                    }
                     Button { project.showCatalogue.toggle() } label: { Label("Catalogue", systemImage: "square.grid.2x2") }
                         .keyboardShortcut("k", modifiers: [.command, .shift])
                         .help("The Catalogue: effects, transitions, backgrounds and looks to drag onto a scene, an item or a marker (Shift-Command-K)")

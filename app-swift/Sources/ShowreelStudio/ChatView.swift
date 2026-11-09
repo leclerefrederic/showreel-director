@@ -364,3 +364,8 @@ struct ConnectAIView: View {
         .padding(12)
     }
 }
+
+/// A small link that opens the one place where the API key is set (the app's settings window).
+struct ConnectKeyLink: View {
+    var body: some View { Button("Connect an API key") { AppSettingsWindow.open() }.buttonStyle(.link).font(.caption) }
+}

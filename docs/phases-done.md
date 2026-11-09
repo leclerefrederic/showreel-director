@@ -139,3 +139,9 @@ Rules in ShowreelKit: `FontFiles.swift`, `FontInfo.swift`
 phase Q6 is built (the temporary marks, a proposal waiting or the build running, on the reel's frames, the tree and the resources as on the list, with one layout rule for the badges, the review state then the build state, `MarkLayout`; the remaining disabled controls say why, Undo and Redo in the Edit menu included; the offer to generate lists the scenes with no file and the stale ones, leaves out the locked ones with their reason, and asks a separate confirmation before it overwrites a file edited by hand)
 
 Rules in ShowreelKit: `Marks.swift`, `FilmState.swift` (`GenerationOffer`), `SceneGeneration.swift`
+
+## P5
+
+phase P5 is built (project creation and the project form: a new project is set up in one way, chosen once at creation and never switched, Wizard (Clap leads a short interview with the existing question cards, then proposes a starting pack as cards, `propose_starter_pack`, one for the base configuration, one for the look, one for the scenes and their order, one for the music, that the user accepts one by one or all at once, through the existing proposals banner) or Manual (a form in sections: formats as tiles, duration with presets and a live feasibility line, film languages as chips, a compact brief with examples as placeholders, three control-level cards); the words Beginner and Expert are gone and the stored setting is "wizard" or "manual" (the old values are still read); the Wizard card is disabled without an API key, with its reason and way; the base configuration has five parts with an "n of 5 set" progress and the workspace opens only when it is complete; the interview gate is derived from it, with no button)
+
+Rules in ShowreelKit: `Setup.swift` (`ProjectSetup.progress`, `ProjectSetup.durationHint`, `ProjectLanguages`, `Availability.wizard`, `ShowreelFile.gateState`), `Wizard.swift` (`WizardInterview`, `StarterPack`), `ProjectStore.swift` (`StudioSettings`)

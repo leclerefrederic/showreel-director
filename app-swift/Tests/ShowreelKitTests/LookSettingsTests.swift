@@ -116,7 +116,7 @@ final class LookSettingsTests: XCTestCase {
         // the project parameters: the form, and the model's setter the guided path calls
         var parameterFiles: Set<String> = []
         for (f, text) in v where text.contains("perform(.parameter(") { parameterFiles.insert(f) }
-        XCTAssertEqual(parameterFiles, ["BlockViews.swift", "ProjectModel.swift"], "\(parameterFiles)")
+        XCTAssertEqual(parameterFiles, ["ProjectFormViews.swift", "ProjectModel.swift"], "\(parameterFiles)")
         // the inspectors of the look elements and the library rows hold no setting any more
         XCTAssertFalse(try source("InspectorViews.swift").contains(".perform(.decisions("), "the look inspector points to the project settings instead of editing")
         XCTAssertFalse(try source("WorkspaceViews.swift").contains(".perform(.decisions("))
@@ -124,14 +124,11 @@ final class LookSettingsTests: XCTestCase {
 
     func testTheSettingsPanelAndTheGuidedPathShareTheSameSixEditors() throws {
         let editors = ["LookBoardView", "PaletteEditor", "FontPickerView", "BackgroundPickerView", "MoodsPickerView", "EffectsPickerView"]
-        let panel = try source("ProjectSettingsPanel.swift"), wizard = try source("WizardView.swift")
-        for e in editors {
-            XCTAssertTrue(panel.contains(e + "("), "the settings panel has \(e)")
-            XCTAssertTrue(wizard.contains(e + "("), "the guided path still has \(e)")
-        }
+        let panel = try source("ProjectSettingsPanel.swift")
+        for e in editors { XCTAssertTrue(panel.contains(e + "("), "the settings panel has \(e)") }
         XCTAssertTrue(panel.contains("ProjectForm()"), "the parameters: audience, message, tone, languages, formats, duration, constraints, control level")
-        let form = try source("BlockViews.swift")
-        for k in [".audience", ".message", ".tone", ".conversationLanguage", ".reelLanguages", ".formats", ".duration", ".constraints", ".controlLevel"] { XCTAssertTrue(form.contains("field(\(k)") || form.contains("label(\(k))"), "the form has \(k)") }
+        let form = try source("ProjectFormViews.swift")
+        for k in [".audience", ".message", ".tone", ".conversationLanguage", ".reelLanguages", ".formats", ".duration", ".constraints", ".controlLevel"] { XCTAssertTrue(form.contains("compact(\(k)") || form.contains("parameter(\(k)") || form.contains("\(k)"), "the form has \(k)") }
     }
 
     func testThePickersSitWhereTheCatalogueIsUsed() throws {

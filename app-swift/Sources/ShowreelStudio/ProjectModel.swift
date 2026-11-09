@@ -172,7 +172,7 @@ final class ProjectModel: ObservableObject {
     @Published var clapSection: ClapSection = .conversation
     @Published var centerMode: CenterMode = .viewer
     @Published var lookKind: LookKind = .looks
-    /// Beginner mode walks the wizard first and ends in the workspace; Expert opens the workspace at once.
+    /// The workspace opens when the base configuration is complete (a project made earlier is never held back).
     @Published var workspaceOpen: Bool
     @Published var showreel: ShowreelFile?
     @Published var assets: [AssetRow] = []
@@ -186,16 +186,13 @@ final class ProjectModel: ObservableObject {
     @Published var applyDirectly: Bool {
         didSet { var s = store.settings; s.applyDirectly = applyDirectly; store.settings = s }
     }
-    /// "beginner" (the wizard, then the workspace) or "expert" (the workspace), kept in .studio/ui.json. Switching never touches the project data.
-    @Published var mode: String {
-        didSet {
-            var s = store.settings; s.mode = mode; store.settings = s
-            if mode == StudioSettings.beginner { resumeWizard(); workspaceOpen = wizardFinished && !needsSetup } else { workspaceOpen = true }
-        }
-    }
+    /// "wizard" or "manual", chosen when the project was created and kept in .studio/ui.json. Nothing switches it, except the way out of a wizard that cannot go on.
+    @Published private(set) var mode: String
+    /// What the user answered to Clap's interview, by the header of the question: kept so that a wizard that cannot go on loses nothing.
+    @Published var wizardAnswers: [String: String] = [:]
+    /// The interview was started in this window.
+    var wizardStarted = false
     @Published var showCopilot: Bool
-    @Published var wizardIndex = 0
-    @Published private(set) var wizardSteps: [WizardStep] = []
     @Published private(set) var decided: [String] = []
     /// The deterministic checks of the blocks that have some (no AI), recomputed with the data.
     @Published private(set) var checks: [String: [CheckResult]] = [:]
@@ -244,8 +241,8 @@ final class ProjectModel: ObservableObject {
         let s = store.settings
         applyDirectly = s.applyDirectly
         mode = s.mode
-        workspaceOpen = s.mode == StudioSettings.expert
-        showCopilot = s.mode == StudioSettings.expert
+        workspaceOpen = !s.setupRequired
+        showCopilot = !s.setupRequired || s.mode == StudioSettings.wizard
         decided = s.decided
         layout = s.layout ?? PanelLayout()
         if let m = s.timeline, m.fitAll == false { timeline = TimelineScale.Viewport(pps: TimelineScale.clamp(m.pps ?? 60), scroll: max(0, m.scroll ?? 0)); fitAll = false }
@@ -277,7 +274,6 @@ final class ProjectModel: ObservableObject {
         } else {
             importOffer = ProjectImporter.importMarkdown(from: root)
         }
-        if mode == StudioSettings.beginner { resumeWizard(); workspaceOpen = wizardFinished && !needsSetup }
         if showreel?.decisions.track?.file != nil, music == nil { analyseTrack() }
         LibraryModel.shared.markOpen(root.path)
         LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step)
@@ -295,7 +291,6 @@ final class ProjectModel: ObservableObject {
         versions = Versions.list(store)
         film = FilmBuild.status(store)
         if playVersion == nil || !(playVersion.map { Versions.hasDist(store, $0) } ?? false) { playVersion = film.playable }
-        wizardSteps = Wizard.steps(assets: assets, spec: spec, systemLanguage: Locale.current.language.languageCode?.identifier, file: showreel)
         for a in Blocks.areas { checks[a] = Checks.run(area: a, store: store) }
         music = showreel?.decisions.track?.file == nil ? nil : MusicAnalysis.load(root: root)
         loadWaveform()
@@ -304,7 +299,8 @@ final class ProjectModel: ObservableObject {
         checkEntries = CheckPanel.entries(checks, file: showreel, assets: assets, status: assetStatus)
         outdated = showreel?.isOutdated ?? false
         // in the guided path the workspace follows the wizard: once the base configuration is complete there is nothing left to wait for
-        if store.needsSetup, mode == StudioSettings.beginner, let f = showreel, ProjectSetup.isComplete(f) { try? store.finishSetup() }
+        // a wizard project opens its workspace by itself once the accepted cards complete the base configuration; a manual one waits for its button
+        if store.needsSetup, mode == StudioSettings.wizard, let f = showreel, ProjectSetup.isComplete(f) { try? store.finishSetup(); workspaceOpen = true }
         needsSetup = store.needsSetup
         if fitAll, viewportWidth > 1 { fitFilm(remember: false) }          // the film got longer or shorter: the strip still shows all of it
         if inspectorTab == .copilot && clapSection != .conversation { reloadHistory() }
@@ -421,37 +417,6 @@ final class ProjectModel: ObservableObject {
             }
         }
     }
-
-    // MARK: wizard (Beginner mode): the same data and operations as the blocks
-
-    var builtSteps: [WizardStep] { wizardSteps.filter { $0.isBuilt } }
-
-    func isDecided(_ step: WizardStep) -> Bool {
-        Wizard.isDecided(step, file: showreel, assets: assets, settings: store.settings, spec: spec)
-    }
-
-    var wizardProgress: (decided: Int, total: Int) {
-        Wizard.progress(wizardSteps, file: showreel, assets: assets, settings: store.settings, spec: spec)
-    }
-
-    /// Goes to the first built step that is not decided yet; after the last one, the "done for now" screen.
-    func resumeWizard() {
-        refresh()
-        wizardIndex = Wizard.firstUndecided(wizardSteps, file: showreel, assets: assets, settings: store.settings, spec: spec) ?? builtSteps.count
-    }
-
-    /// Every built step is decided: the wizard has nothing more to ask, and the workspace is where the work goes on.
-    var wizardFinished: Bool { showreel != nil && !builtSteps.isEmpty && wizardProgress.decided == wizardProgress.total }
-
-    func wizardNext() { wizardIndex = min(wizardIndex + 1, builtSteps.count) }
-    func wizardBack() { wizardIndex = max(wizardIndex - 1, 0) }
-
-    func jumpToFirstUndecided(in area: String) {
-        if let i = builtSteps.firstIndex(where: { $0.area == area && !isDecided($0) }) ?? builtSteps.firstIndex(where: { $0.area == area }) { wizardIndex = i }
-    }
-
-    /// The user settled a question without giving a value ("nothing special", "no files yet").
-    func markDecided(_ step: WizardStep) { store.markDecided(step.id); refresh() }
 
     /// Writes a parameter through the typed operation, unless it already holds that value.
     @discardableResult
@@ -787,7 +752,7 @@ final class ProjectModel: ObservableObject {
     /// The user opens the workspace: only when the base configuration is complete (the form enables its button on that).
     func finishSetup() {
         guard store.needsSetup else { workspaceOpen = true; return }       // a project that never asked for its setup is never held back
-        do { try store.finishSetup(); needsSetup = false; if mode == StudioSettings.beginner { workspaceOpen = true } }
+        do { try store.finishSetup(); needsSetup = false; workspaceOpen = true }
         catch { self.error = error.localizedDescription }
     }
 
@@ -1074,15 +1039,9 @@ final class ProjectModel: ObservableObject {
     @discardableResult
     func setSceneLook(_ id: String, _ changes: [DecisionChange]) -> Bool { perform(.sceneLook(id: id, changes)) }
 
-    /// The copilot (or a link) asks for a zone of the workspace. In the wizard, it goes to the first undecided step of that part.
+    /// The copilot (or a link) asks for a zone of the workspace. While the base configuration is not complete the workspace stays closed.
     func openZone(_ id: String) {
-        if mode == StudioSettings.beginner, !workspaceOpen {
-            let areas: [String] = ["library": ["resources"], "inspector": ["project", "look"], "storyboard": ["storyboard", "scene"], "build": ["build"]][id] ?? []
-            for a in areas where builtSteps.contains(where: { $0.area == a && !isDecided($0) }) { jumpToFirstUndecided(in: a); return }
-            if let a = areas.first { jumpToFirstUndecided(in: a) }
-            return
-        }
-        workspaceOpen = true
+        guard workspaceOpen else { return }
         switch id {
         case "library": break
         case "viewer": centerMode = .viewer
@@ -1103,7 +1062,6 @@ final class ProjectModel: ObservableObject {
             try ProjectImporter.confirm(r, in: root)
             importOffer = nil
             loadShowreel(); reloadTree()
-            if mode == StudioSettings.beginner { resumeWizard() }
             LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step)
         } catch { self.error = error.localizedDescription }
     }
@@ -1215,9 +1173,9 @@ final class ProjectModel: ObservableObject {
     /// One line sent with every message: step, open gates, file in front of the user.
     var contextLine: String {
         var parts: [String] = []
-        if mode == StudioSettings.beginner && !workspaceOpen {
-            parts.append("mode: beginner (wizard)" + (wizardIndex < builtSteps.count ? ", question on screen: \(builtSteps[wizardIndex].title)" : ""))
-        } else if let b = foregroundBlock { parts.append("mode: \(mode == StudioSettings.beginner ? "beginner, workspace" : "expert"), in front of the user: \(b)") }
+        if !workspaceOpen {
+            parts.append(mode == StudioSettings.wizard ? "a new project in Wizard mode: you lead the interview and propose the starting pack with propose_starter_pack" : "a new project in Manual mode: the user fills the setup form")
+        } else if let b = foregroundBlock { parts.append("in front of the user: \(b)") }
         if let s = showreel {
             parts.append("step: \(s.step)")
             let open = s.gates.filter { $0.value != "passed" }.keys.sorted()
@@ -1351,5 +1309,30 @@ extension ProjectModel {
                 perform(.addFontFiles(payload)); reloadTree()
             } catch { react(StatusLine.refused(error.localizedDescription)) }
         }
+    }
+}
+
+
+// MARK: the wizard of a new project (Clap leads it; the rules are ShowreelKit's `WizardInterview` and `StarterPack`)
+
+extension ProjectModel {
+    /// Starts Clap's interview, once per window, for a new project made in Wizard mode that still has its base configuration to set.
+    func startWizardIfNeeded(chat: ChatModel) {
+        guard mode == StudioSettings.wizard, needsSetup, !wizardStarted, showreel != nil, AppSettings.shared.hasKey else { return }
+        wizardStarted = true
+        showCopilot = true; inspectorTab = .copilot
+        chat.ask(prompt: WizardInterview.prompt(projectName: title, conversationLanguage: showreel?.conversationLanguage))
+    }
+
+    /// The way out of a wizard that cannot go on (no key, a failed request, or the user's choice): the answers already given become typed changes, and the
+    /// project goes on as a Manual one with the same form.
+    func continueInManual() {
+        if let f = showreel {
+            for op in WizardInterview.operations(from: wizardAnswers, file: f) { _ = perform(op) }
+        }
+        mode = StudioSettings.manual
+        var s = store.settings; s.mode = StudioSettings.manual; store.settings = s
+        showCopilot = false
+        refresh()
     }
 }

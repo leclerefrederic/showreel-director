@@ -78,7 +78,7 @@ public enum Blocks {
         guard let b = spec.block(id), b.built else { return .soon }
         guard let f = f else { return .todo }
         let keys = spec.gateKeys(of: id)
-        if !keys.isEmpty, keys.allSatisfy({ f.gates[$0] == "passed" }) { return .validated }
+        if !keys.isEmpty, keys.allSatisfy({ f.gateState($0) == "passed" }) { return .validated }
         return hasContent(id, f, assets) ? .inProgress : .todo
     }
 }

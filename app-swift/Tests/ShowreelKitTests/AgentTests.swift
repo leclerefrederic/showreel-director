@@ -9,6 +9,7 @@ final class ScriptedUI: AgentUI, @unchecked Sendable {
     private(set) var tools: [String] = []
     private(set) var proposals: [Proposal] = []
     private(set) var cards: [OperationCard] = []
+    private let cardLock = NSLock()
     private(set) var openedBlocks: [String] = []
     var block: String? = "project"
     /// Called when a proposal is shown, before the answer: lets a test change the file in between.
@@ -23,7 +24,7 @@ final class ScriptedUI: AgentUI, @unchecked Sendable {
     func screenshot(javascript: String?, waitMs: Int) async -> Data? { nil }
     func ask(_ questions: [[String: Any]]) async -> [String] { [] }
     func propose(_ p: Proposal) async -> Bool { proposals.append(p); beforeAnswer?(); return accept }
-    func proposeOperation(_ card: OperationCard) async -> Bool { cards.append(card); beforeAnswer?(); return accept }
+    func proposeOperation(_ card: OperationCard) async -> Bool { cardLock.lock(); cards.append(card); cardLock.unlock(); beforeAnswer?(); return accept }
     func foregroundBlock() async -> String? { block }
     func openBlock(_ id: String) async { openedBlocks.append(id) }
     func foregroundFile() async -> String? { foreground }

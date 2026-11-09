@@ -15,13 +15,13 @@ final class WizardTests: XCTestCase {
     }
 
     func testModeDefaults() throws {
-        XCTAssertEqual(store.settings.mode, "expert", "a folder with no setting opens in expert")
+        XCTAssertEqual(store.settings.mode, "manual", "a folder with no setting is manual")
         try store.create(name: "New", conversationLanguage: nil, reelLanguages: [])
-        XCTAssertEqual(store.settings.mode, "beginner", "a new project starts in beginner")
-        var s = store.settings; s.mode = "expert"; store.settings = s
-        XCTAssertEqual(ProjectStore(root: dir).settings.mode, "expert")
-        XCTAssertEqual(try JSONDecoder().decode(StudioSettings.self, from: Data("{\"applyDirectly\":true}".utf8)), StudioSettings(applyDirectly: true, mode: "expert"), "an old ui.json keeps its setting")
-        XCTAssertEqual(try JSONDecoder().decode(StudioSettings.self, from: Data("{\"mode\":\"nonsense\"}".utf8)).mode, "expert")
+        XCTAssertEqual(store.settings.mode, "wizard", "a new project starts in the wizard unless it was created manual")
+        var s = store.settings; s.mode = "manual"; store.settings = s
+        XCTAssertEqual(ProjectStore(root: dir).settings.mode, "manual")
+        XCTAssertEqual(try JSONDecoder().decode(StudioSettings.self, from: Data("{\"applyDirectly\":true}".utf8)), StudioSettings(applyDirectly: true, mode: "manual"), "an old ui.json keeps its setting")
+        XCTAssertEqual(try JSONDecoder().decode(StudioSettings.self, from: Data("{\"mode\":\"nonsense\"}".utf8)).mode, "manual")
     }
 
     func testSwitchingModeLosesNothing() throws {
@@ -29,8 +29,8 @@ final class WizardTests: XCTestCase {
         try store.apply(.parameter(.audience, "Teams"))
         store.markDecided("project.constraints")
         let before = store.loadShowreel()
-        var s = store.settings; s.mode = "expert"; store.settings = s
-        s = store.settings; s.mode = "beginner"; store.settings = s
+        var s = store.settings; s.mode = "manual"; store.settings = s
+        s = store.settings; s.mode = "wizard"; store.settings = s
         XCTAssertEqual(store.loadShowreel(), before, "the data does not depend on the mode")
         XCTAssertEqual(store.settings.decided, ["project.constraints"], "nor do the wizard's own marks")
         XCTAssertEqual(store.loadShowreel()?.parameters.audience, "Teams")

@@ -141,7 +141,7 @@ enum SelfCheck {
             check(store.read("brief.md")?.contains("Teams") == true, "brief.md is generated from showreel.json")
 
             // modes, wizard, checks, versions
-            check(store.settings.mode == StudioSettings.beginner, "a new project starts in beginner mode")
+            check(store.settings.mode == StudioSettings.wizard, "a new project starts in wizard mode")
             let steps = Wizard.steps(assets: Assets.load(store), spec: spec)
             check(steps.count >= 10 && steps.contains { !$0.isBuilt }, "the wizard has its steps and the blocks to come (\(steps.count))")
             check(Wizard.firstUndecided(steps, file: store.loadShowreel(), assets: Assets.load(store), settings: store.settings, spec: spec).map { steps[$0].id } == "project.message",

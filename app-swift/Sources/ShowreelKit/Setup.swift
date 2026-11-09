@@ -29,6 +29,58 @@ public enum ProjectSetup {
     }
 
     public static func isComplete(_ f: ShowreelFile) -> Bool { missing(f).isEmpty }
+
+    /// The five things the base configuration is made of, as the user counts them: the look is one of them (palette, fonts and background).
+    public struct Requirement: Equatable, Identifiable, Sendable {
+        public let id: String
+        public let title: String
+        public let isSet: Bool
+    }
+
+    public static func requirements(_ f: ShowreelFile) -> [Requirement] {
+        let gone = Set(missing(f).map { $0.id })
+        func r(_ id: String, _ title: String, _ keys: [String]) -> Requirement { Requirement(id: id, title: title, isSet: keys.allSatisfy { !gone.contains($0) }) }
+        return [r("conversationLanguage", "Conversation language", ["conversationLanguage"]), r("reelLanguages", "Film language", ["reelLanguages"]), r("formats", "Formats", ["formats"]),
+                r("duration", "Target duration", ["duration"]), r("look", "Look", ["palette", "fonts", "background"])]
+    }
+
+    /// "4 of 5 set".
+    public static func progress(_ f: ShowreelFile) -> (set: Int, total: Int, line: String) {
+        let r = requirements(f), n = r.filter { $0.isSet }.count
+        return (n, r.count, "\(n) of \(r.count) set")
+    }
+
+    /// What the form says about the duration while it is typed: the rules of the feasibility check, on what the project holds.
+    public static func durationHint(_ f: ShowreelFile) -> (level: CheckLevel, text: String)? {
+        guard (f.decisions.duration ?? 0) > 0 else { return nil }
+        let rows = Checks.feasibility(f)
+        guard !rows.isEmpty else { return nil }
+        let worst = rows.first { $0.level == .fail } ?? rows.first { $0.level == .tight } ?? rows[0]
+        return (worst.level, worst.level == .ok ? "Feasible: " + worst.detail : worst.detail)
+    }
+}
+
+/// The languages the form offers, by code.
+public enum ProjectLanguages {
+    public static let all: [(code: String, name: String)] = [("en", "English"), ("fr", "French"), ("de", "German"), ("es", "Spanish"), ("it", "Italian"), ("pt", "Portuguese"), ("nl", "Dutch")]
+    public static func name(_ code: String) -> String { all.first { $0.code == code }?.name ?? code }
+    public static func code(forName n: String) -> String? { all.first { $0.name.caseInsensitiveCompare(n.trimmingCharacters(in: .whitespaces)) == .orderedSame || $0.code == n.lowercased() }?.code }
+}
+
+public extension Availability {
+    /// The Wizard card of the New project screen: Clap leads it, so it needs an API key.
+    static func wizard(hasKey: Bool) -> Availability {
+        hasKey ? .available : .unavailable(Unavailable(.noKey, reason: "Wizard needs an API key", way: "Open Settings to connect one (Command-,), or choose Manual", link: .key))
+    }
+}
+
+public extension ShowreelFile {
+    /// The state of a gate. The interview's is derived from the project: it is passed when the base configuration is complete (a value stored earlier still counts, so that
+    /// nothing a project had is taken away). No button sets it any more.
+    func gateState(_ key: String) -> String {
+        if key == "interview" { return ProjectSetup.isComplete(self) || gates[key] == "passed" ? "passed" : (gates[key] ?? "open") }
+        return gates[key] ?? "open"
+    }
 }
 
 extension ProjectStore {

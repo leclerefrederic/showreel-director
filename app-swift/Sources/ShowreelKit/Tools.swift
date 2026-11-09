@@ -137,6 +137,8 @@ public final class Tools {
             return await operate(.sceneLock(ids: ids, locked: on))
         case "generate_scenes":
             return await generateScenes(input)
+        case "propose_starter_pack":
+            return await proposeStarterPack(input)
         case "add_font_files":
             return await addFontFiles(input)
         case "assemble_film":
@@ -292,6 +294,32 @@ public final class Tools {
             try await SceneGeneration.generate(ids, version: version, store: store, skill: skill, transport: transport, author: "clap", overwriting: Set(SceneGeneration.handEdited(ids, version: version, store: store)))
             return "generated \(ids.joined(separator: ", ")) in \(version): only those scene files were written. The app assembles and checks the film when the user builds again."
         } catch { return "not generated: \(error.localizedDescription)" }
+    }
+
+    /// The starting pack of a new project in Wizard mode: every card is proposed at once, so that the user reads them one by one or all together (the banner's Accept all and
+    /// Refuse all), and only what is accepted is applied, each card as one undoable step. Nothing is saved before an answer. Never skipped by apply-directly.
+    private func proposeStarterPack(_ input: [String: Any]) async -> String {
+        if let e = store.buildRefusal() { return "refused: \(e.localizedDescription)" }
+        let cards: [PackCard]
+        do { cards = try StarterPack.cards(input, store: store) } catch { return "refused: \(error.localizedDescription)" }
+        var answers = Array(repeating: false, count: cards.count)
+        await withTaskGroup(of: (Int, Bool).self) { g in
+            for (i, c) in cards.enumerated() { g.addTask { (i, await self.ui.proposeOperation(c.card)) } }
+            for await (i, ok) in g { answers[i] = ok }
+        }
+        var done: [String] = [], refused: [String] = [], failed: [String] = []
+        for (i, c) in cards.enumerated() {
+            if answers[i] {
+                do { try StarterPack.apply(c, store: store); done.append(c.card.title) } catch { failed.append("\(c.card.title): \(error.localizedDescription)") }
+            } else {
+                refused.append(c.card.title)
+                if let op = c.ops.first { store.noteRefused(op, card: c.card, author: "clap", note: "refused by the user") }
+            }
+        }
+        var out = done.isEmpty ? "nothing was saved" : "accepted and applied: " + done.joined(separator: ", ")
+        if !refused.isEmpty { out += ". Refused by the user: " + refused.joined(separator: ", ") + " (ask what they want instead, do not propose them again unchanged)" }
+        if !failed.isEmpty { out += ". Not applied: " + failed.joined(separator: "; ") }
+        return out
     }
 
     /// Assembles the film of a version, with no AI: film.json from the montage, the scene files into main.js, the page, the engine's checks. Free, so there is no card; it

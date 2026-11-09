@@ -344,7 +344,7 @@ final class LifecycleTests: XCTestCase {
         }
         XCTAssertEqual(constructed, ["App.swift"], "the Settings window of the app menu is the only place the settings view exists")
         XCTAssertTrue(try source("App.swift").contains("Settings { SettingsView()"))
-        for f in ["BuildViews.swift", "ChatView.swift", "WizardView.swift"] { XCTAssertTrue(try source(f).contains("AppSettingsWindow.open()"), "\(f): Connect AI opens that same window") }
+        for f in ["BuildViews.swift", "ChatView.swift"] { XCTAssertTrue(try source(f).contains("AppSettingsWindow.open()"), "\(f): Connect AI opens that same window") }
         XCTAssertFalse(try source("LibraryView.swift").contains("Settings"), "no Settings button in the Library window")
     }
 

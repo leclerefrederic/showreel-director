@@ -47,12 +47,13 @@ public struct TimelineMemory: Codable, Equatable, Sendable {
 
 /// App-private settings of one project, kept in `.studio/ui.json`.
 public struct StudioSettings: Codable, Equatable {
-    public static let beginner = "beginner", expert = "expert"
+    /// How a project was set up, chosen once when it was created: "wizard" (Clap leads a short interview and proposes a starting pack) or "manual" (the user fills the form).
+    /// The older words are still read: "beginner" is wizard, "expert" is manual. The setting lives in `.studio/ui.json`, never in showreel.json.
+    public static let wizard = "wizard", manual = "manual"
 
     /// When true the copilot's edits are written at once instead of shown as cards and proposals.
     public var applyDirectly = false
-    /// "beginner" (the wizard) or "expert" (the blocks). A project created by the app starts in beginner; a folder that
-    /// has no setting yet (made earlier, or opened from elsewhere) opens in expert, as it was used so far.
+    /// "wizard" or "manual", set when the project is created. A folder that has no setting yet (made earlier, or opened from elsewhere) is manual, as it was used so far.
     public var mode: String
     /// Wizard steps the user settled without giving a value ("none needed"). Everything else is decided by the data itself.
     public var decided: [String]
@@ -64,7 +65,7 @@ public struct StudioSettings: Codable, Equatable {
     /// The strip's time scale and scroll; nil: it opens showing the whole film.
     public var timeline: TimelineMemory?
 
-    public init(applyDirectly: Bool = false, mode: String = StudioSettings.expert, decided: [String] = [], layout: PanelLayout? = nil, setupRequired: Bool = false, timeline: TimelineMemory? = nil) {
+    public init(applyDirectly: Bool = false, mode: String = StudioSettings.manual, decided: [String] = [], layout: PanelLayout? = nil, setupRequired: Bool = false, timeline: TimelineMemory? = nil) {
         self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided; self.layout = layout; self.setupRequired = setupRequired; self.timeline = timeline
     }
 
@@ -72,7 +73,7 @@ public struct StudioSettings: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         applyDirectly = try c.decodeIfPresent(Bool.self, forKey: .applyDirectly) ?? false
         let m = try c.decodeIfPresent(String.self, forKey: .mode)
-        mode = m == Self.beginner ? Self.beginner : Self.expert
+        mode = (m == Self.wizard || m == "beginner") ? Self.wizard : Self.manual
         decided = try c.decodeIfPresent([String].self, forKey: .decided) ?? []
         layout = try c.decodeIfPresent(PanelLayout.self, forKey: .layout)
         setupRequired = try c.decodeIfPresent(Bool.self, forKey: .setupRequired) ?? false
@@ -237,12 +238,12 @@ public final class ProjectStore {
 
     /// Creates `showreel.json` for a new project, and the folder when needed.
     @discardableResult
-    public func create(name: String, conversationLanguage: String?, reelLanguages: [String]) throws -> ShowreelFile {
+    public func create(name: String, conversationLanguage: String?, reelLanguages: [String], mode: String = StudioSettings.wizard) throws -> ShowreelFile {
         try fm.createDirectory(at: root.appendingPathComponent(Self.studioDir), withIntermediateDirectories: true)
         let f = ShowreelFile(name: name, conversationLanguage: conversationLanguage, reelLanguages: reelLanguages)
         try save(f)
         var s = settings
-        s.mode = StudioSettings.beginner       // a new project starts in the wizard
+        s.mode = mode == StudioSettings.manual ? StudioSettings.manual : StudioSettings.wizard       // chosen once, here
         s.setupRequired = true                 // and does not reach the workspace before its base configuration is set
         settings = s
         return f
@@ -255,6 +256,7 @@ public final class ProjectStore {
         var o = g.origin ?? ShowreelFile.Origin()
         o.tool = "studio"
         g.origin = o
+        if g.gateState("interview") == "passed" { g.gates["interview"] = "passed" }       // derived from the base configuration; written so that what reads the file sees it
         try write(ShowreelFile.fileName, try g.encoded(), source: .user)
     }
 }

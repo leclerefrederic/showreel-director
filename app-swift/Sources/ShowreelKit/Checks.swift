@@ -385,7 +385,7 @@ public enum Checks {
         guard let spec = ProcessSpec.load() else { return [] }
         let keys = spec.gateKeys(area: area)
         return keys.map { k in
-            let passed = f?.gates[k] == "passed"
+            let passed = f?.gateState(k) == "passed"
             let step = spec.steps.first { $0.gateKey == k }?.gate ?? k
             return CheckResult(id: "gate.\(k)", block: area, title: "Gate: \(step)", level: passed ? .ok : .pending,
                                detail: passed ? "validated" : "not validated yet")

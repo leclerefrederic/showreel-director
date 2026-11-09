@@ -148,7 +148,7 @@ public enum Wizard {
         case .asset(let id): return ["approved", "excluded", "placeholder"].contains(assets.first { $0.id == id }?.status ?? "")
         case .summary(let b):
             let keys = spec?.gateKeys(area: b) ?? []
-            return !keys.isEmpty && keys.allSatisfy { file?.gates[$0] == "passed" }
+            return !keys.isEmpty && keys.allSatisfy { file?.gateState($0) == "passed" }
         case .soon: return false
         }
     }
@@ -204,5 +204,112 @@ public enum Wizard {
         case .soon:
             return "Tell me in two lines what this step will involve."
         }
+    }
+}
+
+// MARK: the interview Clap leads, and the starting pack it proposes
+
+/// Clap's express interview for a new project in Wizard mode: five questions with fixed headers (so that the answers can be kept), then the starting pack.
+public enum WizardInterview {
+    public static let headers = ["Conversation language", "Film language", "Formats", "Duration", "About the film"]
+
+    static func option(_ label: String, _ detail: String = "") -> [String: Any] { ["label": label, "description": detail.isEmpty ? label : detail] }
+
+    /// The questions, in the shape of the ask_user tool.
+    public static var questions: [[String: Any]] {
+        let langs = ProjectLanguages.all.prefix(4).map { option($0.name) }
+        return [
+            ["header": headers[0], "question": "Which language do we talk in?", "multiSelect": false, "options": langs],
+            ["header": headers[1], "question": "Which language is the film in? Pick several to offer a switch; the first is the master text.", "multiSelect": true, "options": langs],
+            ["header": headers[2], "question": "Which formats?", "multiSelect": true, "options": [option("Desktop 16:9", "Landscape, for screens"), option("Mobile 9:16", "Portrait, for phones: it changes the layout design")]],
+            ["header": headers[3], "question": "How long should the film be?", "multiSelect": false, "options": [option("15 s"), option("30 s"), option("45 s"), option("60 s")]],
+            ["header": headers[4], "question": "Optional: who is it for, what should they remember, and in what tone? Skip it if you prefer; you can say it in your own words.", "multiSelect": false, "options": [option("Skip", "Decide later in the project settings")]],
+        ]
+    }
+
+    /// What Clap is asked at the start: lead the interview with these questions, then propose the whole pack at once with propose_starter_pack.
+    public static func prompt(projectName: String, conversationLanguage: String?) -> String {
+        let q = (try? JSONSerialization.data(withJSONObject: questions, options: [.sortedKeys])).map { String(decoding: $0, as: UTF8.self) } ?? "[]"
+        return """
+        This is the new project \u{201C}\(projectName)\u{201D}, in Wizard mode: you lead its setup. Do this:
+        1. Call ask_user ONCE with exactly these questions, unchanged: \(q)
+        2. From the answers (and what the user wrote in their own words), propose a starting pack with ONE call to propose_starter_pack: `base` (conversationLanguage, reelLanguages as codes such as "en, fr", formats such as "16:9, 9:16", duration in seconds), `brief` (audience, message, tone, only what the user said), `look` (palette of #RRGGBB colours in the order background, text, accent, accent 2; titleFont and textFont from the skill's free list; background id; optionally moods and effectsPack), `scenes` (a short ordered list: text, duration in seconds, optionally visual and feeling) and `music` only if the user supplied an approved audio resource. Choose the look and the scenes from the user's words and the skill's references, not from a fixed style.
+        3. The user reviews each card, or all at once, and nothing is saved until they accept. Do not change anything with any other tool during the setup. If a card is refused, ask what they want instead.
+        Answer in the user's language once you know it; until then, in English.
+        """
+    }
+
+    static func formatCode(_ label: String) -> String? { label.contains("9:16") ? "9:16" : label.contains("16:9") ? "16:9" : label.contains("1:1") ? "1:1" : label.contains("4:5") ? "4:5" : nil }
+
+    /// The answers already given, as typed changes (for the way out to Manual): only what is understood, never a guess.
+    public static func operations(from answers: [String: String], file f: ShowreelFile) -> [ProjectOperation] {
+        var ops: [ProjectOperation] = []
+        func split(_ s: String) -> [String] { s.split(whereSeparator: { ",;\n".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+        if let a = answers[headers[0]], let c = ProjectLanguages.code(forName: split(a).first ?? a), f.conversationLanguage != c { ops.append(.parameter(.conversationLanguage, c)) }
+        if let a = answers[headers[1]] { let codes = split(a).compactMap { ProjectLanguages.code(forName: $0) }; if !codes.isEmpty, codes != f.reelLanguages { ops.append(.parameter(.reelLanguages, codes.joined(separator: ", "))) } }
+        if let a = answers[headers[2]] { let fm = split(a).compactMap { formatCode($0) }; if !fm.isEmpty, fm != (f.decisions.formats ?? []) { ops.append(.parameter(.formats, fm.joined(separator: ", "))) } }
+        if let a = answers[headers[3]], let n = Double(a.filter { "0123456789.".contains($0) }), n > 0, n != f.decisions.duration { ops.append(.parameter(.duration, ProjectDocs.seconds(n))) }
+        return ops
+    }
+}
+
+/// One card of the starting pack: the operations behind it, and the one card the user sees. Accepting it applies them as one undoable step.
+public struct PackCard: Identifiable, Sendable {
+    public let id: String
+    public let ops: [ProjectOperation]
+    public let card: OperationCard
+}
+
+public enum StarterPack {
+    /// The cards of a pack, from the input of `propose_starter_pack`: the base configuration (with the optional brief), the look, the scenes, the music. Each is checked by the
+    /// ordinary rules before it is shown, so a bad value is an error to Clap, never a broken card. A group that is absent has no card.
+    public static func cards(_ input: [String: Any], store: ProjectStore) throws -> [PackCard] {
+        func str(_ d: [String: Any]?, _ k: String) -> String? { (d?[k] as? String) ?? (d?[k] as? Double).map { ProjectDocs.seconds($0) } ?? (d?[k] as? Int).map { String($0) } }
+        func card(_ id: String, _ title: String, _ ops: [ProjectOperation]) throws -> PackCard? {
+            guard !ops.isEmpty else { return nil }
+            var changes: [Change] = []
+            for op in ops { changes += try store.plan(op).changes }
+            var c = OperationCard(title: title, changes: changes)
+            c.targets = ops.flatMap { $0.targets }
+            return PackCard(id: id, ops: ops, card: c)
+        }
+        var out: [PackCard] = []
+        let base = input["base"] as? [String: Any], brief = input["brief"] as? [String: Any]
+        var params: [ProjectOperation] = []
+        for (k, key) in [("conversationLanguage", ParameterKey.conversationLanguage), ("reelLanguages", .reelLanguages), ("formats", .formats), ("duration", .duration)] {
+            if let v = str(base, k), !v.isEmpty { params.append(.parameter(key, v)) }
+        }
+        for (k, key) in [("audience", ParameterKey.audience), ("message", .message), ("tone", .tone)] { if let v = str(brief, k), !v.isEmpty { params.append(.parameter(key, v)) } }
+        // each parameter is checked alone: one that changes nothing is left out, a wrong one is an error
+        var live: [ProjectOperation] = []
+        for op in params { if (try? store.plan(op)) != nil { live.append(op) } else { _ = try store.plan(op) } }
+        if let c = try card("base", "Base configuration", live) { out.append(c) }
+        if let look = input["look"] as? [String: Any] {
+            var ch: [DecisionChange] = []
+            for (k, key) in [("palette", DecisionKey.palette), ("titleFont", .titleFont), ("textFont", .textFont), ("background", .background), ("backgroundMood", .backgroundMood), ("moods", .moods), ("effectsPack", .effectsPack)] {
+                if let v = str(look, k), !v.isEmpty { ch.append(DecisionChange(key, v)) }
+            }
+            if !ch.isEmpty, let c = try card("look", "Look", [.decisions(ch, title: "Look")]) { out.append(c) }
+        }
+        if let scenes = input["scenes"] as? [[String: Any]], !scenes.isEmpty {
+            var ops: [ProjectOperation] = []
+            for s in scenes {
+                guard let text = str(s, "text"), !text.isEmpty else { throw AgentError.msg("every scene of the pack needs its text") }
+                ops.append(.addScene(id: "", SceneEdit(duration: str(s, "duration"), text: text, visual: str(s, "visual"), feeling: str(s, "feeling"))))
+            }
+            for op in ops { _ = try store.plan(op) }
+            let lines = scenes.enumerated().map { Change("Scene \($0.offset + 1)", "(none)", (str($0.element, "text") ?? "") + (str($0.element, "duration").map { " (\($0) s)" } ?? "")) }
+            var c = OperationCard(title: "Scenes and their order (\(ops.count))", changes: lines)
+            c.targets = []
+            out.append(PackCard(id: "scenes", ops: ops, card: c))
+        }
+        if let m = str(input, "music"), !m.isEmpty, let c = try card("music", "Music", [.track(asset: m)]) { out.append(c) }
+        guard !out.isEmpty else { throw AgentError.msg("the pack is empty: give base, look, scenes or music") }
+        return out
+    }
+
+    /// Applies one accepted card as one undoable step, journalled operation by operation.
+    public static func apply(_ c: PackCard, store: ProjectStore, author: String = "clap") throws {
+        try store.transaction(c.card.title) { for op in c.ops { try store.apply(op, author: author) } }
     }
 }

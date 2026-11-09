@@ -40,10 +40,10 @@ final class LayoutTests: XCTestCase {
     func testEachProjectKeepsItsOwnSizesAndTheOtherSettingsAreUntouched() throws {
         let other = makeTempDir("layout2"); defer { try? FileManager.default.removeItem(at: other) }
         let b = ProjectStore(root: other)
-        var s = store.settings; s.mode = StudioSettings.beginner; s.applyDirectly = true; s.decided = ["project.tone"]; s.layout = PanelLayout(library: 300); store.settings = s
+        var s = store.settings; s.mode = StudioSettings.wizard; s.applyDirectly = true; s.decided = ["project.tone"]; s.layout = PanelLayout(library: 300); store.settings = s
         XCTAssertNil(b.settings.layout, "another project is not affected")
         var t = store.settings; t.layout = PanelLayout(library: 300, strip: 250); store.settings = t
-        XCTAssertEqual(store.settings.mode, StudioSettings.beginner); XCTAssertTrue(store.settings.applyDirectly); XCTAssertEqual(store.settings.decided, ["project.tone"])
+        XCTAssertEqual(store.settings.mode, StudioSettings.wizard); XCTAssertTrue(store.settings.applyDirectly); XCTAssertEqual(store.settings.decided, ["project.tone"])
         XCTAssertEqual(store.settings.layout?.strip, 250)
     }
 
@@ -59,6 +59,6 @@ final class LayoutTests: XCTestCase {
     func testAnOldUIFileHasNoLayout() throws {
         try FileManager.default.createDirectory(at: dir.appendingPathComponent(".studio"), withIntermediateDirectories: true)
         try #"{"mode": "beginner", "applyDirectly": false, "decided": []}"#.write(to: dir.appendingPathComponent(".studio/ui.json"), atomically: true, encoding: .utf8)
-        XCTAssertNil(store.settings.layout); XCTAssertEqual(store.settings.mode, StudioSettings.beginner)
+        XCTAssertNil(store.settings.layout); XCTAssertEqual(store.settings.mode, StudioSettings.wizard)
     }
 }

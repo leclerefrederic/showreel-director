@@ -2,6 +2,31 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.5.1 - 2026-11-09
+
+**Changed**
+- Nothing you can see: the New project screen moved to its own file so that the checks on the Library window stay true.
+
+**What you need to do**
+- Nothing.
+
+## 0.5.0 - 2026-11-09
+
+**What's new**
+- **Two ways to start a project.** The New project screen offers two cards, chosen once: Wizard, where Clap asks a few questions and then proposes a starting pack (the base setup, a look, the scenes and their order, the music if you gave some) as cards you accept one by one or all at once; and Manual, where you fill a compact form yourself. Both end in the same interface. Wizard needs an API key; without one its card says so and tells you how to connect one, or to choose Manual.
+- **A clearer project form.** Formats are tiles with their shape, the duration has quick values and says at once whether it is feasible, the film languages are chips you pick from a list, the brief fields are compact with an example in each, and the control level is three cards. The required setup shows "n of 5 set" and the workspace opens when it is complete.
+- If Clap cannot go on during the Wizard, a clear message and a button take you to the form, with the answers you already gave.
+
+**Changed**
+- The words Beginner and Expert are gone, and there is no switch between them in a project. An older project keeps working: Beginner reads as Wizard and Expert as Manual.
+- "Mark as validated" no longer exists for the interview: it counts as done when the base setup is complete. The Go is still the only validation you give.
+
+**What you need to do**
+- Nothing. Open an older project as usual; nothing is changed in its file.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.16.0. macOS 13 or later.
+
 ## 0.4.1 - 2026-11-09
 
 **Changed**

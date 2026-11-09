@@ -289,6 +289,59 @@
     }
   },
   {
+    "name": "propose_starter_pack",
+    "description": "For a new project in Wizard mode, after the setup interview: propose the whole starting pack at once, as a few cards the user reviews one by one or all together (Accept all, Refuse all). One card for the base configuration (with the optional brief), one for the look, one for the scenes and their order, one for the music. Nothing is saved before an answer; each accepted card is one undoable step and each refused one is recorded. Use it once, right after ask_user, and change nothing with any other tool during the setup. If a card is refused, ask what the user wants instead. Fonts that have no files show as Needs files after acceptance: the Add font files card stays the user's explicit gesture.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "object",
+          "properties": {
+            "conversationLanguage": { "type": "string", "description": "a language code, for example en" },
+            "reelLanguages": { "type": "string", "description": "language codes, comma-separated; the first is the master text" },
+            "formats": { "type": "string", "description": "for example 16:9 or 16:9, 9:16" },
+            "duration": { "type": "string", "description": "seconds, for example 30" }
+          }
+        },
+        "brief": {
+          "type": "object",
+          "properties": {
+            "audience": { "type": "string" },
+            "message": { "type": "string" },
+            "tone": { "type": "string" }
+          },
+          "description": "only what the user said"
+        },
+        "look": {
+          "type": "object",
+          "properties": {
+            "palette": { "type": "string", "description": "#RRGGBB colours, comma-separated: background, text, accent, accent 2" },
+            "titleFont": { "type": "string" },
+            "textFont": { "type": "string" },
+            "background": { "type": "string", "description": "an id of the engine's backgrounds" },
+            "backgroundMood": { "type": "string" },
+            "moods": { "type": "string" },
+            "effectsPack": { "type": "string" }
+          }
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": { "type": "string" },
+              "duration": { "type": "string", "description": "seconds" },
+              "visual": { "type": "string" },
+              "feeling": { "type": "string" }
+            },
+            "required": ["text"]
+          }
+        },
+        "music": { "type": "string", "description": "the ID of an approved audio resource, only when the user supplied one" }
+      }
+    }
+  },
+  {
     "name": "update_asset",
     "description": "Change one asset of the Resources block by its id (from get_state): status (proposed, approved, excluded, placeholder, hold; a hold needs a note), note, licence_note, or the scenes that use it (for example S01,S07). The user sees a plain card and accepts or refuses. Approving a file held for confidential data or a forbidden font licence is refused: that goes through the skill's organiser.",
     "input_schema": {

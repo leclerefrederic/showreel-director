@@ -236,7 +236,11 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     }
 
     func submit(_ itemID: UUID, answers: [String]) {
-        if let i = items.firstIndex(where: { $0.id == itemID }) { items[i].answers = answers }
+        if let i = items.firstIndex(where: { $0.id == itemID }) {
+            items[i].answers = answers
+            // the answers of the setup interview are kept, so that a wizard that cannot go on loses none of them
+            for (n, q) in items[i].questions.enumerated() where WizardInterview.headers.contains(q.header) && n < answers.count && !answers[n].isEmpty { project.wizardAnswers[q.header] = answers[n] }
+        }
         resumePending(answers)
         scrollTick += 1
     }

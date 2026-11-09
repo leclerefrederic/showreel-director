@@ -43,7 +43,7 @@ During the work, run `tools/verify.sh --fast`: the app and shared checks (`check
 
 ## Open work
 
-1. Studio v2 (`docs/studio-spec.md`): built, with their details archived in `docs/phases-done.md`: A, A2, A3, B, T, W1, W1b, W1c, W2, W3a, W3b, W5, L, P1, P2, P3, S, M, X, Q3, Q2, Q4, V1, Q5, V2, R, F and Q6. Next: W4 (timing inside the scene and content-driven thumbnails), then N (activity and notifications, in the spec). Later: Deliver (D), the remaining notes of `docs/ux-notes.md` and the lines of `docs/ideas.md`. Stop after each phase for the owner to test.
+1. Studio v2 (`docs/studio-spec.md`): built, with their details archived in `docs/phases-done.md`: A, A2, A3, B, T, W1, W1b, W1c, W2, W3a, W3b, W5, L, P1, P2, P3, S, M, X, Q3, Q2, Q4, V1, Q5, V2, R, F, Q6 and P5. Next: R1 (resources), W4 (timing inside the scene and content-driven thumbnails), N (activity and notifications, in the spec). Later: Deliver (D), the remaining notes of `docs/ux-notes.md` and the lines of `docs/ideas.md`. Stop after each phase for the owner to test.
 2. Warnings left: `isLoading` and `evaluateJavaScript` in `ChatModel`, `self` capture in `EnvModel`.
 3. Update `ROADMAP.md` when a limit is lifted.
 

@@ -69,7 +69,6 @@ struct ProjectSettingsForm: View {
     @EnvironmentObject var project: ProjectModel
 
     var body: some View {
-        HStack { Spacer(); ValidateButton(gate: "interview", block: "inspector") }
         ProjectForm()
     }
 }
