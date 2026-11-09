@@ -14,6 +14,12 @@ SRC_VER=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["versi
 BUNDLE_VER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist" 2>/dev/null)
 [ "$SRC_VER" = "$BUNDLE_VER" ] || { echo "app version: the bundle says '$BUNDLE_VER', shared/app-version.json says '$SRC_VER'"; fail=1; }
 [ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$R/shared/app-version.json" 2>/dev/null)" = "$SRC_VER" ] || { echo "the bundled shared/app-version.json differs from the source"; fail=1; }
+# the design package type is registered in the bundle's Info.plist (exported type, conforming to a zip archive, and the document type)
+PLIST="$APP/Contents/Info.plist"
+[ "$(/usr/libexec/PlistBuddy -c "Print :UTExportedTypeDeclarations:0:UTTypeIdentifier" "$PLIST" 2>/dev/null)" = "com.showreelstudio.studiopack" ] || { echo "Info.plist: the exported type com.showreelstudio.studiopack is missing"; fail=1; }
+/usr/libexec/PlistBuddy -c "Print :UTExportedTypeDeclarations:0:UTTypeConformsTo" "$PLIST" 2>/dev/null | grep -q "public.zip-archive" || { echo "Info.plist: the package type does not conform to a zip archive"; fail=1; }
+/usr/libexec/PlistBuddy -c "Print :UTExportedTypeDeclarations:0:UTTypeTagSpecification:public.filename-extension" "$PLIST" 2>/dev/null | grep -q "studiopack" || { echo "Info.plist: the .studiopack extension is not declared"; fail=1; }
+/usr/libexec/PlistBuddy -c "Print :CFBundleDocumentTypes:0:LSItemContentTypes" "$PLIST" 2>/dev/null | grep -q "com.showreelstudio.studiopack" || { echo "Info.plist: the document type for .studiopack is missing"; fail=1; }
 # only system libraries: nothing may point back to a build folder
 bad=$(otool -L "$APP/Contents/MacOS/ShowreelStudio" | tail -n +2 | awk '{print $1}' | grep -v -E '^(/usr/lib/|/System/)' || true)
 [ -z "$bad" ] || { echo "non-system libraries: $bad"; fail=1; }

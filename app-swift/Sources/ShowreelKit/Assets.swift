@@ -146,9 +146,10 @@ public enum Assets {
     // MARK: adding files
 
     /// Copies dropped files into `assets/source` and adds their rows, as the organiser's `--apply` does. Originals are never changed.
+    /// `holdReason` puts every file that the checks leave clean on hold with that reason (the rights of a package's resources not confirmed yet); an open font is exempt.
     /// Embeddable files that are not held also get their typed copy in `assets/prepared`. Sensitive non-embedded files are not copied.
     @discardableResult
-    public static func add(_ urls: [URL], to store: ProjectStore) throws -> [AssetRow] {
+    public static func add(_ urls: [URL], to store: ProjectStore, holdReason: String? = nil) throws -> [AssetRow] {
         let fm = FileManager.default
         var rows = load(store)
         var added: [AssetRow] = []
@@ -169,9 +170,12 @@ public enum Assets {
                 row.original = dst.lastPathComponent
                 // the automatic checks, at once, with no AI and no key: a flagged file stays in source/ (no prepared copy) and needs attention
                 var flags = ResourceChecks.flags(dst, rel: rel, type: type)
-                if type == "font", let info = FontInfo.read(dst), info.isOpenLicence, !info.forbidsEmbedding { row.licenceNote = "the font states its own open licence: \(info.licence ?? "")"; flags = [] }
+                var openFont = false
+                if type == "font", let info = FontInfo.read(dst), info.isOpenLicence, !info.forbidsEmbedding { row.licenceNote = "the font states its own open licence: \(info.licence ?? "")"; flags = []; openFont = true }
                 if !flags.isEmpty {
                     row.status = "hold"; row.notes = holdNote(flags, type: type)
+                } else if let why = holdReason, !openFont {
+                    row.status = "hold"; row.notes = why
                 } else {
                     row.status = "approved"                    // added by the user: it is theirs to use
                     try fm.createDirectory(at: prepared, withIntermediateDirectories: true)
@@ -187,8 +191,7 @@ public enum Assets {
                 let dst = uniqueURL(source, rel)
                 try fm.copyItem(at: url, to: dst)
                 row.original = dst.lastPathComponent
-                row.status = "approved"
-                row.notes = "not embedded"
+                if let why = holdReason { row.status = "hold"; row.notes = why } else { row.status = "approved"; row.notes = "not embedded" }
             }
             added.append(row)
         }
@@ -236,7 +239,7 @@ public enum Assets {
 
     // MARK: changing a row
 
-    static let holdReasons = ["name suggests", "font licence", "rights or consent", "low resolution", "logo bitmap", "heavy"]
+    static let holdReasons = ["name suggests", "font licence", "rights or consent", "rights not confirmed", "low resolution", "logo bitmap", "heavy"]
 
     /// The refusal for a change, or nil when it is allowed (the organiser's guards: a note for a hold, no approval of sensitive or
     /// licence-blocked files from here).
@@ -296,7 +299,7 @@ public enum Assets {
             }
             let wasHeld = rows[i].status == "hold"
             rows[i].status = st.rawValue
-            if st != .hold, wasHeld, holdReasons.contains(where: { rows[i].notes.hasPrefix($0) }) || rows[i].notes.contains("decide first") { rows[i].notes = "" }
+            if st != .hold, wasHeld, holdReasons.contains(where: { rows[i].notes.lowercased().hasPrefix($0) }) || rows[i].notes.contains("decide first") { rows[i].notes = "" }
         }
         if let n = note { rows[i].notes = n }
         if let l = licence { rows[i].licenceNote = l }

@@ -191,7 +191,7 @@ public enum JournalLinks {
         case "content": return CheckPanel.firstScene(in: first).map { .scene($0, tab: "composition") } ?? .storyboard
         case "transition": return .transition(from: first)
         case "track", "grid", "gridSettings": return .music
-        case "update", "restore", "reimport": return .project
+        case "update", "restore", "reimport", "package": return .project
         default: return nil
         }
     }

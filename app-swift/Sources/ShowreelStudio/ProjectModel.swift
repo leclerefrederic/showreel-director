@@ -1334,7 +1334,7 @@ extension ProjectModel {
         guard mode == StudioSettings.wizard, needsSetup, !wizardStarted, showreel != nil, AppSettings.shared.hasKey else { return }
         wizardStarted = true
         showCopilot = true; inspectorTab = .copilot
-        chat.ask(prompt: WizardInterview.prompt(projectName: title, conversationLanguage: showreel?.conversationLanguage))
+        chat.ask(prompt: WizardInterview.prompt(projectName: title, conversationLanguage: showreel?.conversationLanguage, file: showreel))
     }
 
     /// The way out of a wizard that cannot go on (no key, a failed request, or the user's choice): the answers already given become typed changes, and the

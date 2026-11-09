@@ -28,6 +28,18 @@ cat > "$APP/Contents/Info.plist" <<P
 <key>CFBundleShortVersionString</key><string>$APPVER</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
+<key>UTExportedTypeDeclarations</key><array><dict>
+<key>UTTypeIdentifier</key><string>com.showreelstudio.studiopack</string>
+<key>UTTypeDescription</key><string>Showreel Studio design package</string>
+<key>UTTypeConformsTo</key><array><string>public.zip-archive</string></array>
+<key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>studiopack</string></array></dict>
+</dict></array>
+<key>CFBundleDocumentTypes</key><array><dict>
+<key>CFBundleTypeName</key><string>Showreel Studio design package</string>
+<key>CFBundleTypeRole</key><string>Viewer</string>
+<key>LSHandlerRank</key><string>Owner</string>
+<key>LSItemContentTypes</key><array><string>com.showreelstudio.studiopack</string></array>
+</dict></array>
 </dict></plist>
 P
 cp -R shared "$APP/Contents/Resources/shared"

@@ -93,6 +93,8 @@ Left, and why:
 
 ## Project and wizard
 
+- Packages (PK1): a design can be saved as a package from the project settings, and a new project can start from one (an optional step of New project). The import card (author, dates, version, short hash, integrity, "Not signed", the declared rights and the confirmation box) opens from the library, a double-click or a drop. To judge in the rework: the wording of the sheet and the card, and where the list of packages should live once PK4 adds its window.
+
 - **Built in P5 (2026-11-09).** The choice Wizard or Manual at creation (two cards, Wizard needs a key), Clap leading the interview and proposing the starting pack as cards, the form in sections (formats as tiles, duration with presets and a live feasibility line, film languages as chips, a compact brief with examples as placeholders, three control cards), the base configuration with its "n of 5 set" progress, the interview gate derived from it (no "Mark as validated" button for the interview). The notes below are the owner's remarks that led to it.
 
 - Question (owner): what is the point of switching between Beginner and Expert inside a project? Assessment: little. The wizard only matters while setting a project up; once the base configuration is required (P2) and the workspace is the same for everyone, the toggle changes nothing the user can name. Proposal pending validation: remove the per-project Beginner/Expert switch; one setup form (P5) with a "Guide me step by step" button that opens the wizard for those who want it; the same workspace for everyone, with the Checks tab and Ask Clap as the guidance.

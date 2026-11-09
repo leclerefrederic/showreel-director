@@ -227,15 +227,48 @@ public enum WizardInterview {
         ]
     }
 
+    /// What a design package already set in a new project: the base items the form counts, and the tone. The Wizard does not ask them again.
+    public static func alreadySet(_ f: ShowreelFile) -> [String] {
+        guard f.package != nil else { return [] }
+        var out = ProjectSetup.requirements(f).filter { $0.isSet && $0.id != "conversationLanguage" }.map { $0.title.lowercased() }
+        if !(f.parameters.tone ?? "").isEmpty { out.append("tone") }
+        return out
+    }
+
+    /// The questions that are still open: all of them for an ordinary project, only what the design package left open for one that started from a package.
+    public static func questions(for f: ShowreelFile?) -> [[String: Any]] {
+        guard let f = f, f.package != nil else { return questions }
+        let gone = Set(ProjectSetup.missing(f).map { $0.id })
+        let keep: [String: String] = [headers[0]: "conversationLanguage", headers[1]: "reelLanguages", headers[2]: "formats", headers[3]: "duration"]
+        return questions.filter { q in
+            guard let h = q["header"] as? String else { return false }
+            if h == headers[4] { return true }                       // the audience and the message belong to this film, whatever the package says
+            return keep[h].map { gone.contains($0) } ?? true
+        }.map { q in
+            var q = q
+            if (q["header"] as? String) == headers[4], !(f.parameters.tone ?? "").isEmpty {
+                q["question"] = "Optional: who is it for, and what should they remember? The tone comes from the design package. Skip it if you prefer."
+            }
+            return q
+        }
+    }
+
     /// What Clap is asked at the start: lead the interview with these questions, then propose the whole pack at once with propose_starter_pack.
-    public static func prompt(projectName: String, conversationLanguage: String?) -> String {
-        let q = (try? JSONSerialization.data(withJSONObject: questions, options: [.sortedKeys])).map { String(decoding: $0, as: UTF8.self) } ?? "[]"
+    /// For a project that started from a design package, the questions are only what the package left open, and the pack leaves out what it set.
+    public static func prompt(projectName: String, conversationLanguage: String?, file: ShowreelFile? = nil) -> String {
+        let q = (try? JSONSerialization.data(withJSONObject: questions(for: file), options: [.sortedKeys])).map { String(decoding: $0, as: UTF8.self) } ?? "[]"
+        var fromPackage = ""
+        if let f = file, f.package != nil {
+            let set = alreadySet(f)
+            let lookSet = ProjectSetup.requirements(f).first { $0.id == "look" }?.isSet == true
+            fromPackage = "\nThis project started from a design package, so these are already set and you must not ask about them or propose them again: \(set.isEmpty ? "nothing yet" : set.joined(separator: ", ")). In propose_starter_pack give only what is still open" + (lookSet ? " (no `look`)" : "") + ", and do not change anything the package set."
+        }
         return """
         This is the new project \u{201C}\(projectName)\u{201D}, in Wizard mode: you lead its setup. Do this:
         1. Call ask_user ONCE with exactly these questions, unchanged: \(q)
         2. From the answers (and what the user wrote in their own words), propose a starting pack with ONE call to propose_starter_pack: `base` (conversationLanguage, reelLanguages as codes such as "en, fr", formats such as "16:9, 9:16", duration in seconds), `brief` (audience, message, tone, only what the user said), `look` (palette of #RRGGBB colours in the order background, text, accent, accent 2; titleFont and textFont from the skill's free list; background id; optionally moods and effectsPack), `scenes` (a short ordered list: text, duration in seconds, optionally visual and feeling) and `music` only if the user supplied an approved audio resource. Choose the look and the scenes from the user's words and the skill's references, not from a fixed style.
         3. The user reviews each card, or all at once, and nothing is saved until they accept. Do not change anything with any other tool during the setup. If a card is refused, ask what they want instead.
-        Answer in the user's language once you know it; until then, in English.
+        Answer in the user's language once you know it; until then, in English.\(fromPackage)
         """
     }
 

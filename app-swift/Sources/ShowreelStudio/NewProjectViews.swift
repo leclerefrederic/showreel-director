@@ -5,12 +5,15 @@ import SwiftUI
 /// The New project screen: a name, a folder and the way to set the project up, chosen once.
 struct NewProjectSheet: View {
     let onCreate: (String) -> Void
+    /// A package the user came with (from the import card): selected at once.
+    var preselected: LibraryPackage?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settings: AppSettings
     @State private var name = ""
     @State private var parent = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory())
     @State private var mode = StudioSettings.wizard
     @State private var error: String?
+    @State private var package: LibraryPackage?
 
     var body: some View {
         let wizard = Availability.wizard(hasKey: settings.hasKey)
@@ -33,6 +36,7 @@ struct NewProjectSheet: View {
                     }
                     if !wizard.isAvailable { ConnectKeyLink() }
                 }
+                PackagePickerSection(selected: $package)
                 if let e = error { Text(e).foregroundStyle(.red).font(.caption) }
             }
             .formStyle(.grouped)
@@ -46,6 +50,7 @@ struct NewProjectSheet: View {
             .padding(12)
         }
         .frame(width: 560)
+        .onAppear { if package == nil { package = preselected } }
     }
 
     /// Wizard needs a key: without one, Manual is what is chosen.
@@ -68,12 +73,17 @@ struct NewProjectSheet: View {
         let dir = parent.appendingPathComponent(folderName)
         let store = ProjectStore(root: dir)
         if store.hasShowreel { error = "That folder is already a project. Use Open folder."; return }
+        let existed = FileManager.default.fileExists(atPath: dir.path)
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             try store.create(name: name.trimmingCharacters(in: .whitespaces), conversationLanguage: nil, reelLanguages: [], mode: effectiveMode)
+            if let p = package { try PackageStart.start(p, library: PackageLibrary.standard, into: store) }
             dismiss()
             onCreate(dir.path)
-        } catch { self.error = error.localizedDescription }
+        } catch {
+            if !existed { try? FileManager.default.removeItem(at: dir) }          // a project that could not be made is not left half made
+            self.error = error.localizedDescription
+        }
     }
 }
 

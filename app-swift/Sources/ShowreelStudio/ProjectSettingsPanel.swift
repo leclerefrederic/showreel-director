@@ -57,6 +57,7 @@ struct ProjectSettingsPanel: View {
                         }
                     }
                     .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    PackageSettingsFooter().padding(.horizontal, 14).padding(.bottom, 14)
                 }
             }
         }

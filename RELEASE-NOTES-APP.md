@@ -2,6 +2,20 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.8.0 - 2026-11-09
+
+**What's new**
+- **Save a design as a package.** In the project settings, "Save design as package..." keeps the look, the default transition (when the project has one), the tone, the defaults (formats, duration, film languages, control level) and the resources you choose, one by one with their tags and the rights you gave them. A font added with the Add font files card carries its licence text. You give it a name, an author name (remembered for next time, never an e-mail address) and a note. The package is kept in your library, and you can export it as a `.studiopack` file to send. Saving a package does not change the project, so there is nothing to undo. A project that came from a package offers a new version of the same package, with a note saying what changed.
+- **Start a project from a package.** In New project, in Wizard and in Manual, an optional step offers the packages of your library, or "Open a .studiopack...". The design is applied to the new project and the resources are copied with their tags and rights. The project stays on its own, with no link to the package, and remembers where it came from. In Wizard, Clap only asks what the package leaves open; in Manual, the form arrives filled in and counts what is set.
+- **The import card.** Double-click a `.studiopack`, drop it on the app or open it from the library: the card shows the name, the author, the dates, the version, the short hash, whether the file is intact, "Not signed", whether you already have an older version, and every resource with the rights its author declared. Tick "I confirm I hold the rights to use these resources" to make them available; without it, the package is kept but its resources wait on Needs attention ("Rights not confirmed by you") until you answer for each. The confirmation is recorded with the version, and in the journal of every project that starts from it. A package never skips the automatic checks of the Resources tab: a file they flag stays flagged. Open fonts ask no question.
+- **A file you can trust, or not.** The app checks the package's hash: if the file was modified or damaged after the export, the card says so and asks you to continue or cancel. A package never runs anything: file names, sizes, the number of files and the kinds of file are checked first, and a package inside a package is refused.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2 (a project that started from a package adds a `package` record; older files open as before). Embedded skill 0.16.0. macOS 13 or later.
+
 ## 0.7.0 - 2026-11-09
 
 **What's new**

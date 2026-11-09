@@ -75,6 +75,11 @@ struct CloseGuardHook: NSViewRepresentable {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// A `.studiopack` opened by double-click, dropped on the Dock icon or sent by Open With: the import card shows it.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        Task { @MainActor in PackageInbox.shared.receive(urls) }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         for m in OpenProjects.shared.all where !(m.activity.isIdle) {
             if !m.confirmLeaving(.quit) { return .terminateCancel }

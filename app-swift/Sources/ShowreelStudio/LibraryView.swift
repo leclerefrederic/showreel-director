@@ -1,6 +1,7 @@
 import AppKit
 import ShowreelKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The project library window: every project the app knows. A row has a hover state; one click opens the project; its state is plain text (Setup, Storyboard,
 /// Built, Outdated, Missing), never a button. The application's settings are in the app menu only.
@@ -8,6 +9,9 @@ struct LibraryView: View {
     @EnvironmentObject var library: LibraryModel
     @Environment(\.openWindow) private var openWindow
     @State private var showNew = false
+    @State private var newPackage: LibraryPackage?
+    @State private var importing: ImportTicket?
+    @ObservedObject private var inbox = PackageInbox.shared
     @State private var updating: LibraryEntry?
     @State private var restoring: LibraryEntry?
     @State private var trashing: (entry: LibraryEntry, prompt: LibraryRules.TrashPrompt)?
@@ -41,12 +45,28 @@ struct LibraryView: View {
             HStack {
                 Button { showNew = true } label: { Label("New project...", systemImage: "plus") }
                 Button { openFolder() } label: { Label("Open folder...", systemImage: "folder") }
+                Button { openPackage() } label: { Label("Open a .studiopack...", systemImage: "shippingbox") }
                 Spacer()
             }
             .padding(10)
         }
         .frame(minWidth: 560, minHeight: 420)
-        .sheet(isPresented: $showNew) { NewProjectSheet { open($0) } }
+        .sheet(isPresented: $showNew, onDismiss: { newPackage = nil }) { NewProjectSheet(onCreate: { open($0) }, preselected: newPackage) }
+        .sheet(item: $importing) { t in
+            PackageImportSheet(url: t.url) { entry, start in if start { newPackage = entry; showNew = true } }
+        }
+        .onChange(of: inbox.pending) { url in if let u = url { importing = ImportTicket(url: u); inbox.pending = nil } }
+        .onAppear { if let u = inbox.pending { importing = ImportTicket(url: u); inbox.pending = nil } }
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            var taken = false
+            for p in providers where p.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                taken = true
+                p.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                    if let d = item as? Data, let u = URL(dataRepresentation: d, relativeTo: nil), u.pathExtension.lowercased() == PackageType.fileExtension { DispatchQueue.main.async { importing = ImportTicket(url: u) } }
+                }
+            }
+            return taken
+        }
         .sheet(item: $updating) { e in
             UpdateSheet(store: ProjectStore(root: URL(fileURLWithPath: e.path))) {
                 if let open = OpenProjects.shared.model(forPath: e.path), !open.confirmLeaving(.updateProject) { return }      // the project is open in a window with work in progress
@@ -83,6 +103,14 @@ struct LibraryView: View {
         panel.prompt = "Open"
         panel.message = "Choose a project folder"
         if panel.runModal() == .OK, let u = panel.url { open(u.path) }
+    }
+
+    private func openPackage() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false; panel.canChooseFiles = true; panel.allowsMultipleSelection = false
+        if let t = PackageFormat.contentType() { panel.allowedContentTypes = [t] }
+        panel.prompt = "Open"; panel.message = "Choose a design package"
+        if panel.runModal() == .OK, let u = panel.url { importing = ImportTicket(url: u) }
     }
 
     private func locate(_ e: LibraryEntry) {

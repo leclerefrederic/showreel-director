@@ -79,6 +79,33 @@ enum SelfCheck {
         try? fm.createDirectory(at: tmp, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: tmp) }
 
+        // the design package type is registered (a double-click on a .studiopack opens the app), and a package makes the round trip
+        if bundled {
+            let info = Bundle.main.infoDictionary ?? [:]
+            let exported = (info["UTExportedTypeDeclarations"] as? [[String: Any]])?.first { $0["UTTypeIdentifier"] as? String == PackageType.identifier }
+            let ext = ((exported?["UTTypeTagSpecification"] as? [String: Any])?["public.filename-extension"] as? [String]) ?? []
+            check(exported != nil && ext.contains(PackageType.fileExtension) && (exported?["UTTypeConformsTo"] as? [String])?.contains("public.zip-archive") == true, "the .studiopack type is declared in Info.plist (a zip archive)")
+            let docs = (info["CFBundleDocumentTypes"] as? [[String: Any]]) ?? []
+            check(docs.contains { ($0["LSItemContentTypes"] as? [String])?.contains(PackageType.identifier) == true }, "the .studiopack document type is declared in Info.plist")
+        }
+        do {
+            let pdir = tmp.appendingPathComponent("package")
+            try fm.createDirectory(at: pdir, withIntermediateDirectories: true)
+            let logo = Data("<svg xmlns='http://www.w3.org/2000/svg'/>".utf8)
+            let path = "assets/logo-01/logo.svg"
+            var pkg = DesignPackage(manifest: PackageManifest(name: "Selftest", author: "Selftest", created: "2026-01-01T00:00:00Z", modified: "2026-01-01T00:00:00Z"),
+                                    design: PackageDesign(look: .init(palette: ["#101820", "#FFFFFF"]), tone: "calm"),
+                                    resources: [PackageResource(id: "logo-01", type: "logo", originalName: "logo.svg", file: path, fileHash: PackageHash.sha256(logo), rights: "own work")], files: [path: logo])
+            try pkg.seal()
+            let file = pdir.appendingPathComponent("selftest.\(PackageType.fileExtension)")
+            try pkg.write(to: file)
+            let back = try PackageReader.read(file)
+            check(back.integrity == .matches && back.package.manifest.hash == pkg.manifest.hash && back.package.design == pkg.design && back.package.files == pkg.files, "a package is written and read back, and its hash matches")
+            var bytes = try Data(contentsOf: file); if let r = bytes.range(of: Data("calm".utf8)) { bytes[r.lowerBound] ^= 0x01 }
+            check((try? PackageReader.read(bytes).integrity) == .damaged, "a package changed by one byte is detected")
+            check((try? PackageZip.write([("../evil", Data())])) == nil, "an entry name that leaves its folder is refused")
+        } catch { check(false, "a package round trip: \(error.localizedDescription)") }
+
         if let sp = try? Skill.systemPrompt(project: tmp, lang: nil) {
             check(sp.text.contains("Showreel director") && sp.text.contains("Running inside Showreel Studio") && !sp.text.contains("{{"),
                   "system prompt builds, no placeholder left")

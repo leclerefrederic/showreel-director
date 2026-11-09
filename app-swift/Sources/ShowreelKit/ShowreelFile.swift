@@ -290,6 +290,27 @@ public struct ShowreelFile: Codable, Equatable {
         }
     }
 
+    /// Where a project started from a design package, kept as a record (the project has its own copy and no live link).
+    public struct PackageOrigin: Codable, Equatable, Sendable {
+        public var id: String
+        public var version: String
+        public var hash: String
+        public var appliedAt: String
+        public var unknown: [String: JSONValue] = [:]
+        public init(id: String, version: String, hash: String, appliedAt: String) { self.id = id; self.version = version; self.hash = hash; self.appliedAt = appliedAt }
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: DynamicKey.self)
+            id = try c.decode(String.self, forKey: "id")
+            version = try c.decode(String.self, forKey: "version")
+            hash = try c.decodeIfPresent(String.self, forKey: "hash") ?? ""
+            appliedAt = try c.decodeIfPresent(String.self, forKey: "appliedAt") ?? ""
+            unknown = try Keep.unknown(decoder, known: ["id", "version", "hash", "appliedAt"])
+        }
+        public func encode(to encoder: Encoder) throws {
+            try Keep.encode(encoder, fields: [("id", id), ("version", version), ("hash", hash), ("appliedAt", appliedAt)], unknown: unknown)
+        }
+    }
+
     public var schema: Int
     /// Absent (nil) means revision 0. Only "Update project" raises it; a save never does, so an old file stays recognisable as old until the user decides.
     public var formatRevision: Int?
@@ -306,6 +327,8 @@ public struct ShowreelFile: Codable, Equatable {
     public var origin: Origin?
     /// The tags of the resources (a logo, a wallpaper...), by resource ID: the app's own mechanics, the skill's manifest does not hold them.
     public var resourceTags: [String: [String]]?
+    /// The design package the project started from, if it did.
+    public var package: PackageOrigin?
     public var unknown: [String: JSONValue] = [:]
 
     public init(name: String, created: String = ShowreelFile.today(), conversationLanguage: String? = nil,
@@ -324,7 +347,7 @@ public struct ShowreelFile: Codable, Equatable {
         self.storyboards = [Montage()]
     }
 
-    static let keys: Set<String> = ["schema", "formatRevision", "name", "created", "conversationLanguage", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin", "resourceTags"]
+    static let keys: Set<String> = ["schema", "formatRevision", "name", "created", "conversationLanguage", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin", "resourceTags", "package"]
 
     // A hand-edited or exported file may lack keys: every key but the schema falls back to a default.
     // `scenes` is an ordered array; the phase A form, a dictionary of review states keyed by ID, is read too.
@@ -342,6 +365,7 @@ public struct ShowreelFile: Codable, Equatable {
         gates = try c.decodeIfPresent([String: String].self, forKey: "gates") ?? [:]
         origin = try c.decodeIfPresent(Origin.self, forKey: "origin")
         resourceTags = try c.decodeIfPresent([String: [String]].self, forKey: "resourceTags")
+        package = try c.decodeIfPresent(PackageOrigin.self, forKey: "package")
         if let list = try? c.decode([Scene].self, forKey: "scenes") {
             scenes = list
         } else if let legacy = try? c.decode([String: LegacyScene].self, forKey: "scenes") {
@@ -380,7 +404,7 @@ public struct ShowreelFile: Codable, Equatable {
     public func encode(to encoder: Encoder) throws {
         try Keep.encode(encoder, fields: [("schema", schema), ("formatRevision", formatRevision), ("name", name), ("created", created), ("conversationLanguage", conversationLanguage),
                                           ("reelLanguages", reelLanguages), ("step", step), ("parameters", parameters), ("decisions", decisions),
-                                          ("gates", gates), ("scenes", scenes), ("storyboards", storyboards), ("origin", origin), ("resourceTags", resourceTags)], unknown: unknown)
+                                          ("gates", gates), ("scenes", scenes), ("storyboards", storyboards), ("origin", origin), ("resourceTags", resourceTags), ("package", package)], unknown: unknown)
     }
 
     public static func today() -> String { dayString(Date()) }
