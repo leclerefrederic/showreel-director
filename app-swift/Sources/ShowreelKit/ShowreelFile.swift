@@ -141,6 +141,8 @@ public struct ShowreelFile: Codable, Equatable {
         public var content: [ContentItem]
         /// auto, guided or precise; absent: the project's.
         public var controlLevel: String?
+        /// The look the scene is drawn with, kept when it was locked: a later change of the project's look does not reach it. Dropped when it is unlocked.
+        public var lockedLook: Decisions?
         public var unknown: [String: JSONValue] = [:]
         /// Phase T kept start and end inside the scene. Read once to build the montage, never written back.
         var legacyStart: Double?
@@ -162,7 +164,7 @@ public struct ShowreelFile: Codable, Equatable {
         public var toModify: Bool { state == .wip && !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         /// What the user reads: the ID, and the name beside it when there is one.
         public var label: String { (name ?? "").isEmpty ? id : "\(id) \u{00B7} \(name!)" }
-        static let keys: Set<String> = ["id", "name", "duration", "text", "texts", "visual", "feeling", "handoff", "inCuts", "extra", "status", "note", "archived", "overrides", "content", "controlLevel", "start", "end"]
+        static let keys: Set<String> = ["id", "name", "duration", "text", "texts", "visual", "feeling", "handoff", "inCuts", "extra", "status", "note", "archived", "overrides", "content", "controlLevel", "lockedLook", "start", "end"]
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: DynamicKey.self)
             id = try c.decode(String.self, forKey: "id")
@@ -183,6 +185,7 @@ public struct ShowreelFile: Codable, Equatable {
             archived = try c.decodeIfPresent(Bool.self, forKey: "archived") ?? (status == "ditched")
             overrides = try c.decodeIfPresent(Decisions.self, forKey: "overrides")
             controlLevel = try c.decodeIfPresent(String.self, forKey: "controlLevel")
+            lockedLook = try c.decodeIfPresent(Decisions.self, forKey: "lockedLook")
             // a file from before the content list: the scene's words become one text item, every attribute auto (nothing is lost)
             if c.contains("content") { content = try c.decode([ContentItem].self, forKey: "content") }
             else { content = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? [] : [ContentItem(id: "c1", type: "text", text: text)] }
@@ -191,7 +194,7 @@ public struct ShowreelFile: Codable, Equatable {
         public func encode(to encoder: Encoder) throws {
             try Keep.encode(encoder, fields: [("id", id), ("name", name), ("duration", duration), ("text", text), ("texts", texts), ("visual", visual),
                                               ("feeling", feeling), ("handoff", handoff), ("inCuts", inCuts), ("extra", extra),
-                                              ("status", status), ("note", note), ("archived", archived), ("overrides", overrides), ("content", content), ("controlLevel", controlLevel)], unknown: unknown)
+                                              ("status", status), ("note", note), ("archived", archived), ("overrides", overrides), ("content", content), ("controlLevel", controlLevel), ("lockedLook", lockedLook)], unknown: unknown)
         }
     }
 
@@ -327,6 +330,8 @@ public struct ShowreelFile: Codable, Equatable {
     public var origin: Origin?
     /// The tags of the resources (a logo, a wallpaper...), by resource ID: the app's own mechanics, the skill's manifest does not hold them.
     public var resourceTags: [String: [String]]?
+    /// The IDs of scenes that were deleted: never given to a new scene (IDs are never reused).
+    public var retiredIDs: [String]?
     /// The design package the project started from, if it did.
     public var package: PackageOrigin?
     public var unknown: [String: JSONValue] = [:]
@@ -347,7 +352,7 @@ public struct ShowreelFile: Codable, Equatable {
         self.storyboards = [Montage()]
     }
 
-    static let keys: Set<String> = ["schema", "formatRevision", "name", "created", "conversationLanguage", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin", "resourceTags", "package"]
+    static let keys: Set<String> = ["schema", "formatRevision", "name", "created", "conversationLanguage", "reelLanguages", "step", "parameters", "decisions", "gates", "scenes", "storyboards", "origin", "resourceTags", "package", "retiredIDs"]
 
     // A hand-edited or exported file may lack keys: every key but the schema falls back to a default.
     // `scenes` is an ordered array; the phase A form, a dictionary of review states keyed by ID, is read too.
@@ -365,6 +370,7 @@ public struct ShowreelFile: Codable, Equatable {
         gates = try c.decodeIfPresent([String: String].self, forKey: "gates") ?? [:]
         origin = try c.decodeIfPresent(Origin.self, forKey: "origin")
         resourceTags = try c.decodeIfPresent([String: [String]].self, forKey: "resourceTags")
+        retiredIDs = try c.decodeIfPresent([String].self, forKey: "retiredIDs")
         package = try c.decodeIfPresent(PackageOrigin.self, forKey: "package")
         if let list = try? c.decode([Scene].self, forKey: "scenes") {
             scenes = list
@@ -404,7 +410,7 @@ public struct ShowreelFile: Codable, Equatable {
     public func encode(to encoder: Encoder) throws {
         try Keep.encode(encoder, fields: [("schema", schema), ("formatRevision", formatRevision), ("name", name), ("created", created), ("conversationLanguage", conversationLanguage),
                                           ("reelLanguages", reelLanguages), ("step", step), ("parameters", parameters), ("decisions", decisions),
-                                          ("gates", gates), ("scenes", scenes), ("storyboards", storyboards), ("origin", origin), ("resourceTags", resourceTags), ("package", package)], unknown: unknown)
+                                          ("gates", gates), ("scenes", scenes), ("storyboards", storyboards), ("origin", origin), ("resourceTags", resourceTags), ("package", package), ("retiredIDs", retiredIDs)], unknown: unknown)
     }
 
     public static func today() -> String { dayString(Date()) }

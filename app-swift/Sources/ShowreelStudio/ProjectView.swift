@@ -69,17 +69,19 @@ struct ProjectView: View {
                     Button { project.finishSetup() } label: { Label("Workspace", systemImage: "rectangle.split.3x1") }
                         .disabledWithReason(project.showreel.map { ProjectSetup.isComplete($0) ? nil : "The base configuration is not complete: " + ProjectSetup.progress($0).line } ?? "This project has no data yet", way: "Set the rest, then the workspace opens")
                 } else {
+                    ChecksBadge()
                     Button { project.showCatalogue.toggle() } label: { Label("Catalogue", systemImage: "square.grid.2x2") }
                         .keyboardShortcut("k", modifiers: [.command, .shift])
                         .help("The Catalogue: effects, transitions, backgrounds and looks to drag onto a scene, an item or a marker (Shift-Command-K)")
                     Button { project.resetLayout() } label: { Label("Reset layout", systemImage: "rectangle.3.group") }
                         .help("Reset layout: put the library, the inspector and the storyboard back to their standard sizes")
                         .disabledWithReason(project.layout.isStandard ? "The layout already is the standard one" : nil)
-                    Button { project.centerMode = project.centerMode == .build ? .viewer : .build } label: { Label("Build", systemImage: "play.rectangle") }
-                        .help("Build the film, test it and play it")
                 }
-                Button { project.showProjectSettings.toggle() } label: { Label("Project settings", systemImage: "slider.horizontal.3") }
-                    .help("The project's parameters and its global look. The application's settings (key, model, environment) are in the Showreel Studio menu, Settings (Command-,).")
+                // in the workspace, Build and the project settings are entries of the rail; during the base configuration the button is still here
+                if inSetup {
+                    Button { project.showProjectSettings.toggle() } label: { Label("Project settings", systemImage: RailEntry.project.role.symbol) }
+                        .help("The project's parameters and its global look. The application's settings (key, model, environment) are in the Showreel Studio menu, Settings (Command-,).")
+                }
             }
         }
         .sheet(isPresented: $project.showUpdateSheet) { UpdateSheet(store: project.store) { project.updateProject() } }
@@ -96,6 +98,10 @@ struct ProjectView: View {
             if f.canSkip { Button("Continue the build") { project.resumeBuild(skip: f.skip) } }
             Button("Close", role: .cancel) {}
         } message: { f in Text(f.message + (f.canSkip ? "\n\nTry again writes it again. Continue the build goes on and leaves it as an empty frame until it is generated." : "")) }
+        .alert(project.deletePrompt?.title ?? "Delete scene?", isPresented: Binding(get: { project.pendingDelete != nil }, set: { if !$0 { project.pendingDelete = nil } })) {
+            Button("Delete scene", role: .destructive) { project.confirmDelete() }
+            Button("Cancel", role: .cancel) { project.pendingDelete = nil }
+        } message: { Text(project.deletePrompt?.message ?? "") }
         .sheet(item: $project.buildOffer) { BuildConfirmSheet(pending: $0) }
         .sheet(isPresented: $project.showLayoutWarnings) { LayoutWarningsSheet() }
         .sheet(item: $project.historyFor) { tab in HistoryView(tab: tab) }
@@ -123,12 +129,12 @@ struct ImportBanner: View {
                     .font(.callout.weight(.medium))
                 Text(offer.found.isEmpty ? "Nothing to import. Create the project data to fill it in from the blocks."
                      : "Found: " + offer.found.joined(separator: "; ") + ". Check, then confirm.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .fontSmall().foregroundStyle(.secondary)
             }
             Spacer()
             Button("Not now") { project.dismissImport() }
             Button(offer.found.isEmpty ? "Create" : "Confirm") { project.confirmImport() }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -152,11 +158,11 @@ struct DocBanner: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(names.prefix(1).uppercased() + names.dropFirst()) \(project.docIssues.count > 1 ? "were" : "was") \(verb).").font(.callout.weight(.medium))
                 Text("The app does not overwrite them. Review what it can read from them, or leave them as they are.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .fontSmall().foregroundStyle(.secondary)
             }
             Spacer()
             Button("Leave as is") { project.leaveDocs() }
-            Button("Review...") { project.reviewReimport() }.buttonStyle(.borderedProminent)
+            Button("Review...") { project.reviewReimport() }.buttonStyle(PrimaryButtonStyle())
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -184,14 +190,14 @@ struct ReimportSheet: View {
                     .frame(maxHeight: 280)
                 }
                 Text("Only the project questions, palette, fonts, languages, duration and scenes are read. The documents are then rewritten by the app; the old versions stay in the history.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .fontSmall().foregroundStyle(.secondary)
             }
             HStack {
                 Button("Replace the documents with the app's version", role: .destructive) { project.replaceDocs() }
                 Spacer()
                 Button("Cancel") { project.reimport = nil }.keyboardShortcut(.cancelAction)
                 Button("Import these changes") { project.acceptReimport() }
-                    .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction).buttonStyle(PrimaryButtonStyle())
                     .disabled(project.reimport?.changes.isEmpty ?? true)
             }
         }
@@ -205,10 +211,10 @@ struct ChangeRow: View {
     let change: Change
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(change.label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(change.label).fontSmall(weight: .semibold).foregroundStyle(.secondary)
             HStack(alignment: .top, spacing: 6) {
                 Text(change.before).foregroundStyle(.secondary).strikethrough(change.before != "(empty)" && change.before != "(none)")
-                Image(systemName: "arrow.right").font(.caption).foregroundStyle(.tertiary)
+                Image(systemName: "arrow.right").fontSmall().foregroundStyle(.tertiary)
                 Text(change.after).fontWeight(.medium)
             }
             .font(.callout)

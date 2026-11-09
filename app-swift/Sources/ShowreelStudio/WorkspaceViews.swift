@@ -9,28 +9,34 @@ struct WorkspaceView: View {
     @EnvironmentObject var project: ProjectModel
     @State private var live: PanelLayout?
     @State private var dragStart: Double?
-    private static let centerMinWidth = 320.0, centerMinHeight = 200.0, handle = 6.0
+    private static let centerMinWidth = 320.0, centerMinHeight = 200.0, handle = 6.0, rail = 60.0
 
     private var layout: PanelLayout { live ?? project.layout }
 
     var body: some View {
         GeometryReader { geo in
-            let lw = fit(layout.libraryWidth, floor: PanelLayout.minLibrary, room: geo.size.width - layout.inspectorWidth - Self.centerMinWidth - 2 * Self.handle)
-            let iw = fit(layout.inspectorWidth, floor: PanelLayout.minInspector, room: geo.size.width - lw - Self.centerMinWidth - 2 * Self.handle)
-            let sh = fit(layout.stripHeight, floor: PanelLayout.minStrip, room: geo.size.height - Self.centerMinHeight - Self.handle)
-            VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    LibraryPane().frame(width: lw)
-                    SplitHandle(vertical: true) { dx, ended in drag(.library, from: lw, by: dx, ended: ended) }
-                    CenterPane().frame(minWidth: Self.centerMinWidth, maxWidth: .infinity)
-                    SplitHandle(vertical: true) { dx, ended in drag(.inspector, from: iw, by: -dx, ended: ended) }
-                    InspectorPane().frame(width: iw)
+            let room = geo.size.width - Self.rail - Self.handle      // the rail, and the gap at the right edge
+            let lw = fit(layout.libraryWidth, floor: PanelLayout.minLibrary, room: room - layout.inspectorWidth - Self.centerMinWidth - 2 * Self.handle)
+            let iw = fit(layout.inspectorWidth, floor: PanelLayout.minInspector, room: room - lw - Self.centerMinWidth - 2 * Self.handle)
+            let sh = fit(layout.stripHeight, floor: PanelLayout.minStrip, room: geo.size.height - Self.centerMinHeight - 3 * Self.handle)
+            // the canvas, with the rail at the left and the regions as rounded panels one gap apart (the dividers are the gaps)
+            HStack(spacing: 0) {
+                ViewRailView()
+                VStack(spacing: 0) {
+                    HStack(spacing: 0) {
+                        LibraryPane().frame(width: lw).panelContainer()
+                        SplitHandle(vertical: true) { dx, ended in drag(.library, from: lw, by: dx, ended: ended) }
+                        CenterPane().frame(minWidth: Self.centerMinWidth, maxWidth: .infinity).panelContainer()
+                        SplitHandle(vertical: true) { dx, ended in drag(.inspector, from: iw, by: -dx, ended: ended) }
+                        InspectorPane().frame(width: iw).panelContainer()
+                    }
+                    SplitHandle(vertical: false) { dy, ended in drag(.strip, from: sh, by: -dy, ended: ended) }
+                    FilmStrip().frame(height: sh).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
-                SplitHandle(vertical: false) { dy, ended in drag(.strip, from: sh, by: -dy, ended: ended) }
-                FilmStrip().frame(height: sh)
+                .padding(.top, Self.handle).padding(.trailing, Self.handle).padding(.bottom, Self.handle)
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .canvasBackground()
         .dragDropRoot(project)
     }
 
@@ -45,9 +51,9 @@ struct WorkspaceView: View {
         let v = (dragStart ?? Double(start)) + Double(delta)
         var l = project.layout
         switch p {
-        case .library: l = PanelLayout(library: v, inspector: l.inspector, strip: l.strip, settings: l.settings)
-        case .inspector: l = PanelLayout(library: l.library, inspector: v, strip: l.strip, settings: l.settings)
-        case .strip: l = PanelLayout(library: l.library, inspector: l.inspector, strip: v, settings: l.settings)
+        case .library: l = l.replacing(library: v)
+        case .inspector: l = l.replacing(inspector: v)
+        case .strip: l = l.replacing(strip: v)
         }
         if ended { live = nil; dragStart = nil; project.setLayout(l) } else { live = l }
     }
@@ -57,15 +63,18 @@ struct WorkspaceView: View {
 struct SplitHandle: View {
     let vertical: Bool
     let onDrag: (CGFloat, Bool) -> Void
+    @EnvironmentObject var theme: Theme
+    @State private var hot = false
 
     var body: some View {
         ZStack {
             Rectangle().fill(Color.clear)
-            Rectangle().fill(Color.primary.opacity(0.18)).frame(width: vertical ? 1 : nil, height: vertical ? nil : 1)
+            Capsule().fill(hot ? theme.accent.opacity(0.7) : Color.clear).frame(width: vertical ? 2 : 40, height: vertical ? 40 : 2)          // the gap is the divider: it shows under the pointer
         }
         .frame(width: vertical ? 6 : nil, height: vertical ? nil : 6)
         .contentShape(Rectangle())
         .onHover { inside in
+            hot = inside
             if inside { (vertical ? NSCursor.resizeLeftRight : NSCursor.resizeUpDown).set() } else { NSCursor.arrow.set() }
         }
         .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global)
@@ -75,57 +84,6 @@ struct SplitHandle: View {
 }
 
 // MARK: library
-
-struct LibraryPane: View {
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        VStack(spacing: 0) {
-            LibraryTabs().padding(10)
-            Divider()
-            if project.showreel == nil {
-                Text("This project has no data yet. Confirm the import or create it with the banner above.").font(.callout).foregroundStyle(.secondary).padding(16)
-                Spacer()
-            } else {
-                switch project.libraryTab {
-                case .resources: ResourcesLibrary()
-                case .scenes: ScenesLibrary()
-                case .transitions: TransitionsLibrary()
-                case .checks: ChecksLibrary()
-                }
-            }
-        }
-        .background(Color(nsColor: .controlBackgroundColor))
-    }
-}
-
-/// The tabs of the left panel: Resources, Scenes, Transitions and Checks, with a pill on Checks that counts what is red or orange.
-struct LibraryTabs: View {
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(LibraryTab.allCases) { t in
-                Button { project.libraryTab = t } label: {
-                    HStack(spacing: 5) {
-                        Text(t.title)
-                        if t == .checks, project.attentionCount > 0 {
-                            Text("\(project.attentionCount)").font(.caption2.weight(.bold)).foregroundStyle(.white).padding(.horizontal, 5).padding(.vertical, 1)
-                                .background(project.checkEntries.contains { $0.result.level == .fail } ? Color.red : Color.orange, in: Capsule())
-                        }
-                    }
-                    .font(.callout.weight(project.libraryTab == t ? .semibold : .regular))
-                    .frame(maxWidth: .infinity).padding(.vertical, 4)
-                    .background(project.libraryTab == t ? Color(nsColor: .controlColor) : Color.clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(2).background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .animation(Motion.quick, value: project.libraryTab)
-    }
-}
 
 /// The checks of the project, by group (Project, Resources, Scenes, Storyboard, Music, Build). A click opens what the check is about.
 struct ChecksLibrary: View {
@@ -143,13 +101,13 @@ struct ChecksLibrary: View {
                         HStack(spacing: 6) {
                             Image(systemName: g.group.symbol).foregroundStyle(.secondary)
                             Text(g.group.title).font(.callout.weight(.semibold))
-                            if !hot.isEmpty { Text("\(hot.count)").font(.caption2.weight(.bold)).foregroundStyle(.white).padding(.horizontal, 5).background(hot.contains { $0.result.level == .fail } ? Color.red : Color.orange, in: Capsule()) }
+                            if !hot.isEmpty { Text("\(hot.count)").fontSmall(weight: .bold).foregroundStyle(.white).padding(.horizontal, 5).background(hot.contains { $0.result.level == .fail } ? Color.red : Color.orange, in: Capsule()) }
                             Spacer()
                         }
                         ForEach(hot) { e in CheckRow(entry: e) }
                         if !rest.isEmpty {
                             DisclosureGroup("Fine or waiting (\(rest.count))") { VStack(spacing: 2) { ForEach(rest) { e in CheckRow(entry: e) } } }
-                                .font(.caption).foregroundStyle(.secondary)
+                                .fontSmall().foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -171,10 +129,10 @@ struct CheckRow: View {
                 Image(systemName: r.level.symbol).foregroundStyle(r.level.color).frame(width: 16)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(r.title).font(.callout.weight(.medium)).multilineTextAlignment(.leading)
-                    Text(r.detail).font(.caption).foregroundStyle(.secondary).lineLimit(3).multilineTextAlignment(.leading)
+                    Text(r.detail).fontSmall().foregroundStyle(.secondary).lineLimit(3).multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 2)
-                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                Image(systemName: "chevron.right").fontSmall().foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 6).padding(.vertical, 4).frame(maxWidth: .infinity, alignment: .leading)
             .background(hovering ? Color.primary.opacity(0.07) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
@@ -198,7 +156,7 @@ struct LibraryRow<Content: View>: View {
             content()
                 .padding(.horizontal, 8).padding(.vertical, 5)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(selected ? Color.accentColor.opacity(0.2) : hovering ? Color.primary.opacity(0.07) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .rowSurface(selected: selected, hovering: hovering)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -245,91 +203,6 @@ enum AssetFiles {
     }
 }
 
-struct ScenesLibrary: View {
-    @EnvironmentObject var project: ProjectModel
-    @EnvironmentObject var chat: ChatModel
-    @EnvironmentObject var settings: AppSettings
-    @State private var showArchived = false
-
-    private var file: ShowreelFile? { project.showreel }
-    private var onIDs: Set<String> { Set(file?.film.map { $0.id } ?? []) }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button { project.addScene() } label: { Label("New scene", systemImage: "plus") }
-                Button { draft() } label: { Label("Draft with AI", systemImage: "sparkles") }
-                    .help("Optional. Clap proposes scenes as cards you accept or refuse.")
-                LockAllValidatedButton()
-                Spacer()
-            }
-            .padding(10)
-            let list = file?.orderedLibrary ?? []
-            if list.isEmpty {
-                Text("No scene yet. Create one, or draft with the AI.").font(.callout).foregroundStyle(.secondary).padding(16)
-                Spacer()
-            } else {
-                ScrollView {
-                    let ids = list.map { $0.id }
-                    VStack(spacing: 0) {
-                        ForEach(Array(list.enumerated()), id: \.element.id) { n, s in
-                            let next: String? = n + 1 < ids.count ? ids[n + 1] : nil
-                            VStack(alignment: .leading, spacing: 0) {
-                                SlotGap(target: .librarySlot(before: s.id))
-                                HStack(spacing: 4) {
-                                    Handle()
-                                    Button { toggle(s.id) } label: { Image(systemName: project.expanded.contains(s.id) ? "chevron.down" : "chevron.right").frame(width: 12) }
-                                        .buttonStyle(.borderless).help("Show what the scene is made of")
-                                    Toggle("", isOn: Binding(get: { onIDs.contains(s.id) }, set: { project.setEnabled(s.id, $0) }))
-                                        .toggleStyle(.checkbox).labelsHidden().help("In the film (the storyboard)")
-                                    LibraryRow(selected: project.selection == .scene(s.id), action: { project.select(.scene(s.id)) }) { SceneRowView(scene: s, on: onIDs.contains(s.id)) }
-                                        .simultaneousGesture(TapGesture(count: 2).onEnded { project.beginRename(s.id) })
-                                }
-                                .padding(.vertical, 1)
-                                .dragSource(.scene(s.id), label: s.label, icon: "film")
-                                .dropTarget(.scene(s.id))
-                                .dropSlots(before: .librarySlot(before: s.id), after: .librarySlot(before: next))
-                                .contextMenu { SceneMenu(id: s.id) }
-                                if project.expanded.contains(s.id) { SceneTreeView(scene: s.id).padding(.leading, 34).padding(.bottom, 4).transition(.opacity) }
-                            }
-                            .transition(Motion.appear)
-                        }
-                        SlotGap(target: .librarySlot(before: nil))
-                    }
-                    .animation(Motion.spring, value: ids)
-                    .animation(Motion.spring, value: project.expanded)
-                    .padding(.horizontal, 6)
-                    let archived = file?.scenes.filter { $0.archived } ?? []
-                    if !archived.isEmpty {
-                        DisclosureGroup("Archived (\(archived.count))", isExpanded: $showArchived) {
-                            ForEach(archived) { s in
-                                HStack {
-                                    Text(s.id).font(.callout.monospaced()).strikethrough()
-                                    Text(s.text.isEmpty ? "" : s.text).lineLimit(1).font(.caption).foregroundStyle(.secondary)
-                                    Spacer()
-                                    Button("Bring back") { project.restoreScene(s.id) }.buttonStyle(.borderless).font(.caption)
-                                }
-                            }
-                            Text("An archived scene keeps its ID for good.").font(.caption2).foregroundStyle(.secondary)
-                        }
-                        .padding(10)
-                    }
-                }
-            }
-        }
-    }
-
-    private func toggle(_ id: String) {
-        if project.expanded.contains(id) { project.expanded.remove(id) } else { project.expanded.insert(id) }
-    }
-
-    private func draft() {
-        guard settings.hasKey else { project.error = "Drafting needs an AI. Connect one in Settings, or write the scenes by hand: everything else works without it."; return }
-        project.inspectorTab = .copilot
-        chat.ask(prompt: Wizard.draftScenesPrompt, status: "Scene draft requested")
-    }
-}
-
 /// The items of the context menu of a scene, wherever the scene is shown (library row, frame of the reel).
 struct SceneMenu: View {
     let id: String
@@ -339,7 +212,7 @@ struct SceneMenu: View {
         Button("Rename") { project.beginRename(id) }
         Button("Duplicate") { project.duplicateScene(id) }
         Divider()
-        Button("Archive", role: .destructive) { project.archiveScene(id) }
+        Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(id) }
     }
 }
 
@@ -352,39 +225,11 @@ struct OverrideBadge: View {
         if let f = project.showreel {
             let groups = LookOverrides.groups(of: scene, in: f)
             if !groups.isEmpty {
-                Image(systemName: "paintpalette.fill").font(.system(size: 9)).foregroundColor(.orange).padding(3)
+                Image(systemName: "paintpalette.fill").font(.system(size: 11)).foregroundColor(.orange).padding(3)
                     .background(Color.orange.opacity(0.2), in: Circle())
                     .help("This scene replaces the project's " + groups.map { $0.rawValue }.joined(separator: ", "))
             }
         }
-    }
-}
-
-struct SceneRowView: View {
-    let scene: ShowreelFile.Scene
-    let on: Bool
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        HStack(spacing: 8) {
-            SceneBadges(scene: scene)
-            Text(scene.id).font(.callout.monospaced().weight(.semibold))
-            VStack(alignment: .leading, spacing: 0) {
-                InlineEdit(text: scene.name ?? "", placeholder: "Name this scene",
-                           editing: Binding(get: { project.renaming == scene.id }, set: { if !$0, project.renaming == scene.id { project.renaming = nil } }),
-                           commit: { project.renameScene(scene.id, $0) }) {
-                    if let n = scene.name { Text(n).lineLimit(1).font(.callout.weight(.medium)) }
-                    else { Text(scene.text.isEmpty ? "(no text)" : scene.text).lineLimit(1).font(.callout) }
-                }
-                Text((scene.name != nil && !scene.text.isEmpty ? scene.text + " \u{00B7} " : "") + scene.durationLabel).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-            }
-            OverrideBadge(scene: scene)
-            Spacer(minLength: 0)
-            BlockMarker(ref: .scene(scene.id))
-        }
-        .opacity(on ? 1 : 0.5)
-        .flashWhenChanged(.scene(scene.id))
-        .temporaryVeil(.scene(scene.id))
     }
 }
 
@@ -429,7 +274,7 @@ struct LookLibrary: View {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack { Text(p.name).font(.callout.weight(.semibold)); if LookPackages.matches(p, tone: tone) { chip("Fits your tone") }; Spacer() }
                         Swatches(colours: p.palette)
-                        Text(p.why).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text(p.why).fontSmall().foregroundStyle(.secondary).lineLimit(2)
                     }
                 }
             }
@@ -437,7 +282,7 @@ struct LookLibrary: View {
             row(.palettes, "project") {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Project palette").font(.callout.weight(.semibold))
-                    if let p = d?.palette, !p.isEmpty { Swatches(colours: p) } else { Text("Not chosen yet").font(.caption).foregroundStyle(.secondary) }
+                    if let p = d?.palette, !p.isEmpty { Swatches(colours: p) } else { Text("Not chosen yet").fontSmall().foregroundStyle(.secondary) }
                 }
             }
             ForEach(LookPackages.all()) { p in
@@ -450,7 +295,7 @@ struct LookLibrary: View {
                 row(.fonts, "asset:" + a.id) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(AssetFonts.family(a, in: project.root)).font(.callout.weight(.semibold))
-                        Text("Your font").font(.caption2).foregroundStyle(.secondary)
+                        Text("Your font").fontSmall().foregroundStyle(.secondary)
                     }
                 }
             }
@@ -459,14 +304,14 @@ struct LookLibrary: View {
                     HStack {
                         Text(f.name).font(.custom(FontRegistry.shared.family(f.name), size: 17)).lineLimit(1)
                         Spacer()
-                        Text(f.cat).font(.caption2).foregroundStyle(.secondary)
+                        Text(f.cat).fontSmall().foregroundStyle(.secondary)
                     }
                 }
             }
         case .backgrounds:
             ForEach((engine.catalogue?.backgrounds ?? []).filter { matches($0.name) || matches($0.family) }) { b in
                 row(.backgrounds, b.id) {
-                    HStack { Text(b.name).font(.callout); Spacer(); Text(b.animated ? "Animated" : b.family).font(.caption2).foregroundStyle(.secondary) }
+                    HStack { Text(b.name).font(.callout); Spacer(); Text(b.animated ? "Animated" : b.family).fontSmall().foregroundStyle(.secondary) }
                 }
             }
         case .effects:
@@ -474,19 +319,19 @@ struct LookLibrary: View {
                 row(.effects, "pack:" + p.name) {
                     VStack(alignment: .leading, spacing: 1) {
                         HStack { Text(p.name).font(.callout.weight(.semibold)); chip("Pack"); Spacer() }
-                        Text(p.feel).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        Text(p.feel).fontSmall().foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
             }
             ForEach((engine.catalogue?.effects ?? []).filter { $0.cat != EngineCatalogue.transitionCategory && matches($0.name) }) { e in
                 row(.effects, e.name) {
-                    HStack { Text(e.name).font(.callout); Spacer(); Text(e.cat).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }
+                    HStack { Text(e.name).font(.callout); Spacer(); Text(e.cat).fontSmall().foregroundStyle(.secondary).lineLimit(1) }
                 }
             }
         case .transitions:
             ForEach((engine.catalogue?.effects ?? []).filter { $0.cat == EngineCatalogue.transitionCategory }) { e in
                 row(.transitions, e.name) {
-                    HStack { Text(e.name).font(.callout); Spacer(); if Look.isPreviewOnly(e.name) { chip("preview only") } else { Text(e.energy).font(.caption2).foregroundStyle(.secondary) } }
+                    HStack { Text(e.name).font(.callout); Spacer(); if Look.isPreviewOnly(e.name) { chip("preview only") } else { Text(e.energy).fontSmall().foregroundStyle(.secondary) } }
                 }
             }
         }
@@ -502,7 +347,7 @@ struct LookLibrary: View {
     }
 
     private func chip(_ t: String) -> some View {
-        Text(t).font(.caption2.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 1).background(Color.accentColor.opacity(0.18), in: Capsule())
+        Text(t).fontSmall(weight: .semibold).padding(.horizontal, 6).padding(.vertical, 1).background(Color.accentColor.opacity(0.18), in: Capsule())
     }
 }
 
@@ -533,7 +378,7 @@ struct SceneThumb: View {
         ZStack {
             Rectangle().fill(Color.primary.opacity(0.06))
             if frames.isEmpty {
-                if let f = engine.failure { Text(f).font(.caption2).foregroundStyle(.secondary).padding(4) } else { ProgressView().controlSize(.small) }
+                if let f = engine.failure { Text(f).fontSmall().foregroundStyle(.secondary).padding(4) } else { ProgressView().controlSize(.small) }
             } else if still {
                 Image(nsImage: frames[min(frames.count - 1, frames.count * 3 / 4)]).resizable().scaledToFill()
             } else {
@@ -571,7 +416,7 @@ struct SceneTreeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             if let s = project.showreel?.scenes.first(where: { $0.id == scene }) {
-                HStack(spacing: 6) { SceneBadges(scene: s); BuildIndicator(id: scene, labelled: true); Spacer(); BlockMarker(ref: .scene(scene)) }
+                HStack(spacing: 6) { SceneStatusIcon(scene: s); Text(project.sceneStatus(for: s).kind.title).fontSmall().foregroundStyle(.secondary); Spacer(); BlockMarker(ref: .scene(scene)) }
                     .padding(.vertical, 2).temporaryVeil(.scene(scene), radius: 5)
             }
             ForEach(project.trees[scene] ?? []) { g in group(g) }
@@ -583,8 +428,8 @@ struct SceneTreeView: View {
     @ViewBuilder private func group(_ g: SceneGroupNodes) -> some View {
         Button { project.selectNode(scene, g.group, nil) } label: {
             HStack(spacing: 4) {
-                Text(g.group.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                if g.group != .look && !g.nodes.isEmpty { Text("\(g.nodes.count)").font(.caption2).foregroundStyle(.tertiary) }
+                Text(g.group.title).fontSmall(weight: .semibold).foregroundStyle(.secondary)
+                if g.group != .look && !g.nodes.isEmpty { Text("\(g.nodes.count)").fontSmall().foregroundStyle(.tertiary) }
                 if g.group == .look, let s = project.showreel?.scenes.first(where: { $0.id == scene }) { OverrideBadge(scene: s) }
                 Spacer()
             }
@@ -593,7 +438,7 @@ struct SceneTreeView: View {
         .buttonStyle(.plain)
         .dropTarget(.sceneNode(scene: scene, group: g.group, node: nil))
         if g.nodes.isEmpty {
-            Text(g.group == .effects ? "none yet" : "nothing yet").font(.caption2).foregroundStyle(.tertiary).padding(.leading, 8)
+            Text(g.group == .effects ? "none yet" : "nothing yet").fontSmall().foregroundStyle(.tertiary).padding(.leading, 8)
         }
         ForEach(g.nodes) { n in node(g.group, n) }
         if g.group == .composition { SlotGap(target: .contentSlot(scene: scene, before: nil), size: 24) }
@@ -608,13 +453,13 @@ struct SceneTreeView: View {
                 HStack(spacing: 6) {
                     if item != nil { Handle() }
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(n.title).font(.caption).lineLimit(1).truncationMode(.middle)
-                        Text(n.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        Text(n.title).fontSmall().lineLimit(1).truncationMode(.middle)
+                        Text(n.detail).fontSmall().foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 2)
                     if let i = item { BlockMarker(ref: .item(scene: scene, item: i)) }
-                    if let st = n.status { Text(st.rawValue).font(.caption2.weight(.semibold)).foregroundStyle(st.color) }
-                    if let o = n.origin { Text(o.rawValue).font(.caption2).foregroundStyle(o == .overridden ? Color.orange : .secondary) }
+                    if let st = n.status { Text(st.rawValue).fontSmall(weight: .semibold).foregroundStyle(st.color) }
+                    if let o = n.origin { Text(o.rawValue).fontSmall().foregroundStyle(o == .overridden ? Color.orange : .secondary) }
                 }
             }
             .dropTarget(.sceneNode(scene: scene, group: group, node: n.id))

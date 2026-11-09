@@ -291,14 +291,14 @@ public enum Checks {
         if live.isEmpty { return [r("any", "Scenes", .pending, "No scene to review yet.")] }
         var out = live.map { s -> CheckResult in
             switch s.state {
-            case .validated: return r(s.id, "\(s.id) reviewed", .ok, "Validated" + (s.note.isEmpty ? "" : ": " + s.note))
+            case .validated: return r(s.id, "\(s.id) reviewed", .ok, "Ready" + (s.note.isEmpty ? "" : ": " + s.note))
             case .locked: return r(s.id, "\(s.id) reviewed", .ok, "Locked" + (s.note.isEmpty ? "" : ": " + s.note))
-            case .wip where s.toModify: return r(s.id, "\(s.id) reviewed", .tight, "to modify: " + s.note)
-            default: return r(s.id, "\(s.id) reviewed", .pending, "WIP: not validated yet")
+            case .wip where s.toModify: return r(s.id, "\(s.id) reviewed", .tight, "To review, a change was asked: " + s.note)
+            default: return r(s.id, "\(s.id) reviewed", .pending, "To review: not Ready yet")
             }
         }
         let left = live.filter { !$0.state.isReviewed }
-        out.insert(left.isEmpty ? r("all", "Every scene on is Validated", .ok, "ready for the Go") : r("all", "Every scene on is Validated", .pending, "\(left.count) of \(live.count) still to decide"), at: 0)
+        out.insert(left.isEmpty ? r("all", "Every visible scene is Ready", .ok, "ready for the Go") : r("all", "Every visible scene is Ready", .pending, "\(left.map { $0.id }.joined(separator: ", ")) not Ready yet (\(left.count) of \(live.count))"), at: 0)
         return out
     }
 

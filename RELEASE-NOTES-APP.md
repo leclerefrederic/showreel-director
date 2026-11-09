@@ -2,6 +2,88 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.14.0 - 2026-11-10
+
+**What's new**
+- **A dark editor look with its own identity.** Graphite surfaces, hairline borders, rounded panels and one teal accent for the selection and the one main action. Every window is dark, Settings included (there is no setting for it yet).
+- **A view rail at the left of the workspace**: Film, Look, Build and Project, each with an icon and a short label; the selected one is lit. It does what the Build and Project settings buttons of the top bar did, and those two buttons are gone from the top bar (during the first project setup, the Project settings button is still there). Look opens the project settings on the global look, with the design board in the centre; Film brings back the viewer.
+- **The regions are rounded panels one gap apart**, and the dividers are those gaps (they show under the pointer). The right panel's two tabs, Inspector and Ask Clap, are segmented tabs.
+- **One set of design tokens** decides every colour, radius, space and text size (the six Status colours of a scene keep their meaning). The text colours and the Status colours are checked for contrast on the panel surfaces.
+- **No text under 11 pt.** Every small text (captions, notes, counters) is now 11 pt, the small style.
+
+**Changed**
+- The toggle switches and the main buttons use the new styles; the lists and the strip keep their structure and are only moved to the dark surfaces where it was a plain swap. The strip, the lists, the inspector and the forms are redrawn in the next two phases.
+- Choosing Film or Build on the rail closes the project settings panel (the rail shows one place at a time).
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
+## 0.13.0 - 2026-11-09
+
+**What's new**
+- **One Status icon per scene, the same on the list and on the strip.** Six states, worst first, and the tooltip lists every one that applies, with the reason and the way to fix it: Needs attention (red, the scene's code test failed), Not written (grey dashed, no file yet), Out of date (blue arrows), Layout warning (yellow triangle), To review (orange hammer, with your instruction in the tooltip) and Ready (green check, Ready and its file up to date). A "?" above the list explains them.
+- **Clear scene rows.** Handle, ID, the name (and the first words under it), the length rounded to 0.1 s, then three fixed columns: Status (read-only), Visible (the eye) and Locked (the lock), both click targets that say why when they refuse. The transition line is indented under the scene it leaves, joined by a thin connector: "Flip card \u00b7 0.55 s", "Cut".
+- **Three switches in the inspector: Visible, Ready and Locked,** and a **Delete scene** button at the bottom. Ready means you are satisfied; off means To review, and the scene's instruction says what to change. Only a Ready scene can be locked ("Make the scene Ready first"). Delete scene asks first, names what is lost, can be undone and is journalled; the scene's ID is never given again.
+- **A real lock.** A locked scene is frozen in time and space, visible or hidden: no change to its content, look, length, visibility, place or deletion, and no change elsewhere that would move its start (inserting, deleting, showing, hiding or lengthening a scene before it): "S07 is locked at 0:24: unlock it, or change a scene after it". A Build never rewrites it (it is listed as locked on the card), nor Generate or Fix this scene.
+- **Locking keeps a copy of the scene's look.** A change of the project's look no longer reaches a locked scene and the "apply anyway" card no longer lists it. Unlocking drops the copy; when it differs from the project's look the unlock card says so.
+- **Clap proposes, you decide.** `set_ready` and `delete_scene` are always cards, even with apply-directly; Clap can no longer set a scene's state through update_scene.
+
+**Changed**
+- "Validated" is called **Ready** and "WIP" **To review** everywhere you read them (the stored words are unchanged: no migration).
+- The Go reads "every visible scene is Ready": a locked scene is Ready, a hidden scene is ignored.
+- OK, MODIFY, DITCH and Archive are gone. A scene archived or ditched in an older project is a hidden scene under "Not in the storyboard" (with a note of what it was); showing it brings it back.
+- A scene locked before this version keeps following the project's look until it is unlocked and locked again.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
+## 0.12.0 - 2026-11-09
+
+**What's new**
+- **The left panel is the Storyboard, with the Resources below.** No more tabs for Resources, Scenes and Transitions: the Storyboard (the plan of the montage) takes about two thirds of the panel and the Resources the rest, so a resource and the scene it goes to are always in sight. Drag the divider; its place is remembered for each project. The Resources can be collapsed to their header, or expanded to the whole height (and restored).
+- **A flat Storyboard list.** One row per scene, in order, with one thin line between two scenes for the transition ("to Cross dissolve, 0.8 s", "to Cut"), keeping the "approximate render at assembly" and "instruction pending" notes. Click a scene to select it everywhere (list, strip, inspector); click a transition line to select its marker on the strip and open its inspector. Drag a row by its handle: the scene moves with its outgoing transition. Under the list, "Not in the storyboard" shows the scenes that are switched off or archived, with the reason and the way back.
+- **State icons on each row, nothing else.** After the ID and the name: review state (to review, approved, to modify), locked, build state of the scene's file (not generated, up to date, stale, edited by hand, failed its test) and layout warnings, in that order, at most four. Each has a tooltip with the reason and, when something needs attention, the way to fix it.
+- **The scene's tree is the Overview in the Inspector.** What the tree showed (composition elements in order, effects, look with what is inherited or replaced) is at the top of a scene's inspector; a click on a line opens the matching tab on that element, and a resource dropped on the Overview goes to the scene.
+- **Checks are a badge in the top bar** ("Checks 3", red or orange, or plain "Checks" when nothing needs attention). A click opens the list in the centre, grouped as before (Project, Resources, Scenes, Storyboard, Music, Build), and a click on a check goes to what it is about.
+- **Keyboard.** With the pointer over the Storyboard list, the up and down arrows move between scenes (as the strip's arrows do) and Delete switches the selected scene off (Undo brings it back).
+- A resource can be dropped on a row of the Storyboard, on a frame of the strip or on the Overview of the inspector. A locked scene refuses it with its reason; during a Build everything is refused with its reason.
+
+**Changed**
+- The Transitions tab is gone: its lines are in the Storyboard, and the transitions to drag are in the Catalogue (Shift-Command-K).
+- The look-override badge of a scene is no longer on its row: it is in the Overview, under Look.
+- The strip's and the list's selection are one and the same.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
+## 0.11.0 - 2026-11-09
+
+**What's new**
+- **The API's "busy" answers are waited out.** A 429 (rate limit), a 529 (overloaded) or a 5xx that the API marks as retryable no longer stops the Build: the app waits the time the API gives in `retry-after` (else 5 s, doubled each time, at most 2 minutes) and asks again, up to 5 times. The panel says "Waiting for the API, retry in 20 s (2 of 5)" and counts down; the journal has a line per attempt with the status and the kind. A lost connection and a busy API share one counter per scene, so a scene never costs more than a few requests. Any other answer (a 400, a 401...) is not asked again and keeps the API's own text. Cancel ends a wait at once, and the time limits of a request do not run while the app waits.
+- **Scenes written at the same time.** Settings, Advanced: "Scenes written at the same time", 1 to 4 (3 by default). The frame of the film is written first and alone; then the scenes run in a sliding window, a new one starting as soon as one is done. The film is assembled in the order of the storyboard, whatever the order the files arrived in. Each request now also gets one line per scene of the whole storyboard (words, length, mood, passage into the next scene), because a scene written together with its neighbours cannot see them.
+- **When the API limits requests during a parallel Build**, the number at once goes down by one for the rest of that Build ("Lowered to 2 scenes at once: the API is limiting requests"), never below 1.
+- **A scene that fails does not stop the ones being written.** The Build ends after them and offers "Continue vN". Cancel stops every request in flight; what is already written (and tested) is kept.
+- **The panel shows several scenes writing at once**, a bar that moves at each file, and two times: the real time and the writing time added up.
+- **The confirmation card has a time**: "about 6 min at 3 scenes at once (118 output tokens a second, measured on the last Build)". It starts from 125 tokens a second and 7 000 tokens a scene, then uses what the last Build measured (recorded in the journal after each Build). Always an estimate.
+
+**Changed**
+- Scenes written together cost a little more (each call repeats the scene contract) and cannot see each other's result; one at a time (set 1) is as before.
+
+**What you need to do**
+- Nothing. Set "Scenes written at the same time" to 1 to write one scene at a time as before.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.2. macOS 13 or later.
+
 ## 0.10.3 - 2026-11-09
 
 **What's new**

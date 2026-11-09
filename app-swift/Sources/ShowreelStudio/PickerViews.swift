@@ -17,7 +17,7 @@ struct PickerButton: View {
 
     var body: some View {
         Button { open = true } label: {
-            HStack(spacing: 4) { Text(label).lineLimit(1); Image(systemName: "chevron.up.chevron.down").font(.system(size: 9)) }
+            HStack(spacing: 4) { Text(label).lineLimit(1); Image(systemName: "chevron.up.chevron.down").font(.system(size: 11)) }
         }
         .buttonStyle(.bordered)
         .popover(isPresented: $open, arrowEdge: .bottom) {
@@ -48,7 +48,7 @@ struct CataloguePicker: View {
                 TextField("Search", text: $search).textFieldStyle(.roundedBorder)
                 if groups.count > 2 { Picker("", selection: $group) { ForEach(groups, id: \.self) { Text($0).tag($0) } }.labelsHidden().frame(maxWidth: 150) }
             }
-            if kind == .background, !ctx.hasPalette { Text("Drawn in a neutral palette until you choose yours.").font(.caption).foregroundStyle(.secondary) }
+            if kind == .background, !ctx.hasPalette { Text("Drawn in a neutral palette until you choose yours.").fontSmall().foregroundStyle(.secondary) }
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10, alignment: .top)], spacing: 10) {
                     if let n = none {
@@ -76,7 +76,7 @@ struct CataloguePicker: View {
                 }
                 HStack(spacing: 4) {
                     Text(title).font(.callout.weight(.semibold)).lineLimit(1)
-                    if let c = chip { Text(c).font(.caption2).padding(.horizontal, 5).background((enabled ? Color.primary : Color.orange).opacity(0.12), in: Capsule()).lineLimit(1) }
+                    if let c = chip { Text(c).fontSmall().padding(.horizontal, 5).background((enabled ? Color.primary : Color.orange).opacity(0.12), in: Capsule()).lineLimit(1) }
                     Spacer(minLength: 0)
                     if chosen { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
                 }
@@ -114,7 +114,7 @@ struct CataloguePalette: View {
                 Image(systemName: "square.grid.2x2")
                 Text("Catalogue").font(.headline)
                 Spacer()
-                Text("drag onto a scene, an item or a marker").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                Text("drag onto a scene, an item or a marker").fontSmall().foregroundStyle(.secondary).lineLimit(1)
                 Button { project.showCatalogue = false } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).help("Close the Catalogue")
             }
             .padding(.horizontal, 10).padding(.vertical, 7).background(.bar)
@@ -126,7 +126,7 @@ struct CataloguePalette: View {
             LookLibrary(kinds: [.looks, .palettes, .backgrounds, .effects, .transitions])
         }
         .frame(width: 310, height: 440)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .raisedBackground()
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.primary.opacity(0.18)))
         .shadow(color: .black.opacity(0.25), radius: 14, y: 4)
         .offset(offset)

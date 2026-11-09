@@ -1,5 +1,21 @@
 # Ideas parking lot
 
+## Questions to settle with the owner (remind him before writing any prompt)
+
+2026-11-10: the owner waived these questions before the visual redesign (DS1): the defaults that exist today stand until he says otherwise (Checks badge in the top bar, the 2/3 and 1/3 split, transitions beside a locked scene stay editable, an instruction does not switch Ready off). Each line is a decision the owner has not taken yet; the recommendation is mine, not a decision. Delete a line once it is settled and recorded where it belongs (ux-notes, spec).
+
+- 2026-11-10 (UI2): when the owner writes an instruction on a scene that is Ready, should the app offer "Switch Ready off?" at that moment (recommended), or leave the scene Ready with a pending instruction (today)?
+- 2026-11-10 (UI2): should a lock also freeze the transitions on both sides of the locked scene? Today the transition leaving a locked scene stays editable, although it changes how the scene ends on screen.
+- 2026-11-10 (UI2): locked scenes from before UI2 have no copy of their look, so they still follow the global look until unlocked and locked again. Take the copy automatically when the project opens (recommended: at that moment it equals the current look, so nothing changes on screen)?
+- 2026-11-10 (UI1): the Checks badge in the top bar was chosen by default; confirm it after using it, or switch to a thin status row at the bottom of the left panel.
+- 2026-11-10 (UI1): the 2/3 and 1/3 split of the left panel was never judged on a laptop screen: confirm the proportions and the default state of the Resources section.
+- 2026-11-10 (BG2): keep 3 scenes written at once as the default? Decide after the 1-against-3 measurements (total time, cost, coherence of the two films).
+- 2026-11-10 (P5, from the backlog): rework of the Wizard and Manual creation experience: ask the owner first what bothers him in each, independently.
+
+## Ideas
+
+- 2026-11-10: interface skins (phase SK1, after DS1 to DS3): a skin is a JSON file of design tokens (colours, radii, spacing, type scale) loaded at run time, never code; bundled skins (a dark default, a light one, a high-contrast one), a picker in Settings that applies at once, import and export of one skin file from `~/Library/Application Support/ShowreelStudio/Skins/`, a contrast gate that refuses or warns on a skin below the minimum ratios and falls back to the default. It needs the theme read through the environment (not static) and every view migrated to tokens first. A skin is the app's own look, not the film's palette and not a design package (.studiopack). Icons: SK1 carries an icon map only (a stable semantic role such as status.review or lock.closed mapped to an SF Symbol name, plus weight and size scale), validated at load (every symbol must exist, the six Status roles must stay distinct, the legend and the tooltips read the same map); custom icon artwork (a .studioskin zip with plain SVG or PDF template images, no scripts or external references, size limits, a hash like the packages) is a later phase (SK2).
+
 Ideas for Showreel Studio that are not in the current phase. Nothing here is built, estimated or scheduled until the owner moves an item into `docs/studio-spec.md`. Add one line per idea, newest first, with the date.
 
 - 2026-11-10: voice mode for the copilot: push-to-talk with on-device speech recognition (Apple Speech, `requiresOnDeviceRecognition`, microphone and speech usage strings in Info.plist), optional spoken replies (AVSpeechSynthesizer), spoken accept or refuse on the proposal cards. Nothing leaves the Mac for recognition. Today the system dictation (Edit, Start Dictation) already works in the copilot field.
@@ -35,3 +51,8 @@ Ideas for Showreel Studio that are not in the current phase. Nothing here is bui
 - Test the scenes in parallel (two or three at once) when scenes are written in parallel.
 - 2026-11-09 (BA2): ask again, after a short wait, a request that the API refused with 429 or 529 (overloaded); today the Build stops there and Continue resumes it.
 - 2026-11-09 (BA2): kill the children of a command the app runs (process group), not only the shell; a grandchild that ignores SIGTERM can outlive a cancelled test.
+- 2026-11-09 (UI1): a faithful preview of one scene in the centre (a one-scene assembled page: scenes are separate files since BG1c); measure speed and fidelity first.
+- 2026-11-09 (UI1): if the Checks badge is too far from the work, a thin status row at the bottom of the left panel is the alternative (same list, same click-through).
+- 2026-11-09 (UI2): a "free gap" for editing between two locked scenes while keeping the gap constant (today a change that would move a locked scene's start is refused).
+- 2026-11-09 (UI2): the stored states stay wip/validated/locked/ditched and the `archived` flag; a later migration could drop "ditched" and "archived" from the file for good.
+- 2026-11-10 (DS1): a light theme (the tokens are swappable at run time, the app forces the dark appearance for now); loading, importing and exporting skins and a picker, on top of the theme object and the icon roles.

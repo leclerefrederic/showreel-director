@@ -1,6 +1,9 @@
 # Roadmap
 
 ## Done
+- Dark theme from one set of design tokens (contrast-tested), a theme object read from the environment, a view rail (Film, Look, Build, Project) and rounded panels; text never below 11 pt; a source guard that stops views picking their own colours (DS1). DS2 (the strip and the lists) and DS3 (the inspector and the forms) take the 189 remaining colour picks to the theme; there is no light theme.
+- Scene rows with one Status icon (six states), Visible and Locked columns; three switches (Visible, Ready, Locked) and Delete scene in the inspector; a real lock (frozen in time and space, a copy of its look, never rewritten by a Build); the Go reads every visible scene is Ready (UI2).
+- Left panel: the Storyboard (flat list with transition lines, state icons, "Not in the storyboard") above the Resources browser, one divider remembered per project; the Checks are a badge in the top bar with their list in the centre (UI1).
 - 3D layer (`engine/gl`, `SR3D`): Three.js scenes with seeded particles driven by time, a shader library and a GLSL lint, drawn onto the 2D stage; inert without WebGL, reported by the harness (`scripts/test_sr3d.js`, `evals/gl-spike`).
 - Packaging and repo checks: `tools/package.py`, `tools/check.py`, GitHub Action `.github/workflows/check.yml`.
 - MP4 export without a browser: `showreel-director/scripts/export_mp4.js`.
@@ -38,7 +41,9 @@
 - Look board and font picker previews show titles at regular weight only.
 - The 3D layer is not verified by the test host (no WebGL in Node): a film with 3D scenes is judged in the player, and the app has no MP4 export for it.
 - No ceiling on the agent: a Build that loops costs until Cancel build (the output is the model's maximum, the steps are guarded at 1 000).
-- A request that is cut (lost connection, no content for 120 s even with pings, more than 8 minutes) is asked again twice; an answer of the API (429, 500, 529) is not: the Build stops and "Continue" resumes it.
+- Scenes are written up to 4 at a time (3 by default for this prototype): the frame first and alone, then a sliding window. Scenes written together cannot see each other's result: each request gets one line per scene of the storyboard instead (words, length, mood, passage), so rhythm and vocabulary between neighbours can drift more than when they are written one at a time. When the API limits requests (429, 529) the width goes down by one for the rest of that Build.
+- A scene is about 7 000 output tokens and a minute of generation. More compact scenes that reuse the kit's helpers would cut both: not done, a known limit.
+- A request that is cut (lost connection, no content for 120 s even with pings, more than 8 minutes) is asked again twice; a 429, a 529 and a retryable 5xx are asked again up to 5 times after the wait the API gives (or 5 s doubled, at most 2 min); the two kinds share one counter per scene; any other answer is not.
 - A scene is tested on its own: what only shows in the whole film (a transition that hides a text, rhythm and coherence between scenes, a scene that is fine alone and wrong beside its neighbour) is still judged by the user and by the test of the whole film; the layout warnings of the last Build are kept for the session only.
 - A Build reuses a scene when what it was written from is unchanged (its content, look, brief and the music under it, relative to its start). What a neighbour does to it (a transition's free instruction, the scene next to it) does not make it stale, and a change of the scene contract is said on the card without rewriting.
 - An MP4 bakes the beat reaction in; a muted version needs its own export (`--silent`).

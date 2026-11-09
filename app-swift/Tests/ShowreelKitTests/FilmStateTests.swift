@@ -82,6 +82,7 @@ final class FilmStateTests: XCTestCase {
         try assembledV1()
         try store.apply(.sceneLock(ids: ["S02"], locked: true))
         XCTAssertEqual(sceneState("S02"), .upToDate, "locking changes no input")
+        try stripLockedLook(store, ["S02"])          // a scene locked before UI2 follows the project's look: the case this test is about
         try store.apply(.decisions([DecisionChange(.palette, "#000009, #FFFFFF, #FF0000, #00FF00")], title: nil))      // what the card of a global change lets the owner apply
         XCTAssertEqual(sceneState("S02"), .stale); XCTAssertEqual(status().state, .stale)
         let a = Availability.regenerate("S02", status(), file: file).why

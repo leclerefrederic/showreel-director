@@ -36,7 +36,7 @@ struct ProjectForm: View {
             }
             section("Brief", required: false) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Optional. Say it in a few words; you can come back to it.").font(.caption).foregroundStyle(.secondary)
+                    Text("Optional. Say it in a few words; you can come back to it.").fontSmall().foregroundStyle(.secondary)
                     compact(.audience, "Audience"); compact(.message, "Message"); compact(.tone, "Tone"); compact(.constraints, "Constraints")
                 }
             }
@@ -59,7 +59,7 @@ struct ProjectForm: View {
 
     private func section<C: View>(_ title: String, required: Bool, @ViewBuilder _ content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack { Text(title).font(.headline); if required { Text("Required").font(.caption2.weight(.semibold)).foregroundStyle(.orange).padding(.horizontal, 6).padding(.vertical, 1).background(Color.orange.opacity(0.14), in: Capsule()) } }
+            HStack { Text(title).font(.headline); if required { Text("Required").fontSmall(weight: .semibold).foregroundStyle(.orange).padding(.horizontal, 6).padding(.vertical, 1).background(Color.orange.opacity(0.14), in: Capsule()) } }
             content()
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
@@ -74,7 +74,7 @@ struct ProjectForm: View {
             ProgressView(value: Double(p.set), total: Double(p.total))
             HStack(spacing: 10) {
                 ForEach(ProjectSetup.requirements(f)) { r in
-                    Label(r.title, systemImage: r.isSet ? "checkmark.circle.fill" : "circle").font(.caption).foregroundStyle(r.isSet ? Color.green : .secondary)
+                    Label(r.title, systemImage: r.isSet ? "checkmark.circle.fill" : "circle").fontSmall().foregroundStyle(r.isSet ? Color.green : .secondary)
                 }
             }
         }
@@ -91,7 +91,7 @@ struct ProjectForm: View {
                             RoundedRectangle(cornerRadius: 3).stroke(on ? Color.accentColor : Color.secondary, lineWidth: 1.5).background(RoundedRectangle(cornerRadius: 3).fill(on ? Color.accentColor.opacity(0.18) : .clear))
                                 .aspectRatio(fm.w / fm.h, contentMode: .fit).frame(height: 34)
                                 .frame(width: 44, height: 44)
-                            Text(fm.id).font(.caption.weight(.semibold)); Text(fm.name).font(.caption2).foregroundStyle(.secondary)
+                            Text(fm.id).fontSmall(weight: .semibold); Text(fm.name).fontSmall().foregroundStyle(.secondary)
                         }
                         .padding(8).background(on ? Color.accentColor.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(on ? Color.accentColor : Color.primary.opacity(0.1)))
@@ -99,7 +99,7 @@ struct ProjectForm: View {
                     }.buttonStyle(.plain)
                 }
             }
-            if fm9x16(f) { Text("9:16 changes the layout design: decide it now.").font(.caption).foregroundStyle(.secondary) }
+            if fm9x16(f) { Text("9:16 changes the layout design: decide it now.").fontSmall().foregroundStyle(.secondary) }
         }
     }
     private func fm9x16(_ f: ShowreelFile?) -> Bool { (f?.decisions.formats ?? []).contains("9:16") }
@@ -118,7 +118,7 @@ struct ProjectForm: View {
             }
             if let f = f, let h = ProjectSetup.durationHint(f) {
                 Label(h.text, systemImage: h.level == .ok ? "checkmark.circle" : h.level == .fail ? "xmark.octagon" : "exclamationmark.triangle")
-                    .font(.caption).foregroundStyle(h.level == .ok ? Color.green : h.level == .fail ? Color.red : Color.orange).fixedSize(horizontal: false, vertical: true)
+                    .fontSmall().foregroundStyle(h.level == .ok ? Color.green : h.level == .fail ? Color.red : Color.orange).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -138,7 +138,7 @@ struct ProjectForm: View {
                 ForEach(Array(codes.enumerated()), id: \.element) { i, c in
                     HStack(spacing: 4) {
                         Text(ProjectLanguages.name(c)).font(.callout)
-                        if i == 0 && codes.count > 1 { Text("master").font(.caption2).foregroundStyle(.secondary) }
+                        if i == 0 && codes.count > 1 { Text("master").fontSmall().foregroundStyle(.secondary) }
                         Button { setReel(codes.filter { $0 != c }) } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.buttonStyle(.plain).help("Remove \(ProjectLanguages.name(c))")
                     }
                     .padding(.horizontal, 8).padding(.vertical, 4).background(Color.accentColor.opacity(0.14), in: Capsule())
@@ -146,9 +146,9 @@ struct ProjectForm: View {
                 Menu("Add a language") {
                     ForEach(ProjectLanguages.all.filter { !codes.contains($0.code) }, id: \.code) { l in Button(l.name) { setReel(codes + [l.code]) } }
                 }.menuStyle(.borderlessButton).fixedSize()
-                if codes.isEmpty { Text("Pick at least one.").font(.caption).foregroundStyle(.secondary) }
+                if codes.isEmpty { Text("Pick at least one.").fontSmall().foregroundStyle(.secondary) }
             }
-            Text(ParameterKey.reelLanguages.help).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(ParameterKey.reelLanguages.help).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -159,7 +159,7 @@ struct ProjectForm: View {
                 Button { if l.rawValue != current { project.perform(.parameter(.controlLevel, l.rawValue)) } } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(l.title).font(.callout.weight(.semibold))
-                        Text(l.help).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(l.help).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(10).frame(maxWidth: .infinity, minHeight: 78, alignment: .topLeading)
                     .background(current == l.rawValue ? Color.accentColor.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))

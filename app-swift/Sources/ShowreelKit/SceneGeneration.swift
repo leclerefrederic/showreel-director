@@ -89,6 +89,9 @@ public enum SceneGeneration {
         \(BuildRunner.contentBrief(only))
         Visual: \(s.visual.isEmpty ? "(none)" : s.visual). Feeling: \(s.feeling.isEmpty ? "(none)" : s.feeling).
 
+        The whole storyboard, one line per scene, from the storyboard itself (scenes may be written at the same time, so only these lines are known for a scene that is not finished; keep the film coherent with them):
+        \(storyboardLines(f, timeline: tl, current: id))
+
         \(SceneContract.music(scene: id, store: store).map { $0 + "\n" } ?? "")Scenes already written in this version (stay consistent with them in rhythm and vocabulary; do not copy them):
         \(SceneContract.summary(version: version, store: store, excluding: id).isEmpty ? "(none yet)" : SceneContract.summary(version: version, store: store, excluding: id))
         Images: embedded under the key of their resource id, drawn with `SR.img(id)` (null until ready); use only the approved assets the content above lists.
@@ -100,6 +103,17 @@ public enum SceneGeneration {
         \(doc("brief.md"))
         \(revisionText(revision))
         """
+    }
+
+    /// One line per scene of the film: id, words, length, the mood wanted and the passage into the next scene. Computed from the storyboard, never from written files.
+    static func storyboardLines(_ f: ShowreelFile, timeline tl: [TimedScene], current: String) -> String {
+        tl.map { t in
+            let s = t.scene
+            let words = s.text.isEmpty ? "no words" : "\u{201C}\(clip(s.text, limit: 60))\u{201D}"
+            let len = t.length.map { ProjectDocs.seconds($0) + " s" } ?? "its own length"
+            let next = t.item.transition.isCut ? "a cut" : t.item.transition.text
+            return "- \(s.id)\(s.id == current ? " (this scene)" : ""): \(words); \(len); mood: \(s.feeling.isEmpty ? "(none)" : clip(s.feeling, limit: 50)); passage into the next scene: \(t.scene.id == tl.last?.scene.id ? "none (last scene)" : next)"
+        }.joined(separator: "\n")
     }
 
     static func revisionText(_ r: Revision?) -> String {
@@ -125,8 +139,8 @@ public enum SceneGeneration {
     }
 
     /// The JavaScript of one scene, from one request (it may read files first). The step is tracked in the project's activity.
-    static func scene(_ id: String, version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, revision: Revision? = nil) async throws -> String {
-        let answer = try await SceneWriter.answer(step: id, system: system, prompt: prompt(scene: id, version: version, store: store, skill: skill, revision: revision), store: store, skill: skill, transport: transport)
+    static func scene(_ id: String, version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, revision: Revision? = nil, onBusy: ((Int) -> Void)? = nil) async throws -> String {
+        let answer = try await SceneWriter.answer(step: id, system: system, prompt: prompt(scene: id, version: version, store: store, skill: skill, revision: revision), store: store, skill: skill, transport: transport, onBusy: onBusy)
         guard let js = extract(answer) else { throw AgentError.msg("the model did not return a scene file for \(id)") }
         return js
     }

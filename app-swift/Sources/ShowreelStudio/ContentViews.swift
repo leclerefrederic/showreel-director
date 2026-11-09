@@ -24,11 +24,11 @@ struct SceneCompositionTab: View {
                         Text("Project's (\(project.showreel?.parameters.controlLevel ?? "auto"))").tag("")
                         ForEach(ControlLevel.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
                     }.labelsHidden()
-                    Text("\(level.help) It sets the defaults of new elements; any attribute can be changed element by element.").font(.caption).foregroundStyle(.secondary)
+                    Text("\(level.help) It sets the defaults of new elements; any attribute can be changed element by element.").fontSmall().foregroundStyle(.secondary)
                 }
                 InspectorSection(title: "Composition, in priority order") {
                     Text("The AI treats the elements from the first to the last: the earlier ones win conflicts of time, space and emphasis, and the last ones are simplified or dropped first if the film does not fit. This is not the stacking order on screen. A resource linked to the scene is an element too.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .fontSmall().foregroundStyle(.secondary)
                     if s.content.isEmpty {
                         Text("Nothing yet. Add the words, or drop an image, a sound or a file here.").font(.callout).foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
@@ -61,11 +61,11 @@ struct SceneCompositionTab: View {
                 let leftovers = (project.trees[id]?.first { $0.group == .composition }?.nodes ?? []).filter { $0.id.hasPrefix("raw.") }
                 if !leftovers.isEmpty {
                     InspectorSection(title: "Other linked resources") {
-                        Text("Linked to the scene, but not shown or heard: a font, a file that needs attention, an excluded one.").font(.caption).foregroundStyle(.secondary)
+                        Text("Linked to the scene, but not shown or heard: a font, a file that needs attention, an excluded one.").fontSmall().foregroundStyle(.secondary)
                         ForEach(leftovers) { n in
                             HStack {
                                 Text(n.title).font(.callout).lineLimit(1)
-                                if let st = n.status { Text(st.rawValue).font(.caption).foregroundStyle(st.color) }
+                                if let st = n.status { Text(st.rawValue).fontSmall().foregroundStyle(st.color) }
                                 Spacer()
                                 if let a = n.assetID { Button("Unlink") { project.unlink(a, from: id) }.buttonStyle(.borderless) }
                             }
@@ -75,7 +75,7 @@ struct SceneCompositionTab: View {
                 if let c = project.checks["scene"]?.first(where: { $0.id == "content.\(id)" }) {
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: c.level.symbol).foregroundStyle(c.level.color)
-                        Text(c.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(c.detail).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 SceneForm(id: id, tab: .composition)
@@ -87,7 +87,7 @@ struct SceneCompositionTab: View {
 struct FixedBadge: View {
     let fixed: Bool
     var body: some View {
-        Text(fixed ? "fixed" : "auto").font(.caption2.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 1)
+        Text(fixed ? "fixed" : "auto").fontSmall(weight: .semibold).padding(.horizontal, 6).padding(.vertical, 1)
             .background((fixed ? Color.accentColor : Color.secondary).opacity(0.18), in: Capsule())
             .foregroundStyle(fixed ? Color.accentColor : .secondary)
     }
@@ -120,11 +120,11 @@ struct ContentItemRow: View {
                 if item.type == "text" { colour }
                 if item.type != "audio" { animation }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Instruction for the AI (optional)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Text("Instruction for the AI (optional)").fontSmall(weight: .semibold).foregroundStyle(.secondary)
                     TextField("In your words", text: $instruction, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
                 }
                 HStack {
-                    Button("Apply") { apply() }.buttonStyle(.borderedProminent).disabledWithReason(dirty ? nil : "Nothing changed yet")
+                    Button("Apply") { apply() }.buttonStyle(PrimaryButtonStyle()).disabledWithReason(dirty ? nil : "Nothing changed yet")
                     Spacer()
                     Button("Remove", role: .destructive) { project.removeItem(scene, item.id) }
                 }
@@ -133,7 +133,7 @@ struct ContentItemRow: View {
         } label: {
             HStack(spacing: 6) {
                 Handle()
-                Text("\(priority)").font(.caption.monospacedDigit().weight(.bold)).frame(width: 18).help("Processing priority")
+                Text("\(priority)").fontSmall(weight: .bold, digits: true).frame(width: 18).help("Processing priority")
                 Image(systemName: icon).foregroundStyle(.secondary)
                 if item.type == "text" {
                     // the words are edited where they stand (double-click); the rest of the item opens below
@@ -143,7 +143,7 @@ struct ContentItemRow: View {
                 } else { Text(label).lineLimit(1).font(.callout) }
                 Spacer(minLength: 4)
                 if item.color.isFixed { FixedBadge(fixed: true).help("Colour fixed") }
-                if item.animation.isFixed { Image(systemName: "sparkles").font(.caption).foregroundStyle(Color.accentColor).help("Animation fixed: \(item.animation.text)") }
+                if item.animation.isFixed { Image(systemName: "sparkles").fontSmall().foregroundStyle(Color.accentColor).help("Animation fixed: \(item.animation.text)") }
                 BlockMarker(ref: .item(scene: scene, item: item.id))
             }
             .flashWhenChanged(.item(scene: scene, item: item.id))
@@ -181,13 +181,13 @@ struct ContentItemRow: View {
     @ViewBuilder private var subject: some View {
         if item.type == "text" {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Words").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text("Words").fontSmall(weight: .semibold).foregroundStyle(.secondary)
                 TextField("", text: $words, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
             }
         } else {
             let fit = project.assets.filter { ContentRules.accepts(item.type, asset: $0.type) && $0.status != "excluded" }
             VStack(alignment: .leading, spacing: 2) {
-                Text("Resource").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text("Resource").fontSmall(weight: .semibold).foregroundStyle(.secondary)
                 Picker("", selection: Binding(get: { item.resource ?? "" }, set: { project.updateItem(scene, item.id, ContentEdit(resource: $0)) })) {
                     ForEach(fit) { Text("\($0.name) (\(project.assetStatus[$0.id]?.rawValue ?? $0.status))").tag($0.id) }
                 }.labelsHidden()
@@ -197,7 +197,7 @@ struct ContentItemRow: View {
 
     private var colour: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack { Text("Colour").font(.caption.weight(.semibold)).foregroundStyle(.secondary); FixedBadge(fixed: item.color.isFixed) }
+            HStack { Text("Colour").fontSmall(weight: .semibold).foregroundStyle(.secondary); FixedBadge(fixed: item.color.isFixed) }
             HStack {
                 Picker("", selection: Binding(get: { colorChoice }, set: { v in
                     if v == "custom" { project.updateItem(scene, item.id, ContentEdit(color: hex)) } else { project.updateItem(scene, item.id, ContentEdit(color: v)) }
@@ -208,7 +208,7 @@ struct ContentItemRow: View {
                 }.labelsHidden()
                 if item.color.mode == "custom" {
                     ColorPicker("", selection: Binding(get: { Color(hex: item.color.hex ?? "#FFFFFF") }, set: { project.updateItem(scene, item.id, ContentEdit(color: $0.hexString)) }), supportsOpacity: false).labelsHidden()
-                    Text(item.color.hex ?? "").font(.caption.monospaced()).foregroundStyle(.secondary)
+                    Text(item.color.hex ?? "").fontSmall(mono: true).foregroundStyle(.secondary)
                 }
             }
         }
@@ -216,12 +216,12 @@ struct ContentItemRow: View {
 
     private var animation: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack { Text("Animation").font(.caption.weight(.semibold)).foregroundStyle(.secondary); FixedBadge(fixed: item.animation.isFixed) }
+            HStack { Text("Animation").fontSmall(weight: .semibold).foregroundStyle(.secondary); FixedBadge(fixed: item.animation.isFixed) }
             PickerButton(kind: .effect, current: item.animation.mode == "effect" ? (item.animation.effect ?? "auto") : "auto", none: ("auto", "Auto (the AI decides)")) {
                 project.choose(.effect, $0, for: .item(scene: scene, item: item.id))
             }
             if item.animation.mode == "effect" {
-                TextField("Parameters (key=value, key=value)", text: $params).textFieldStyle(.roundedBorder).font(.caption).onSubmit { apply() }
+                TextField("Parameters (key=value, key=value)", text: $params).textFieldStyle(.roundedBorder).fontSmall().onSubmit { apply() }
             }
         }
     }
@@ -249,7 +249,7 @@ struct SceneEffectsTab: View {
                         }
                     }
                 }
-                Text("An animation you pick is fixed; auto leaves it to the AI, from the project's effects pack.").font(.caption).foregroundStyle(.secondary)
+                Text("An animation you pick is fixed; auto leaves it to the AI, from the project's effects pack.").fontSmall().foregroundStyle(.secondary)
             }
             InspectorSection(title: "Project effects pack") {
                 if let p = project.showreel?.decisions.effectsPack, !p.isEmpty { Label(p, systemImage: "sparkles").font(.callout) }

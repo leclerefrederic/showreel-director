@@ -99,9 +99,15 @@ public final class Tools {
             }
             return await operate(.decisions([DecisionChange(key, input["value"] as? String ?? "")], title: nil))
         case "add_scene":
-            return await operate(.addScene(id: (input["id"] as? String) ?? "", Self.sceneEdit(input)))
+            return await operate(.addScene(id: (input["id"] as? String) ?? "", Self.sceneEdit(input, clap: true)))
         case "update_scene":
-            return await operate(.scene(id: input["id"] as? String ?? "", Self.sceneEdit(input)))
+            return await operate(.scene(id: input["id"] as? String ?? "", Self.sceneEdit(input, clap: true)))
+        case "set_ready":
+            guard let ready = input["ready"] as? Bool else { return "ready must be true or false" }
+            // whether a scene is Ready is the user's call: always a card, even with apply-directly
+            return await operate(.scene(id: input["id"] as? String ?? "", SceneEdit(status: ready ? SceneState.validated.rawValue : SceneState.wip.rawValue)), forceCard: true)
+        case "delete_scene":
+            return await operate(.deleteScene(id: input["id"] as? String ?? ""), forceCard: true)
         case "add_content_item":
             return await operate(.content(scene: input["scene"] as? String ?? "", .add(Self.contentEdit(input), after: input["after"] as? String)))
         case "update_content_item":
@@ -252,7 +258,8 @@ public final class Tools {
     }
 
     /// The fields of a scene tool call. Numbers are accepted for the times.
-    static func sceneEdit(_ i: [String: Any]) -> SceneEdit {
+    /// `clap`: what Clap may set through update_scene and add_scene. Whether a scene is Ready, and its removal, are the user's calls (set_ready and delete_scene are cards).
+    static func sceneEdit(_ i: [String: Any], clap: Bool = false) -> SceneEdit {
         func str(_ k: String) -> String? {
             if let s = i[k] as? String { return s }
             if let n = i[k] as? Double { return ProjectDocs.seconds(n) }
@@ -260,7 +267,7 @@ public final class Tools {
             return nil
         }
         return SceneEdit(duration: str("duration"), text: str("text"), visual: str("visual"), feeling: str("feeling"), handoff: str("handoff"),
-                         inCuts: str("in_cuts"), note: str("note"), status: str("status"), archived: i["archived"] as? Bool, assets: str("assets"), after: str("after"), controlLevel: str("control_level"), name: str("name"))
+                         inCuts: str("in_cuts"), note: str("note"), status: clap ? nil : str("status"), archived: clap ? nil : i["archived"] as? Bool, assets: str("assets"), after: str("after"), controlLevel: str("control_level"), name: str("name"))
     }
 
     /// showreel.json and the manifest hold the project's data: they change through typed operations, which the user can read.
@@ -273,7 +280,7 @@ public final class Tools {
     }
 
     /// A typed change: shown as a card, applied only if the user accepts (or chose apply-directly) and the project did not change meanwhile.
-    private func operate(_ op: ProjectOperation) async -> String {
+    private func operate(_ op: ProjectOperation, forceCard: Bool = false) async -> String {
         let card: OperationCard
         do { card = try store.plan(op) } catch {
             store.noteRefused(op, card: nil, author: "clap", note: "not allowed: \(error.localizedDescription)")
@@ -282,7 +289,7 @@ public final class Tools {
         var summary = card.title + ": " + card.changes.map { "\($0.label) \($0.before) -> \($0.after)" }.joined(separator: "; ")
         if let w = card.lockWarning { summary += " (" + w.headline + ")" }
         // apply-directly never covers a change that redraws locked scenes: the owner of the project sees the card first
-        if store.settings.applyDirectly, card.lockWarning == nil {
+        if store.settings.applyDirectly, card.lockWarning == nil, !forceCard {
             do { try store.apply(op, author: "clap", reason: reason); return "applied directly (the user chose this for the project): \(summary)" } catch { return "error: \(error.localizedDescription)" }
         }
         guard await ui.proposeOperation(card) else {

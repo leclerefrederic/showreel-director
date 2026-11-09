@@ -348,13 +348,13 @@ final class LifecycleTests: XCTestCase {
         XCTAssertFalse(try source("LibraryView.swift").contains("Settings"), "no Settings button in the Library window")
     }
 
-    func testTheLibraryWindowShowsStatusAsTextAndTheChecksLiveInTheLeftPanel() throws {
+    func testTheLibraryWindowShowsStatusAsTextAndTheChecksLiveInTheBadgeAndTheCentre() throws {
         let lib = try source("LibraryView.swift")
         let row = String(lib[lib.range(of: "struct ProjectRow")!.lowerBound...])
         XCTAssertFalse(row.contains("Capsule"), "the state is plain text, not a pill"); XCTAssertTrue(row.contains(".onHover")); XCTAssertTrue(row.contains(".onTapGesture { if state != .missing { actions.open(entry) } }"), "one click opens")
         XCTAssertFalse(row.contains("count: 2"), "no double click"); XCTAssertTrue(row.contains("Locate...")); XCTAssertTrue(row.contains("Move to Trash..."))
         let m = try source("ProjectModel.swift")
-        XCTAssertTrue(m.contains("case resources, scenes, transitions, checks"))
+        XCTAssertFalse(m.contains("enum LibraryTab"), "UI1: the Checks tab became a badge in the top bar and a list in the centre"); XCTAssertTrue(m.contains("case viewer, build, checks"))
         XCTAssertFalse(try source("ProjectView.swift").contains("ChecksPopover"), "no second place for the checks")
         XCTAssertFalse(try source("InspectorViews.swift").contains("ChecksList") || (try source("ProjectSettingsPanel.swift")).contains("ChecksList"))
         XCTAssertTrue(try source("ProjectSettingsPanel.swift").contains("LookRow(section: s)")); XCTAssertFalse(try source("ProjectSettingsPanel.swift").contains("Picker(\"\", selection: $project.lookSection)"), "the dropdown is gone")

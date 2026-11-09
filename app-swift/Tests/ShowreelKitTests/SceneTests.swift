@@ -83,7 +83,7 @@ final class SceneTests: XCTestCase {
     func testEditingAReviewedSceneSendsItBackToReview() throws {
         try add("fine", "0", "4"); try store.apply(.scene(id: "S01", SceneEdit(status: "ok")))
         let card = try store.plan(.scene(id: "S01", SceneEdit(text: "changed")))
-        XCTAssertTrue(card.changes.contains(Change("State", "Validated", "WIP")))
+        XCTAssertTrue(card.changes.contains(Change("State", "Ready", "To review")))
         try store.apply(.scene(id: "S01", SceneEdit(note: "a remark")))                    // a note alone keeps OK
         XCTAssertEqual(scenes[0].status, "validated")
         try store.apply(.scene(id: "S01", SceneEdit(text: "changed")))

@@ -31,14 +31,14 @@ struct ChecksPanel: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label("Checks", systemImage: Checks.worst(results).symbol).foregroundStyle(Checks.worst(results).color).font(.headline)
-                Text("no AI: the same answer every time").font(.caption).foregroundStyle(.secondary)
+                Text("no AI: the same answer every time").fontSmall().foregroundStyle(.secondary)
             }
             ForEach(results) { r in
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: r.level.symbol).foregroundStyle(r.level.color).frame(width: 18)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(r.title).font(.callout.weight(.medium))
-                        Text(r.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(r.detail).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }

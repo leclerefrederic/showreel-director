@@ -23,8 +23,8 @@ struct TransitionInspector: View {
                     PickerButton(kind: .transition, current: p.item.isCut ? "cut" : p.item.type, none: ("cut", "Cut on beat (default)")) {
                         project.choose(.transition, $0, for: .marker(from: from))
                     }
-                    if Look.isPreviewOnly(p.item.type) { Label("Preview only: it does not run between two real scenes. Choose another or a cut.", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange) }
-                    if let lib = Look.transitions().first(where: { $0.name == p.item.type }) { Text(lib.desc).font(.caption).foregroundStyle(.secondary) }
+                    if Look.isPreviewOnly(p.item.type) { Label("Preview only: it does not run between two real scenes. Choose another or a cut.", systemImage: "exclamationmark.triangle.fill").fontSmall().foregroundStyle(.orange) }
+                    if let lib = Look.transitions().first(where: { $0.name == p.item.type }) { Text(lib.desc).fontSmall().foregroundStyle(.secondary) }
                     TransitionNoteView(from: from)
                 }
                 if !p.item.isCut {
@@ -37,11 +37,11 @@ struct TransitionInspector: View {
                     TextField("For a match cut: which element becomes which", text: $instruction, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
                 }
                 HStack {
-                    Button("Apply") { apply(p.item) }.buttonStyle(.borderedProminent).disabledWithReason(dirty(p.item) ? nil : "Nothing changed yet")
+                    Button("Apply") { apply(p.item) }.buttonStyle(PrimaryButtonStyle()).disabledWithReason(dirty(p.item) ? nil : "Nothing changed yet")
                     Button("Revert to a cut") { project.setTransition(from: from, nil) }.disabledWithReason(p.item.isCut && p.item.instruction == nil ? "It already is a cut" : nil)
                 }
                 Text("A transition overlaps the end of \(from) and the start of \(p.next.id); the film's length does not change. It is data for the build today: the reel player cuts hard until the transition compositor exists.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .fontSmall().foregroundStyle(.secondary)
             } else {
                 Text("\(from) is the last scene that is on: a transition sits between two scenes.").font(.callout).foregroundStyle(.secondary)
             }
@@ -96,16 +96,16 @@ struct MusicInspector: View {
             if project.analysing { HStack { ProgressView().controlSize(.small); Text("Analysing the track...").font(.callout).foregroundStyle(.secondary) } }
             if let m = project.music {
                 Text("\(ProjectDocs.seconds(m.bpm)) BPM · first beat \(ProjectDocs.seconds(m.firstBeat)) s · \(m.bars.count) bars · constant tempo (the analysis assumes it)\(track?.manual == true ? " · corrected by you" : "")")
-                    .font(.caption).foregroundStyle(.secondary)
-                if let d = m.strongestDrop { Text("Strongest drop at \(ProjectDocs.seconds(d)) s" + (m.breaks.isEmpty ? "" : ", \(m.breaks.count) break\(m.breaks.count == 1 ? "" : "s") marked")).font(.caption).foregroundStyle(.secondary) }
+                    .fontSmall().foregroundStyle(.secondary)
+                if let d = m.strongestDrop { Text("Strongest drop at \(ProjectDocs.seconds(d)) s" + (m.breaks.isEmpty ? "" : ", \(m.breaks.count) break\(m.breaks.count == 1 ? "" : "s") marked")).fontSmall().foregroundStyle(.secondary) }
                 HStack {
                     TextField("BPM", text: $bpm).textFieldStyle(.roundedBorder).frame(width: 80)
                     TextField("First beat (s)", text: $firstBeat).textFieldStyle(.roundedBorder).frame(width: 110)
                     Button("Recompute the grid") { project.correctGrid(bpm: Double(bpm.replacingOccurrences(of: ",", with: ".")), firstBeat: Double(firstBeat.replacingOccurrences(of: ",", with: "."))) }
                         .disabled(project.analysing || (Double(bpm.replacingOccurrences(of: ",", with: ".")) == nil && Double(firstBeat.replacingOccurrences(of: ",", with: ".")) == nil))
                 }
-                Text("If the grid is off, give the real tempo and/or the time of a real first beat. Check by ear: tempo changes are not followed.").font(.caption2).foregroundStyle(.tertiary)
-            } else if let n = project.musicNotice { Text(n).font(.caption).foregroundStyle(.orange) }
+                Text("If the grid is off, give the real tempo and/or the time of a real first beat. Check by ear: tempo changes are not followed.").fontSmall().foregroundStyle(.tertiary)
+            } else if let n = project.musicNotice { Text(n).fontSmall().foregroundStyle(.orange) }
         }
         .onAppear { load() }
         .onChange(of: project.music) { _ in load() }

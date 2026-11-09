@@ -37,14 +37,14 @@ struct NewProjectSheet: View {
                     if !wizard.isAvailable { ConnectKeyLink() }
                 }
                 PackagePickerSection(selected: $package)
-                if let e = error { Text(e).foregroundStyle(.red).font(.caption) }
+                if let e = error { Text(e).foregroundStyle(.red).fontSmall() }
             }
             .formStyle(.grouped)
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Create") { create() }
-                    .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction).buttonStyle(PrimaryButtonStyle())
                     .disabledWithReason(name.trimmingCharacters(in: .whitespaces).isEmpty ? "Give the project a name" : nil)
             }
             .padding(12)
@@ -101,7 +101,7 @@ struct ModeCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Image(systemName: symbol).font(.title2).foregroundStyle(selected ? Color.accentColor : .secondary)
                 Text(title).font(.headline)
-                Text(line).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(line).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             .padding(12).frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
             .background(selected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))

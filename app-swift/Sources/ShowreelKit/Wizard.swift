@@ -110,10 +110,10 @@ public enum Wizard {
         if spec?.isBuilt(area: "scene") == true {
             for s in file.map({ SceneRules.live($0) }) ?? [] {
                 out.append(WizardStep(id: "scene." + s.id, area: "scene", title: "Is \(s.id) right as it is?",
-                                      help: s.text.isEmpty ? "Validate it, send it back with a note, or ditch it. A ditched scene keeps its ID." : "\"\(s.text)\"", kind: .scene(s.id)))
+                                      help: s.text.isEmpty ? "Switch Ready on when you are satisfied with it, or leave it To review with an instruction." : "\"\(s.text)\"", kind: .scene(s.id)))
             }
             out.append(WizardStep(id: "scene.go", area: "scene", title: "Ready to give the Go?",
-                                  help: "The build never starts without it, and the app never gives it for you. Every scene must be Validated or ditched.", kind: .go))
+                                  help: "The build never starts without it, and the app never gives it for you. Every visible scene must be Ready.", kind: .go))
         }
         if spec?.isBuilt(area: "build") == true {
             out.append(WizardStep(id: "build.run", area: "build", title: "Build the film",

@@ -10,11 +10,11 @@ struct OutdatedBanner: View {
             Image(systemName: "arrow.triangle.2.circlepath").foregroundStyle(.blue)
             VStack(alignment: .leading, spacing: 2) {
                 Text("This project was made with an older version of the app.").font(.callout.weight(.medium))
-                Text("Nothing was changed by opening it. Update it to the current format when you are ready: a backup is made first.").font(.caption).foregroundStyle(.secondary)
+                Text("Nothing was changed by opening it. Update it to the current format when you are ready: a backup is made first.").fontSmall().foregroundStyle(.secondary)
             }
             Spacer()
             Button("Not now") { project.updateBannerDismissed = true }
-            Button("Update project...") { project.showUpdateSheet = true }.buttonStyle(.borderedProminent)
+            Button("Update project...") { project.showUpdateSheet = true }.buttonStyle(PrimaryButtonStyle())
         }
         .padding(.horizontal, 14).padding(.vertical, 8).background(Color.blue.opacity(0.12))
     }
@@ -35,18 +35,18 @@ struct UpdateSheet: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(Array(p.changes.enumerated()), id: \.offset) { _, c in
-                            HStack(alignment: .firstTextBaseline, spacing: 8) { Image(systemName: "circle.fill").font(.system(size: 5)).foregroundStyle(.secondary); Text(c).font(.callout).fixedSize(horizontal: false, vertical: true) }
+                            HStack(alignment: .firstTextBaseline, spacing: 8) { Image(systemName: "circle.fill").font(.system(size: 11)).foregroundStyle(.secondary); Text(c).font(.callout).fixedSize(horizontal: false, vertical: true) }
                         }
                     }
                 }
                 .frame(maxHeight: 220)
                 Label("First, a copy of showreel.json, the generated documents and the manifest goes to .studio/backups/. \"Restore backup...\" in the Library puts it back exactly. Keys the app does not know are kept.", systemImage: "externaldrive")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             } else { Text("This project is up to date.").font(.callout) }
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Back up and update") { run(); dismiss() }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent).disabledWithReason(plan == nil ? "Nothing to update: this project already is at the current revision" : nil)
+                Button("Back up and update") { run(); dismiss() }.keyboardShortcut(.defaultAction).buttonStyle(PrimaryButtonStyle()).disabledWithReason(plan == nil ? "Nothing to update: this project already is at the current revision" : nil)
             }
         }
         .padding(18).frame(width: 540)
@@ -69,16 +69,16 @@ struct RestoreSheet: View {
                 List(list, selection: $picked) { b in
                     HStack {
                         Text(b.date.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? b.id).font(.callout.weight(.medium))
-                        Text("revision \(b.revision) \u{00B7} \(b.files.count) files").font(.caption).foregroundStyle(.secondary)
+                        Text("revision \(b.revision) \u{00B7} \(b.files.count) files").fontSmall().foregroundStyle(.secondary)
                     }.tag(b.id)
                 }
                 .frame(height: 180)
-                Text("The files are put back exactly as they were. What they replace is backed up first, so this can be undone.").font(.caption).foregroundStyle(.secondary)
+                Text("The files are put back exactly as they were. What they replace is backed up first, so this can be undone.").fontSmall().foregroundStyle(.secondary)
             }
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Restore") { if let b = list.first(where: { $0.id == picked }) { run(b); dismiss() } }.buttonStyle(.borderedProminent).disabledWithReason(picked == nil ? "Pick a backup first" : nil)
+                Button("Restore") { if let b = list.first(where: { $0.id == picked }) { run(b); dismiss() } }.buttonStyle(PrimaryButtonStyle()).disabledWithReason(picked == nil ? "Pick a backup first" : nil)
             }
         }
         .padding(18).frame(width: 480)

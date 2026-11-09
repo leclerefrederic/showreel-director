@@ -88,7 +88,7 @@ struct LibraryView: View {
         .navigationTitle("Showreel Studio")
     }
 
-    private func header(_ t: String) -> some View { Text(t).font(.caption.weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 10).padding(.top, 2) }
+    private func header(_ t: String) -> some View { Text(t).fontSmall(weight: .semibold).foregroundStyle(.secondary).padding(.horizontal, 10).padding(.top, 2) }
 
     private func open(_ path: String) {
         library.add(path: path)
@@ -159,7 +159,7 @@ struct ProjectRow: View {
                 .foregroundStyle(entry.pinned ? Color.accentColor : state == .missing ? Color.red : .secondary).frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.name).font(.headline)
-                Text(entry.path).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                Text(entry.path).fontSmall().foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }
             Spacer()
             if state == .missing {
@@ -167,8 +167,8 @@ struct ProjectRow: View {
                 Button("Remove") { actions.remove(entry) }.controlSize(.small)
             }
             VStack(alignment: .trailing, spacing: 2) {
-                Text(state.rawValue).font(.caption.weight(.medium)).foregroundStyle(color)      // plain text, not a pill
-                Text(entry.lastOpened.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
+                Text(state.rawValue).fontSmall(weight: .medium).foregroundStyle(color)      // plain text, not a pill
+                Text(entry.lastOpened.formatted(date: .abbreviated, time: .omitted)).fontSmall().foregroundStyle(.secondary)
             }
             if state != .missing {
                 HStack(spacing: 3) {

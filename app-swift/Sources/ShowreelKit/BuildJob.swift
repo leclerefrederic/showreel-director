@@ -97,7 +97,7 @@ public enum BuildJob {
         if s.isLocked {                                         // a locked scene is never written: what it holds is taken over
             if here.state != .notGenerated { return Decision(.keep, from: version, "locked", locked: true) }
             if let u = sources.first { return Decision(.reuse, from: u, "locked", locked: true) }
-            return Decision(.write, "locked, with no file yet")
+            return Decision(.skipped, "locked and not written: unlock it to write it", locked: true)          // a locked scene is never written by a Build
         }
         if here.state == .upToDate, !here.moduleEdited {
             return SceneModules.isTested(version: version, scene: id, store: store) ? Decision(.keep, from: version, "written from the present inputs and tested") : Decision(.retest, from: version, untested(version))
@@ -153,11 +153,15 @@ public enum BuildJob {
     }
 
     /// The card before anything is asked of the model: how many scenes are written and why, how many are reused, the calls and a rough cost and time for the written ones only.
-    public static func card(_ p: Plan, store: ProjectStore, skill: URL, resuming: Bool) -> OperationCard {
+    public static func card(_ p: Plan, store: ProjectStore, skill: URL, resuming: Bool, width: Int = 1) -> OperationCard {
         var lines: [Change] = []
         if p.needsFrame { lines.append(Change("\(p.version)/project.json, reel.js", "not written", "written by one request, then tested")) }
         for id in p.write { lines.append(Change("\(p.version)/scenes/\(id).js", p.reasons[id] ?? "out of date", "written by one request")) }
         for id in p.retest.keys.sorted() { lines.append(Change("\(p.version)/scenes/\(id).js", p.reasons[id] ?? "not tested", "tested again, no request; written if the test fails")) }
+        if !p.locked.isEmpty {
+            let empty = p.locked.filter { p.skipped.contains($0) }
+            lines.append(Change("Locked: \(LockedLook.list(p.locked))", "never rewritten by a Build (nor Generate, nor Fix this scene)", "only their file is read" + (empty.isEmpty ? "" : "; \(LockedLook.list(empty)) has none yet and stays an empty frame until it is unlocked and written")))
+        }
         if !p.handEdited.isEmpty { lines.append(Change("Edited by hand", LockedLook.list(p.handEdited), "out of date, but kept as they are unless you tick them")) }
         let reusedLine = "\(p.reused) scene\(p.reused == 1 ? "" : "s") reused unchanged" + (p.locked.isEmpty ? "" : " (\(p.locked.count) locked)")
         if p.reused > 0 { lines.append(Change("Reused, no request", reusedLine, "their file is copied as it is")) }
@@ -166,7 +170,11 @@ public enum BuildJob {
         let inTokens = p.write.reduce(0) { $0 + SceneGeneration.prompt(scene: $1, version: p.version, store: store, skill: skill).count / 4 } + (p.needsFrame ? frame(version: p.version, store: store, skill: skill).count / 4 : 0)
         if p.calls > 0 {
             lines.append(Change("Then", "each scene is tested on its own (no AI), the film is assembled with no AI", "built and tested by the app; a scene that fails its test is rewritten once"))
-            lines.append(Change("Cost", "none to look at", "\(p.calls) model call\(p.calls == 1 ? "" : "s"), about \(SceneGeneration.kilo(inTokens)) tokens in and up to \(SceneGeneration.kilo(p.calls * 3000)) out, about \(p.calls) min (an estimate), plus at most one rewrite per scene that fails its test; a request cut by the network is asked again up to \(AgentLimits.stepRetries) times"))
+            let e = BuildStats.estimate(scenes: p.write.count, frame: p.needsFrame, width: width, store: store)
+            let w = max(1, min(width, p.write.count))
+            let minutes = max(1, Int((e.seconds / 60).rounded(.up)))
+            lines.append(Change("Cost", "none to look at", "\(p.calls) model call\(p.calls == 1 ? "" : "s"), about \(SceneGeneration.kilo(inTokens)) tokens in and up to \(SceneGeneration.kilo(p.calls * 3000)) out, plus at most one rewrite per scene that fails its test; a request that was cut or refused as busy is asked again up to \(AgentLimits.stepRetries) to \(AgentLimits.busyRetries) times"))
+            lines.append(Change("Time", "an estimate, not a promise", "about \(minutes) min at \(w) scene\(w == 1 ? "" : "s") at once (\(Int(e.tps.rounded())) output tokens a second, \(e.measured ? "measured on the last Build" : "the default until a Build measures it"))"))
         }
         let n = p.write.count
         let title = p.unchanged ? "Nothing changed since the last build"
@@ -275,13 +283,16 @@ public enum BuildJob {
         if e is ContentTimeout { return ("no-content", text) }
         if e is RequestTooLong { return ("too-long", text) }
         if e is ConnectionLost { return ("connection-lost", text) }
+        if e is APIBusy { return ("api-busy", text) }
         return (text.contains("maximum output") ? "token-limit" : "error", text)
     }
 
     /// Writes what the plan says, one request at a time. Stops at the first step that fails (the files before it stay), or when the task is cancelled. Each scene file is tested
     /// on its own as soon as it is saved, and rewritten once if the test finds a code error. The start and the end are in the journal and the app's log.
-    public static func run(version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, skip: Set<String> = [], options: Options? = nil) async -> JobOutcome {
-        let outcome = await runSteps(version: version, store: store, skill: skill, transport: transport, skip: skip, options: options)
+    public static func run(version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, skip: Set<String> = [], options: Options? = nil, width: Int = 1) async -> JobOutcome {
+        let began = Date()
+        let outcome = await runSteps(version: version, store: store, skill: skill, transport: transport, skip: skip, options: options, width: min(max(width, AgentLimits.minSceneWidth), AgentLimits.maxSceneWidth))
+        BuildStats.record(version: version, store: store, real: Date().timeIntervalSince(began))
         switch outcome {
         case .completed(let n): store.logBuild(version, "Build \(version) ended: completed", note: "\(n) scene file\(n == 1 ? "" : "s") in the version")
         case .stopped(let s): store.logBuild(version, "Build \(version) ended: stopped at \(s.step)", note: "cause \(s.cause); \(s.written) of \(s.total) written")
@@ -290,7 +301,7 @@ public enum BuildJob {
         return outcome
     }
 
-    private static func runSteps(version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, skip: Set<String>, options: Options?) async -> JobOutcome {
+    private static func runSteps(version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, skip: Set<String>, options: Options?, width: Int) async -> JobOutcome {
         let act = store.activity
         guard let f = store.loadShowreel() else { return .stopped(JobStop(step: frameStep, cause: "error", message: "there is no readable showreel.json", written: 0, total: 0)) }
         let continuing = pending(store) == version
@@ -298,9 +309,10 @@ public enum BuildJob {
         let p = plan(version: version, store: store, skip: skip, overwrite: opts.overwrite, force: opts.force)
         let ids = f.film.map { $0.id }
         mark(version, options: opts, store: store)
-        store.logBuild(version, "Build \(version) started", note: "\(opts.force ? "rewrite everything" : continuing ? "continued" : "new version"); \(p.write.count) to write, \(p.reused) reused (\(p.retest.count) to test again), frame \(p.needsFrame ? "to write" : "kept"); no-answer \((transport as? OutputBudgeted).map { Int($0.idleTimeout) } ?? 0) s, no-content \((transport as? RequestWatched).map { Int($0.contentTimeout) } ?? 0) s, request \((transport as? RequestWatched).map { Int($0.requestTimeout) } ?? 0) s")
+        store.logBuild(version, "Build \(version) started", note: "\(opts.force ? "rewrite everything" : continuing ? "continued" : "new version"); \(p.write.count) to write, \(p.reused) reused (\(p.retest.count) to test again), frame \(p.needsFrame ? "to write" : "kept"); \(width) scene\(width == 1 ? "" : "s") at once; no-answer \((transport as? OutputBudgeted).map { Int($0.idleTimeout) } ?? 0) s, no-content \((transport as? RequestWatched).map { Int($0.contentTimeout) } ?? 0) s, request \((transport as? RequestWatched).map { Int($0.requestTimeout) } ?? 0) s")
         act.update { b in
             var x = ProjectActivity.Build(version: version, phase: .generating, total: ids.count)
+            x.width = width
             x.order = [frameStep] + ids
             var r = SceneRun(); r.kept = !p.needsFrame; r.state = p.needsFrame ? .waiting : .done; x.runs[frameStep] = r
             for id in ids {
@@ -330,11 +342,11 @@ public enum BuildJob {
                 guard var x = b.build else { return }
                 x.runs[step]?.state = ok ? .done : .failed; x.runs[step]?.finished = Date(); x.runs[step]?.failure = why; x.runs[step]?.phaseStarted = Date()
                 x.done = ids.filter { x.runs[$0]?.state == .done }.count
-                x.notice = nil
+                x.runs[step]?.notice = nil
                 b.build = x
             }
         }
-        func cancelled(_ step: String) -> JobOutcome { act.update { $0.build?.runs[step]?.state = .waiting; $0.build?.notice = nil }; return .cancelled(written: written()) }
+        func cancelled(_ step: String) -> JobOutcome { act.update { $0.build?.runs[step]?.state = .waiting; $0.build?.runs[step]?.notice = nil }; return .cancelled(written: written()) }
         func stop(_ step: String, _ error: Error) -> JobOutcome {
             if error is CancellationError || (error as? URLError)?.code == .cancelled || Task.isCancelled { return cancelled(step) }
             let r = reason(error)
@@ -400,43 +412,85 @@ public enum BuildJob {
             }
         }
         queue = ids.filter { queue.contains($0) }
-        var failedTests: [(id: String, error: String)] = []
-        for id in queue {
-            if Task.isCancelled { return .cancelled(written: written()) }
+
+        /// One scene, from its request to its record: written, tested, repaired once, saved. Never touches another scene's file; the files are written whole in one step, so a Cancel
+        /// never leaves one half written. A hard failure is returned, not thrown, so that the scenes in flight go on.
+        enum Done { case written, failedTest(String), stopped(Error), cancelled }
+        func writeScene(_ id: String, onBusy: @escaping (Int) -> Void) async -> Done {
+            if Task.isCancelled { return .cancelled }
             begin(id)
             do {
-                var js = try await SceneGeneration.scene(id, version: version, store: store, skill: skill, transport: transport)
+                var js = try await SceneGeneration.scene(id, version: version, store: store, skill: skill, transport: transport, onBusy: onBusy)
                 try save(js, id)
                 var r = await test(id)
-                if Task.isCancelled { return cancelled(id) }
+                if Task.isCancelled { return .cancelled }
                 var repairs = 0
                 while let bad = r, !bad.ok, repairs < SceneTest.repairsPerScene {
                     // an exception or a code error: one rewrite, told the exact errors and the file; layout warnings never get here
                     repairs += 1
                     setState(id, .repairing)
                     store.logBuild(version, "Repair of \(id): the test failed", note: bad.codeErrors.prefix(3).joined(separator: "; "))
-                    do { js = try await SceneGeneration.scene(id, version: version, store: store, skill: skill, transport: transport, revision: .init(file: js, errors: bad.codeErrors)) }
-                    catch { discard(id); return stop(id, error) }          // the file that failed is not kept as if it were fine: a Build that continues writes this scene again
+                    do { js = try await SceneGeneration.scene(id, version: version, store: store, skill: skill, transport: transport, revision: .init(file: js, errors: bad.codeErrors), onBusy: onBusy) }
+                    catch { discard(id); return .stopped(error) }          // the file that failed is not kept as if it were fine: a Build that continues writes this scene again
                     try save(js, id)
                     r = await test(id)
-                    if Task.isCancelled { return cancelled(id) }
+                    if Task.isCancelled { return .cancelled }
                 }
                 if let bad = r, !bad.ok {
                     let why = bad.codeErrors.first ?? "the test failed"
                     discard(id)                                              // an empty frame in the film, said as such, until the scene is written again
                     SceneModules.noteFailure(version: version, scene: id, error: why, store: store)
-                    failedTests.append((id, why))
                     act.update { $0.build?.runs[id]?.failedTest = true }
                     store.logBuild(version, "\(id) failed its test after its repair", note: why)
                     end(id, false, why)
-                    continue
+                    return .failedTest(why)
                 }
                 if let r = r { act.update { $0.build?.runs[id]?.warnings = r.warnings; $0.build?.runs[id]?.warningCount = r.warningCount }; SceneModules.markTested(version: version, scene: id, store: store) }
                 store.logBuild(version, "\(id) written", note: reasons[id])
                 end(id, true)
-            } catch { return stop(id, error) }
+                return .written
+            } catch { return .stopped(error) }
         }
-        if Task.isCancelled { return .cancelled(written: written()) }          // a Cancel during the last test must not go on to the assembly
+
+        // the scenes run in a sliding window: as soon as one is done the next starts, never more than `limit` at once; the API limiting requests lowers `limit` by one
+        let gate = WidthGate(width)
+        var failedTests: [(id: String, error: String)] = [], hard: [(id: String, error: Error)] = [], cancelledInFlight = false
+        await withTaskGroup(of: (String, Done).self) { group in
+            var next = 0, inFlight = 0
+            while true {
+                while inFlight < gate.current, next < queue.count, hard.isEmpty, !Task.isCancelled, !cancelledInFlight {          // after a hard failure no new scene starts; those in flight finish
+                    let id = queue[next]; next += 1; inFlight += 1
+                    group.addTask {
+                        let r = await writeScene(id) { status in
+                            if let w = gate.lower() {
+                                let line = "Lowered to \(w) scene\(w == 1 ? "" : "s") at once: the API is limiting requests"
+                                act.update { $0.build?.width = w; $0.build?.widthNotice = line }
+                                store.logBuild(version, line, note: "status \(status) on \(id)")
+                            }
+                        }
+                        return (id, r)
+                    }
+                }
+                guard inFlight > 0, let (id, r) = await group.next() else { break }
+                inFlight -= 1
+                switch r {
+                case .written: break
+                case .failedTest(let why): failedTests.append((id, why))
+                case .stopped(let e):
+                    if e is CancellationError || (e as? URLError)?.code == .cancelled || Task.isCancelled { cancelledInFlight = true; act.update { $0.build?.runs[id]?.state = .waiting; $0.build?.runs[id]?.notice = nil } }
+                    else { hard.append((id, e)); _ = stop(id, e) }
+                case .cancelled: cancelledInFlight = true; act.update { $0.build?.runs[id]?.state = .waiting; $0.build?.runs[id]?.notice = nil }
+                }
+            }
+        }
+        if Task.isCancelled || cancelledInFlight { return .cancelled(written: written()) }          // a Cancel during the last test must not go on to the assembly
+        if let first = hard.first {
+            let r = reason(first.error)
+            let label = first.id
+            var message = "\(label) was not written: \(r.text). The \(written()) scene\(written() == 1 ? "" : "s") already written stay in \(version)."
+            if hard.count > 1 { message += " Also stopped: " + hard.dropFirst().map { "\($0.id) (\(reason($0.error).text))" }.joined(separator: "; ") + "." }
+            return .stopped(JobStop(step: first.id, cause: r.cause, message: message, written: written(), total: ids.count, failedTests: failedTests.map { $0.id }))
+        }
         if let first = failedTests.first {
             let list = failedTests.map { $0.id }
             let message = "\(list.joined(separator: ", ")) failed \(list.count == 1 ? "its" : "their") test even after a rewrite (\(first.error)). \(list.count == 1 ? "It is" : "They are") an empty frame in the film until written again. The \(written()) other scene\(written() == 1 ? "" : "s") written stay in \(version)."

@@ -24,7 +24,7 @@ struct SetupView: View {
             hints
             HStack(spacing: 10) {
                 Button("Install missing") { env.install() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabledWithReason(env.installing ? "Installing\u{2026}" : env.checking ? "Checking\u{2026}" : env.passed ? "Nothing is missing" : nil)
                 Button("Check again") { env.check() }
                     .disabledWithReason(env.installing ? "Installing\u{2026}" : env.checking ? "Checking\u{2026}" : nil)
@@ -37,7 +37,7 @@ struct SetupView: View {
                 DisclosureGroup("Details") {
                     ScrollView {
                         Text(env.log)
-                            .font(.caption.monospaced())
+                            .fontSmall(mono: true)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -49,7 +49,7 @@ struct SetupView: View {
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .panelBackground()
     }
 
     @ViewBuilder
@@ -82,7 +82,7 @@ struct SetupView: View {
             .frame(width: 20)
             VStack(alignment: .leading, spacing: 1) {
                 Text(it.label).font(.body.weight(.medium))
-                Text(it.detail).font(.caption).foregroundStyle(.secondary)
+                Text(it.detail).fontSmall().foregroundStyle(.secondary)
             }
         }
     }

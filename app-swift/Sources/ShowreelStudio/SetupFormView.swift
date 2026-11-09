@@ -17,7 +17,7 @@ struct SetupFormView: View {
                 }
                 ProjectForm(setup: true)
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack { Text("Look").font(.headline); Text("Required").font(.caption2.weight(.semibold)).foregroundStyle(.orange).padding(.horizontal, 6).padding(.vertical, 1).background(Color.orange.opacity(0.14), in: Capsule()) }
+                    HStack { Text("Look").font(.headline); Text("Required").fontSmall(weight: .semibold).foregroundStyle(.orange).padding(.horizontal, 6).padding(.vertical, 1).background(Color.orange.opacity(0.14), in: Capsule()) }
                     row("Starting look") { StartingLookMenu() }
                     row("Palette") {
                         if let p = f?.decisions.palette, !p.isEmpty { Swatches(colours: p) } else { Text("not chosen yet").font(.callout).foregroundStyle(.secondary) }
@@ -25,11 +25,11 @@ struct SetupFormView: View {
                     row("Titles font") { FontMenu(role: .titleFont) }
                     row("Text font") { FontMenu(role: .textFont) }
                     row("Default background") { BackgroundMenu() }
-                    Text("A starting look sets all of these at once; each can still be changed here or later in the project settings.").font(.caption).foregroundStyle(.secondary)
+                    Text("A starting look sets all of these at once; each can still be changed here or later in the project settings.").fontSmall().foregroundStyle(.secondary)
                 }
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                Button("Open the workspace") { project.finishSetup() }.buttonStyle(.borderedProminent).controlSize(.large)
+                Button("Open the workspace") { project.finishSetup() }.buttonStyle(PrimaryButtonStyle()).controlSize(.large)
                     .disabledWithReason(f == nil ? "This project has no data yet" : missing.isEmpty ? nil : "Still to set: " + missing.map { $0.title.lowercased() }.joined(separator: ", "),
                                         way: f == nil ? "Confirm the import or create it with the banner above" : "Set them above", caption: true)
             }

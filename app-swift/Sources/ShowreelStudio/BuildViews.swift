@@ -18,7 +18,7 @@ struct BuildPanel: View {
                     Image(systemName: "key").foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Writing the film needs an AI").font(.callout.weight(.semibold))
-                        Text("Connect one to build a new version. Everything else in the app stays usable, and you can still test and play a version that already exists.").font(.caption).foregroundStyle(.secondary)
+                        Text("Connect one to build a new version. Everything else in the app stays usable, and you can still test and play a version that already exists.").fontSmall().foregroundStyle(.secondary)
                         Button("Connect AI") { AppSettingsWindow.open() }
                     }
                 }
@@ -26,7 +26,7 @@ struct BuildPanel: View {
             }
             HStack(spacing: 10) {
                 Button { project.startBuild(with: chat) } label: { Label(BuildJob.pending(project.store).map { "Continue \($0)" } ?? "Build a new version", systemImage: "hammer") }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabledWithReason(Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running).reasonText,
                                         way: Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running).wayText)
                     .help("Clap writes \(Versions.next(project.store)) from your storyboard and decisions, then the app builds and tests it.")
@@ -42,7 +42,7 @@ struct BuildPanel: View {
                 .padding(10).background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
             }
             if !BuildRunner.canBuild(project.store) {
-                Text("The Go comes first: give it in the Scene editor once every scene is Validated or ditched.").font(.caption).foregroundStyle(.secondary)
+                Text("The Go comes first: give it in the Scene editor once every visible scene is Ready.").fontSmall().foregroundStyle(.secondary)
             }
             if !project.versions.isEmpty { versionsRow }
             if let r = project.buildReport { report(r) }
@@ -78,7 +78,7 @@ struct BuildPanel: View {
                     Image(systemName: s.level.symbol).foregroundStyle(s.level.color).frame(width: 18)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(s.title).font(.callout.weight(.medium))
-                        Text(s.detail).font(.caption).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                        Text(s.detail).fontSmall().foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -108,6 +108,6 @@ struct BuildBlockView: View {
             .frame(maxWidth: 1000, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .panelBackground()
     }
 }

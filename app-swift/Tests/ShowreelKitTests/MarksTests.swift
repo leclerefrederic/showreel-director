@@ -87,22 +87,7 @@ final class MarksTests: XCTestCase {
         XCTAssertEqual(Marks.temporary(.item(scene: "S02", item: "i1"), in: s), Availability.edit(.item(scene: "S02", item: "i1"), in: s, file: file).why)
     }
 
-    // MARK: the layout rule
-
-    func testTheLayoutRulePersistentBadgesSideBySideAndNeverTheTemporaryMark() throws {
-        try folder(scenes: ["S01", "S02"])
-        let st = FilmBuild.status(store)
-        for s in file.film { XCTAssertEqual(MarkLayout.badges(for: s, film: st), [.review, .build], "review first, then build, on every surface") }
-        XCTAssertEqual(MarkLayout.badges(for: file.scenes.first { $0.id == "S04" }!, film: st), [.review], "a scene that is switched off is not in the film: no build state")
-        XCTAssertEqual(MarkLayout.Badge.allCases, [.review, .build]); XCTAssertFalse(MarkLayout.temporaryIsABadge)
-        var arch = file.scenes[0]; arch.archived = true
-        XCTAssertEqual(MarkLayout.badges(for: arch, film: st), [.review], "an archived scene has no build")
-        // the old format has no build badge
-        try FileManager.default.removeItem(at: dir.appendingPathComponent("v1/scenes")); try "// old\n".write(to: dir.appendingPathComponent("v1/main.js"), atomically: true, encoding: .utf8)
-        let legacy = FilmBuild.status(store); XCTAssertEqual(legacy.state, .legacy)
-        for s in file.film { XCTAssertEqual(MarkLayout.badges(for: s, film: legacy), [.review]) }
-        XCTAssertEqual(MarkLayout.badges(for: file.scenes[0], film: .empty), [.review], "before any version: only the review")
-    }
+    // MARK: the layout rule (UI2: one Status icon, decided by ShowreelKit's `SceneStatuses`, the same on the list and the strip: see UI2Tests)
 
     // MARK: the menu items
 
@@ -128,7 +113,7 @@ final class MarksTests: XCTestCase {
         XCTAssertEqual(o.ids, ["S02", "S03"]); XCTAssertEqual(o.staleLine, "S02 is stale: its content, length or look changed since the file was generated"); XCTAssertEqual(o.missing, ["S03"])
         XCTAssertEqual(FilmBuild.status(store).counter, "2 scenes to generate"); XCTAssertEqual(FilmBuild.status(store).toGenerate, ["S03", "S02"])
         // a locked stale scene is left out with its reason, still counted
-        try store.apply(.sceneLock(ids: ["S01"], locked: true))
+        try store.apply(.sceneLock(ids: ["S01"], locked: true)); try stripLockedLook(store, ["S01"])
         try store.apply(.decisions([DecisionChange(.palette, "#000009, #FFFFFF, #FF0000, #00FF00")], title: nil))
         o = SceneGeneration.offer(version: v, store: store, file: file)
         XCTAssertEqual(o.ids, ["S02", "S03"]); XCTAssertEqual(o.excluded.map { $0.id }, ["S01"]); XCTAssertEqual(o.excluded.first?.reason, SceneLock.reason("S01"))

@@ -44,14 +44,14 @@ struct ResourcesLibrary: View {
                         Image(systemName: "square.and.arrow.down").font(.system(size: 30, weight: .light)).foregroundStyle(.secondary)
                         Text("Drop files here").font(.headline)
                         Text("Logos, screenshots, photos, fonts, music. Originals are copied into the project and never changed. A file is checked at once: if something looks wrong it waits for you, and is never used meanwhile.")
-                            .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            .fontSmall().foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }
                     .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 4) {
                             let sections = Resources.sections(project.assets, file: project.showreel, tag: project.tagFilter, memory: project.foldMemory)
-                            if sections.isEmpty { Text("No resource has this tag.").font(.caption).foregroundStyle(.secondary).padding(10) }
+                            if sections.isEmpty { Text("No resource has this tag.").fontSmall().foregroundStyle(.secondary).padding(10) }
                             ForEach(sections) { sec in
                                 header(sec.group.title, count: sec.count, folded: sec.folded, key: sec.group.rawValue, level: 0)
                                 if !sec.folded {
@@ -76,9 +76,9 @@ struct ResourcesLibrary: View {
     private func header(_ title: String, count: Int, folded: Bool, key: String, level: Int) -> some View {
         Button { project.toggleFold(key) } label: {
             HStack(spacing: 4) {
-                Image(systemName: folded ? "chevron.right" : "chevron.down").font(.caption2.weight(.bold)).foregroundStyle(.secondary).frame(width: 12)
-                Text(title).font(level == 0 ? .subheadline.weight(.semibold) : .caption.weight(.semibold)).foregroundStyle(level == 0 ? Color.primary : .secondary)
-                Text("\(count)").font(.caption2).foregroundStyle(.tertiary)
+                Image(systemName: folded ? "chevron.right" : "chevron.down").fontSmall(weight: .bold).foregroundStyle(.secondary).frame(width: 12)
+                Text(title).font(level == 0 ? .subheadline.weight(.semibold) : .system(size: 11, weight: .semibold)).foregroundStyle(level == 0 ? Color.primary : .secondary)
+                Text("\(count)").fontSmall().foregroundStyle(.tertiary)
                 Spacer()
             }
             .padding(.leading, CGFloat(level) * 14).padding(.top, level == 0 ? 8 : 2).contentShape(Rectangle())
@@ -146,7 +146,7 @@ struct ResourceRow: View {
     var body: some View {
         DragRow(selected: project.selection == .asset(row.id), item: .resource(row.id), label: row.name, icon: row.symbolName, thumbnail: thumbs.image(row, in: project.root),
                 help: "Drag onto a scene to use it there, or right-click: Add to scene",
-                action: { project.select(.asset(row.id)); project.libraryTab = .resources }) { AssetRowView(row: row) }
+                action: { project.select(.asset(row.id)) }) { AssetRowView(row: row) }
     }
 }
 
@@ -192,10 +192,10 @@ struct AssetRowView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(row.name).font(.callout).lineLimit(1).truncationMode(.middle)
                 HStack(spacing: 4) {
-                    Text(state.title).font(.caption2.weight(.semibold)).foregroundStyle(color(state)).lineLimit(1)
-                    ForEach(Resources.tags(of: row, in: project.showreel), id: \.self) { Text($0).font(.caption2).padding(.horizontal, 4).background(Color.primary.opacity(0.08), in: Capsule()) }
+                    Text(state.title).fontSmall(weight: .semibold).foregroundStyle(color(state)).lineLimit(1)
+                    ForEach(Resources.tags(of: row, in: project.showreel), id: \.self) { Text($0).fontSmall().padding(.horizontal, 4).background(Color.primary.opacity(0.08), in: Capsule()) }
                 }
-                if row.type == "font", let d = FontUse.describe(row, store: project.store) { Text(d).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }
+                if row.type == "font", let d = FontUse.describe(row, store: project.store) { Text(d).fontSmall().foregroundStyle(.secondary).lineLimit(1) }
             }
             Spacer(minLength: 4)
             BlockMarker(ref: .asset(row.id))
@@ -246,12 +246,12 @@ struct AssetInspector: View {
 
     private func chips(_ scenes: [String]) -> some View {
         HStack(spacing: 6) {
-            Text("Used in").font(.caption).foregroundStyle(.secondary)
+            Text("Used in").fontSmall().foregroundStyle(.secondary)
             ForEach(scenes, id: \.self) { s in
-                Button { project.select(.scene(s)) } label: { Text(s).font(.caption.monospaced().weight(.semibold)).padding(.horizontal, 8).padding(.vertical, 3).background(Color.accentColor.opacity(0.16), in: Capsule()) }
+                Button { project.select(.scene(s)) } label: { Text(s).fontSmall(weight: .semibold, mono: true).padding(.horizontal, 8).padding(.vertical, 3).background(Color.accentColor.opacity(0.16), in: Capsule()) }
                     .buttonStyle(.plain).help("Select \(s)")
             }
-            Text("Linking is done from the scene.").font(.caption2).foregroundStyle(.tertiary)
+            Text("Linking is done from the scene.").fontSmall().foregroundStyle(.tertiary)
         }
     }
 
@@ -262,7 +262,7 @@ struct AssetInspector: View {
             HStack(spacing: 6) {
                 ForEach(mine, id: \.self) { t in
                     HStack(spacing: 3) {
-                        Text(t).font(.caption)
+                        Text(t).fontSmall()
                         Button { project.removeTag(row.id, t) } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.buttonStyle(.plain).help("Remove the tag")
                     }
                     .padding(.horizontal, 7).padding(.vertical, 3).background(Color.primary.opacity(0.08), in: Capsule())
@@ -270,7 +270,7 @@ struct AssetInspector: View {
                 TextField("", text: $tag, prompt: Text("Add a tag, for example logo")).textFieldStyle(.roundedBorder).frame(maxWidth: 200)
                     .onSubmit { let t = tag; tag = ""; if !t.trimmingCharacters(in: .whitespaces).isEmpty { project.addTag(row.id, t) } }
             }
-            Text("\u{201C}placeholder\u{201D} marks a stand-in: the release gate lists it.").font(.caption2).foregroundStyle(.tertiary)
+            Text("\u{201C}placeholder\u{201D} marks a stand-in: the release gate lists it.").fontSmall().foregroundStyle(.tertiary)
         }
     }
 
@@ -282,9 +282,9 @@ struct AssetInspector: View {
             Text(row.notes.isEmpty ? "No reason was given." : row.notes).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
             HStack {
                 Button("Decline") { project.setAssetStatus(row.id, .excluded) }
-                Button("Approve") { project.setAssetStatus(row.id, .approved) }.buttonStyle(.borderedProminent)
+                Button("Approve") { project.setAssetStatus(row.id, .approved) }.buttonStyle(PrimaryButtonStyle())
             }
-            Text("Approving makes it available (and links it to the scene it was proposed for). Declining puts it away so that it is not proposed again.").font(.caption).foregroundStyle(.secondary)
+            Text("Approving makes it available (and links it to the scene it was proposed for). Declining puts it away so that it is not proposed again.").fontSmall().foregroundStyle(.secondary)
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
@@ -312,7 +312,7 @@ struct AttentionBox: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Needs attention", systemImage: "exclamationmark.triangle.fill").font(.callout.weight(.semibold)).foregroundStyle(.orange)
             ForEach(a.reasons, id: \.self) { Text("\u{2022} " + $0.prefix(1).uppercased() + $0.dropFirst()).font(.callout).fixedSize(horizontal: false, vertical: true) }
-            Text("It cannot be used, and Clap cannot see it, until this is settled.").font(.caption).foregroundStyle(.secondary)
+            Text("It cannot be used, and Clap cannot see it, until this is settled.").fontSmall().foregroundStyle(.secondary)
             if a.asksRights {
                 Text("What are you allowed to do with it?").font(.subheadline.weight(.medium))
                 ForEach(RightsAnswer.allCases, id: \.self) { r in
@@ -323,8 +323,8 @@ struct AttentionBox: View {
                 }
                 if let r = answer {
                     TextField("", text: $detail, prompt: Text(r.detailHint), axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
-                    if r == .unknown { Text("With unknown rights the file stays here.").font(.caption).foregroundStyle(.secondary) }
-                    Button(r == .unknown ? "Keep it here" : "Confirm") { project.perform(r.operation(id: row.id, detail: detail)); answer = nil; detail = "" }.buttonStyle(.borderedProminent)
+                    if r == .unknown { Text("With unknown rights the file stays here.").fontSmall().foregroundStyle(.secondary) }
+                    Button(r == .unknown ? "Keep it here" : "Confirm") { project.perform(r.operation(id: row.id, detail: detail)); answer = nil; detail = "" }.buttonStyle(PrimaryButtonStyle())
                 }
             }
             if a.canAcceptRisk && !a.mustReplace {
@@ -393,8 +393,8 @@ struct ResourcePreviewBody: View {
             Text(row.state(in: project.showreel).title).font(.callout).foregroundStyle(.secondary)
             if let d = details {
                 if !d.summary.isEmpty { Text(d.summary).font(.callout.monospacedDigit()).foregroundStyle(.secondary).textSelection(.enabled) }
-                ForEach(d.warnings, id: \.self) { Label($0, systemImage: "location.fill").font(.caption).foregroundStyle(.orange) }
-            } else { HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Reading the file\u{2026}").font(.caption).foregroundStyle(.secondary) } }
+                ForEach(d.warnings, id: \.self) { Label($0, systemImage: "location.fill").fontSmall().foregroundStyle(.orange) }
+            } else { HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Reading the file\u{2026}").fontSmall().foregroundStyle(.secondary) } }
         }
         .padding(20).frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { details = await project.loadDetails(row) }
@@ -459,19 +459,19 @@ struct AudioPreview: View {
             if let d = meta?.artwork, let img = NSImage(data: d) { Image(nsImage: img).resizable().scaledToFit().frame(width: 220, height: 220).clipShape(RoundedRectangle(cornerRadius: 10)) }
             else { Image(systemName: "music.note").font(.system(size: 70, weight: .light)).foregroundStyle(.secondary).frame(width: 220, height: 160) }
             VStack(spacing: 2) {
-                if loading { HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Loading\u{2026}").font(.caption).foregroundStyle(.secondary) } }
+                if loading { HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Loading\u{2026}").fontSmall().foregroundStyle(.secondary) } }
                 else {
                     if let t = meta?.title, !t.isEmpty { Text(t).font(.title3.weight(.semibold)) }
                     if let a = meta?.artist, !a.isEmpty { Text(a).foregroundStyle(.secondary) }
-                    if let al = meta?.album, !al.isEmpty { Text(al).font(.caption).foregroundStyle(.secondary) }
-                    if meta?.title == nil && meta?.artist == nil { Text("No tags in this file.").font(.caption).foregroundStyle(.secondary) }
+                    if let al = meta?.album, !al.isEmpty { Text(al).fontSmall().foregroundStyle(.secondary) }
+                    if meta?.title == nil && meta?.artist == nil { Text("No tags in this file.").fontSmall().foregroundStyle(.secondary) }
                 }
             }
             HStack(spacing: 10) {
                 Button { player.toggle(); if player.playing { project.previewStarted(resource) } } label: { Image(systemName: player.playing ? "pause.fill" : "play.fill").frame(width: 18) }
                     .disabledWithReason(loading ? "Loading the file" : player.failed ? "This file cannot be played here" : nil)
                 Slider(value: Binding(get: { player.time }, set: { player.seek($0) }), in: 0...max(player.duration, 0.1)).frame(maxWidth: 360).disabled(loading || player.failed)
-                Text(player.duration > 0 ? "\(DetailFormat.duration(player.time)) / \(DetailFormat.duration(player.duration))" : "0:00").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                Text(player.duration > 0 ? "\(DetailFormat.duration(player.time)) / \(DetailFormat.duration(player.duration))" : "0:00").fontSmall(digits: true).foregroundStyle(.secondary)
             }
         }
         .task {
@@ -499,7 +499,7 @@ struct FontSpecimen: View {
             Text("Aa").font(.custom(family, size: 96))
             Text("A title in this font").font(.custom(family, size: 40).weight(.bold))
             Text("A line of text reads like this, at the size a viewer sees it.").font(.custom(family, size: 18))
-            if let i = info { Text(i.family + " \u{00B7} weight " + (i.weightRange.map { "\($0.lowerBound) to \($0.upperBound)" } ?? "\(i.weight)") + (i.italic ? " \u{00B7} italic" : "")).font(.caption).foregroundStyle(.secondary) }
+            if let i = info { Text(i.family + " \u{00B7} weight " + (i.weightRange.map { "\($0.lowerBound) to \($0.upperBound)" } ?? "\(i.weight)") + (i.italic ? " \u{00B7} italic" : "")).fontSmall().foregroundStyle(.secondary) }
         }
     }
 }
@@ -515,25 +515,25 @@ struct DetailsSection: View {
             HStack {
                 Text("Details").font(.headline)
                 Spacer()
-                if let u = ResourceDetailsReader.fileURL(row, store: project.store) { Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([u]) }.buttonStyle(.borderless).font(.caption) }
+                if let u = ResourceDetailsReader.fileURL(row, store: project.store) { Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([u]) }.buttonStyle(.borderless).fontSmall() }
             }
             if let d = details {
                 ForEach(d.warnings, id: \.self) { Label($0, systemImage: "location.fill").font(.callout).foregroundStyle(.orange) }
                 ForEach(d.groups, id: \.title) { g in
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(g.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        Text(g.title).fontSmall(weight: .semibold).foregroundStyle(.secondary)
                         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 10, verticalSpacing: 3) {
                             ForEach(g.rows, id: \.label) { r in
                                 GridRow {
-                                    Text(r.label).font(.caption).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
-                                    Text(r.value).font(.caption).foregroundStyle(r.emphasis ? Color.orange : .primary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                                    Text(r.label).fontSmall().foregroundStyle(.secondary).gridColumnAlignment(.trailing)
+                                    Text(r.value).fontSmall().foregroundStyle(r.emphasis ? Color.orange : .primary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                                         .contextMenu { Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(r.value, forType: .string) } }
                                 }
                             }
                         }
                     }
                 }
-            } else { HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Reading the file\u{2026}").font(.caption).foregroundStyle(.secondary) } }
+            } else { HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Reading the file\u{2026}").fontSmall().foregroundStyle(.secondary) } }
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .task(id: ResourceDetailsReader.identity(row, store: project.store) + row.status + row.licenceNote + row.notes) { details = await project.loadDetails(row) }

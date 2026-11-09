@@ -37,23 +37,6 @@ public enum Marks {
     }
 }
 
-// MARK: the layout of the marks of a scene
-
-/// The one rule of the layout. A scene has two persistent badges, side by side in this order: the review state (WIP, Validated, Locked; round), then the build state (not
-/// generated, up to date, stale, edited by hand; square). The temporary mark (a proposal waiting, the build running) is a veil, a thin tinted outline around the whole row
-/// or frame, and a small button at the end: it never sits on top of a badge. The same on the list, the tree, the reel and the inspector.
-public enum MarkLayout {
-    public enum Badge: Int, CaseIterable, Sendable { case review, build }
-
-    public static func badges(for scene: ShowreelFile.Scene, film: FilmBuild.Status) -> [Badge] {
-        if scene.archived { return [.review] }
-        return film.state != .legacy && film.target != nil && film.scenes[scene.id] != nil ? [.review, .build] : [.review]
-    }
-
-    /// The temporary mark is never one of the badges.
-    public static let temporaryIsABadge = false
-}
-
 // MARK: the menu items that are disabled
 
 public extension Availability {

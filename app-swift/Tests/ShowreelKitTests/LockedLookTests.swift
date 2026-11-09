@@ -16,6 +16,7 @@ final class LockedLookTests: XCTestCase {
     func lock(_ ids: String...) throws {
         for id in ids { try store.apply(.scene(id: id, SceneEdit(status: "validated"))) }
         try store.apply(.sceneLock(ids: ids, locked: true))
+        try stripLockedLook(store, ids)          // these tests are about a locked scene that follows the project's look (a project locked before UI2)
     }
     func palette(_ n: Int) -> ProjectOperation { .decisions([DecisionChange(.palette, "#00000\(n), #FFFFFF, #FF0000, #00FF00")], title: nil) }
 

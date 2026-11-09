@@ -7,9 +7,18 @@ final class JobModel: MessagesTransport, OutputBudgeted, @unchecked Sendable {
     var onOutput: ((Int) -> Void)?
     var idleTimeout: TimeInterval = 90
     private(set) var asked: [String] = []          // the step of each request: "reel" or the scene ID
+    private let lock = NSLock()
+    /// Seconds a step's request takes (so that requests overlap), the most that were in flight at once, and the steps in flight now.
+    var pause: [String: TimeInterval] = [:]
+    private(set) var maxInFlight = 0
+    private(set) var inFlightNow: Set<String> = []
+    private(set) var overlapped: [String] = []     // a step that was asked while its own request was still in flight: two requests for the same file
+    private(set) var storyboardSeen: [String: Bool] = [:]
     var failOn: [String: Error] = [:]
     /// A step whose first `times` requests fail with `error` and then work (a connection that comes back).
     var flaky: [String: (error: Error, times: Int)] = [:]
+    /// Errors a step meets one after the other, one per request, then it works.
+    var sequence: [String: [Error]] = [:]
     var readFirst = false                          // answer the first request of each step with a read_file call
     var onRequest: ((String) -> Void)?
     /// What the model writes for a scene, given its step and the whole request; the default is a fine file.
@@ -17,11 +26,21 @@ final class JobModel: MessagesTransport, OutputBudgeted, @unchecked Sendable {
     private(set) var prompts: [String: [String]] = [:]
     private var read: Set<String> = []
     func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]], onText: (String) -> Void) async throws -> (content: [[String: Any]], stop: String) {
+        try await stream(system: system, tools: tools, messages: messages, onText: onText, onOutput: onOutput, onStats: nil)
+    }
+    func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]], onText: (String) -> Void, onOutput: ((Int) -> Void)?, onStats: ((RequestStats) -> Void)?) async throws -> (content: [[String: Any]], stop: String) {
         let p = (messages.first?["content"] as? String) ?? ""
         let step = p.range(of: #"scenes/(S\d+)\.js"#, options: .regularExpression).map { String(p[$0].dropFirst(7).dropLast(3)) } ?? BuildJob.frameStep
         onRequest?(step)
-        if messages.count == 1 { asked.append(step); prompts[step, default: []].append(p) }
+        lock.lock()
+        if messages.count == 1 { asked.append(step); prompts[step, default: []].append(p); storyboardSeen[step] = p.contains("The whole storyboard, one line per scene") || step == BuildJob.frameStep }
+        if inFlightNow.contains(step) { overlapped.append(step) }
+        inFlightNow.insert(step); maxInFlight = max(maxInFlight, inFlightNow.count)
+        lock.unlock()
+        defer { lock.lock(); inFlightNow.remove(step); lock.unlock() }
+        if let d = pause[step] { try await Task.sleep(nanoseconds: UInt64(d * 1_000_000_000)) }
         if let e = failOn[step] { throw e }
+        if var q = sequence[step], !q.isEmpty { let e = q.removeFirst(); sequence[step] = q; throw e }
         if let f = flaky[step], f.times > 0 { flaky[step] = (f.error, f.times - 1); throw f.error }
         onOutput?(400)
         if readFirst, !read.contains(step) { read.insert(step); return ([toolUse("r-\(step)", "read_file", ["path": "references/engine.md", "limit": 5])], "tool_use") }
@@ -112,7 +131,7 @@ final class BG1Tests: XCTestCase {
         let p = BuildJob.plan(version: v, store: store)
         let c = BuildJob.card(p, store: store, skill: skill, resuming: false)
         XCTAssertEqual(c.title, "Build v1: 3 scenes will be written, 0 reused unchanged")
-        XCTAssertTrue(c.changes.contains { $0.after.contains("4 model calls") && $0.after.contains("about 4 min") && $0.after.contains("(an estimate)") })
+        XCTAssertTrue(c.changes.contains { $0.after.contains("4 model calls") }); XCTAssertTrue(c.changes.contains { $0.label == "Time" && $0.after.contains("about 4 min at 1 scene at once") && $0.before.contains("an estimate") })
         XCTAssertTrue(c.changes.contains { $0.before.contains("assembled with no AI") })
     }
 

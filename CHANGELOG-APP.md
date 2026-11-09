@@ -2,6 +2,22 @@
 
 Version of the Showreel Studio app (`app-swift/shared/app-version.json`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The skill and the project file format have their own numbers. Ship with `python3 tools/bump_app.py`, after writing the section of the new version in `RELEASE-NOTES-APP.md`.
 
+## 0.14.0 - 2026-11-09
+
+DS1: design tokens, dark theme, view rail and rounded panels, no text under 11 pt
+
+## 0.13.0 - 2026-11-09
+
+UI2: one Status icon, Visible/Ready/Locked switches, Delete scene, a real lock with a look copy
+
+## 0.12.0 - 2026-11-09
+
+UI1: left panel = flat Storyboard + Resources below, state icons, scene overview in the inspector, Checks badge
+
+## 0.11.0 - 2026-11-09
+
+BG2: 429/529 retries with waits, scenes written at the same time (1 to 4), width lowered on rate limits, time estimate from measured speed
+
 ## 0.10.3 - 2026-11-09
 
 BA2: every request bounded (no-content rule, longest request), cut requests asked again, build log, one rule for tested, true reasons, empty version folders removed, cancel fixes

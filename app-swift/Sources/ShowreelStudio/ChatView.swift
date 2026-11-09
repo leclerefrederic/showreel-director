@@ -32,7 +32,7 @@ struct ChatView: View {
             }
             if settings.hasKey { Composer() } else { ConnectAIView() }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .panelBackground()
     }
 }
 
@@ -134,14 +134,14 @@ struct ItemView: View {
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 3) {
                     ForEach(Array(item.steps.enumerated()), id: \.offset) { _, s in
-                        Text(s).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(2)
+                        Text(s).fontSmall(mono: true).foregroundStyle(.secondary).lineLimit(2)
                     }
                 }
                 .padding(.top, 4)
             } label: {
                 Label("Working: \(item.steps.count) \(item.steps.count == 1 ? "step" : "steps")",
                       systemImage: "gearshape.2")
-                    .font(.caption)
+                    .fontSmall()
                     .foregroundStyle(.secondary)
             }
         case .question:
@@ -187,7 +187,7 @@ struct QuestionCard: View {
                 HStack {
                     Spacer()
                     Button("Confirm") { confirm() }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PrimaryButtonStyle())
                         .disabled(!complete)
                 }
             }
@@ -213,7 +213,7 @@ struct QuestionCard: View {
                     .padding(.top, 2)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(o.label).font(.body.weight(.medium))
-                    if !o.detail.isEmpty { Text(o.detail).font(.caption).foregroundStyle(.secondary) }
+                    if !o.detail.isEmpty { Text(o.detail).fontSmall().foregroundStyle(.secondary) }
                 }
                 Spacer(minLength: 0)
             }
@@ -252,10 +252,10 @@ struct ProposalCard: View {
                     Spacer()
                     if settings.advanced {
                         Button(p.proposal.file) { project.open(p.proposal.file) }
-                            .buttonStyle(.link).font(.caption.monospaced())
+                            .buttonStyle(.link).fontSmall(mono: true)
                             .help("Open the file")
                     } else {
-                        Text(p.proposal.file).font(.caption.monospaced()).foregroundStyle(.secondary)
+                        Text(p.proposal.file).fontSmall(mono: true).foregroundStyle(.secondary)
                     }
                 }
                 if !p.proposal.note.isEmpty { Text(p.proposal.note).font(.callout) }
@@ -266,12 +266,12 @@ struct ProposalCard: View {
                         Spacer()
                         Button("Refuse") { model.resolveProposal(item.id, accept: false) }
                         Button("Accept") { model.resolveProposal(item.id, accept: true) }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(PrimaryButtonStyle())
                     }
                 case .accepted:
-                    Label("Accepted", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.secondary)
+                    Label("Accepted", systemImage: "checkmark.circle.fill").fontSmall().foregroundStyle(.secondary)
                 case .refused:
-                    Label("Refused", systemImage: "xmark.circle").font(.caption).foregroundStyle(.secondary)
+                    Label("Refused", systemImage: "xmark.circle").fontSmall().foregroundStyle(.secondary)
                 }
             }
             .padding(14)
@@ -332,12 +332,12 @@ struct OperationCardView: View {
                         Spacer()
                         Button("Refuse") { model.resolveOperation(item.id, accept: false) }
                         Button(o.card.lockWarning == nil ? "Accept" : "Apply anyway") { model.resolveOperation(item.id, accept: true) }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(PrimaryButtonStyle())
                     }
                 case .accepted:
-                    Label("Accepted", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.secondary)
+                    Label("Accepted", systemImage: "checkmark.circle.fill").fontSmall().foregroundStyle(.secondary)
                 case .refused:
-                    Label("Refused", systemImage: "xmark.circle").font(.caption).foregroundStyle(.secondary)
+                    Label("Refused", systemImage: "xmark.circle").fontSmall().foregroundStyle(.secondary)
                 }
             }
             .padding(14)
@@ -356,7 +356,7 @@ struct ConnectAIView: View {
             Label("Clap is off", systemImage: ClapMark.symbol).font(.headline)
             Text("It answers questions, suggests values and makes changes that you accept or refuse. You can build a project by hand without it. Only generating the film (Build) needs an AI.")
                 .font(.callout).foregroundStyle(.secondary)
-            Button("Connect AI") { AppSettingsWindow.open() }.buttonStyle(.borderedProminent)
+            Button("Connect AI") { AppSettingsWindow.open() }.buttonStyle(PrimaryButtonStyle())
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -367,5 +367,5 @@ struct ConnectAIView: View {
 
 /// A small link that opens the one place where the API key is set (the app's settings window).
 struct ConnectKeyLink: View {
-    var body: some View { Button("Connect an API key") { AppSettingsWindow.open() }.buttonStyle(.link).font(.caption) }
+    var body: some View { Button("Connect an API key") { AppSettingsWindow.open() }.buttonStyle(.link).fontSmall() }
 }

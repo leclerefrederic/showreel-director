@@ -108,14 +108,14 @@ struct SavePackageSheet: View {
                     TextField("Author", text: $author, prompt: Text("A display name or a team name, never an e-mail address"))
                     TextField("Note", text: $note, prompt: Text(continuing ? "What changed in this version (required)" : "What this package is for (optional)"), axis: .vertical).lineLimit(2...4)
                 }
-                if let e = error { Text(e).foregroundStyle(.red).font(.caption) }
+                if let e = error { Text(e).foregroundStyle(.red).fontSmall() }
             }
             .formStyle(.grouped)
             HStack {
-                Text("Saving a package does not change the project.").font(.caption).foregroundStyle(.secondary)
+                Text("Saving a package does not change the project.").fontSmall().foregroundStyle(.secondary)
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save in the library") { save() }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+                Button("Save in the library") { save() }.keyboardShortcut(.defaultAction).buttonStyle(PrimaryButtonStyle())
                     .disabledWithReason(avail.why?.reason ?? (name.trimmingCharacters(in: .whitespaces).isEmpty ? "Give the package a name" : author.trimmingCharacters(in: .whitespaces).isEmpty ? "Give the author a display name" : continuing && note.trimmingCharacters(in: .whitespaces).isEmpty ? "Say what changed in this version" : nil),
                                         way: avail.why?.way)
             }
@@ -126,7 +126,7 @@ struct SavePackageSheet: View {
     private func part(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(title)
-            if !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+            if !detail.isEmpty { Text(detail).fontSmall().foregroundStyle(.secondary).lineLimit(2) }
         }
     }
     private func lookLine(_ l: PackageDesign.Look) -> String {
@@ -156,16 +156,16 @@ struct SavePackageSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Saved in the library", systemImage: "checkmark.circle.fill").font(.title3.weight(.semibold)).foregroundStyle(.green)
             Text("\u{201C}\(s.package.manifest.name)\u{201D} version \(s.package.manifest.version), hash \(s.package.manifest.shortHash). The project did not change.").font(.callout)
-            if let u = exported { Text("Exported to \(u.path)").font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
+            if let u = exported { Text("Exported to \(u.path)").fontSmall().foregroundStyle(.secondary).textSelection(.enabled) }
             HStack {
                 Button("Export a .studiopack file\u{2026}") {
                     do { if let u = try PackageFormat.export(s.package) { exported = u; project.react(StatusLine.packageSaved(name: s.package.manifest.name, version: s.package.manifest.version, exported: true)) } } catch { self.error = error.localizedDescription }
                 }
                 Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([exported ?? s.entry.archive]) }
             }
-            if let e = error { Text(e).foregroundStyle(.red).font(.caption) }
+            if let e = error { Text(e).foregroundStyle(.red).fontSmall() }
             Spacer()
-            HStack { Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent) }
+            HStack { Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.defaultAction).buttonStyle(PrimaryButtonStyle()) }
         }
         .padding(20)
     }
@@ -182,9 +182,9 @@ struct PackageSettingsFooter: View {
         let avail = Availability.savePackage(in: project.activity, offer: offer)
         VStack(alignment: .leading, spacing: 6) {
             Divider()
-            Text("Design package").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text("Design package").fontSmall(weight: .semibold).foregroundStyle(.secondary)
             if let o = project.showreel?.package {
-                Text("Started from \u{201C}\(originName ?? "a package")\u{201D} version \(o.version) (hash \(o.hash.prefix(8)))").font(.caption).foregroundStyle(.secondary)
+                Text("Started from \u{201C}\(originName ?? "a package")\u{201D} version \(o.version) (hash \(o.hash.prefix(8)))").fontSmall().foregroundStyle(.secondary)
             }
             Button { showSave = true } label: { Label("Save design as package\u{2026}", systemImage: "shippingbox") }
                 .disabledWithReason(avail.why?.reason, way: avail.why?.way)
@@ -226,7 +226,7 @@ struct PackageImportSheet: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("This file cannot be opened as a package", systemImage: "xmark.octagon.fill").font(.headline).foregroundStyle(.red)
             Text(e.localizedDescription).font(.callout)
-            Text("Nothing was kept and nothing was run.").font(.caption).foregroundStyle(.secondary)
+            Text("Nothing was kept and nothing was run.").fontSmall().foregroundStyle(.secondary)
             HStack { Spacer(); Button("Close") { dismiss() }.keyboardShortcut(.defaultAction) }
         }
         .padding(20)
@@ -257,8 +257,8 @@ struct PackageImportSheet: View {
                     Toggle(isOn: $rights) { Text("I confirm I hold the rights to use these resources").font(.callout.weight(.medium)) }
                         .disabled(r.package.resources.isEmpty)
                     Text(rights ? "The confirmation is recorded with this version." : "Without it the package is kept, but its resources enter a project on Needs attention (\u{201C}\(PackageStart.notConfirmed)\u{201D}).")
-                        .font(.caption).foregroundStyle(.secondary)
-                    if let e = error { Text(e).foregroundStyle(.red).font(.caption) }
+                        .fontSmall().foregroundStyle(.secondary)
+                    if let e = error { Text(e).foregroundStyle(.red).fontSmall() }
                 }
                 .padding(20)
             }
@@ -269,7 +269,7 @@ struct PackageImportSheet: View {
                 Button("Add to the library") { add(r, start: false) }
                     .disabledWithReason(needs ? "Decide about the warning above first" : r.needsNewerApp ? "This package needs a newer version of the app" : nil)
                 if offersStart {
-                    Button("Add and start a project") { add(r, start: true) }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                    Button("Add and start a project") { add(r, start: true) }.buttonStyle(PrimaryButtonStyle()).keyboardShortcut(.defaultAction)
                         .disabledWithReason(needs ? "Decide about the warning above first" : r.needsNewerApp ? "This package needs a newer version of the app" : nil)
                 }
             }
@@ -283,15 +283,15 @@ struct PackageImportSheet: View {
         let ok = r.integrity == .matches
         return VStack(alignment: .leading, spacing: 6) {
             Label(r.integrity.title, systemImage: ok ? "checkmark.seal.fill" : "exclamationmark.triangle.fill").font(.callout.weight(.semibold)).foregroundStyle(ok ? Color.green : .orange)
-            Text(r.integrity.detail).font(.caption).foregroundStyle(.secondary)
-            ForEach(r.problems, id: \.self) { Text("\u{2022} " + $0).font(.caption) }
+            Text(r.integrity.detail).fontSmall().foregroundStyle(.secondary)
+            ForEach(r.problems, id: \.self) { Text("\u{2022} " + $0).fontSmall() }
             if !ok && !decided {
                 HStack {
                     Button("Continue anyway") { decided = true }
                     Button("Cancel", role: .cancel) { dismiss() }
                 }
             }
-            if !ok && decided { Text("You chose to continue with this package.").font(.caption).foregroundStyle(.orange) }
+            if !ok && decided { Text("You chose to continue with this package.").fontSmall().foregroundStyle(.orange) }
         }
         .padding(10).frame(maxWidth: .infinity, alignment: .leading).background((ok ? Color.green : .orange).opacity(0.1), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
@@ -302,7 +302,7 @@ struct PackageImportSheet: View {
             ForEach(p.resources) { r in
                 VStack(alignment: .leading, spacing: 0) {
                     Text("\(r.originalName) \u{00B7} \(r.type)").font(.callout)
-                    Text(r.rightsLine + (r.approvedBy.map { " \u{00B7} approved by \($0)" + (r.approvedAt.map { " on " + PackageFormat.day($0) } ?? "") } ?? "")).font(.caption).foregroundStyle(.secondary)
+                    Text(r.rightsLine + (r.approvedBy.map { " \u{00B7} approved by \($0)" + (r.approvedAt.map { " on " + PackageFormat.day($0) } ?? "") } ?? "")).fontSmall().foregroundStyle(.secondary)
                 }
             }
         }
@@ -336,10 +336,10 @@ struct PackagePickerSection: View {
             }
             if let p = selected {
                 Text(p.isConfirmed ? "Rights confirmed: its resources will be available." : "Rights not confirmed: its resources will enter the project on Needs attention.")
-                    .font(.caption).foregroundStyle(p.isConfirmed ? Color.secondary : .orange)
+                    .fontSmall().foregroundStyle(p.isConfirmed ? Color.secondary : .orange)
             }
             Button("Open a .studiopack\u{2026}") { choose() }
-            if let e = error { Text(e).foregroundStyle(.red).font(.caption) }
+            if let e = error { Text(e).foregroundStyle(.red).fontSmall() }
         }
         .sheet(item: Binding(get: { importing.map { ImportTicket(url: $0) } }, set: { importing = $0?.url })) { t in
             PackageImportSheet(url: t.url, onAdded: { entry, _ in packages = PackageLibrary.standard.list(); selected = entry }, offersStart: false)

@@ -117,9 +117,9 @@ struct FilmViewer: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
-                Text("\(version) built").font(.caption.weight(.semibold))
+                Text("\(version) built").fontSmall(weight: .semibold)
                 Spacer()
-                Button("Show the preview thumbnails") { project.viewerShowsDraft = true }.buttonStyle(.borderless).font(.caption)
+                Button("Show the preview thumbnails") { project.viewerShowsDraft = true }.buttonStyle(.borderless).fontSmall()
             }
             ReelWebView(player: player)
                 .aspectRatio(16 / 9, contentMode: .fit)
@@ -129,7 +129,7 @@ struct FilmViewer: View {
                 Button { project.togglePlay() } label: { Image(systemName: player.playing ? "pause.fill" : "play.fill").frame(width: 18) }
                     .keyboardShortcut(.space, modifiers: []).help(player.playing ? "Pause" : "Play from the playhead")
                 Slider(value: Binding(get: { project.playhead }, set: { project.playhead = $0 }), in: 0...max(player.duration, 1))
-                Text(String(format: "%.1f / %.1f s", project.playhead, player.duration)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                Text(String(format: "%.1f / %.1f s", project.playhead, player.duration)).fontSmall(digits: true).foregroundStyle(.secondary)
                 Toggle(isOn: Binding(get: { player.sound }, set: { player.setSound($0) })) { Image(systemName: player.sound ? "speaker.wave.2.fill" : "speaker.slash.fill") }
                     .toggleStyle(.button).disabled(!player.hasTrack).help(player.hasTrack ? "The music of the build" : "This build has no music")
             }

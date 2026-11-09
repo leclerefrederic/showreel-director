@@ -13,9 +13,9 @@ struct FontStateView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Image(systemName: icon(s)).foregroundStyle(color(s))
-                Text(FontUse.label(s)).font(.caption.weight(.semibold)).foregroundStyle(color(s))
+                Text(FontUse.label(s)).fontSmall(weight: .semibold).foregroundStyle(color(s))
             }
-            Text(FontUse.line(s)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(FontUse.line(s)).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if case .embedded = s {} else {
                 Button("Add the font files") { project.addFontFiles(family) }.controlSize(.small)
                     .disabledWithReason(a.reasonText, way: a.wayText, caption: !a.isAvailable)
@@ -39,7 +39,7 @@ struct FontOfferSheet: View {
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { project.fontOffer = nil }.keyboardShortcut(.cancelAction)
-                Button("Download and approve") { project.confirmFontOffer() }.buttonStyle(.borderedProminent)
+                Button("Download and approve") { project.confirmFontOffer() }.buttonStyle(PrimaryButtonStyle())
             }
         }
         .padding(20).frame(width: 520)
@@ -60,7 +60,7 @@ struct FontsAtBuildSheet: View {
                 Button("Cancel", role: .cancel) { project.answerFonts(.cancel) }.keyboardShortcut(.cancelAction).help("Nothing is downloaded and the build does not start")
                 Spacer()
                 Button("Continue with a system font") { project.answerFonts(.systemFont) }.help("The build starts now; the Fonts step stays orange and says so")
-                Button("Download and continue") { project.answerFonts(.download) }.buttonStyle(.borderedProminent).help("Downloads the files, approves them for the reel, then starts")
+                Button("Download and continue") { project.answerFonts(.download) }.buttonStyle(PrimaryButtonStyle()).help("Downloads the files, approves them for the reel, then starts")
             }
         }
         .padding(20).frame(width: 560)

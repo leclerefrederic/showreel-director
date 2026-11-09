@@ -19,7 +19,7 @@ struct EditorView: View {
     private var header: some View {
         HStack(spacing: 10) {
             Text(tab.path).font(.callout.monospaced()).lineLimit(1).truncationMode(.head)
-            if tab.dirty { Text("unsaved").font(.caption).foregroundStyle(.orange) }
+            if tab.dirty { Text("unsaved").fontSmall().foregroundStyle(.orange) }
             Spacer()
             if tab.kind == .markdown {
                 Picker("", selection: $preview) {
@@ -68,7 +68,7 @@ struct EditorView: View {
                 HStack {
                     Image(systemName: jsonError == nil ? "checkmark.circle.fill" : "xmark.octagon.fill")
                         .foregroundStyle(jsonError == nil ? Color.green : Color.red)
-                    Text(jsonError.map { "Not valid JSON: \($0)" } ?? "Valid JSON").font(.caption).lineLimit(2)
+                    Text(jsonError.map { "Not valid JSON: \($0)" } ?? "Valid JSON").fontSmall().lineLimit(2)
                     Spacer()
                 }
                 .padding(.horizontal, 12).padding(.vertical, 5)
@@ -89,7 +89,7 @@ struct TextArea: View {
             .font(.system(size: 13, design: .monospaced))
             .scrollContentBackground(.hidden)
             .padding(6)
-            .background(Color(nsColor: .textBackgroundColor))
+            .panelBackground()
     }
 }
 
@@ -108,7 +108,7 @@ struct MarkdownPreview: View {
             .padding(16)
             .textSelection(.enabled)
         }
-        .background(Color(nsColor: .textBackgroundColor))
+        .panelBackground()
     }
 
     @ViewBuilder private func row(_ line: String) -> some View {
@@ -163,7 +163,7 @@ struct CSVTable: View {
                 Button { rows.append(Array(repeating: "", count: max(columns.count, 1))); push() } label: { Label("Row", systemImage: "plus") }
                 Button { addColumn() } label: { Label("Column", systemImage: "plus") }
                 Spacer()
-                Text("\(max(rows.count - 1, 0)) rows, \(columns.count) columns").font(.caption).foregroundStyle(.secondary)
+                Text("\(max(rows.count - 1, 0)) rows, \(columns.count) columns").fontSmall().foregroundStyle(.secondary)
             }
             .padding(8)
             .background(.bar)
@@ -224,10 +224,10 @@ struct HistoryView: View {
                             DiffView(rows: LineDiff.collapse(LineDiff.diff(old, tab.text), context: 3)).padding(8)
                             Divider()
                             HStack {
-                                Text("Red: in the old version. Green: in the file now.").font(.caption).foregroundStyle(.secondary)
+                                Text("Red: in the old version. Green: in the file now.").fontSmall().foregroundStyle(.secondary)
                                 Spacer()
                                 Button("Restore this version") { project.restore(tab, s); dismiss() }
-                                    .buttonStyle(.borderedProminent)
+                                    .buttonStyle(PrimaryButtonStyle())
                             }
                             .padding(10)
                         } else {

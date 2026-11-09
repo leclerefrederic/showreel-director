@@ -101,8 +101,8 @@ struct BlockedNotice: View {
             Image(systemName: icon).foregroundStyle(.orange).frame(width: 16)
             VStack(alignment: .leading, spacing: 3) {
                 Text(reason.reason).font(.callout.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
-                Text(reason.way).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                if let b = button { Button(b.0) { b.1() }.buttonStyle(.borderless).font(.caption.weight(.semibold)) }
+                Text(reason.way).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if let b = button { Button(b.0) { b.1() }.buttonStyle(.borderless).fontSmall(weight: .semibold) }
             }
             Spacer(minLength: 0)
         }
@@ -147,7 +147,7 @@ struct BlockMarker: View {
         if let u = project.blocked(ref) {
             Button { project.followLink(u, chat: chat) } label: {
                 Label(u.cause == .building ? "Locked during build" : u.cause == .proposal ? "Clap proposes a change" : "Clap is working", systemImage: u.cause == .building ? "hammer" : ClapMark.symbol)
-                    .labelStyle(.iconOnly).font(.caption2.weight(.semibold)).foregroundStyle(.orange)
+                    .labelStyle(.iconOnly).fontSmall(weight: .semibold).foregroundStyle(.orange)
                     .padding(3).background(Color.orange.opacity(0.15), in: Circle())
             }
             .buttonStyle(.plain).help(u.message)
@@ -204,7 +204,7 @@ struct DisabledWithReason: ViewModifier {
         VStack(alignment: .leading, spacing: 3) {
             content.disabled(reason != nil).help(text ?? "")
                 .overlay { if reason != nil { Color.clear.contentShape(Rectangle()).help(text ?? "") } }       // a disabled control has no tooltip of its own on every macOS: the cover gives it one
-            if caption, let t = text { Text(t).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+            if caption, let t = text { Text(t).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
         }
     }
 }
@@ -230,13 +230,13 @@ struct ProposalsBanner: View {
                     Label("Waiting for your answer: \(list.count) proposal\(list.count == 1 ? "" : "s") from Clap", systemImage: ClapMark.symbol).font(.callout.weight(.semibold))
                     Spacer()
                     Button("Refuse all") { chat.answerAll(accept: false) }
-                    Button("Accept all") { chat.answerAll(accept: true) }.buttonStyle(.borderedProminent)
+                    Button("Accept all") { chat.answerAll(accept: true) }.buttonStyle(PrimaryButtonStyle())
                 }
                 ForEach(list) { p in
-                    Button { chat.focus(card: p.id) } label: { Label(p.title, systemImage: "arrow.turn.down.right").font(.caption).lineLimit(1) }
+                    Button { chat.focus(card: p.id) } label: { Label(p.title, systemImage: "arrow.turn.down.right").fontSmall().lineLimit(1) }
                         .buttonStyle(.borderless).help("Show this proposal in the conversation")
                 }
-                Text("The elements it changes are read-only until you answer.").font(.caption).foregroundStyle(.secondary)
+                Text("The elements it changes are read-only until you answer.").fontSmall().foregroundStyle(.secondary)
             }
             .padding(10).frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.accentColor.opacity(0.1))
@@ -254,11 +254,11 @@ struct ClapActivityChip: View {
         HStack(spacing: 6) {
             if let l = ClapActivity.label(project.activity), project.activity.build == nil {
                 if project.activity.proposals.isEmpty { ProgressView().controlSize(.mini) } else { Image(systemName: "hourglass").foregroundStyle(.orange) }
-                Text(l).font(.caption)
-                if project.activity.proposals.isEmpty { Button("Stop") { chat.stop() }.buttonStyle(.borderless).font(.caption.weight(.semibold)).help("Stops Clap: what it already changed stays, and can be undone") }
+                Text(l).fontSmall()
+                if project.activity.proposals.isEmpty { Button("Stop") { chat.stop() }.buttonStyle(.borderless).fontSmall(weight: .semibold).help("Stops Clap: what it already changed stays, and can be undone") }
             } else if let e = chat.lastEnd {
                 Image(systemName: e.isError ? "exclamationmark.triangle.fill" : "checkmark.circle").foregroundStyle(e.isError ? Color.orange : Color.green)
-                Text(e.text).font(.caption).lineLimit(2)
+                Text(e.text).fontSmall().lineLimit(2)
             }
         }
         .animation(Motion.quick, value: chat.lastEnd)
@@ -278,18 +278,21 @@ struct BuildProgressPanel: View {
                 let hasRuns = !scenes.isEmpty
                 let p = BuildProgress.scenes(version: b.version, store: project.store)
                 let testingID = b.phase == .generating ? b.order.first { b.runs[$0]?.state == .testing } : nil          // a scene (or the frame) is being tested: no request is in flight
-                let step = b.phase == .generating ? (testingID.map { "Testing " + ($0 == BuildJob.frameStep ? "the frame" : $0) } ?? "Clap is writing the film") : b.phase == .testing ? "Assembling and testing" : "Stopping the build\u{2026}"
+                let active = b.order.filter { [.writing, .repairing].contains(b.runs[$0]?.state) }          // the requests in flight: several when scenes are written at the same time
+                let step = b.phase == .generating ? (active.isEmpty ? testingID.map { "Testing " + ($0 == BuildJob.frameStep ? "the frame" : $0) } : nil) ?? (active.count > 1 ? "Clap is writing \(active.count) scenes at once" : "Clap is writing the film") : b.phase == .testing ? "Assembling and testing" : "Stopping the build\u{2026}"
                 let current = b.current ?? ""
-                let scene = b.phase == .generating ? (hasRuns ? BuildProgress.sceneLine(done: b.done, total: scenes.count) : BuildProgress.sceneLine(done: p.done, total: p.total)) : nil
-                let phase = b.phase == .generating && testingID == nil ? b.clapPhase?.word : nil
+                let scene = b.phase == .generating ? (hasRuns ? (b.width > 1 ? "\(b.done) of \(scenes.count) scenes done" : BuildProgress.sceneLine(done: b.done, total: scenes.count)) : BuildProgress.sceneLine(done: p.done, total: p.total)) : nil
+                let phase = b.phase == .generating && active.count == 1 ? b.runs[active[0]]?.clapPhase?.word : nil
+                let writing = scenes.compactMap { b.runs[$0] }.filter { !$0.kept && $0.started != nil }.reduce(0) { $0 + $1.elapsed(now: ctx.date) }          // the time the scenes took, added up
+                let both = b.width > 1 && writing > 0 ? "writing time added up \(BuildProgress.elapsed(writing))" : nil
                 let testTime = testingID.flatMap { b.runs[$0] }.map { BuildProgress.elapsed($0.inPhase(now: ctx.date)) }
                 let time = BuildProgress.elapsed(ctx.date.timeIntervalSince(b.started))
-                let usage = b.phase == .generating && testingID == nil ? (hasRuns ? BuildProgress.tokensLine(b.outputTokens) : BuildProgress.usageLine(turns: b.turns, outputTokens: b.outputTokens)) : nil
+                let usage = b.phase == .generating && active.count + (testingID == nil ? 0 : 1) > 0 ? (hasRuns ? BuildProgress.tokensLine(b.outputTokens) : BuildProgress.usageLine(turns: b.turns, outputTokens: b.outputTokens)) : nil
                 if compact {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.mini)
-                        Text(([b.version, scene, phase, usage, testingID == nil ? nil : step, testTime, b.notice].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.caption)
-                        Button("Cancel build") { project.cancelBuild() }.buttonStyle(.borderless).font(.caption.weight(.semibold)).help(cancelHelp(b))
+                        Text(([b.version, scene, phase, usage, testingID == nil || !active.isEmpty ? nil : step, testTime, b.notice].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).fontSmall()
+                        Button("Cancel build") { project.cancelBuild() }.buttonStyle(.borderless).fontSmall(weight: .semibold).help(cancelHelp(b))
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
@@ -301,17 +304,17 @@ struct BuildProgressPanel: View {
                         }
                         if hasRuns, b.phase == .generating { ProgressView(value: Double(b.done), total: Double(max(scenes.count, 1))) }
                         else if p.total > 0, b.phase == .generating { ProgressView(value: Double(p.done), total: Double(p.total)) }
-                        Text(([step, scene, phase, usage, testTime].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.callout).foregroundStyle(.secondary)
+                        Text(([step, scene, phase, usage, testTime].compactMap { $0 } + ["real time " + time] + [both].compactMap { $0 }).joined(separator: " \u{00B7} ")).font(.callout).foregroundStyle(.secondary)
                         if let n = b.notice { Label(n, systemImage: "arrow.clockwise").font(.callout).foregroundStyle(.orange) }
                         if b.phase == .generating, hasRuns {
                             VStack(alignment: .leading, spacing: 2) {
                                 ForEach(b.order, id: \.self) { id in
-                                    if let r = b.runs[id] { StepRow(id: id, run: r, now: ctx.date, current: id == current || (id == BuildJob.frameStep && b.current == nil && r.state == .writing), phase: phase) }
+                                    if let r = b.runs[id] { StepRow(id: id, run: r, now: ctx.date, current: [.writing, .repairing, .testing].contains(r.state), phase: r.clapPhase?.word) }
                                 }
                             }
                         }
                         Text("Everything is read-only while the film is built: any change now would affect it. Looking, playing a finished film and asking Clap a question still work. \(cancelHelp(b))")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            .fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(12).background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
@@ -337,9 +340,9 @@ struct StepRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: symbol).foregroundStyle(tint).frame(width: 14)
-            Text(id == BuildJob.frameStep ? "Frame (project.json, reel.js)" : id).font(.caption.weight(current ? .semibold : .regular))
+            Text(id == BuildJob.frameStep ? "Frame (project.json, reel.js)" : id).fontSmall(weight: current ? .semibold : .regular)
             Spacer(minLength: 6)
-            Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text(detail).fontSmall().foregroundStyle(.secondary).lineLimit(1)
         }
         .help(run.failure ?? "")
     }

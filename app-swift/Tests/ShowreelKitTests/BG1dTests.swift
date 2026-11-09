@@ -56,7 +56,7 @@ final class BG1dTests: XCTestCase {
         XCTAssertEqual(p.write, ["S02"]); XCTAssertEqual(p.reuse.keys.sorted(), ["S01", "S03"]); XCTAssertEqual(p.reasons["S02"], "its content or look changed")
         let c = BuildJob.card(p, store: store, skill: skill, resuming: false)
         XCTAssertEqual(c.title, "Build v2: 1 scene will be written, 2 reused unchanged")
-        XCTAssertTrue(c.changes.contains { $0.after.contains("1 model call,") && $0.after.contains("about 1 min") }, "the cost and time are those of the written scene only")
+        XCTAssertTrue(c.changes.contains { $0.after.contains("1 model call,") } && c.changes.contains { $0.after.contains("about 1 min at 1 scene at once") }, "the cost and time are those of the written scene only")
         let before = titles().count
         let m = JobModel(); m.sceneText = { step, _ in "return function render() { /* \(step) new */ };" }; _ = await run(m)
         XCTAssertEqual(m.asked, ["S02"], "one request")

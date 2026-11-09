@@ -31,7 +31,7 @@ struct WizardStartView: View {
                     ForEach(f.map { ProjectSetup.requirements($0) } ?? []) { r in
                         Label(r.title, systemImage: r.isSet ? "checkmark.circle.fill" : "circle").foregroundStyle(r.isSet ? Color.green : Color.secondary).font(.callout)
                     }
-                    Text("Audience, message and tone are optional.").font(.caption).foregroundStyle(.secondary)
+                    Text("Audience, message and tone are optional.").fontSmall().foregroundStyle(.secondary)
                 }
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 if let w = wiz.why {
@@ -46,7 +46,7 @@ struct WizardStartView: View {
                         Spacer(minLength: 0)
                     }
                 }
-                Text("The workspace opens by itself as soon as the base configuration is complete.").font(.caption).foregroundStyle(.secondary)
+                Text("The workspace opens by itself as soon as the base configuration is complete.").fontSmall().foregroundStyle(.secondary)
             }
             .padding(24)
         }

@@ -74,6 +74,9 @@ public enum SceneModules {
         var failed: [String: [String: String]]?
     }
 
+    /// Scenes are written at the same time: every change of build.json is a read, a change and a write, done by one at a time.
+    static let bookLock = NSRecursiveLock()
+
     static func bookURL(_ store: ProjectStore) -> URL { store.root.appendingPathComponent(".studio/build.json") }
 
     static func loadBook(_ store: ProjectStore) -> Book {
@@ -85,6 +88,7 @@ public enum SceneModules {
 
     /// Records the scenes of a version as generated now, from the project's current inputs and the files as they are. A scene without a file is not recorded.
     public static func recordGeneration(version: String, scenes ids: [String]? = nil, store: ProjectStore) throws {
+        bookLock.lock(); defer { bookLock.unlock() }
         guard let f = store.loadShowreel() else { throw AgentError.msg("there is no readable showreel.json") }
         var book = loadBook(store)
         var rows = book.versions[version] ?? [:], failed = book.failed ?? [:]
@@ -100,12 +104,14 @@ public enum SceneModules {
 
     /// The scene's file failed its test even after its repair and was removed: said, so that the next plan can give that as the reason.
     public static func noteFailure(version: String, scene: String, error: String, store: ProjectStore) {
+        bookLock.lock(); defer { bookLock.unlock() }
         var book = loadBook(store); var m = book.failed ?? [:]; m[version, default: [:]][scene] = error; book.failed = m; try? save(book, store)
     }
     public static func failure(version: String, scene: String, store: ProjectStore) -> String? { loadBook(store).failed?[version]?[scene] }
 
     /// Forgets what was recorded about the scenes of a version (after a start over).
     public static func forget(version: String, store: ProjectStore) throws {
+        bookLock.lock(); defer { bookLock.unlock() }
         var book = loadBook(store)
         book.versions[version] = nil; book.films?[version] = nil; book.results?[version] = nil; book.failed?[version] = nil
         try save(book, store)
@@ -146,6 +152,7 @@ public enum SceneModules {
     /// The file of a scene passed its own test with no code error: only this lets a Build take it over without writing it again. (`ok: false` records nothing: a file that
     /// failed its test is removed, and the failure is kept by `noteFailure`.)
     public static func markTested(version: String, scene: String, ok: Bool = true, store: ProjectStore) {
+        bookLock.lock(); defer { bookLock.unlock() }
         guard ok else { return }
         var book = loadBook(store)
         guard var r = book.versions[version]?[scene] else { return }
@@ -158,6 +165,7 @@ public enum SceneModules {
 
     /// Copies the file of a scene and its record from one version to another, as they are.
     public static func carryOver(scene id: String, from: String, to: String, store: ProjectStore) throws {
+        bookLock.lock(); defer { bookLock.unlock() }
         let dst = url(version: to, scene: id, store: store)
         try FileManager.default.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? FileManager.default.removeItem(at: dst)
@@ -174,6 +182,7 @@ public enum SceneModules {
         return hex(SHA256.hash(data: Data(parts.joined(separator: "\u{1}").utf8)).prefix(8))
     }
     public static func recordFrame(version: String, store: ProjectStore) {
+        bookLock.lock(); defer { bookLock.unlock() }
         guard let f = store.loadShowreel() else { return }
         var book = loadBook(store); var m = book.frames ?? [:]; m[version] = frameInputs(f); book.frames = m; try? save(book, store)
     }
@@ -214,6 +223,7 @@ public enum SceneModules {
     }
 
     public static func recordAssembly(version: String, store: ProjectStore) throws {
+        bookLock.lock(); defer { bookLock.unlock() }
         guard let f = store.loadShowreel() else { return }
         var book = loadBook(store)
         var films = book.films ?? [:]
@@ -223,6 +233,7 @@ public enum SceneModules {
     }
 
     public static func recordResult(version: String, ok: Bool, store: ProjectStore) throws {
+        bookLock.lock(); defer { bookLock.unlock() }
         var book = loadBook(store)
         var r = book.results ?? [:]; r[version] = VersionResult(ok: ok); book.results = r
         try save(book, store)

@@ -46,6 +46,7 @@ extension ProjectOperation {
         case .track, .grid, .gridSettings: return [.setting("music")]
         case .moveAsset(let id, _): return [.asset(id)]
         case .sceneLock(let ids, _): return ids.map { .scene($0) }
+        case .deleteScene(let id): return [.scene(id)]
         case .addFontFiles(let p): return [.setting("look.fonts"), .setting("fonts." + p.dir)]
         case .resource(let r):
             switch r { case .addTag(let id, _), .removeTag(let id, _), .replaceFile(let id, _): return [.asset(id)]; case .renameTag: return [.setting("tags")] }
@@ -57,7 +58,7 @@ extension ProjectOperation {
     public var buildPolicy: BuildPolicy {
         switch self {
         case .parameter, .decisions, .asset, .gate, .scene, .addScene, .sceneEnabled, .moveScene, .sceneLook, .content, .resize, .moveCut, .transition,
-             .track, .grid, .gridSettings, .moveAsset, .sceneLock, .addFontFiles, .resource:
+             .track, .grid, .gridSettings, .moveAsset, .sceneLock, .deleteScene, .addFontFiles, .resource:
             return .refused
         }
     }
@@ -91,6 +92,11 @@ public struct SceneRun: Equatable, Sendable {
     /// When the scene entered its present state, and when the last content of its request arrived (to say how long it has been quiet).
     public var phaseStarted: Date?
     public var lastData: Date?
+    /// What Clap is doing in this scene's request, the line about what is asked again, and how long its requests took in all (the generation time, which scenes written
+    /// together add up).
+    public var clapPhase: ClapPhase?
+    public var notice: String?
+    public var requestSeconds: TimeInterval = 0
     public init() {}
     public func elapsed(now: Date = Date()) -> TimeInterval { started.map { (finished ?? now).timeIntervalSince($0) } ?? 0 }
     /// How long the scene has been in its present state.
@@ -115,8 +121,13 @@ public final class ProjectActivity: @unchecked Sendable {
         /// A Build one scene at a time: the steps in order ("reel" first, then the scenes) and the state of each.
         public var order: [String] = []
         public var runs: [String: SceneRun] = [:]
+        /// How many scenes are written at the same time now (it goes down by one when the API limits requests), and the line that says so.
+        public var width = 1
+        public var widthNotice: String?
         /// A line about what the Build is doing again by itself ("Connection lost on S07, retrying (1 of 2)"); nil when nothing is.
-        public var notice: String?
+        public var notice: String? { order.compactMap { runs[$0]?.notice }.first ?? widthNotice }
+        /// The time the requests took, added up over the scenes: more than the real time when scenes are written together.
+        public var generationSeconds: TimeInterval { runs.values.reduce(0) { $0 + $1.requestSeconds } }
         /// The layout warnings found by the scenes' own tests, by scene: kept after a stop, so that they can be listed.
         public var layoutWarnings: [String: [String]] { Dictionary(uniqueKeysWithValues: runs.compactMap { $0.value.warningCount > 0 ? ($0.key, $0.value.warnings) : nil }) }
         public init(version: String, phase: Phase, started: Date = Date(), total: Int? = nil) { self.version = version; self.phase = phase; self.started = started; self.total = total }
@@ -201,7 +212,7 @@ public enum Reasons {
     public static func proposal(_ p: ActivityPending) -> Unavailable {
         Unavailable(.proposal, reason: "Waiting for your answer on a proposal from Clap (\(p.title))", way: "Accept or refuse the proposal: click to see it", link: .proposal(p.id))
     }
-    public static func locked(_ id: String) -> Unavailable { Unavailable(.locked, reason: "\(id) is locked", way: "Unlock it from its state menu (its place in the montage can still move)", link: .scene(id)) }
+    public static func locked(_ id: String) -> Unavailable { Unavailable(.locked, reason: "\(id) is locked", way: "Unlock it first: switch its Locked off", link: .scene(id)) }
     public static let noKey = Unavailable(.noKey, reason: "No API key", way: "Connect an AI in Settings (Command-,); everything else works without one", link: .key)
     public static func clapWorking(_ ids: [String]) -> Unavailable {
         Unavailable(.clapWorking, reason: ids.isEmpty ? "Clap is applying changes" : "Clap is applying changes to \(ids.joined(separator: ", "))", way: "Wait a moment, or stop Clap in the Ask Clap tab")

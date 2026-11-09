@@ -68,6 +68,7 @@ extension ProjectOperation {
         case .gridSettings: return "gridSettings"
         case .moveAsset: return "moveAsset"
         case .sceneLock: return "sceneLock"
+        case .deleteScene: return "deleteScene"
         case .addFontFiles: return "addFontFiles"
         case .resource: return "resource"
         }
@@ -95,6 +96,7 @@ extension ProjectOperation {
         case .transition(let from, _): return from
         case .track(let a): return a ?? "none"
         case .sceneLock(let ids, _): return ids.joined(separator: " ")
+        case .deleteScene(let id): return id
         case .addFontFiles(let p): return p.family
         case .resource(let r):
             switch r { case .addTag(let id, _), .removeTag(let id, _), .replaceFile(let id, _): return id; case .renameTag(let a, _): return a }
@@ -186,7 +188,7 @@ public enum JournalLinks {
             return .look(.looks)
         case "asset", "moveAsset": return .resource(first)
         case "gate": return ["interview"].contains(first) ? .project : first == "assets" ? .resources : first == "style" ? .look(.looks) : first == "build" || first == "verify" || first == "publish" ? .build : .storyboard
-        case "scene", "addScene", "sceneEnabled", "moveScene", "resize", "moveCut", "sceneLock": return CheckPanel.firstScene(in: first).map { .scene($0, tab: "settings") } ?? .storyboard
+        case "scene", "addScene", "sceneEnabled", "moveScene", "resize", "moveCut", "sceneLock", "deleteScene": return CheckPanel.firstScene(in: first).map { .scene($0, tab: "settings") } ?? .storyboard
         case "sceneLook": return CheckPanel.firstScene(in: first).map { .scene($0, tab: "look") } ?? .storyboard
         case "content": return CheckPanel.firstScene(in: first).map { .scene($0, tab: "composition") } ?? .storyboard
         case "transition": return .transition(from: first)

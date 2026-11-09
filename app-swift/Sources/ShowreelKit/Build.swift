@@ -59,7 +59,7 @@ public enum BuildRunner {
         let live = SceneRules.live(f)
         out.append(live.isEmpty ? r("scenes", "Scenes", .pending, "No scene yet: write the storyboard first.") : r("scenes", "Scenes", .ok, "\(live.count) scene\(live.count == 1 ? "" : "s")"))
         let notOK = live.filter { !$0.state.isReviewed }
-        if !live.isEmpty { out.append(notOK.isEmpty ? r("reviewed", "Scene review", .ok, "every scene is Validated or Locked") : r("reviewed", "Scene review", .pending, "\(notOK.map { $0.id }.joined(separator: ", ")) still to review")) }
+        if !live.isEmpty { out.append(notOK.isEmpty ? r("reviewed", "Scene review", .ok, "every visible scene is Ready (a locked scene is Ready, a hidden one is ignored)") : r("reviewed", "Scene review", .pending, "\(notOK.map { $0.id }.joined(separator: ", ")) not Ready yet: switch Ready on in the scene's inspector")) }
         let go = f.gates["review"] == "passed"
         out.append(go ? r("go", "The Go", .ok, "given by you") : r("go", "The Go", .pending, "not given: the build never starts without it. Give it in the Scene editor."))
         let held = Assets.load(store).filter { $0.status == "hold" }

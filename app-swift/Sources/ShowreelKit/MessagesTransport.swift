@@ -5,6 +5,17 @@ public protocol MessagesTransport {
     /// Streams text through `onText` and returns the content blocks and the stop reason.
     func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]],
                 onText: (String) -> Void) async throws -> (content: [[String: Any]], stop: String)
+    /// The same, for requests that run at the same time: the output tokens and what the request did are reported to this call's own closures, never to state the transport shares.
+    func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]],
+                onText: (String) -> Void, onOutput: ((Int) -> Void)?, onStats: ((RequestStats) -> Void)?) async throws -> (content: [[String: Any]], stop: String)
+}
+
+extension MessagesTransport {
+    /// A transport that does not report (a test's) just streams.
+    public func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]],
+                       onText: (String) -> Void, onOutput: ((Int) -> Void)?, onStats: ((RequestStats) -> Void)?) async throws -> (content: [[String: Any]], stop: String) {
+        try await stream(system: system, tools: tools, messages: messages, onText: onText)
+    }
 }
 
 /// The real transport: the Messages API over URLSession, server-sent events.
@@ -42,7 +53,7 @@ public final class AnthropicTransport: MessagesTransport, OutputBudgeted, Reques
     }
     /// What the last request did, whether it ended well or was cut.
     public var lastRequest: RequestStats? { lock.lock(); defer { lock.unlock() }; return last }
-    fileprivate func finished(_ r: RequestStats) { lock.lock(); last = r; lock.unlock() }
+    fileprivate func finished(_ call: Call, _ r: RequestStats) { lock.lock(); last = r; lock.unlock(); call.onStats?(r) }
     public var onOutput: ((Int) -> Void)? {
         get { lock.lock(); defer { lock.unlock() }; return report }
         set { lock.lock(); report = newValue; lock.unlock() }
@@ -56,20 +67,33 @@ public final class AnthropicTransport: MessagesTransport, OutputBudgeted, Reques
         self.bearer = bearer
     }
 
+    /// What one call reports to: its own closures, so that requests at the same time do not mix their figures.
+    struct Call: @unchecked Sendable { let onOutput: ((Int) -> Void)?; let onStats: ((RequestStats) -> Void)? }
+
     /// A refusal of the request by the API, kept with its status and body so that the cap can be corrected.
-    struct HTTPFailure: Error { let status: Int; let body: String }
+    struct HTTPFailure: Error { let status: Int; let body: String; var retryAfter: TimeInterval? = nil; var shouldRetry: String? = nil }
 
     public func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]],
                        onText: (String) -> Void) async throws -> (content: [[String: Any]], stop: String) {
+        try await stream(system: system, tools: tools, messages: messages, onText: onText, onOutput: nil, onStats: nil)
+    }
+
+    public func stream(system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]],
+                       onText: (String) -> Void, onOutput: ((Int) -> Void)?, onStats: ((RequestStats) -> Void)?) async throws -> (content: [[String: Any]], stop: String) {
         let asked = maxTokens
-        do { return try await streamOnce(cap: asked, system: system, tools: tools, messages: messages, onText: onText) }
+        let call = Call(onOutput: onOutput ?? self.onOutput, onStats: onStats)
+        do { return try await streamOnce(cap: asked, call: call, system: system, tools: tools, messages: messages, onText: onText) }
         catch let e as HTTPFailure {
             // the model allows less than asked: the error says how much, and the request is made again once with that
             if e.status == 400, let limit = OutputCap.limit(fromError: e.body, requested: asked) {
                 maxTokens = limit
-                do { return try await streamOnce(cap: limit, system: system, tools: tools, messages: messages, onText: onText) }
-                catch let e2 as HTTPFailure { throw AgentError.msg(Self.describe(e2, requested: limit)) }
+                do { return try await streamOnce(cap: limit, call: call, system: system, tools: tools, messages: messages, onText: onText) }
+                catch let e2 as HTTPFailure {
+                    if APIBusy.isRetryable(status: e2.status, shouldRetry: e2.shouldRetry) { throw APIBusy(status: e2.status, body: e2.body, retryAfter: e2.retryAfter) }
+                    throw AgentError.msg(Self.describe(e2, requested: limit))
+                }
             }
+            if APIBusy.isRetryable(status: e.status, shouldRetry: e.shouldRetry) { throw APIBusy(status: e.status, body: e.body, retryAfter: e.retryAfter) }
             throw AgentError.msg(Self.describe(e, requested: asked))
         }
     }
@@ -106,12 +130,12 @@ public final class AnthropicTransport: MessagesTransport, OutputBudgeted, Reques
 
     /// One request, cut with an error that says why: nothing for `idleTimeout` seconds (pings count), no text or tool argument for `contentTimeout` (pings do not count),
     /// or more than `requestTimeout` in all. A dropped connection or a stream closed before the end is a `ConnectionLost`.
-    private func streamOnce(cap: Int, system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]],
+    private func streamOnce(cap: Int, call: Call, system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]],
                             onText: (String) -> Void) async throws -> (content: [[String: Any]], stop: String) {
         let pulse = Pulse(), idle = idleTimeout, noContent = contentTimeout, total = requestTimeout
         return try await withoutActuallyEscaping(onText) { escaping in
             let text = UncheckedText(escaping)
-            let work = Task { try await self.attempt(cap: cap, system: system, tools: tools, messages: messages, pulse: pulse, onText: text.call) }
+            let work = Task { try await self.attempt(cap: cap, call: call, system: system, tools: tools, messages: messages, pulse: pulse, onText: text.call) }
             let dog = Task {
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 250_000_000)
@@ -121,19 +145,19 @@ public final class AnthropicTransport: MessagesTransport, OutputBudgeted, Reques
             defer { dog.cancel() }
             do {
                 let r = try await withTaskCancellationHandler(operation: { try await work.value }, onCancel: { work.cancel() })
-                finished(pulse.stats(cause: "ok"))
+                finished(call, pulse.stats(cause: "ok"))
                 return r
             } catch {
                 if let c = pulse.cut {
                     switch c {
-                    case .idle: finished(pulse.stats(cause: "idle")); throw IdleTimeout(seconds: Int(idle))
-                    case .noContent: finished(pulse.stats(cause: "no-content")); throw ContentTimeout(seconds: Int(noContent), pingsOnly: pulse.sawPings)
-                    case .tooLong: finished(pulse.stats(cause: "too-long")); throw RequestTooLong(seconds: Int(total))
+                    case .idle: finished(call, pulse.stats(cause: "idle")); throw IdleTimeout(seconds: Int(idle))
+                    case .noContent: finished(call, pulse.stats(cause: "no-content")); throw ContentTimeout(seconds: Int(noContent), pingsOnly: pulse.sawPings)
+                    case .tooLong: finished(call, pulse.stats(cause: "too-long")); throw RequestTooLong(seconds: Int(total))
                     }
                 }
-                if Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled { finished(pulse.stats(cause: "cancelled")); throw error }
-                if let u = error as? URLError { finished(pulse.stats(cause: "connection-lost")); throw ConnectionLost(detail: u.localizedDescription) }
-                if let h = error as? HTTPFailure { finished(pulse.stats(cause: "http \(h.status)")) } else if error is ConnectionLost { finished(pulse.stats(cause: "connection-lost")) } else { finished(pulse.stats(cause: "error")) }
+                if Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled { finished(call, pulse.stats(cause: "cancelled")); throw error }
+                if let u = error as? URLError { finished(call, pulse.stats(cause: "connection-lost")); throw ConnectionLost(detail: u.localizedDescription) }
+                if let h = error as? HTTPFailure { finished(call, pulse.stats(cause: "http \(h.status)")) } else if error is ConnectionLost { finished(call, pulse.stats(cause: "connection-lost")) } else { finished(call, pulse.stats(cause: "error")) }
                 throw error
             }
         }
@@ -142,7 +166,7 @@ public final class AnthropicTransport: MessagesTransport, OutputBudgeted, Reques
     /// `onText` crosses into a task: the agent's callbacks only touch state that tolerates it (they hop to the main queue themselves).
     private struct UncheckedText: @unchecked Sendable { let call: (String) -> Void; init(_ c: @escaping (String) -> Void) { call = c } }
 
-    private func attempt(cap: Int, system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]], pulse: Pulse,
+    private func attempt(cap: Int, call: Call, system: [[String: Any]], tools: [[String: Any]], messages: [[String: Any]], pulse: Pulse,
                          onText: (String) -> Void) async throws -> (content: [[String: Any]], stop: String) {
         guard let url = URL(string: baseURL + "/v1/messages") else { throw AgentError.msg("Invalid endpoint URL: \(baseURL)") }
         var req = URLRequest(url: url)
@@ -163,13 +187,13 @@ public final class AnthropicTransport: MessagesTransport, OutputBudgeted, Reques
         if let h = resp as? HTTPURLResponse, h.statusCode != 200 {
             var s = ""
             for try await l in bytes.lines { pulse.beat(bytes: l.utf8.count + 1); s += l + "\n" }
-            throw HTTPFailure(status: h.statusCode, body: s)
+            throw HTTPFailure(status: h.statusCode, body: s, retryAfter: h.value(forHTTPHeaderField: "retry-after").flatMap { Double($0.trimmingCharacters(in: .whitespaces)) }, shouldRetry: h.value(forHTTPHeaderField: "x-should-retry"))
         }
 
         var blocks: [Int: [String: Any]] = [:]
         var partial: [Int: String] = [:]
         var stop = "end_turn"
-        let report = onOutput
+        let report = call.onOutput
         var chars = 0, sent = 0
         func progress(_ n: Int) { chars += n; if sent == 0 || chars - sent >= 400 { sent = chars; report?(max(1, chars / 4)) } }          // about 4 characters a token, until the API gives the figure
         for try await line in bytes.lines {

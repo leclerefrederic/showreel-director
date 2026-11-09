@@ -25,7 +25,7 @@ struct AnimatedThumb: View {
         ZStack {
             Rectangle().fill(Color.primary.opacity(0.06))
             if frames.isEmpty {
-                if let f = failure { Text(f).font(.caption2).foregroundStyle(.secondary).padding(6) } else { ProgressView().controlSize(.small) }
+                if let f = failure { Text(f).fontSmall().foregroundStyle(.secondary).padding(6) } else { ProgressView().controlSize(.small) }
             } else {
                 TimelineView(.periodic(from: .now, by: 0.12)) { ctx in
                     Image(nsImage: frames[Int(ctx.date.timeIntervalSinceReferenceDate / 0.12) % frames.count]).resizable().scaledToFit()
@@ -78,7 +78,7 @@ struct LicenceBadge: View {
     let assessment: FontLicense.Assessment
     var body: some View {
         Label(assessment.message, systemImage: assessment.level == .ok ? "checkmark.seal.fill" : assessment.level == .fail ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")
-            .font(.caption).foregroundStyle(assessment.level == .ok ? Color.green : assessment.level == .fail ? .red : .orange)
+            .fontSmall().foregroundStyle(assessment.level == .ok ? Color.green : assessment.level == .fail ? .red : .orange)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -132,7 +132,7 @@ struct PinnedChoices<Pinned: View, Options: View>: View {
             } header: {
                 pinned()
                     .id(key).transition(Motion.appear)
-                    .padding(.bottom, 8).background(Color(nsColor: .windowBackgroundColor))
+                    .padding(.bottom, 8).panelBackground()
             }
         }
         .animation(Motion.spring, value: key)
@@ -146,7 +146,7 @@ struct CurrentCard<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(label.uppercased()).font(.caption2.weight(.bold)).foregroundStyle(Color.accentColor)
+            Text(label.uppercased()).fontSmall(weight: .bold).foregroundStyle(Color.accentColor)
             content()
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -163,7 +163,7 @@ private func optionBox<C: View>(@ViewBuilder _ c: () -> C) -> some View {
 }
 
 private func chip(_ t: String) -> some View {
-    Text(t).font(.caption2.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 1).background(Color.accentColor.opacity(0.18), in: Capsule())
+    Text(t).fontSmall(weight: .semibold).padding(.horizontal, 6).padding(.vertical, 1).background(Color.accentColor.opacity(0.18), in: Capsule())
 }
 
 // MARK: look board
@@ -194,12 +194,12 @@ struct LookBoardView: View {
             HStack { Text(p.name).font(.title3.weight(.semibold)); Label("Chosen", systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.callout) }
             Text(p.why).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Swatches(colours: p.palette)
-            Text("\(p.fonts.titles ?? "") + \(p.fonts.text ?? "") \u{00B7} \(p.pack) \u{00B7} \(p.background)").font(.caption).foregroundStyle(.secondary)
+            Text("\(p.fonts.titles ?? "") + \(p.fonts.text ?? "") \u{00B7} \(p.pack) \u{00B7} \(p.background)").fontSmall().foregroundStyle(.secondary)
         } else if let f = project.showreel, f.decisions.palette != nil || f.decisions.background != nil {
             let d = f.decisions
             Text("A mix of your own choices: not one of the starting looks.").font(.callout).foregroundStyle(.secondary)
             if let pal = d.palette, !pal.isEmpty { Swatches(colours: pal) }
-            Text([d.fonts?.titles, d.fonts?.text, d.background?.id, d.effectsPack].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " \u{00B7} ")).font(.caption).foregroundStyle(.secondary)
+            Text([d.fonts?.titles, d.fonts?.text, d.background?.id, d.effectsPack].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " \u{00B7} ")).fontSmall().foregroundStyle(.secondary)
         } else {
             Text("No look chosen yet. Pick a starting point below, or choose the palette, fonts and background one by one.").font(.callout).foregroundStyle(.secondary)
         }
@@ -218,10 +218,10 @@ struct LookBoardView: View {
             VStack(alignment: .leading, spacing: 8) {
                 preview(p, ctx)
                 HStack { Text(p.name).font(.headline); if recommended { chip("Fits your tone") } }
-                Text(p.why).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(p.why).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Swatches(colours: p.palette)
-                Text("\(p.fonts.titles ?? "") + \(p.fonts.text ?? "") \u{00B7} \(p.pack) \u{00B7} \(p.background)").font(.caption2).foregroundStyle(.secondary)
-                Button("Choose this look") { project.perform(.decisions(p.decisions, title: "Choose the look: \(p.name)")) }.buttonStyle(.borderedProminent)
+                Text("\(p.fonts.titles ?? "") + \(p.fonts.text ?? "") \u{00B7} \(p.pack) \u{00B7} \(p.background)").fontSmall().foregroundStyle(.secondary)
+                Button("Choose this look") { project.perform(.decisions(p.decisions, title: "Choose the look: \(p.name)")) }.buttonStyle(PrimaryButtonStyle())
             }
         }
     }
@@ -255,7 +255,7 @@ struct PaletteEditor: View {
                             HStack(spacing: 8) {
                                 RoundedRectangle(cornerRadius: 5).fill(Color(hex: hex)).frame(width: 26, height: 26).overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.primary.opacity(0.2)))
                                 Text(i < Self.roles.count ? Self.roles[i] : "Extra").font(.callout.weight(.medium))
-                                Text(hex).font(.caption.monospaced()).foregroundStyle(.secondary)
+                                Text(hex).fontSmall(mono: true).foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -290,7 +290,7 @@ struct PaletteEditor: View {
         optionBox {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Edit the colours").font(.callout.weight(.semibold))
-                Text(saved.isEmpty ? "These are starting colours: nothing is saved until you press Save." : "Change a colour, then Save.").font(.caption).foregroundStyle(.secondary)
+                Text(saved.isEmpty ? "These are starting colours: nothing is saved until you press Save." : "Change a colour, then Save.").fontSmall().foregroundStyle(.secondary)
                 ForEach(draft.indices, id: \.self) { i in
                     HStack {
                         Text(i < Self.roles.count ? Self.roles[i] : "Extra").frame(width: 100, alignment: .leading)
@@ -304,13 +304,13 @@ struct PaletteEditor: View {
                     ForEach(Contrast.checks(draft)) { r in
                         HStack(alignment: .top, spacing: 6) {
                             Image(systemName: r.level.symbol).foregroundStyle(r.level.color)
-                            VStack(alignment: .leading, spacing: 0) { Text(r.title).font(.callout.weight(.medium)); Text(r.detail).font(.caption).foregroundStyle(.secondary) }
+                            VStack(alignment: .leading, spacing: 0) { Text(r.title).font(.callout.weight(.medium)); Text(r.detail).fontSmall().foregroundStyle(.secondary) }
                         }
                     }
                 }
                 HStack {
                     Button("Save palette") { project.perform(.decisions([DecisionChange(.palette, draft.joined(separator: ", "))], title: nil)) }
-                        .buttonStyle(.borderedProminent).disabledWithReason(draft.count < 2 ? "A palette needs at least 2 colours" : !dirty ? "No change to save" : nil)
+                        .buttonStyle(PrimaryButtonStyle()).disabledWithReason(draft.count < 2 ? "A palette needs at least 2 colours" : !dirty ? "No change to save" : nil)
                     Button("Revert") { draft = saved.isEmpty ? ["#101820", "#FFFFFF", "#F2AA4C"] : saved }.disabledWithReason(dirty ? nil : "Nothing to revert: no change yet")
                 }
             }
@@ -385,8 +385,8 @@ struct FontPickerView: View {
         optionBox {
             VStack(alignment: .leading, spacing: 6) {
                 Text(ctx.text).font(.custom(FontRegistry.shared.family(f.name), size: 22)).lineLimit(2).frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
-                HStack { Text(f.name).font(.callout.weight(.semibold)); Text(f.cat).font(.caption2).padding(.horizontal, 5).background(Color.primary.opacity(0.08), in: Capsule()) }
-                Text(f.note).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                HStack { Text(f.name).font(.callout.weight(.semibold)); Text(f.cat).fontSmall().padding(.horizontal, 5).background(Color.primary.opacity(0.08), in: Capsule()) }
+                Text(f.note).fontSmall().foregroundStyle(.secondary).lineLimit(2)
                 buttons(f.name)
             }
         }
@@ -434,11 +434,11 @@ struct BackgroundPickerView: View {
                     Text("Calm (no reaction)").tag("")
                     ForEach(Look.backgroundMoods(), id: \.self) { Text($0.capitalized).tag($0) }
                 }.frame(maxWidth: 320)
-                Text("The mood only changes how animated backgrounds breathe with a track. It is saved with the background.").font(.caption).foregroundStyle(.secondary)
+                Text("The mood only changes how animated backgrounds breathe with a track. It is saved with the background.").fontSmall().foregroundStyle(.secondary)
             }
         } options: {
             VStack(alignment: .leading, spacing: 10) {
-                if !ctx.hasPalette { Text("Drawn in a neutral palette until you choose yours.").font(.caption).foregroundStyle(.secondary) }
+                if !ctx.hasPalette { Text("Drawn in a neutral palette until you choose yours.").fontSmall().foregroundStyle(.secondary) }
                 Picker("Family", selection: $family) { ForEach(["All"] + Array(Set(list.map { $0.family })).sorted(), id: \.self) { Text($0).tag($0) } }.frame(maxWidth: 220)
                 LazyVGrid(columns: optionColumns, spacing: 12) {
                     ForEach(part.others.filter { family == "All" || $0.family == family }) { b in
@@ -446,7 +446,7 @@ struct BackgroundPickerView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 EngineThumb(token: b.id + ctx.palette.signature + mood) { await engine.backgroundFrames(b.id, mood: mood, palette: ctx.palette, store: project.store) }
                                 HStack { Text(b.name).font(.callout.weight(.semibold)); chip(b.animated ? "Animated" : b.family) }
-                                Text(b.desc).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                Text(b.desc).fontSmall().foregroundStyle(.secondary).lineLimit(2)
                                 Button("Use this background") {
                                     project.perform(.decisions([DecisionChange(.background, b.id), DecisionChange(.backgroundMood, mood)], title: "Set background: \(b.name)"))
                                 }.buttonStyle(.bordered)
@@ -481,7 +481,7 @@ struct MoodsPickerView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(p.name).font(.title3.weight(.semibold))
                                 Text(p.feel).font(.callout).foregroundStyle(.secondary)
-                                Text(p.effects.joined(separator: " \u{00B7} ")).font(.caption2).foregroundStyle(.tertiary).lineLimit(2)
+                                Text(p.effects.joined(separator: " \u{00B7} ")).fontSmall().foregroundStyle(.tertiary).lineLimit(2)
                                 Button("Remove") { selected.removeAll { $0 == p.name } }.buttonStyle(.borderless)
                             }
                         }
@@ -490,7 +490,7 @@ struct MoodsPickerView: View {
                 if part.current.isEmpty { CurrentCard(label: "No mood yet") { Text("Pick one or two moods below. Each is a coherent set of motion.").font(.callout).foregroundStyle(.secondary) } }
                 HStack {
                     Button("Use these moods") { project.perform(.decisions([DecisionChange(.moods, selected.joined(separator: ", "))], title: nil)) }
-                        .buttonStyle(.borderedProminent).disabledWithReason(selected.isEmpty ? "Choose one or two moods first" : selected == saved ? "These moods already are the ones in use" : nil)
+                        .buttonStyle(PrimaryButtonStyle()).disabledWithReason(selected.isEmpty ? "Choose one or two moods first" : selected == saved ? "These moods already are the ones in use" : nil)
                     if !saved.isEmpty && selected == saved { Label("Saved", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
                 }
             }
@@ -504,8 +504,8 @@ struct MoodsPickerView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 thumb(p, ctx)
                                 Text(p.name).font(.headline)
-                                Text(p.feel).font(.caption).foregroundStyle(.secondary)
-                                Text(p.effects.joined(separator: " \u{00B7} ")).font(.caption2).foregroundStyle(.tertiary).lineLimit(2)
+                                Text(p.feel).fontSmall().foregroundStyle(.secondary)
+                                Text(p.effects.joined(separator: " \u{00B7} ")).fontSmall().foregroundStyle(.tertiary).lineLimit(2)
                             }
                         }
                         .contentShape(Rectangle())
@@ -547,7 +547,7 @@ struct EffectsPickerView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack { Text(p.name).font(.title3.weight(.semibold)); if (project.showreel?.decisions.moods ?? []).contains(p.name) { chip("your mood") } }
                             Text(p.feel).font(.callout).foregroundStyle(.secondary)
-                            Text(p.effects.joined(separator: " \u{00B7} ")).font(.caption).foregroundStyle(.secondary)
+                            Text(p.effects.joined(separator: " \u{00B7} ")).fontSmall().foregroundStyle(.secondary)
                         }
                     }
                 } else { Text("Pick a pack below: the AI draws its animations from it.").font(.callout).foregroundStyle(.secondary) }
@@ -560,8 +560,8 @@ struct EffectsPickerView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 thumb(p, ctx)
                                 HStack { Text(p.name).font(.headline); if (project.showreel?.decisions.moods ?? []).contains(p.name) { chip("your mood") } }
-                                Text(p.feel).font(.caption).foregroundStyle(.secondary)
-                                Text(p.effects.joined(separator: " \u{00B7} ")).font(.caption2).foregroundStyle(.tertiary).lineLimit(2)
+                                Text(p.feel).fontSmall().foregroundStyle(.secondary)
+                                Text(p.effects.joined(separator: " \u{00B7} ")).fontSmall().foregroundStyle(.tertiary).lineLimit(2)
                                 Button("Use \(p.name) as the effects pack") { project.perform(.decisions([DecisionChange(.effectsPack, p.name)], title: nil)) }.buttonStyle(.bordered)
                             }
                         }
@@ -578,8 +578,8 @@ struct EffectsPickerView: View {
                             optionBox {
                                 VStack(alignment: .leading, spacing: 4) {
                                     EngineThumb(token: e.name + ctx.palette.signature + ctx.titleFont) { await engine.effectFrames(e.name, palette: ctx.palette, font: ctx.titleFont, store: project.store, text: ctx.text) }
-                                    HStack { Text(e.name).font(.callout.weight(.semibold)); Text(e.energy).font(.caption2).padding(.horizontal, 5).background(Color.primary.opacity(0.08), in: Capsule()) }
-                                    Text(e.desc).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                    HStack { Text(e.name).font(.callout.weight(.semibold)); Text(e.energy).fontSmall().padding(.horizontal, 5).background(Color.primary.opacity(0.08), in: Capsule()) }
+                                    Text(e.desc).fontSmall().foregroundStyle(.secondary).lineLimit(2)
                                 }
                             }
                         }

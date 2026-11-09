@@ -50,25 +50,25 @@ struct SceneForm: View {
                 }
                 if tab == nil {            // in the workspace the composition holds the resources, as elements; the guided path links them here
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Linked resources").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        Text("Linked resources").fontSmall(weight: .semibold).foregroundStyle(.secondary)
                         let usable = project.assets.filter { $0.type != "doc" && $0.type != "data" && $0.type != "note" && $0.type != "misc" }
-                        if usable.isEmpty { Text("No resource yet: add files in the Resources tab of the library.").font(.caption).foregroundStyle(.secondary) }
+                        if usable.isEmpty { Text("No resource yet: add files in the Resources tab of the library.").fontSmall().foregroundStyle(.secondary) }
                         ForEach(usable) { a in
                             Toggle(isOn: Binding(get: { linked.contains(a.id) }, set: { on in if on { linked.insert(a.id) } else { linked.remove(a.id) } })) {
                                 HStack {
                                     Text(a.name).lineLimit(1)
-                                    if let st = project.assetStatus[a.id] { Text(st.rawValue).font(.caption).foregroundStyle(st.color) }
+                                    if let st = project.assetStatus[a.id] { Text(st.rawValue).fontSmall().foregroundStyle(st.color) }
                                 }
                             }.toggleStyle(.checkbox)
                         }
                     }
                 }
                 HStack {
-                    Button("Save scene") { if let e = edit { project.perform(.scene(id: id, e)) } }.buttonStyle(.borderedProminent).disabledWithReason(s.isLocked ? "\(id) is locked" : edit == nil ? "Nothing to save yet: no change" : nil, way: s.isLocked ? "Unlock it from its badge or the Review block" : nil)
+                    Button("Save scene") { if let e = edit { project.perform(.scene(id: id, e)) } }.buttonStyle(PrimaryButtonStyle()).disabledWithReason(s.isLocked ? "\(id) is locked" : edit == nil ? "Nothing to save yet: no change" : nil, way: s.isLocked ? "Unlock it from its badge or the Review block" : nil)
                     Button("Revert") { load(force: true) }.disabled(edit == nil)
                 }
-                if s.isLocked { Label("Locked: nothing in this scene can change. Unlock it from its badge or the Review block.", systemImage: "lock.fill").font(.caption).foregroundStyle(.secondary) }
-                else if s.state == .validated, shows(.settings) || shows(.composition) { Text("Changing the text or the duration sends this scene back to WIP.").font(.caption).foregroundStyle(.secondary) }
+                if s.isLocked { Label("Locked: nothing in this scene can change. Unlock it from its badge or the Review block.", systemImage: "lock.fill").fontSmall().foregroundStyle(.secondary) }
+                else if s.state == .validated, shows(.settings) || shows(.composition) { Text("Changing the text or the duration sends this scene back to To review.").fontSmall().foregroundStyle(.secondary) }
             }
             .onAppear { load(force: false) }
             .onChange(of: project.showreel) { _ in load(force: false) }
@@ -77,16 +77,16 @@ struct SceneForm: View {
 
     private func field(_ label: String, _ b: Binding<String>, width: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(label).fontSmall(weight: .semibold).foregroundStyle(.secondary)
             TextField("", text: b).textFieldStyle(.roundedBorder).frame(maxWidth: width ?? .infinity)
         }
     }
 
     private func area(_ label: String, _ b: Binding<String>, _ lines: Int) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(label).fontSmall(weight: .semibold).foregroundStyle(.secondary)
             TextEditor(text: b).font(.body).frame(height: CGFloat(lines) * 20 + 10).padding(2)
-                .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+                .raisedBackground()
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15)))
         }
     }
@@ -102,7 +102,7 @@ struct SceneForm: View {
     }
 }
 
-/// The scene list of the wizard's storyboard step: add, edit, reorder, archive. IDs are stable; moving a scene never renames it.
+/// The scene list of the wizard's storyboard step: add, edit, reorder, delete. IDs are stable; moving a scene never renames it.
 struct SceneListEditor: View {
     @EnvironmentObject var project: ProjectModel
     @EnvironmentObject var chat: ChatModel
@@ -129,11 +129,11 @@ struct SceneListEditor: View {
                                 SlotGap(target: .librarySlot(before: s.id))
                                 HStack(spacing: 8) {
                                     Handle()
-                                    SceneBadges(scene: s)
+                                    SceneStatusIcon(scene: s)
                                     Text(s.id).font(.callout.monospaced().weight(.semibold))
                                     VStack(alignment: .leading, spacing: 0) {
                                         Text(s.name ?? (s.text.isEmpty ? "(no text)" : s.text)).lineLimit(1).font(.callout)
-                                        Text(s.durationLabel).font(.caption).foregroundStyle(.secondary)
+                                        Text(s.durationLabel).fontSmall().foregroundStyle(.secondary)
                                     }
                                     Spacer()
                                 }
@@ -154,11 +154,11 @@ struct SceneListEditor: View {
                     .padding(.horizontal, 4)
                 }
                 .frame(minHeight: 160, maxHeight: 300)
-                Text("Drag to reorder: the order changes, the IDs never do.").font(.caption).foregroundStyle(.secondary)
+                Text("Drag to reorder: the order changes, the IDs never do.").fontSmall().foregroundStyle(.secondary)
                 if let id = selected, scenes.contains(where: { $0.id == id }) {
                     Divider()
                     SceneForm(id: id).id(id)
-                    Button("Archive scene", role: .destructive) { project.archiveScene(id); selected = nil }
+                    Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(id) }
                 }
             }
         }
@@ -189,9 +189,9 @@ struct GoPanel: View {
                 Text("The build may start. If you change a scene, the Go is taken back and must be given again.").font(.callout).foregroundStyle(.secondary)
                 Button("Take the Go back") { project.perform(.gate("review", passed: false)) }
             } else {
-                Text(blocker.map { "Not yet: \($0)." } ?? "Every scene is Validated or ditched. The build never starts without your Go, and the app never gives it for you.")
+                Text(blocker.map { "Not yet: \($0)." } ?? "Every visible scene is Ready. The build never starts without your Go, and the app never gives it for you.")
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Button("Give the Go") { confirming = true }.buttonStyle(.borderedProminent).disabled(blocker != nil)
+                Button("Give the Go") { confirming = true }.buttonStyle(PrimaryButtonStyle()).disabled(blocker != nil)
             }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
@@ -227,43 +227,47 @@ struct GoButton: View {
     }
 }
 
-/// Review one scene: OK (Validated), MODIFY (WIP with a note) or DITCH, a note, and the lock switch. Validated is not Locked.
-struct SceneDecision: View {
+/// The three switches of a scene, Visible, Ready and Locked, its instruction and the Delete button. Each switch is one typed operation (ShowreelKit's `SceneSwitches` decides what
+/// is allowed and why not); an unavailable switch says why and how to get out of it.
+struct SceneSwitchesView: View {
     let id: String
     @EnvironmentObject var project: ProjectModel
     @State private var note = ""
     @State private var loadedFor = ""
-    @State private var ditching = false
 
     private var scene: ShowreelFile.Scene? { project.showreel?.scenes.first { $0.id == id } }
 
     var body: some View {
-        if let s = scene {
+        if let s = scene, let f = project.showreel {
+            let visible = SceneSwitches.visible(s, in: f, activity: project.activity), ready = SceneSwitches.ready(s, activity: project.activity)
+            let locked = SceneSwitches.locked(s, activity: project.activity), delete = SceneSwitches.delete(s, activity: project.activity)
             VStack(alignment: .leading, spacing: 8) {
-                TextField("Note (what to change, or why)", text: $note, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
-                HStack {
-                    Button("OK") { decide("validated") }.buttonStyle(.borderedProminent).tint(.green).disabledWithReason(s.isLocked ? "\(id) is locked" : (s.state == .validated && note == s.note) ? "Already validated with this note" : nil, way: s.isLocked ? "Unlock it first" : nil)
-                    Button("MODIFY") { decide("wip") }.tint(.orange).disabledWithReason(s.isLocked ? "\(id) is locked" : note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "MODIFY needs a note that says what to change" : nil, way: s.isLocked ? "Unlock it first" : "Write the note above")
-                    Button("DITCH", role: .destructive) { ditching = true }.disabledWithReason(s.isLocked ? "\(id) is locked" : nil, way: "Unlock it first")
-                    Spacer()
-                }
-                if !s.isLocked, note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { Text("MODIFY needs a note that says what to change.").font(.caption).foregroundStyle(.secondary) }
-                Toggle(isOn: Binding(get: { s.isLocked }, set: { project.perform(.sceneLock(ids: [id], locked: $0)) })) { Label("Locked", systemImage: "lock") }
-                    .toggleStyle(.switch).disabledWithReason(!s.isLocked && s.state != .validated ? "Only a Validated scene can be locked" : nil, way: "Validate it first (OK), then lock it")
-                Text(s.isLocked ? "Locked: its content, duration and look cannot change. Unlock it to change the review. Its place in the film still moves."
-                                : "Validated is not Locked: a validated scene goes back to WIP when it changes. Lock it (once validated) to refuse any change.")
-                    .font(.caption).foregroundStyle(.secondary)
+                switchRow("Visible", systemImage: visible.on ? "eye" : "eye.slash", visible, help: "In the film. Off: hidden, listed under \u{201C}Not in the storyboard\u{201D}.")
+                switchRow("Ready", systemImage: "checkmark.circle", ready, help: "You are satisfied with the scene. Off: To review.")
+                switchRow("Locked", systemImage: "lock", locked, help: "Frozen in time and space: nothing in it or before it can change, and a Build never rewrites it. Only a Ready scene can be locked.")
+                TextField("Instruction (what to change, or why)", text: $note, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
+                    .onSubmit { commitNote() }
+                    .disabledWithReason(s.isLocked ? "\(id) is locked" : project.activity.isBuilding ? Reasons.building.reason : nil, way: s.isLocked ? "Unlock it first" : "Wait for the end, or Cancel the build")
+                Text(s.toModify ? "To review, with an instruction: it is shown in the Status tooltip." : "To ask for a change: switch Ready off and write the instruction. Press Return to keep it.")
+                    .fontSmall().foregroundStyle(.secondary)
+                Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(id) }
+                    .disabledWithReason(delete.unavailable?.reason, way: delete.unavailable?.way)
+                    .help("Deletes the scene for good, with a confirmation. Undo brings it back.")
             }
             .onAppear { if loadedFor != id { note = s.note; loadedFor = id } }
             .onChange(of: project.showreel) { _ in if loadedFor != id { note = s.note; loadedFor = id } }
-            .alert("Ditch \(id)?", isPresented: $ditching) {
-                Button("Ditch", role: .destructive) { decide("ditched") }
-                Button("Cancel", role: .cancel) {}
-            } message: { Text("The scene is archived and switched off in every montage. Its ID is never reused. You can bring it back from the library.") }
         }
     }
 
-    private func decide(_ status: String) {
-        project.perform(.scene(id: id, SceneEdit(note: note, status: status)))
+    private func switchRow(_ title: String, systemImage: String, _ sw: SceneSwitches.Switch, help: String) -> some View {
+        Toggle(isOn: Binding(get: { sw.on }, set: { _ in project.flip(sw) })) { Label(title, systemImage: systemImage) }
+            .toggleStyle(ThemedToggleStyle())
+            .disabledWithReason(sw.unavailable?.reason, way: sw.unavailable?.way)
+            .help(sw.unavailable.map { $0.message } ?? help)
+    }
+
+    private func commitNote() {
+        guard let s = scene, note != s.note else { return }
+        project.perform(.scene(id: id, SceneEdit(note: note)))
     }
 }

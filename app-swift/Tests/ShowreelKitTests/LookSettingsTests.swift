@@ -93,10 +93,7 @@ final class LookSettingsTests: XCTestCase {
 
     func testTheLibraryKeepsAssetsOnly() throws {
         let m = try source("ProjectModel.swift")
-        let block = try XCTUnwrap(m.range(of: "enum LibraryTab")).lowerBound
-        let rest = m[block...]
-        let decl = String(rest[..<(rest.range(of: "\n}")?.lowerBound ?? rest.endIndex)])
-        XCTAssertTrue(decl.contains("case resources, scenes"), decl); XCTAssertFalse(decl.contains("look"))
+        XCTAssertFalse(m.contains("enum LibraryTab"), "the left panel has no tabs any more: the Storyboard above, the Resources below")
         XCTAssertFalse(try source("WorkspaceViews.swift").contains("LookLibrary()"), "the library pane no longer shows the look elements")
         XCTAssertTrue(try source("PickerViews.swift").contains("LookLibrary(kinds:"), "they live in the floating Catalogue, as drag sources")
     }

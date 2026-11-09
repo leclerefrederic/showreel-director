@@ -71,6 +71,7 @@ extension ShowreelFile {
     /// The value a scene uses for a look decision: its own override, or the project's.
     public func effective(_ key: DecisionKey, for scene: Scene) -> String {
         var tmp = ShowreelFile(name: "")
+        if let kept = scene.lockedLook { tmp.decisions = kept; return key.current(tmp) }          // a locked scene keeps the look it had when it was locked
         tmp.decisions = scene.overrides ?? Decisions()
         let own = key.current(tmp)
         return own.isEmpty ? key.current(self) : own
@@ -110,8 +111,8 @@ public enum SceneRules {
     public static let statuses = SceneState.allCases.map { $0.rawValue }
 
     /// The next free ID: one past the highest number ever used, archived scenes included. IDs are never reused or renumbered.
-    public static func nextID(_ scenes: [ShowreelFile.Scene]) -> String {
-        let n = scenes.compactMap { Int($0.id.dropFirst().prefix { $0.isNumber }) }.max() ?? 0
+    public static func nextID(_ scenes: [ShowreelFile.Scene], retired: [String] = []) -> String {
+        let n = (scenes.map { $0.id } + retired).compactMap { Int($0.dropFirst().prefix { $0.isNumber }) }.max() ?? 0
         return String(format: "S%02d", n + 1)
     }
 
@@ -206,9 +207,9 @@ extension ProjectStore {
         var assetRows = Assets.load(self)
         var newRows = assetRows
         if adding {
-            sceneID = id.isEmpty ? SceneRules.nextID(f.scenes) : id
+            sceneID = id.isEmpty ? SceneRules.nextID(f.scenes, retired: f.retiredIDs ?? []) : id
             guard SceneRules.isValidID(sceneID) else { throw AgentError.msg("\"\(sceneID)\" is not a scene ID (S01, S02...)") }
-            guard !f.scenes.contains(where: { $0.id == sceneID }) else { throw AgentError.msg("\(sceneID) already exists: IDs are never reused") }
+            guard !f.scenes.contains(where: { $0.id == sceneID }), !(f.retiredIDs ?? []).contains(sceneID) else { throw AgentError.msg("\(sceneID) already exists or was deleted: IDs are never reused") }
             var s = ShowreelFile.Scene(id: sceneID)
             var e = edit; e.after = nil; e.archived = nil
             changes = try SceneRules.apply(e, to: &s)
@@ -264,13 +265,14 @@ extension ProjectStore {
         let title = adding ? "Add scene \(label)" : (edit.status == "ditched" ? "Ditch \(label)" : edit.archived == true ? "Archive \(label)" : renamedOnly ? "Rename \(sceneID)" : "Edit \(label)")
         let rows = assetRows, newGraph = g, linked = linkChanged
         let inFilm = g.film.contains { $0.id == sceneID } || f.film.contains { $0.id == sceneID }
-        return finish(title: title, changes: changes, from: f, to: newGraph, extraFilmChange: linked && inFilm) { if linked { try Assets.save(rows, self) } }
+        return try finish(title: title, changes: changes, from: f, to: newGraph, extraFilmChange: linked && inFilm) { if linked { try Assets.save(rows, self) } }
     }
 
     /// The common end of the typed operations that change the scenes or a montage. After the Go, a change to what the film shows
     /// takes the Go back (a card line says so): it is never kept silently. `before` runs first (the manifest, for linked assets).
     func finish(title: String, changes: [Change], from f: ShowreelFile, to g: ShowreelFile, extraFilmChange: Bool = false,
-                before: @escaping () throws -> Void = {}) -> (card: OperationCard, run: () throws -> Void) {
+                before: @escaping () throws -> Void = {}) throws -> (card: OperationCard, run: () throws -> Void) {
+        if let why = lockShiftRefusal(from: f, to: g) { throw AgentError.msg(why) }
         var changes = changes
         var out = g
         var reopen = false
@@ -288,13 +290,20 @@ extension ProjectStore {
         var g = f
         guard let s = g.scenes.first(where: { $0.id == id }) else { throw AgentError.msg("unknown scene \(id)") }
         guard let k = montage.flatMap({ m in g.storyboards.firstIndex { $0.id == m } }) ?? (montage == nil && !g.storyboards.isEmpty ? 0 : nil) else { throw AgentError.msg("unknown montage \(montage ?? "")") }
-        if enabled, s.archived { throw AgentError.msg("\(id) is archived: bring it back in the library first") }
+        var lines: [Change] = []
+        if enabled, s.archived {          // an archived or ditched scene is a hidden scene: showing it brings it back
+            if let i = g.scenes.firstIndex(where: { $0.id == id }) {
+                g.scenes[i].archived = false
+                if g.scenes[i].state == .ditched { g.scenes[i].status = SceneState.wip.rawValue }
+            }
+            lines.append(Change("\(id) was", "archived or ditched", "hidden, now shown"))
+        }
         let was = g.storyboards[k].items.first { $0.scene == id }?.enabled ?? false
         guard was != enabled else { throw AgentError.msg("no change: \(id) already is \(enabled ? "on" : "off") in \(g.storyboards[k].name)") }
         if let j = g.storyboards[k].items.firstIndex(where: { $0.scene == id }) { g.storyboards[k].items[j].enabled = enabled }
         else { g.storyboards[k].items.append(ShowreelFile.MontageItem(scene: id, enabled: enabled)) }
-        let c = [Change("\(id) in \(g.storyboards[k].name)", was ? "on" : "off", enabled ? "on" : "off")]
-        return finish(title: enabled ? "Switch \(id) on" : "Switch \(id) off", changes: c, from: f, to: g)
+        let c = lines + [Change("\(id) in \(g.storyboards[k].name)", was ? "on" : "off", enabled ? "on" : "off")]
+        return try finish(title: enabled ? "Switch \(id) on" : "Switch \(id) off", changes: c, from: f, to: g)
     }
 
     /// Moves a scene in a montage (the master when `montage` is nil). The ID never changes.
@@ -306,7 +315,7 @@ extension ProjectStore {
         guard g.storyboards[k].items.contains(where: { $0.scene == id }) else { throw AgentError.msg("\(id) is not in \(g.storyboards[k].name): switch it on first") }
         let r = try SceneRules.place(id, after: after, in: &g.storyboards[k])
         guard r.from != r.to else { throw AgentError.msg("no change: \(id) already is there") }
-        return finish(title: "Move \(id)", changes: [Change("Position of \(id)", "\((r.from ?? 0) + 1)", "\(r.to + 1)")], from: f, to: g)
+        return try finish(title: "Move \(id)", changes: [Change("Position of \(id)", "\((r.from ?? 0) + 1)", "\(r.to + 1)")], from: f, to: g)
     }
 
     /// Sets or removes the scene's own background and look. An empty value takes the override away: the scene follows the project again.
@@ -328,7 +337,7 @@ extension ProjectStore {
         }
         guard !lines.isEmpty else { throw AgentError.msg("no change for \(id)") }
         let reverts = changes.allSatisfy { $0.value.trimmingCharacters(in: .whitespaces).isEmpty }
-        return finish(title: reverts ? "Revert \(id) to the project look" : "Override the look of \(id)", changes: lines, from: f, to: g)
+        return try finish(title: reverts ? "Revert \(id) to the project look" : "Override the look of \(id)", changes: lines, from: f, to: g)
     }
 
     /// Why the Go cannot be given yet, or nil when it can.
@@ -343,7 +352,74 @@ extension ProjectStore {
         if live.isEmpty { return "there is no scene on in the storyboard yet" }
         if f.gates["storyboard"] != "passed" { return "the storyboard is not validated yet" }
         let notOK = live.filter { !$0.state.isReviewed }
-        if !notOK.isEmpty { return "every scene must be Validated first (\(notOK.map { $0.id }.joined(separator: ", ")) \(notOK.count == 1 ? "is" : "are") not)" }
+        if !notOK.isEmpty { return "every visible scene must be Ready first (\(notOK.map { $0.id }.joined(separator: ", ")) \(notOK.count == 1 ? "is" : "are") not)" }
         return nil
+    }
+}
+
+// MARK: the lock freezes a scene in time and space
+
+/// Where a scene is: when it plays if it is visible, what comes before it in the montage if it is hidden.
+struct ScenePlace: Equatable {
+    var visible: Bool
+    var start: Double?
+    var end: Double?
+    var after: String?
+}
+
+extension ShowreelFile {
+    func place(of id: String) -> ScenePlace? {
+        guard scenes.contains(where: { $0.id == id }), let m = storyboards.first, let i = m.items.firstIndex(where: { $0.scene == id }) else { return nil }
+        let on = m.items[i].enabled && !(scenes.first { $0.id == id }?.archived ?? false)
+        if on, let t = timeline().first(where: { $0.scene.id == id }) { return ScenePlace(visible: true, start: t.start.map { ($0 * 1e6).rounded() / 1e6 }, end: t.end.map { ($0 * 1e6).rounded() / 1e6 }, after: nil) }
+        return ScenePlace(visible: false, start: nil, end: nil, after: i > 0 ? m.items[i - 1].scene : nil)
+    }
+}
+
+extension ProjectStore {
+    /// "0:24": where a locked scene starts, for the reasons that name it.
+    static func clock(_ t: Double) -> String { String(format: "%d:%02d", Int(t) / 60, Int(t) % 60) }
+
+    /// A locked scene is frozen in time and space, visible or hidden: a change elsewhere that would move its start (a scene inserted, deleted, shown, hidden, lengthened or
+    /// shortened before it, a ripple) is refused, and so is any move of its place. Nil when no locked scene moves.
+    func lockShiftRefusal(from f: ShowreelFile, to g: ShowreelFile) -> String? {
+        for s in f.scenes where s.isLocked {
+            let a = f.place(of: s.id), b = g.place(of: s.id)
+            guard a != b else { continue }
+            if let a = a, a.visible, let t = a.start { return "\(s.id) is locked at \(Self.clock(t)): unlock it, or change a scene after it" }
+            return "\(s.id) is locked" + (a?.after.map { " (hidden, after \($0))" } ?? " (hidden, first)") + ": unlock it, or change a scene after it"
+        }
+        return nil
+    }
+
+    /// What deleting a scene loses, one line each: its words, elements, own look, linked resources and the transition that leaves it.
+    public func deletionLosses(_ id: String) -> [String] {
+        guard let f = loadShowreel(), let s = f.scenes.first(where: { $0.id == id }) else { return [] }
+        var out: [String] = []
+        if !s.text.isEmpty { out.append("its words \u{201C}\(s.text.count > 60 ? String(s.text.prefix(60)) + "\u{2026}" : s.text)\u{201D}") }
+        if !s.content.isEmpty { out.append("its \(s.content.count) element\(s.content.count == 1 ? "" : "s")") }
+        if s.overrides != nil { out.append("its own look") }
+        let linked = Assets.load(self).filter { $0.sceneIDs.contains(id) }
+        if !linked.isEmpty { out.append("its link to \(linked.map { $0.name }.joined(separator: ", ")) (the files stay in the resources)") }
+        if let m = f.storyboards.first?.items.first(where: { $0.scene == id }), !m.transition.isCut { out.append("the transition that leaves it (\(m.transition.type))") }
+        if !s.note.isEmpty { out.append("its instruction") }
+        return out
+    }
+
+    func planDelete(_ id: String) throws -> (card: OperationCard, run: () throws -> Void) {
+        guard let f = loadShowreel() else { throw AgentError.msg("there is no readable showreel.json: create the project first") }
+        guard let s = f.scenes.first(where: { $0.id == id }) else { throw AgentError.msg("unknown scene \(id)") }
+        var g = f
+        g.scenes.removeAll { $0.id == id }
+        for k in g.storyboards.indices { g.storyboards[k].items.removeAll { $0.scene == id } }
+        g.retiredIDs = Array(Set((g.retiredIDs ?? []) + [id])).sorted()
+        var rows = Assets.load(self)
+        var relinked = false
+        for k in rows.indices where rows[k].sceneIDs.contains(id) { rows[k].scene = rows[k].sceneIDs.filter { $0 != id }.joined(separator: ", "); relinked = true }
+        let lost = deletionLosses(id)
+        var changes = [Change("Scene \(s.label)", "in the project", "deleted (\(id) is never given again)")]
+        if !lost.isEmpty { changes.append(Change("Lost", lost.joined(separator: "; "), "gone, Undo brings them back")) }
+        let save = rows
+        return try finish(title: "Delete scene \(s.label)", changes: changes, from: f, to: g, extraFilmChange: f.film.contains { $0.id == id }) { if relinked { try Assets.save(save, self) } }
     }
 }

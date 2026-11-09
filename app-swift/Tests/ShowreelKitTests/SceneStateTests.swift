@@ -61,13 +61,13 @@ final class SceneStateTests: XCTestCase {
     // MARK: the lock
 
     func testOnlyAValidatedSceneCanBeLockedAndUnlockingGivesBackValidated() throws {
-        XCTAssertThrowsError(try store.plan(.sceneLock(ids: ["S01"], locked: true))) { XCTAssertTrue($0.localizedDescription.contains("validate it before locking")) }
+        XCTAssertThrowsError(try store.plan(.sceneLock(ids: ["S01"], locked: true))) { XCTAssertTrue($0.localizedDescription.contains("Make the scene Ready first")) }
         XCTAssertThrowsError(try store.plan(.sceneLock(ids: ["S09"], locked: true)))
         XCTAssertThrowsError(try store.plan(.sceneLock(ids: [], locked: true)))
         XCTAssertThrowsError(try store.plan(.sceneLock(ids: ["S01"], locked: false)), "nothing to unlock")
         try validate("S01")
         let card = try store.plan(.sceneLock(ids: ["S01"], locked: true))
-        XCTAssertEqual(card.title, "Lock S01"); XCTAssertEqual(card.changes, [Change("S01 state", "Validated", "Locked")])
+        XCTAssertEqual(card.title, "Lock S01"); XCTAssertEqual(card.changes.first, Change("S01 state", "Ready", "Locked")); XCTAssertEqual(card.changes.count, 2, "and the line that says a copy of its look is kept")
         try store.apply(.sceneLock(ids: ["S01"], locked: true), author: "clap", reason: "the opening is final")
         XCTAssertEqual(scene("S01").state, .locked)
         XCTAssertThrowsError(try store.plan(.sceneLock(ids: ["S01"], locked: true)), "already locked")
@@ -117,6 +117,7 @@ final class SceneStateTests: XCTestCase {
         case .gate: return "gate"
         case .scene: return "scene"
         case .addScene: return "addScene"
+        case .deleteScene: return "deleteScene"
         case .sceneEnabled: return "sceneEnabled"
         case .moveScene: return "moveScene"
         case .sceneLook: return "sceneLook"
@@ -133,7 +134,7 @@ final class SceneStateTests: XCTestCase {
         case .resource: return "resource"
         }
     }
-    static let allKinds: Set<String> = ["parameter", "decisions", "asset", "gate", "scene", "addScene", "sceneEnabled", "moveScene", "sceneLook", "content", "resize", "moveCut", "transition", "track", "grid", "gridSettings", "moveAsset", "sceneLock", "addFontFiles", "resource"]
+    static let allKinds: Set<String> = ["parameter", "decisions", "asset", "gate", "scene", "addScene", "sceneEnabled", "moveScene", "sceneLook", "content", "resize", "moveCut", "transition", "track", "grid", "gridSettings", "moveAsset", "sceneLock", "deleteScene", "addFontFiles", "resource"]
 
     /// A project with a locked S02 between two WIP scenes, a resource and an element in S02.
     func lockedProject() throws -> String {
@@ -156,7 +157,8 @@ final class SceneStateTests: XCTestCase {
             .scene(id: "S02", SceneEdit(text: "changed")), .scene(id: "S02", SceneEdit(duration: "9")), .scene(id: "S02", SceneEdit(note: "a remark")),
             .scene(id: "S02", SceneEdit(status: "wip")), .scene(id: "S02", SceneEdit(status: "ditched")), .scene(id: "S02", SceneEdit(archived: true)),
             .scene(id: "S02", SceneEdit(name: "Middle")), .scene(id: "S02", SceneEdit(controlLevel: "precise")), .scene(id: "S02", SceneEdit(assets: logo)),
-            .scene(id: "S02", SceneEdit(visual: "x", after: "start")),
+            .scene(id: "S02", SceneEdit(visual: "x", after: "start")), .scene(id: "S02", SceneEdit(after: "S03")),
+            .moveScene(id: "S02", after: "start", montage: nil), .sceneEnabled(id: "S02", enabled: false, montage: nil), .deleteScene(id: "S02"),
             .sceneLook(id: "S02", [DecisionChange(.background, bg)]),
             .content(scene: "S02", .add(ContentEdit(type: "text", text: "more"), after: nil)), .content(scene: "S02", .update(item: item, ContentEdit(text: "new"))),
             .content(scene: "S02", .remove(item: item)), .content(scene: "S02", .move(item: item, after: "start")),
@@ -171,12 +173,11 @@ final class SceneStateTests: XCTestCase {
         }
         XCTAssertEqual(raw(), before, "nothing changed: refusing is not a partial write")
         XCTAssertEqual(scene("S02").state, .locked)
-        // the allowed ones: the place in the montage, a transition, the unlock itself
+        // the allowed ones: a transition, the scenes after it, the unlock itself (UI2: its place, its visibility and its start are frozen too)
         let allowed: [ProjectOperation] = [
-            .moveScene(id: "S02", after: "start", montage: nil), .scene(id: "S02", SceneEdit(after: "S03")), .sceneEnabled(id: "S02", enabled: false, montage: nil),
-            .sceneEnabled(id: "S02", enabled: true, montage: nil), .transition(from: "S01", TransitionEdit(type: tr)),
+            .transition(from: "S01", TransitionEdit(type: tr)),
             // other scenes and the project's own settings are not a locked scene's business
-            .scene(id: "S01", SceneEdit(text: "free")), .resize(scene: "S01", duration: 6, ripple: true), .resize(scene: "S03", duration: 6, ripple: false),
+            .scene(id: "S01", SceneEdit(text: "free")), .resize(scene: "S03", duration: 6, ripple: false),
             .parameter(.audience, "Teams"), .asset(id: logo, status: nil, note: "a note", licence: nil, scenes: nil),
         ]
         for op in allowed { XCTAssertNoThrow(try store.apply(op), "\(op)") }
@@ -193,21 +194,20 @@ final class SceneStateTests: XCTestCase {
             .scene(id: "S02", SceneEdit(text: "x")), .addScene(id: "", SceneEdit(text: "x")), .sceneEnabled(id: "S02", enabled: false, montage: nil), .moveScene(id: "S02", after: "start", montage: nil),
             .sceneLook(id: "S02", []), .content(scene: "S02", .remove(item: item)), .resize(scene: "S02", duration: 5, ripple: true), .moveCut(before: "S01", after: "S02", at: 3),
             .transition(from: "S02", nil), .track(asset: nil), .grid(bpm: 100, firstBeat: 0), .gridSettings(snap: nil, ripple: true), .moveAsset(id: logo, after: "start"),
-            .sceneLock(ids: ["S02"], locked: false), .addFontFiles(FontPayload(family: "Fredoka", dir: "fredoka", files: [])), .resource(.addTag(id: "x", tag: "t"))]
+            .sceneLock(ids: ["S02"], locked: false), .deleteScene(id: "S02"), .addFontFiles(FontPayload(family: "Fredoka", dir: "fredoka", files: [])), .resource(.addTag(id: "x", tag: "t"))]
         XCTAssertEqual(Set(one.map(kind)), Self.allKinds, "an operation was added: say here what a locked scene does with it")
         // what changes a scene's insides must name that scene; the rest must not
         let touching = Set(one.filter { !store.scenesChanged(by: $0, in: file).isEmpty }.map(kind))
-        XCTAssertEqual(touching, ["scene", "sceneLook", "content", "resize", "moveCut"])
+        XCTAssertEqual(touching, ["scene", "sceneLook", "content", "resize", "moveCut", "sceneEnabled", "moveScene", "deleteScene"])
     }
 
     func testRippleNeverChangesTheLengthOfALockedSceneAndALinkedResourceIsNotAddedToIt() throws {
         let logo = try lockedProject()
         let len = scene("S02").duration, content = scene("S02").content
-        try store.apply(.resize(scene: "S01", duration: 7, ripple: true))
-        XCTAssertEqual(scene("S02").duration, len, "ripple moves the start, not the length")
-        XCTAssertEqual(file.timeline()[1].start, 7)
-        try store.apply(.resize(scene: "S01", duration: 5, ripple: false))
-        XCTAssertEqual(scene("S02").duration, len); XCTAssertEqual(file.timeline()[1].start, 7, "no ripple: it stays where it is")
+        let start = try XCTUnwrap(file.timeline()[1].start)
+        // lengthening the scene before it would move its start: refused, naming the scene and the time
+        XCTAssertThrowsError(try store.apply(.resize(scene: "S01", duration: 7, ripple: true))) { XCTAssertEqual($0.localizedDescription, "S02 is locked at 0:0\(Int(start)): unlock it, or change a scene after it") }
+        XCTAssertEqual(scene("S02").duration, len); XCTAssertEqual(file.timeline()[1].start, start)
         // a resource linked straight into the manifest does not add an element behind the lock
         var rows = Assets.load(store); rows[0].scene = "S02"; try Assets.save(rows, store)
         XCTAssertTrue(try store.completeComposition(reopenGo: false).isEmpty)
@@ -251,9 +251,7 @@ final class SceneStateTests: XCTestCase {
             XCTAssertThrowsError(try Drops.drop(item, on: target, store: store))
         }
         XCTAssertEqual(Assets.load(store).count, rowsBefore, "a refused file drop adds nothing to the resources")
-        guard case .ok = Drops.verdict(.scene("S02"), on: .reelSlot(before: "S01"), store: store) else { return XCTFail("moving a locked scene in the reel stays possible") }
-        try Drops.drop(.scene("S02"), on: .reelSlot(before: "S01"), store: store)
-        XCTAssertEqual(file.film.map { $0.id }.first, "S02")
+        XCTAssertEqual(Drops.verdict(.scene("S02"), on: .reelSlot(before: "S01"), store: store), .refused(SceneLock.reason("S02")), "a locked scene does not move in the reel either")
     }
 
     func testClapCannotChangeALockedSceneAndTheRefusalIsJournalled() async throws {
@@ -263,7 +261,7 @@ final class SceneStateTests: XCTestCase {
         let tools = Tools(project: dir, skill: try XCTUnwrap(Skill.root()), ui: ui)
         let before = raw(), cards = ui.cards.count
         let calls: [(String, [String: Any])] = [
-            ("update_scene", ["id": "S02", "text": "x"]), ("update_scene", ["id": "S02", "status": "wip"]), ("add_content_item", ["scene": "S02", "type": "text", "text": "x"]),
+            ("update_scene", ["id": "S02", "text": "x"]), ("update_scene", ["id": "S02", "note": "a remark"]), ("add_content_item", ["scene": "S02", "type": "text", "text": "x"]),
             ("update_content_item", ["scene": "S02", "item": item, "text": "y"]), ("remove_content_item", ["scene": "S02", "item": item]),
             ("move_content_item", ["scene": "S02", "item": item, "after": "start"]), ("set_scene_duration", ["scene": "S02", "duration": 8]),
             ("set_scene_override", ["id": "S02", "key": "background", "value": Look.backgroundIDs().first!]), ("update_asset", ["id": logo, "scenes": "S02"])]
@@ -284,29 +282,17 @@ final class SceneStateTests: XCTestCase {
         let missing = await tools.run("lock_scene", ["scenes": ["S01"]]).text
         XCTAssertEqual(missing, "locked must be true or false")
         let notValidated = await tools.run("lock_scene", ["scenes": ["S01"], "locked": true]).text
-        XCTAssertTrue(notValidated.contains("validate it before locking"), notValidated)
+        XCTAssertTrue(notValidated.contains("Make the scene Ready first"), notValidated)
         let defs = Tools.definitions.compactMap { $0["name"] as? String }
         XCTAssertTrue(defs.contains("lock_scene"))
     }
 
-    // MARK: the menu of the badge
+    // MARK: the states (UI2: the badge menu is gone; the switches are SceneSwitches, see UI2Tests)
 
-    func testTheBadgeMenuOffersWhatEachStateCanReach() throws {
-        func menu(_ s: ShowreelFile.Scene) -> [String] { SceneStates.choices(for: s).map { "\($0.state.rawValue)\($0.isCurrent ? "*" : "")\($0.enabled ? "+" : "-")" } }
-        XCTAssertEqual(menu(scene("S01")), ["wip*-", "validated+", "locked-"], "WIP: validate; lock is not offered until it is validated")
-        XCTAssertNotNil(SceneStates.choices(for: scene("S01")).last?.reason, "and it says why")
-        try validate("S01")
-        XCTAssertEqual(menu(scene("S01")), ["wip+", "validated*-", "locked+"])
-        try store.apply(.sceneLock(ids: ["S01"], locked: true))
-        let locked = SceneStates.choices(for: scene("S01"))
-        XCTAssertEqual(locked.map { "\($0.state.rawValue)\($0.isCurrent ? "*" : "")\($0.enabled ? "+" : "-")" }, ["wip-", "validated+", "locked*-"])
-        XCTAssertEqual(locked[1].title, "Unlock (back to Validated)"); XCTAssertNotNil(locked[0].reason)
-        // each choice is an operation that the rules accept
-        for c in SceneStates.choices(for: scene("S01")) { if let op = c.operation { XCTAssertNoThrow(try store.plan(op), c.title) } }
-        try store.apply(try XCTUnwrap(locked[1].operation))
-        for c in SceneStates.choices(for: scene("S01")) { if let op = c.operation { XCTAssertNoThrow(try store.plan(op), c.title) } }
-        XCTAssertEqual(SceneState.allCases.map { $0.title }, ["WIP", "Validated", "Locked", "Ditched"])
-        XCTAssertTrue(SceneState.locked.meaning.contains("place in the montage"))
+    func testTheStatesAreNamedReadyAndToReview() {
+        XCTAssertEqual(SceneState.allCases.map { $0.title }, ["To review", "Ready", "Locked", "Ditched"], "the stored words stay wip, validated, locked; only the displayed text changed")
+        XCTAssertEqual(SceneState.allCases.map { $0.rawValue }, ["wip", "validated", "locked", "ditched"])
+        XCTAssertTrue(SceneState.locked.meaning.contains("frozen in time and space"))
     }
 
     func testTheLockSurvivesUndoOfEarlierWorkAndTheFileKeepsTheWord() throws {

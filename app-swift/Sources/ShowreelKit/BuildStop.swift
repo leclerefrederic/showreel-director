@@ -48,6 +48,35 @@ public enum AgentLimits {
     public static let stepRetries = 2
     /// Seconds to wait before asking again (tests set it to 0).
     nonisolated(unsafe) public static var retryDelay: TimeInterval = 3
+    /// How many scenes a Build writes at the same time: the setting's range and its default for this prototype.
+    public static let minSceneWidth = 1
+    public static let maxSceneWidth = 4
+    public static let defaultSceneWidth = 3
+    /// What the confirmation card uses to estimate the time until a Build has measured the real figures: output tokens a second, and tokens in a scene.
+    public static let defaultTokensPerSecond = 125.0
+    public static let defaultSceneTokens = 7000
+    /// How many times a step is asked again after the API said it is busy (429, 529, a retryable 5xx). The attempts of both kinds share one counter per step.
+    public static let busyRetries = 5
+    /// Without a `retry-after` header the wait is this long, doubled at each attempt, and never more than `busyMaxDelay` (which also caps a longer `retry-after`).
+    nonisolated(unsafe) public static var busyBaseDelay: TimeInterval = 5
+    nonisolated(unsafe) public static var busyMaxDelay: TimeInterval = 120
+    /// The wait before the `attempt`-th retry (1 for the first).
+    public static func busyDelay(retryAfter: TimeInterval?, attempt: Int) -> TimeInterval {
+        min(busyMaxDelay, max(0, retryAfter ?? busyBaseDelay * pow(2, Double(max(0, attempt - 1)))))
+    }
+}
+
+/// The API said it is busy or limiting requests: a 429, a 529, or a 5xx it marks as retryable. The text is the API's own.
+public struct APIBusy: Error, LocalizedError, Equatable, Sendable {
+    public let status: Int
+    public let body: String
+    public let retryAfter: TimeInterval?
+    public var errorDescription: String? { "API \(status): \(clip(body, limit: 800))" }
+    public var kind: String { status == 429 ? "rate limit" : status == 529 ? "overloaded" : "server error" }
+    /// Whether a refused request is worth asking again: never a 4xx other than 429.
+    public static func isRetryable(status: Int, shouldRetry: String?) -> Bool {
+        status == 429 || status == 529 || [502, 503, 504].contains(status) || (status >= 500 && shouldRetry?.lowercased() == "true")
+    }
 }
 
 /// The request was cut because the stream said nothing for `seconds`.

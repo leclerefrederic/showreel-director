@@ -354,7 +354,7 @@ extension ProjectStore {
             }
         }
         let saved = rows
-        return finish(title: title, changes: changes, from: f, to: g, extraFilmChange: !s.archived && g.film.contains { $0.id == sceneID } && assetsChanged) {
+        return try finish(title: title, changes: changes, from: f, to: g, extraFilmChange: !s.archived && g.film.contains { $0.id == sceneID } && assetsChanged) {
             if assetsChanged { try Assets.save(saved, self) }
         }
     }

@@ -17,7 +17,7 @@ struct DesignBoardView: View {
                         Text(project.title).font(.title2.weight(.semibold))
                         Text("Design system").font(.title3).foregroundStyle(.secondary)
                         Spacer()
-                        Text("read-only: change it in the project settings").font(.caption).foregroundStyle(.tertiary)
+                        Text("read-only: change it in the project settings").fontSmall().foregroundStyle(.tertiary)
                     }
                     palette(b)
                     HStack(alignment: .top, spacing: 16) {
@@ -40,7 +40,7 @@ struct DesignBoardView: View {
                 }
                 .padding(24).frame(maxWidth: 980).frame(maxWidth: .infinity)
             }
-            .background(Color(nsColor: .underPageBackgroundColor))
+            .panelBackground()
             .task { await engine.start() }
             .onAppear { FontRegistry.shared.registerAll(); for a in project.assets where a.type == "font" { _ = AssetFonts.family(a, in: project.root) } }
         }
@@ -58,7 +58,7 @@ struct DesignBoardView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Spacer()
                             Text(s.role).font(.callout.weight(.semibold))
-                            Text(s.hex).font(.caption.monospaced())
+                            Text(s.hex).fontSmall(mono: true)
                         }
                         .foregroundColor(Color(hex: s.on)).padding(10)
                         .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading).background(Color(hex: s.hex))
@@ -72,7 +72,7 @@ struct DesignBoardView: View {
                             Image(systemName: c.level.symbol).foregroundStyle(c.level.color)
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(c.title).font(.callout.weight(.medium))
-                                Text(c.detail).font(.caption).foregroundStyle(.secondary)
+                                Text(c.detail).fontSmall().foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -80,7 +80,7 @@ struct DesignBoardView: View {
             }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .raisedBackground()
     }
 
     private func specimen(_ role: String, _ name: String?, sample: String, size: CGFloat, f: ShowreelFile) -> some View {
@@ -92,17 +92,17 @@ struct DesignBoardView: View {
             if let n = name { LicenceBadge(assessment: FontLicense.assess(name: n, assets: project.assets, store: project.store)); FontStateView(family: n) }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .raisedBackground()
     }
 
     private func card<C: View>(_ title: String, _ headline: String, _ caption: String, @ViewBuilder _ content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack { Text(title).font(.headline); Spacer(); Text(headline).font(.callout).foregroundStyle(.secondary) }
             content().clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            Text(caption).font(.caption).foregroundStyle(.secondary)
+            Text(caption).fontSmall().foregroundStyle(.secondary)
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .raisedBackground()
     }
 
     private func empty(_ text: String) -> some View {

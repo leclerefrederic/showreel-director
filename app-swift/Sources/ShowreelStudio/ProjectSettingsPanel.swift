@@ -20,7 +20,7 @@ struct SettingsDock: View {
                     let v = max(PanelLayout.minSettings, min((startWidth ?? Double(w)) - Double(dx), Double(room)))
                     if ended {
                         var l = project.layout
-                        l = PanelLayout(library: l.library, inspector: l.inspector, strip: l.strip, settings: v)
+                        l = l.replacing(settings: v)
                         live = nil; startWidth = nil; project.setLayout(l)
                     } else { live = v }
                 }
@@ -61,7 +61,7 @@ struct ProjectSettingsPanel: View {
                 }
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .panelBackground()
         .onExitCommand { project.showProjectSettings = false }
     }
 }
@@ -130,7 +130,7 @@ struct LookRow: View {
                 Spacer(minLength: 8)
                 if !summary.swatches.isEmpty { Swatches(colours: summary.swatches) }
                 else { Text(summary.text).font(.callout).foregroundStyle(summary.isSet ? Color.primary : .secondary).lineLimit(1).truncationMode(.tail) }
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                Image(systemName: "chevron.right").fontSmall(weight: .semibold).foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
             .background(hovering ? Color.primary.opacity(0.08) : Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))

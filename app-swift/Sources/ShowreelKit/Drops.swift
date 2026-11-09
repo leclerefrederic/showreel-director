@@ -365,7 +365,7 @@ extension ProjectStore {
     @discardableResult
     public func duplicateScene(_ id: String) throws -> String {
         guard let f = loadShowreel(), let s = f.scenes.first(where: { $0.id == id }) else { throw AgentError.msg("unknown scene \(id)") }
-        let new = SceneRules.nextID(f.scenes)
+        let new = SceneRules.nextID(f.scenes, retired: f.retiredIDs ?? [])
         try transaction("Duplicate \(s.id)") {
             var e = SceneEdit(duration: s.duration.map { ProjectDocs.seconds($0) }, text: s.text, visual: s.visual, feeling: s.feeling, handoff: s.handoff,
                               inCuts: s.inCuts, after: s.id, controlLevel: s.controlLevel, name: s.name.map { String(($0 + " copy").prefix(SceneRules.nameLimit)) })

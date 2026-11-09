@@ -76,7 +76,7 @@ struct WhatClapKnows: View {
             }
             HStack {
                 TextField("Why (optional)", text: $reason).textFieldStyle(.roundedBorder).onSubmit { save() }
-                Button("Add") { save() }.buttonStyle(.borderedProminent).disabledWithReason(text.trimmingCharacters(in: .whitespaces).isEmpty ? "Write the note first" : nil)
+                Button("Add") { save() }.buttonStyle(PrimaryButtonStyle()).disabledWithReason(text.trimmingCharacters(in: .whitespaces).isEmpty ? "Write the note first" : nil)
             }
             if let p = problem { Label(p, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
         }
@@ -116,7 +116,7 @@ struct MemoryRow: View {
                 }
             }
             if editing { TextField("Why (optional)", text: $reason).textFieldStyle(.roundedBorder) }
-            else if !entry.reason.isEmpty { Text("Why: " + entry.reason).font(.caption).foregroundStyle(.secondary) }
+            else if !entry.reason.isEmpty { Text("Why: " + entry.reason).fontSmall().foregroundStyle(.secondary) }
             HStack(spacing: 8) {
                 Text((entry.source == "user" ? "You" : "Clap") + ", " + ShowreelFile.dayString(entry.updated)).font(.system(size: 11)).foregroundStyle(.tertiary)
                 if !entry.links.isEmpty { Text(entry.links.joined(separator: " ")).font(.system(size: 11, design: .monospaced)).foregroundStyle(.tertiary) }
@@ -125,7 +125,7 @@ struct MemoryRow: View {
                     Button("Confirm") { project.editMemory(entry.id, confirm: true) }.buttonStyle(.borderless).font(.system(size: 11))
                 }
             }
-            if let p = problem { Label(p, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange) }
+            if let p = problem { Label(p, systemImage: "exclamationmark.triangle.fill").fontSmall().foregroundStyle(.orange) }
         }
         .padding(10).background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
@@ -197,7 +197,7 @@ struct JournalList: View {
             }
             if rows.isEmpty { Text(all.isEmpty ? "Nothing has been done yet." : "Nothing matches.").font(.callout).foregroundStyle(.secondary) }
             ForEach(rows.prefix(300)) { e in JournalRow(entry: e) }
-            if rows.count > 300 { Text("The 300 most recent of \(rows.count).").font(.caption).foregroundStyle(.secondary) }
+            if rows.count > 300 { Text("The 300 most recent of \(rows.count).").fontSmall().foregroundStyle(.secondary) }
         }
     }
 }
@@ -223,13 +223,13 @@ struct JournalRow: View {
                 Image(systemName: symbol.0).foregroundStyle(symbol.1).frame(width: 18)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.title).font(.callout.weight(.medium)).multilineTextAlignment(.leading)
-                    if let n = entry.note { Text(n).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.leading) }
+                    if let n = entry.note { Text(n).fontSmall().foregroundStyle(.secondary).multilineTextAlignment(.leading) }
                     if !entry.before.isEmpty || !entry.after.isEmpty { Text("\(entry.before)  \u{2192}  \(entry.after)").font(.system(size: 11)).foregroundStyle(.tertiary).lineLimit(2).multilineTextAlignment(.leading) }
                     Text("\(entry.time.formatted(date: .abbreviated, time: .standard)) \u{00B7} \(entry.author == "clap" ? "Clap" : entry.author) \u{00B7} \(entry.state) \u{00B7} \(entry.op) \(entry.target)")
                         .font(.system(size: 11)).foregroundStyle(.tertiary).lineLimit(1)
                 }
                 Spacer(minLength: 2)
-                if linked { Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary) }
+                if linked { Image(systemName: "chevron.right").fontSmall().foregroundStyle(.tertiary) }
             }
             .padding(.horizontal, 8).padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
             .background(hovering && linked ? Color.primary.opacity(0.07) : Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8, style: .continuous))

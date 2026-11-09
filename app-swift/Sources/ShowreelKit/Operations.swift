@@ -214,8 +214,10 @@ public enum ProjectOperation: Equatable, Sendable {
     case gridSettings(snap: String?, ripple: Bool?)
     /// Puts a resource after another one in the resources list ("start" for first). Only the order of the list changes.
     case moveAsset(id: String, after: String)
-    /// Locks Validated scenes, or unlocks Locked ones (back to Validated), as one card.
+    /// Locks Ready scenes, or unlocks Locked ones (back to Ready), as one card.
     case sceneLock(ids: [String], locked: Bool)
+    /// Deletes a scene for good: its words, content, look, place and links. Its ID is never given again.
+    case deleteScene(id: String)
     /// The files of a free font, already downloaded after the user accepted the card: they go to assets/fonts/ and are approved for the reel.
     case addFontFiles(FontPayload)
     /// A tag on a resource, a tag renamed, or a flagged file replaced by a corrected one.
@@ -329,6 +331,7 @@ extension ProjectStore {
         case .gridSettings(let s, let r): return try planGridSettings(snap: s, ripple: r).card
         case .moveAsset(let id, let after): return try planMoveAsset(id, after: after).card
         case .sceneLock(let ids, let on): return try planLock(ids, locked: on).card
+        case .deleteScene(let id): return try planDelete(id).card
         case .addFontFiles(let p): return try planAddFontFiles(p).card
         case .resource(let r): return try planResource(r).card
         case .gate(let key, let passed):
@@ -386,6 +389,7 @@ extension ProjectStore {
         case .gridSettings(let s, let r): try planGridSettings(snap: s, ripple: r).run()
         case .moveAsset(let id, let after): try planMoveAsset(id, after: after).run()
         case .sceneLock(let ids, let on): try planLock(ids, locked: on).run()
+        case .deleteScene(let id): try planDelete(id).run()
         case .addFontFiles(let p): try planAddFontFiles(p).run()
         case .resource(let r): try planResource(r).run()
         case .gate(let key, let passed):

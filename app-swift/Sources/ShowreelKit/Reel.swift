@@ -68,7 +68,7 @@ extension ProjectStore {
             lines.append(Change("\(tl[i + 1].scene.id) start", "follows \(id)", "stays at \(ProjectDocs.seconds(at)) s"))
         }
         if g.scenes[si].state == .validated { g.scenes[si].status = SceneState.wip.rawValue; lines.append(Change("State", SceneState.validated.title, SceneState.wip.title)) }
-        return finish(title: "Set the duration of \(id)", changes: lines, from: f, to: g)
+        return try finish(title: "Set the duration of \(id)", changes: lines, from: f, to: g)
     }
 
     func planCut(_ before: String, _ after: String, at: Double) throws -> (card: OperationCard, run: () throws -> Void) {
@@ -86,7 +86,7 @@ extension ProjectStore {
         if let k = g.storyboards[0].items.firstIndex(where: { $0.scene == after }), g.storyboards[0].items[k].start != nil { g.storyboards[0].items[k].start = t }
         var lines = [Change("\(before) duration", ProjectDocs.seconds(a) + " s", ProjectDocs.seconds(newA) + " s"), Change("\(after) duration", ProjectDocs.seconds(b) + " s", ProjectDocs.seconds(newB) + " s")]
         for k in [ia, ib] where g.scenes[k].state == .validated { g.scenes[k].status = SceneState.wip.rawValue; lines.append(Change("\(g.scenes[k].id) state", SceneState.validated.title, SceneState.wip.title)) }
-        return finish(title: "Move the cut between \(before) and \(after)", changes: lines, from: f, to: g)
+        return try finish(title: "Move the cut between \(before) and \(after)", changes: lines, from: f, to: g)
     }
 
     // MARK: transitions
@@ -128,7 +128,7 @@ extension ProjectStore {
         guard t != old else { throw AgentError.msg("no change: \(id) already goes to \(pair.next.id) with \(old.text)") }
         g.storyboards[0].items[k].transition = t
         let line = Change("\(id) \u{2192} \(pair.next.id) transition", old.text, t.text)
-        return finish(title: edit == nil || t.isCut && t.instruction == nil ? "Cut from \(id) to \(pair.next.id)" : "Set the transition from \(id) to \(pair.next.id)", changes: [line], from: f, to: g)
+        return try finish(title: edit == nil || t.isCut && t.instruction == nil ? "Cut from \(id) to \(pair.next.id)" : "Set the transition from \(id) to \(pair.next.id)", changes: [line], from: f, to: g)
     }
 
     // MARK: music and grid
@@ -145,11 +145,11 @@ extension ProjectStore {
             let file = "assets/" + a.file
             guard file != old else { throw AgentError.msg("no change: \(a.name) already is the music") }
             g.decisions.track = ShowreelFile.Track(file: file)
-            return finish(title: "Use \(a.name) as the music", changes: [Change("Music", old.map { ($0 as NSString).lastPathComponent } ?? "(none)", a.name)], from: f, to: g)
+            return try finish(title: "Use \(a.name) as the music", changes: [Change("Music", old.map { ($0 as NSString).lastPathComponent } ?? "(none)", a.name)], from: f, to: g)
         }
         guard old != nil else { throw AgentError.msg("no change: there is no music") }
         g.decisions.track = nil
-        return finish(title: "Remove the music", changes: [Change("Music", (old! as NSString).lastPathComponent, "(none)")], from: f, to: g)
+        return try finish(title: "Remove the music", changes: [Change("Music", (old! as NSString).lastPathComponent, "(none)")], from: f, to: g)
     }
 
     func planGrid(bpm: Double?, firstBeat: Double?) throws -> (card: OperationCard, run: () throws -> Void) {
@@ -168,7 +168,7 @@ extension ProjectStore {
         guard !lines.isEmpty else { throw AgentError.msg("no change to the tempo or the first beat") }
         t.manual = true
         g.decisions.track = t
-        return finish(title: "Correct the music grid", changes: lines, from: f, to: g)
+        return try finish(title: "Correct the music grid", changes: lines, from: f, to: g)
     }
 
     func planGridSettings(snap: String?, ripple: Bool?) throws -> (card: OperationCard, run: () throws -> Void) {
@@ -182,7 +182,7 @@ extension ProjectStore {
         }
         if let r = ripple, r != f.ripple() { lines.append(Change("Ripple", f.ripple() ? "on" : "off", r ? "on" : "off")); g.storyboards[0].ripple = r }
         guard !lines.isEmpty else { throw AgentError.msg("no change") }
-        return finish(title: "Set the reel's grid", changes: lines, from: f, to: g)
+        return try finish(title: "Set the reel's grid", changes: lines, from: f, to: g)
     }
 }
 

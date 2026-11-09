@@ -11,16 +11,22 @@ public struct PanelLayout: Codable, Equatable, Sendable {
     public var strip: Double?
     /// The project settings panel (opened from the top bar), which slides in over the right side.
     public var settings: Double?
+    /// The left panel is split in two: the share of its height that the Storyboard takes (the Resources take the rest), and how the Resources section was left.
+    public var split: Double?
+    public var resources: LibrarySplit.ResourcesState?
 
-    public init(library: Double? = nil, inspector: Double? = nil, strip: Double? = nil, settings: Double? = nil) {
+    public init(library: Double? = nil, inspector: Double? = nil, strip: Double? = nil, settings: Double? = nil, split: Double? = nil, resources: LibrarySplit.ResourcesState? = nil) {
         self.library = Self.floored(library, Self.minLibrary); self.inspector = Self.floored(inspector, Self.minInspector); self.strip = Self.floored(strip, Self.minStrip)
         self.settings = Self.floored(settings, Self.minSettings)
+        self.split = split.flatMap { $0.isFinite ? LibrarySplit.clamp($0) : nil }
+        self.resources = resources == .open ? nil : resources
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(library: try c.decodeIfPresent(Double.self, forKey: .library), inspector: try c.decodeIfPresent(Double.self, forKey: .inspector), strip: try c.decodeIfPresent(Double.self, forKey: .strip),
-                  settings: try c.decodeIfPresent(Double.self, forKey: .settings))
+                  settings: try c.decodeIfPresent(Double.self, forKey: .settings), split: try c.decodeIfPresent(Double.self, forKey: .split),
+                  resources: (try? c.decodeIfPresent(String.self, forKey: .resources)).flatMap { $0 }.flatMap { LibrarySplit.ResourcesState(rawValue: $0) })
     }
 
     /// A size with the floor applied; nil for something that is not a size (not finite).
@@ -29,11 +35,19 @@ public struct PanelLayout: Codable, Equatable, Sendable {
         return Swift.max(v, min)
     }
 
+    /// The same layout with some sizes changed (the others are kept, which a new `PanelLayout(...)` would lose).
+    public func replacing(library: Double? = nil, inspector: Double? = nil, strip: Double? = nil, settings: Double? = nil, split: Double? = nil, resources: LibrarySplit.ResourcesState? = nil) -> PanelLayout {
+        PanelLayout(library: library ?? self.library, inspector: inspector ?? self.inspector, strip: strip ?? self.strip, settings: settings ?? self.settings,
+                    split: split ?? self.split, resources: resources ?? self.resources)
+    }
+
     public var libraryWidth: Double { library ?? Self.standardLibrary }
     public var inspectorWidth: Double { inspector ?? Self.standardInspector }
     public var stripHeight: Double { strip ?? Self.standardStrip }
     public var settingsWidth: Double { settings ?? Self.standardSettings }
-    public var isStandard: Bool { library == nil && inspector == nil && strip == nil && settings == nil }
+    public var splitFraction: Double { split ?? LibrarySplit.standard }
+    public var resourcesState: LibrarySplit.ResourcesState { resources ?? .open }
+    public var isStandard: Bool { library == nil && inspector == nil && strip == nil && settings == nil && split == nil && resources == nil }
 }
 
 /// How the storyboard strip was left: the time scale, how far it is scrolled, and whether it follows the width (the whole film in view).

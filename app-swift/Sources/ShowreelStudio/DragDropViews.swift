@@ -161,12 +161,12 @@ struct DragRow<Content: View>: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "line.3.horizontal").font(.system(size: 10, weight: .semibold)).foregroundStyle(.tertiary).frame(width: 12).opacity(hovering ? 1 : 0)
+            Image(systemName: "line.3.horizontal").font(.system(size: 11, weight: .semibold)).foregroundStyle(.tertiary).frame(width: 12).opacity(hovering ? 1 : 0)
             content()
         }
         .padding(.horizontal, 8).padding(.vertical, 5)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(selected ? Color.accentColor.opacity(0.2) : hovering ? Color.primary.opacity(0.07) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .rowSurface(selected: selected, hovering: hovering)
         .contentShape(Rectangle())
         .onHover { h in hovering = h; if h { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }          // set, never pushed: nothing to leave unbalanced
         .onTapGesture(perform: action)
@@ -188,7 +188,7 @@ struct DragChip: View {
             Text(label).lineLimit(1)
         }
         .font(.callout.weight(.medium)).padding(.horizontal, 10).padding(.vertical, 6)
-        .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .raisedBackground()
         .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Color.accentColor, lineWidth: 1.5))
         .frame(maxWidth: 220)
     }
@@ -223,7 +223,7 @@ struct DropGlow: View {
                     RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(Color.red.opacity(0.9), lineWidth: 2)
                         .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .overlay(alignment: .bottom) {
-                            Text(v.text).font(.caption2.weight(.semibold)).foregroundStyle(.white).lineLimit(2).multilineTextAlignment(.center)
+                            Text(v.text).fontSmall(weight: .semibold).foregroundStyle(.white).lineLimit(2).multilineTextAlignment(.center)
                                 .padding(.horizontal, 6).padding(.vertical, 2).background(Color.red, in: RoundedRectangle(cornerRadius: 5)).padding(3)
                         }
                         .allowsHitTesting(false).transition(.opacity)
@@ -385,7 +385,7 @@ struct ToastHost: View {
                     Image(systemName: t.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").foregroundStyle(t.isError ? Color.orange : Color.green)
                     Text(t.text).font(.callout).lineLimit(4).fixedSize(horizontal: false, vertical: true)
                     if t.undoable && project.canUndo { Button("Undo") { project.undo() }.buttonStyle(.borderless).font(.callout.weight(.semibold)) }
-                    Button { project.toast = nil } label: { Image(systemName: "xmark").font(.caption) }.buttonStyle(.borderless).help("Dismiss")
+                    Button { project.toast = nil } label: { Image(systemName: "xmark").fontSmall() }.buttonStyle(.borderless).help("Dismiss")
                 }
                 .padding(.horizontal, 14).padding(.vertical, 9).frame(maxWidth: 560)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -435,7 +435,7 @@ struct InlineEdit<Display: View>: View {
 /// The three small things every row of a list has: a handle that says it can be dragged, a hover state, and a selection state.
 struct Handle: View {
     var body: some View {
-        Image(systemName: "line.3.horizontal").font(.system(size: 10, weight: .semibold)).foregroundStyle(.tertiary).frame(width: 12)
+        Image(systemName: "line.3.horizontal").font(.system(size: 11, weight: .semibold)).foregroundStyle(.tertiary).frame(width: 12)
             .help("Drag to move")
     }
 }

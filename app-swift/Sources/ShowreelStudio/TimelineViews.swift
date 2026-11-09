@@ -219,10 +219,10 @@ struct StripPrimaryAction: View {
         HStack(spacing: 6) {
             if !validated {
                 Button { project.perform(.gate("storyboard", passed: true)) } label: { Label("Validate storyboard", systemImage: "checkmark.circle") }
-                    .buttonStyle(.borderedProminent).disabledWithReason((project.showreel?.film.isEmpty ?? true) ? "The film has no scene yet" : nil, way: "Add a scene first")
+                    .buttonStyle(PrimaryButtonStyle()).disabledWithReason((project.showreel?.film.isEmpty ?? true) ? "The film has no scene yet" : nil, way: "Add a scene first")
                     .help("Say the storyboard is as you want it. Then the scenes are reviewed and you give the Go.")
             } else {
-                GoButton().buttonStyle(.borderedProminent)
+                GoButton().buttonStyle(PrimaryButtonStyle())
                 if g["review"] != "passed" {
                     Button("Reopen") { project.perform(.gate("storyboard", passed: false)) }.buttonStyle(.borderless).font(.system(size: 11)).help("Take the validation back to keep editing")
                 }
@@ -432,7 +432,7 @@ struct FrameView: View {
             LinearGradient(colors: [.black.opacity(0.55), .clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom).allowsHitTesting(false)
             if let r = e.label { label(e.mode).frame(maxWidth: r.width, alignment: .leading).offset(x: r.minX, y: r.minY) }
             if let r = e.status {
-                SceneBadges(scene: scene, size: 12).padding(2).frame(minWidth: r.width, minHeight: r.height)
+                SceneStatusIcon(scene: scene, size: 12).padding(2).frame(minWidth: r.width, minHeight: r.height)
                     .background(.black.opacity(0.6), in: Capsule()).offset(x: r.minX, y: r.minY)
             }
             BlockMarker(ref: .scene(scene.id)).padding(4).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
@@ -465,9 +465,9 @@ struct FrameView: View {
         .contextMenu {
             Button("Rename") { project.beginRename(scene.id) }
             Button("Duplicate") { project.duplicateScene(scene.id) }
-            Button("Remove from film") { project.setEnabled(scene.id, false) }.help("The scene stays in the library and under the strip as a dimmed chip")
+            Button("Hide") { project.setEnabled(scene.id, false) }.help("The scene stays in the project, under Not in the storyboard")
             Divider()
-            Button("Archive", role: .destructive) { project.archiveScene(scene.id) }
+            Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(scene.id) }
         }
         .help(scene.label)
     }
@@ -545,7 +545,7 @@ struct TransitionMarker: View {
         .frame(width: place.hit.width, height: place.hit.height)
         .contentShape(Rectangle())
         .help(project.transitionHelp(from: from, base: transition.text))
-        .overlay(alignment: .topTrailing) { if TransitionNotes.note(after: from, in: project.showreel ?? ShowreelFile(name: ""), store: project.store) != nil { Image(systemName: "exclamationmark.circle.fill").font(.system(size: 8)).foregroundStyle(.orange).allowsHitTesting(false) } }
+        .overlay(alignment: .topTrailing) { if TransitionNotes.note(after: from, in: project.showreel ?? ShowreelFile(name: ""), store: project.store) != nil { Image(systemName: "exclamationmark.circle.fill").font(.system(size: 11)).foregroundStyle(.orange).allowsHitTesting(false) } }
         .onTapGesture { project.selectTransition(from: from) }
         .dropTarget(.marker(from: from))     // a transition dropped from the library lands here
         .contextMenu {
@@ -579,7 +579,7 @@ struct MusicLane: View {
                 Text("Drop an audio file here to time the film on its beat").font(.system(size: 14, weight: .semibold)).foregroundStyle(StripColor.text)
                 Text("Or drag one from the Resources tab. The grid of the music then appears in the ruler, and scenes snap to it.").font(.system(size: 12)).foregroundStyle(StripColor.dim)
             }
-            Button("Choose music") { choose() }.buttonStyle(.borderedProminent)
+            Button("Choose music") { choose() }.buttonStyle(PrimaryButtonStyle())
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 18)

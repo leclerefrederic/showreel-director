@@ -90,13 +90,6 @@ struct PendingLookChange: Identifiable {
     let card: OperationCard
 }
 
-/// The library holds assets only: the resources and the scenes. The look is a project setting, and its catalogues are picked where they are used.
-enum LibraryTab: String, CaseIterable, Identifiable {
-    case resources, scenes, transitions, checks
-    var id: String { rawValue }
-    var title: String { rawValue.capitalized }
-}
-
 /// The two parts of the project settings panel (the history belongs to Clap: see `ClapSection`).
 enum SettingsTab: String, CaseIterable, Identifiable {
     case project, look
@@ -116,8 +109,8 @@ enum ClapSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-/// What the centre of the workspace shows: the selection, or the build and its player.
-enum CenterMode { case viewer, build }
+/// What the centre of the workspace shows: the selection, the build and its player, or the list of the checks (opened from the badge of the top bar).
+enum CenterMode { case viewer, build, checks }
 
 /// State of one project window: files, open tabs, the showreel, the watcher. Main thread only.
 final class ProjectModel: ObservableObject {
@@ -168,12 +161,10 @@ final class ProjectModel: ObservableObject {
     @Published private(set) var analysing = false
     private var waveformKey: String?
     /// The scenes whose tree is open in the library.
-    @Published var expanded: Set<String> = []
     /// The tree of each scene of the library, with the statuses computed natively.
     @Published private(set) var trees: [String: [SceneGroupNodes]] = [:]
     /// The status of each resource (approved, to approve, missing, over budget), from the asset rules.
     @Published private(set) var assetStatus: [String: NodeStatus] = [:]
-    @Published var libraryTab: LibraryTab = .scenes
     /// The project settings panel (project parameters and global look) and the floating Catalogue palette, both opened from the top bar.
     @Published var showProjectSettings = false
     @Published var settingsTab: SettingsTab = .project
@@ -287,6 +278,15 @@ final class ProjectModel: ObservableObject {
     }
 
     func resetLayout() { setLayout(PanelLayout()) }
+
+    /// The divider of the left panel moved (the Storyboard's share of its height), or the Resources were collapsed, expanded or restored: remembered for this project.
+    func setLibrarySplit(_ fraction: Double) { setLayout(layout.replacing(split: LibrarySplit.clamp(fraction))) }
+    func setResources(_ state: LibrarySplit.ResourcesState) {
+        var l = layout; l.resources = state == .open ? nil : state
+        setLayout(l)
+    }
+    /// The pointer is over the Storyboard list: the arrow keys and Delete are for it (as they are for the strip when the pointer is over the strip).
+    var listHovered = false
 
     deinit { draftTimer?.invalidate(); let p = root.path; DispatchQueue.main.async { LibraryModel.shared.markClosed(p) } }
 
@@ -407,7 +407,7 @@ final class ProjectModel: ObservableObject {
         let resuming = BuildJob.pending(store)
         let v = resuming ?? Versions.next(store)
         let plan = BuildJob.plan(version: v, store: store, skip: skip, overwrite: overwrite)
-        buildOffer = PendingBuild(version: v, plan: plan, card: BuildJob.card(plan, store: store, skill: skill, resuming: resuming != nil), resuming: resuming != nil, overwrite: overwrite, skip: skip)
+        buildOffer = PendingBuild(version: v, plan: plan, card: BuildJob.card(plan, store: store, skill: skill, resuming: resuming != nil, width: AppSettings.shared.sceneWidth), resuming: resuming != nil, overwrite: overwrite, skip: skip)
     }
 
     /// The line that asks before a hand edit is overwritten: ticking it adds the scene to the scenes that are written.
@@ -458,7 +458,7 @@ final class ProjectModel: ObservableObject {
         store.logBuild(v, "Build asked by \(by)")
         chat?.report("Build \(v): one request for the frame of the film, one for each scene, then the app assembles and tests it.")
         buildTask = Task { @MainActor in
-            let outcome = await BuildJob.run(version: v, store: store, skill: skill, transport: transport, skip: skip, options: options)
+            let outcome = await BuildJob.run(version: v, store: store, skill: skill, transport: transport, skip: skip, options: options, width: s.sceneWidth)
             buildTask = nil
             finishJob(outcome, v)
         }
@@ -719,12 +719,35 @@ final class ProjectModel: ObservableObject {
         perform(.moveScene(id: id, after: after, montage: nil))
     }
 
-    func archiveScene(_ id: String) {
-        perform(.scene(id: id, SceneEdit(archived: true)))
-        if selection.sceneID == id { selection = .none }
+    /// The three switches of a scene (Visible, Ready, Locked): each is one typed operation, journalled, with Undo; the rules (what is refused, and why) are ShowreelKit's `SceneSwitches`.
+    func flip(_ sw: SceneSwitches.Switch) {
+        if let u = sw.unavailable { react(StatusLine.refused(u.message)); return }
+        guard let op = sw.operation else { return }
+        var note: String?
+        if case .sceneLock(let ids, false) = op, let f = showreel { note = ids.compactMap { id in f.scenes.first { $0.id == id }.flatMap { LockedLook.unlockNote($0, in: f).map { id + ": " + $0 } } }.first }
+        if perform(op), let n = note { showToast("Unlocked, and " + n) }
     }
 
-    func restoreScene(_ id: String) { perform(.scene(id: id, SceneEdit(status: "wip", archived: false))) }
+    /// Delete scene: a confirmation that names what is lost comes first; Undo takes it back.
+    @Published var pendingDelete: String?
+    func askDelete(_ id: String) {
+        guard let s = showreel?.scenes.first(where: { $0.id == id }) else { return }
+        let sw = SceneSwitches.delete(s, activity: activity)
+        if let u = sw.unavailable { react(StatusLine.refused(u.message)); return }
+        pendingDelete = id
+    }
+    var deletePrompt: (title: String, message: String)? {
+        guard let id = pendingDelete, let s = showreel?.scenes.first(where: { $0.id == id }) else { return nil }
+        return SceneSwitches.deletePrompt(s, losses: store.deletionLosses(id))
+    }
+    func confirmDelete() {
+        guard let id = pendingDelete else { return }
+        pendingDelete = nil
+        if perform(.deleteScene(id: id)) {
+            if selection.sceneID == id { selection = .none }
+            showToast("Deleted \(id). Undo (Edit menu) brings it back.", undoable: true)
+        }
+    }
 
     // MARK: the timeline (phase S): the rules are ShowreelKit's `TimelineScale` and `TimelineNav`
 
@@ -907,13 +930,14 @@ final class ProjectModel: ObservableObject {
     func openCheck(_ e: CheckEntry) { open(e.target) }
 
     func open(_ target: CheckTarget) {
+        if centerMode == .checks { centerMode = .viewer }          // a click on a check leaves the list for what it is about
         switch target {
         case .project: openSettings(.project)
         case .look(let s): openSettings(.look, look: s)
-        case .resource(let id): libraryTab = .resources; select(.asset(id))
-        case .resources: libraryTab = .resources
+        case .resource(let id): if layout.resourcesState == .collapsed { setResources(.open) }; select(.asset(id))
+        case .resources: if layout.resourcesState == .collapsed { setResources(.open) }
         case .scene(let id, let tab):
-            libraryTab = .scenes; select(.scene(id)); expanded.insert(id)
+            select(.scene(id))
             sceneTab = SceneTab(rawValue: tab) ?? .settings
         case .transition(let from): selectTransition(from: from)
         case .music: showProjectSettings = false; selection = .none; inspectorTab = .inspector; centerMode = .viewer
@@ -998,7 +1022,7 @@ final class ProjectModel: ObservableObject {
     }
 
     /// Renaming in place: the name is a label next to the ID, the ID never changes.
-    func beginRename(_ id: String) { libraryTab = .scenes; renaming = id }
+    func beginRename(_ id: String) { renaming = id }
     func renameScene(_ id: String, _ name: String) { renaming = nil; perform(.scene(id: id, SceneEdit(name: name))) }
 
     func duplicateItem(_ scene: String, _ item: String) {
@@ -1019,6 +1043,20 @@ final class ProjectModel: ObservableObject {
     }
 
     /// Opens the project settings on a part of the global look.
+    /// A click on the rail: the same views the top bar's Build and Project settings buttons reached, the Film entry being the viewer. Choosing an entry that is already shown
+    /// brings the film back (as the buttons toggled). The rail is exclusive: the settings panel closes when Film or Build is chosen.
+    func openRail(_ e: RailEntry) {
+        let now = RailEntry.current(centreIsBuild: centerMode == .build, settingsOpen: showProjectSettings, settingsIsLook: settingsTab == .look, centreIsChecks: centerMode == .checks)
+        switch e.target {
+        case .viewer: showProjectSettings = false; centerMode = .viewer
+        case .build:
+            showProjectSettings = false
+            centerMode = now == .build ? .viewer : .build
+        case .settings(let look):
+            if now == e { showProjectSettings = false } else { centerMode = .viewer; openSettings(look ? .look : .project) }
+        }
+    }
+
     func openSettings(_ tab: SettingsTab = .project, look: LookSection? = nil) {
         settingsTab = tab
         if let l = look { lookSection = l }
@@ -1162,7 +1200,6 @@ final class ProjectModel: ObservableObject {
         sceneTab = SceneTab(group)
         lookFocus = group == .look ? item : nil
         if let i = item, i.hasPrefix("item.") { sceneTab = .composition; contentItem = String(i.dropFirst(5)) }
-        expanded.insert(scene)
     }
 
     /// A scene's own palette, fonts or background (an empty value takes the override away).
@@ -1549,7 +1586,7 @@ extension ProjectModel {
     var isPreviewingResource: Bool {
         var selected: String?
         if case .asset(let id) = selection { selected = id }
-        if case .resource = Resources.viewerSubject(designBoardOpen: showProjectSettings && settingsTab == .look, resourcesTab: libraryTab == .resources, selectedResource: selected) { return centerMode == .viewer }
+        if case .resource = Resources.viewerSubject(designBoardOpen: showProjectSettings && settingsTab == .look, resourcesTab: true, selectedResource: selected) { return centerMode == .viewer }
         return false
     }
 

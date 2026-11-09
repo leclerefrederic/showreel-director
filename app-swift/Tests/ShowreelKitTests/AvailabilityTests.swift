@@ -80,6 +80,7 @@ final class AvailabilityTests: XCTestCase {
         case .gate: return .gate("storyboard", passed: true)
         case .scene: return .scene(id: "S01", SceneEdit(text: "Changed"))
         case .addScene: return .addScene(id: "", SceneEdit(duration: "3", text: "New"))
+        case .deleteScene: return .deleteScene(id: "S01")
         case .sceneEnabled: return .sceneEnabled(id: "S02", enabled: false, montage: nil)
         case .moveScene: return .moveScene(id: "S03", after: "start", montage: nil)
         case .sceneLook: return .sceneLook(id: "S01", [DecisionChange(.background, Look.backgroundIDs().first!)])

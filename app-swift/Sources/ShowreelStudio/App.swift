@@ -7,6 +7,7 @@ struct ShowreelStudioApp: App {
     @StateObject private var env = EnvModel()
     @StateObject private var library = LibraryModel.shared
     @StateObject private var settings = AppSettings.shared
+    @StateObject private var theme = Theme()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
@@ -14,6 +15,7 @@ struct ShowreelStudioApp: App {
         // The Library is the one window at launch: the project windows of the last session are not reopened (a project opens when asked).
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
         NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.appearance = NSAppearance(named: .darkAqua)          // the dark theme: every window, the Settings window and the system panels (no setting yet)
         if let path = ProcessInfo.processInfo.environment["SHOWREEL_LAUNCH_LOG"] { Self.writeLaunchLog(to: path) }
     }
 
@@ -33,6 +35,8 @@ struct ShowreelStudioApp: App {
             LibraryView()
                 .environmentObject(library)
                 .environmentObject(settings)
+                .environmentObject(theme)
+                .preferredColorScheme(.dark)
                 .onAppear { NSApplication.shared.activate(ignoringOtherApps: true) }
         }
         WindowGroup("Project", for: String.self) { $path in
@@ -40,13 +44,15 @@ struct ShowreelStudioApp: App {
                 ProjectWindow(path: path)
                     .environmentObject(env)
                     .environmentObject(settings)
+                    .environmentObject(theme)
+                    .preferredColorScheme(.dark)
                     .frame(minWidth: 1180, minHeight: 720)
             }
         }
         .windowToolbarStyle(.unified(showsTitle: true))
         .commands { StudioCommands() }
         // the application's own settings: the Showreel Studio menu, Settings (Command-,)
-        Settings { SettingsView().environmentObject(settings) }
+        Settings { SettingsView().environmentObject(settings).environmentObject(theme).preferredColorScheme(.dark) }
     }
 }
 

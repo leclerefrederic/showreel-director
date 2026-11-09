@@ -30,11 +30,11 @@ struct PreviewPane: View {
                     Text("Pages open here")
                         .foregroundStyle(.secondary)
                     Text("Look board, pickers, scene cards, the reel.")
-                        .font(.caption)
+                        .fontSmall()
                         .foregroundStyle(.tertiary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .underPageBackgroundColor))
+                .panelBackground()
             }
         }
     }

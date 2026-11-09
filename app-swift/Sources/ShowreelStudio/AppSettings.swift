@@ -31,6 +31,12 @@ final class AppSettings: ObservableObject {
         set { objectWillChange.send(); defaults.set(max(1, newValue), forKey: "requestMinutes") }
     }
 
+    /// How many scenes a Build writes at the same time (1 to 4).
+    var sceneWidth: Int {
+        get { let v = defaults.integer(forKey: "sceneWidth"); return (AgentLimits.minSceneWidth...AgentLimits.maxSceneWidth).contains(v) ? v : AgentLimits.defaultSceneWidth }
+        set { objectWillChange.send(); defaults.set(min(max(newValue, AgentLimits.minSceneWidth), AgentLimits.maxSceneWidth), forKey: "sceneWidth") }
+    }
+
     /// The time rules of the settings on a transport.
     func configure(_ t: AnthropicTransport) { t.idleTimeout = idleTimeout; t.requestTimeout = requestMinutes * 60 }
 

@@ -297,31 +297,65 @@
         "base": {
           "type": "object",
           "properties": {
-            "conversationLanguage": { "type": "string", "description": "a language code, for example en" },
-            "reelLanguages": { "type": "string", "description": "language codes, comma-separated; the first is the master text" },
-            "formats": { "type": "string", "description": "for example 16:9 or 16:9, 9:16" },
-            "duration": { "type": "string", "description": "seconds, for example 30" }
+            "conversationLanguage": {
+              "type": "string",
+              "description": "a language code, for example en"
+            },
+            "reelLanguages": {
+              "type": "string",
+              "description": "language codes, comma-separated; the first is the master text"
+            },
+            "formats": {
+              "type": "string",
+              "description": "for example 16:9 or 16:9, 9:16"
+            },
+            "duration": {
+              "type": "string",
+              "description": "seconds, for example 30"
+            }
           }
         },
         "brief": {
           "type": "object",
           "properties": {
-            "audience": { "type": "string" },
-            "message": { "type": "string" },
-            "tone": { "type": "string" }
+            "audience": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "tone": {
+              "type": "string"
+            }
           },
           "description": "only what the user said"
         },
         "look": {
           "type": "object",
           "properties": {
-            "palette": { "type": "string", "description": "#RRGGBB colours, comma-separated: background, text, accent, accent 2" },
-            "titleFont": { "type": "string" },
-            "textFont": { "type": "string" },
-            "background": { "type": "string", "description": "an id of the engine's backgrounds" },
-            "backgroundMood": { "type": "string" },
-            "moods": { "type": "string" },
-            "effectsPack": { "type": "string" }
+            "palette": {
+              "type": "string",
+              "description": "#RRGGBB colours, comma-separated: background, text, accent, accent 2"
+            },
+            "titleFont": {
+              "type": "string"
+            },
+            "textFont": {
+              "type": "string"
+            },
+            "background": {
+              "type": "string",
+              "description": "an id of the engine's backgrounds"
+            },
+            "backgroundMood": {
+              "type": "string"
+            },
+            "moods": {
+              "type": "string"
+            },
+            "effectsPack": {
+              "type": "string"
+            }
           }
         },
         "scenes": {
@@ -329,15 +363,29 @@
           "items": {
             "type": "object",
             "properties": {
-              "text": { "type": "string" },
-              "duration": { "type": "string", "description": "seconds" },
-              "visual": { "type": "string" },
-              "feeling": { "type": "string" }
+              "text": {
+                "type": "string"
+              },
+              "duration": {
+                "type": "string",
+                "description": "seconds"
+              },
+              "visual": {
+                "type": "string"
+              },
+              "feeling": {
+                "type": "string"
+              }
             },
-            "required": ["text"]
+            "required": [
+              "text"
+            ]
           }
         },
-        "music": { "type": "string", "description": "the ID of an approved audio resource, only when the user supplied one" }
+        "music": {
+          "type": "string",
+          "description": "the ID of an approved audio resource, only when the user supplied one"
+        }
       }
     }
   },
@@ -347,11 +395,28 @@
     "input_schema": {
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "the resource ID (from get_state)" },
-        "add": { "type": "array", "items": { "type": "string" }, "description": "tags to add" },
-        "remove": { "type": "array", "items": { "type": "string" }, "description": "tags to take away" }
+        "id": {
+          "type": "string",
+          "description": "the resource ID (from get_state)"
+        },
+        "add": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "tags to add"
+        },
+        "remove": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "tags to take away"
+        }
       },
-      "required": ["id"]
+      "required": [
+        "id"
+      ]
     }
   },
   {
@@ -449,7 +514,7 @@
   },
   {
     "name": "add_scene",
-    "description": "Create a scene in the scene library, with the next free ID (or the ID you give, S04b style, if it is free); it is switched on at the end of the master storyboard, or after the scene you name in `after`. Propose one scene per call, in order, with a duration in seconds and a line short enough for the reading budget (about 3 s for a line of six to eight words). The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, an archived scene keeps its ID. Changing the text, duration or look of a scene the user already validated sends it back to WIP, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
+    "description": "Create a scene in the scene library, with the next free ID (or the ID you give, S04b style, if it is free); it is switched on at the end of the master storyboard, or after the scene you name in `after`. Propose one scene per call, in order, with a duration in seconds and a line short enough for the reading budget (about 3 s for a line of six to eight words). The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, a deleted scene keeps its ID reserved. Changing the text, duration or look of a scene the user already made Ready sends it back to To review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -488,15 +553,6 @@
         "note": {
           "type": "string"
         },
-        "status": {
-          "type": "string",
-          "enum": [
-            "wip",
-            "validated",
-            "ditched"
-          ],
-          "description": "wip (the default) or ditched; only the user validates in the app"
-        },
         "assets": {
           "type": "string",
           "description": "ids of the linked assets (from get_state), comma-separated: replaces the links of this scene"
@@ -514,7 +570,7 @@
   },
   {
     "name": "update_scene",
-    "description": "Change one scene of the library by its ID (from get_state): duration, text, image and motion, feeling, passage note, cuts, note, status, archive, linked assets, or its position in the master storyboard. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered, an archived or ditched scene keeps its ID. Changing the text, duration or look of a scene the user already validated sends it back to WIP, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button. A locked scene refuses every change here (the answer says so): offer to unlock it with lock_scene instead of trying again.",
+    "description": "Change one scene of the library by its ID (from get_state): duration, text, image and motion, feeling, passage note, cuts, note (the instruction: what to change), linked assets, or its position in the master storyboard. The user sees a plain card (before and after) and accepts or refuses; nothing changes before that, unless they switched on apply-directly. Scene IDs are stable: never reused, never renumbered. Changing the text, duration or look of a scene the user already made Ready sends it back to To review, and after the Go it takes the Go back (the card says so): that is the user's rule, not yours to work around. You can never give the Go; only the user can, with the Go button. Whether a scene is Ready is the user's call: to suggest it use set_ready (always a card), to remove a scene use delete_scene (always a card). A locked scene refuses every change here (the answer says so): offer to unlock it with lock_scene instead of trying again.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -552,15 +608,6 @@
         "note": {
           "type": "string"
         },
-        "status": {
-          "type": "string",
-          "enum": [
-            "wip",
-            "validated",
-            "ditched"
-          ],
-          "description": "wip (the default; with a note it means 'to modify'), validated (only the user validates in the app) or ditched (archives the scene and switches it off everywhere). Locking is lock_scene."
-        },
         "assets": {
           "type": "string",
           "description": "ids of the linked assets (from get_state), comma-separated: replaces the links of this scene"
@@ -568,10 +615,6 @@
         "after": {
           "type": "string",
           "description": "position in the master storyboard: put the scene after this scene ID, or 'start'. A move never changes an ID."
-        },
-        "archived": {
-          "type": "boolean",
-          "description": "true archives the scene (the library's delete: it leaves the lists and is switched off in every montage, its ID stays reserved); false brings it back, still switched off"
         },
         "control_level": {
           "type": "string",
@@ -595,7 +638,7 @@
   },
   {
     "name": "enable_scene",
-    "description": "Switch a scene on or off in a storyboard (the master unless you name another). A scene that is off stays in the library and in the file; nothing is created or deleted. The user sees a plain card and accepts or refuses. After the Go it takes the Go back (the card says so).",
+    "description": "Show or hide a scene in a storyboard (the master unless you name another): the Visible switch of the scene. A hidden scene stays in the project, listed under Not in the storyboard; nothing is deleted. A locked scene refuses it. The user sees a plain card and accepts or refuses. After the Go it takes the Go back (the card says so).",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -653,7 +696,7 @@
   },
   {
     "name": "lock_scene",
-    "description": "Lock or unlock scenes by ID. A Locked scene refuses every change to what is inside it (text and content, duration, look overrides, linked resources, dropping something on it, stretching its edge in the reel) from you and from the user, with a reason; only its place in the montage (move_scene, enable_scene) and its transitions can still change. Only a Validated scene can be locked (a lock never validates a scene); unlocking gives back Validated. The user sees a plain card (before and after) and accepts or refuses. Never try to modify a locked scene: if the user's request needs it, say the scene is locked and offer to unlock it (one card), then wait for their answer.",
+    "description": "Lock or unlock scenes by ID. A Locked scene is frozen in time and space, visible or hidden: it refuses every change to its content, look, duration, visibility, place and deletion, from you and from the user, with a reason; a change elsewhere that would move its start (inserting, deleting, showing, hiding or lengthening a scene before it) is refused too, and a Build never rewrites it. Its transitions can still change. Locking keeps a copy of its look, so a change of the project's look no longer reaches it. Only a Ready scene can be locked (a lock never makes a scene Ready); unlocking gives back Ready. The user sees a plain card (before and after) and accepts or refuses. Never try to modify a locked scene: if the user's request needs it, say the scene is locked and offer to unlock it (one card), then wait for their answer.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -676,6 +719,51 @@
       "required": [
         "scenes",
         "locked"
+      ]
+    }
+  },
+  {
+    "name": "set_ready",
+    "description": "Propose that a scene is Ready (the user is satisfied with it) or To review (Ready switched off, with the instruction in the scene's note). Whether a scene is Ready is the user's decision: this is always a card the user accepts or refuses, even when they switched on apply-directly, and you never switch it for them. A locked scene refuses it.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "the scene ID"
+        },
+        "ready": {
+          "type": "boolean",
+          "description": "true proposes Ready, false proposes To review"
+        },
+        "reason": {
+          "type": "string",
+          "description": "one sentence: why you propose it"
+        }
+      },
+      "required": [
+        "id",
+        "ready"
+      ]
+    }
+  },
+  {
+    "name": "delete_scene",
+    "description": "Propose to delete a scene for good: its words, elements, own look, links and place. Its ID is never given to another scene. The card lists what is lost; it is always a card the user accepts or refuses, even when they switched on apply-directly, and the user can Undo it. A locked scene refuses it (offer to unlock it first). Prefer hiding a scene (enable_scene) when the user may want it back.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "the scene ID"
+        },
+        "reason": {
+          "type": "string",
+          "description": "one sentence: why you propose it"
+        }
+      },
+      "required": [
+        "id"
       ]
     }
   },
