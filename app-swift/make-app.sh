@@ -33,6 +33,10 @@ cat > "$APP/Contents/Info.plist" <<P
 <key>UTTypeDescription</key><string>Showreel Studio design package</string>
 <key>UTTypeConformsTo</key><array><string>public.zip-archive</string></array>
 <key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>studiopack</string></array></dict>
+</dict><dict>
+<key>UTTypeIdentifier</key><string>com.showreelstudio.resource-token</string>
+<key>UTTypeDescription</key><string>Showreel Studio resource (internal drag)</string>
+<key>UTTypeConformsTo</key><array><string>public.data</string></array>
 </dict></array>
 <key>CFBundleDocumentTypes</key><array><dict>
 <key>CFBundleTypeName</key><string>Showreel Studio design package</string>

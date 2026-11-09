@@ -17,6 +17,7 @@ BUNDLE_VER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$AP
 # the design package type is registered in the bundle's Info.plist (exported type, conforming to a zip archive, and the document type)
 PLIST="$APP/Contents/Info.plist"
 [ "$(/usr/libexec/PlistBuddy -c "Print :UTExportedTypeDeclarations:0:UTTypeIdentifier" "$PLIST" 2>/dev/null)" = "com.showreelstudio.studiopack" ] || { echo "Info.plist: the exported type com.showreelstudio.studiopack is missing"; fail=1; }
+[ "$(/usr/libexec/PlistBuddy -c "Print :UTExportedTypeDeclarations:1:UTTypeIdentifier" "$PLIST" 2>/dev/null)" = "com.showreelstudio.resource-token" ] || { echo "Info.plist: the exported type com.showreelstudio.resource-token is missing"; fail=1; }
 /usr/libexec/PlistBuddy -c "Print :UTExportedTypeDeclarations:0:UTTypeConformsTo" "$PLIST" 2>/dev/null | grep -q "public.zip-archive" || { echo "Info.plist: the package type does not conform to a zip archive"; fail=1; }
 /usr/libexec/PlistBuddy -c "Print :UTExportedTypeDeclarations:0:UTTypeTagSpecification:public.filename-extension" "$PLIST" 2>/dev/null | grep -q "studiopack" || { echo "Info.plist: the .studiopack extension is not declared"; fail=1; }
 /usr/libexec/PlistBuddy -c "Print :CFBundleDocumentTypes:0:LSItemContentTypes" "$PLIST" 2>/dev/null | grep -q "com.showreelstudio.studiopack" || { echo "Info.plist: the document type for .studiopack is missing"; fail=1; }

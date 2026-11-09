@@ -164,3 +164,9 @@ batch C1 is built (corrections from the owner's test session: a resource dragged
 
 Rules in ShowreelKit: `Drops.swift`, `ResourceChecks.swift` (`AudioMetadata.artwork`, `ID3Artwork`), `FontFiles.swift` (`FontRepositoryError`, `FontLookupError`, `FontsAtBuild`), `ChatStore.swift` (`ChatRecord.origin`, `ChatDisplay`), `Setup.swift` (`ProjectSetup.durationChoices`, the style gate), `Timeline.swift`
 
+## D1
+
+batch D1 is built (a resource dragged to a scene: the scene targets take the resource by a typed payload (`com.showreelstudio.resource-token`, declared in Info.plist by make-app.sh, checked by `--selftest` and `tools/verify-bundle.sh`) with `dropDestination`, beside the geometry-resolved drop that stays for slots, lists and Finder files; the pure `DropPlan` gives the operation or the refusal for a token and a target, a lost token has its own message; every release ends with a line at the bottom; `drag.log` in `~/Library/Logs/ShowreelStudio/`, bounded and with no content or user path)
+
+Rules in ShowreelKit: `DragLog.swift` (`DragLog`, `DropPlan`), `Drops.swift`
+

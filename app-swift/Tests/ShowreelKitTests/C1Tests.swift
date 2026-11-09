@@ -228,3 +228,96 @@ final class C1Tests: XCTestCase {
         XCTAssertEqual(f.gateState("style"), "passed", "palette, fonts and background chosen")
     }
 }
+
+/// Batch D1: a resource dragged to a scene, the plan of a drop and the drag log.
+final class D1Tests: XCTestCase {
+    var dir: URL!
+    var inbox: URL!
+    var store: ProjectStore!
+    override func setUp() {
+        dir = makeTempDir("d1"); inbox = makeTempDir("d1-in"); store = ProjectStore(root: dir)
+        try? store.create(name: "D", conversationLanguage: "en", reelLanguages: ["en"])
+        for t in ["One", "Two", "Three"] { try? store.apply(.addScene(id: "", SceneEdit(duration: "3", text: t))) }
+        try? store.apply(.addScene(id: "", SceneEdit(duration: "3", text: "x")))     // unused: keeps ids stable
+        store.undoLog.clear(); store.activity.reset()
+    }
+    override func tearDown() { store.activity.reset(); try? FileManager.default.removeItem(at: dir); try? FileManager.default.removeItem(at: inbox) }
+    func addLogo() throws -> AssetRow {
+        let u = inbox.appendingPathComponent("Acme Logo.svg"); try "x".write(to: u, atomically: true, encoding: .utf8)
+        return try XCTUnwrap(try Assets.add([u], to: store).first)
+    }
+
+    func testEveryTargetThatTakesAResourceGivesTheOperation() throws {
+        let row = try addLogo()
+        let token = DragItem.resource(row.id).token
+        for target in [DropTarget.scene("S01"),                                                       // a frame of the reel, or a row of the scene list
+                       .sceneNode(scene: "S02", group: .composition, node: nil),                      // a node of the tree
+                       .sceneNode(scene: "S03", group: .composition, node: "item.c1"),
+                       .contentSlot(scene: "S01", before: nil)] {                                      // the inspector's content list
+            let o = DropPlan.resolve(token: token, target: target, store: store)
+            XCTAssertTrue(o.isValid, "\(target): \(o.text)")
+            XCTAssertTrue(o.text.contains("Acme Logo.svg"), o.text)
+        }
+        XCTAssertEqual(DropPlan.resolve(token: token, target: .scene("S01"), store: store), .operation("Link Acme Logo.svg to S01"))
+        XCTAssertEqual(Assets.load(store).first?.sceneIDs, [], "resolving changes nothing")
+        let done = DropPlan.perform(token: token, target: .scene("S03"), store: store)
+        XCTAssertEqual(done.result?.scene, "S03")
+        XCTAssertEqual(Assets.load(store).first?.sceneIDs, ["S03"])
+        XCTAssertEqual(DropPlan.doneLine(done.outcome.text), "Linked Acme Logo.svg to S03")
+    }
+
+    func testALostOrUnreadableTokenGivesAMessage() throws {
+        for token in [nil, "", "garbage", "studio:", "studio:content:S01", "other:resource:x"] as [String?] {
+            let o = DropPlan.resolve(token: token, target: .scene("S01"), store: store)
+            XCTAssertEqual(o, .refused(DropPlan.lostToken), "\(String(describing: token))")
+        }
+        XCTAssertEqual(DropPlan.resolve(token: "studio:resource:nope-01", target: .scene("S01"), store: store), .refused("unknown asset nope-01"))
+        XCTAssertEqual(DropPlan.resolve(token: DragItem.transition("Push").token, target: .scene("S01"), store: store).isValid, false, "a kind that does not go there says so")
+    }
+
+    func testALockedSceneAnArchivedSceneAndABuildRefuseWithTheirReason() throws {
+        let row = try addLogo()
+        let token = DragItem.resource(row.id).token
+        try store.apply(.scene(id: "S01", SceneEdit(status: "ok")))
+        try store.apply(.sceneLock(ids: ["S01"], locked: true))
+        let locked = DropPlan.resolve(token: token, target: .scene("S01"), store: store)
+        XCTAssertFalse(locked.isValid); XCTAssertTrue(locked.text.lowercased().contains("lock"), locked.text)
+        try store.apply(.scene(id: "S02", SceneEdit(archived: true)))
+        let archived = DropPlan.resolve(token: token, target: .scene("S02"), store: store)
+        XCTAssertFalse(archived.isValid); XCTAssertTrue(archived.text.contains("archived"), archived.text)
+        store.activity.update { $0.build = .init(version: "v1", phase: .generating) }
+        let building = DropPlan.resolve(token: token, target: .scene("S03"), store: store)
+        XCTAssertFalse(building.isValid); XCTAssertFalse(building.text.isEmpty)
+        XCTAssertEqual(DropPlan.perform(token: token, target: .scene("S03"), store: store).result, nil)
+        XCTAssertEqual(Assets.load(store).first?.sceneIDs, [], "nothing was linked by any of them")
+    }
+
+    // MARK: the log
+
+    func testTheLogWritesNoContentNoUserPathAndKeepsItsCeiling() throws {
+        let url = inbox.appendingPathComponent("logs/drag.log")
+        let log = DragLog(url: url, maxBytes: 2000)
+        log.note("drag begin", "resource:logo-01 types=public.utf8-plain-text")
+        log.note("result", "refused: cannot read \(NSHomeDirectory())/Documents/Secret Plan/notes.pdf and /Users/someone/Desktop/a.png")
+        let text = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertTrue(text.contains("logo-01"))
+        XCTAssertFalse(text.contains(NSHomeDirectory()) || text.contains("/Users/someone") || text.contains("Secret Plan"), text)
+        XCTAssertTrue(text.contains("<path>") || text.contains("~"))
+        XCTAssertEqual(DragLog.name(of: .files([URL(fileURLWithPath: "/Users/x/Private/a.png")])), "files(1)", "files are counted, never named")
+        for n in 0..<400 { log.note("hover", "resource:logo-01 over scene S0\(n % 9): ok step \(n)") }
+        let size = try XCTUnwrap(FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int)
+        XCTAssertLessThanOrEqual(size, 2000, "the file stays under its ceiling")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.appendingPathExtension("1").path), "and the older lines were rotated")
+        let before = size
+        log.note("hover", "resource:logo-01 over scene S03: ok step 399")      // the same line twice in a row is one line
+        XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int, before)
+        XCTAssertTrue(DragLog.standardURL.path.hasSuffix("Library/Logs/ShowreelStudio/drag.log"))
+    }
+
+    func testTheTypedDropTokenOfAResourceRoundTrips() throws {
+        let row = try addLogo()
+        let t = DragItem.resource(row.id).token
+        XCTAssertEqual(DropPlan.item(token: t), .resource(row.id))
+        XCTAssertEqual(DragLog.name(of: .resource(row.id)), "resource:" + row.id)
+    }
+}

@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import ShowreelKit
+import UniformTypeIdentifiers
 
 /// A UI with no window: answers proposals with a fixed choice and records what it was shown.
 private final class NullUI: AgentUI {
@@ -85,6 +86,7 @@ enum SelfCheck {
             let exported = (info["UTExportedTypeDeclarations"] as? [[String: Any]])?.first { $0["UTTypeIdentifier"] as? String == PackageType.identifier }
             let ext = ((exported?["UTTypeTagSpecification"] as? [String: Any])?["public.filename-extension"] as? [String]) ?? []
             check(exported != nil && ext.contains(PackageType.fileExtension) && (exported?["UTTypeConformsTo"] as? [String])?.contains("public.zip-archive") == true, "the .studiopack type is declared in Info.plist (a zip archive)")
+            check((info["UTExportedTypeDeclarations"] as? [[String: Any]])?.contains { $0["UTTypeIdentifier"] as? String == UTType.studioResource.identifier } == true, "the internal resource drag type is declared in Info.plist")
             let docs = (info["CFBundleDocumentTypes"] as? [[String: Any]]) ?? []
             check(docs.contains { ($0["LSItemContentTypes"] as? [String])?.contains(PackageType.identifier) == true }, "the .studiopack document type is declared in Info.plist")
         }

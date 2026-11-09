@@ -2,6 +2,18 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.8.2 - 2026-11-09
+
+**Fixed**
+- **Dragging a resource from Resources onto a scene.** A scene (a frame of the reel, a row of the scene list, a node of its tree) now takes the resource by its own typed payload, straight on the view under the pointer, instead of depending on the app's memory of the drag. The release always ends with a line at the bottom: "Linked X to S03", or the reason it cannot be done (locked or archived scene, build running, lost drag).
+- **A drag log to read what happens.** The app writes `~/Library/Logs/ShowreelStudio/drag.log` (about 100 KB, then it is rotated): where each drag started, what it passed over, whether the target accepted and why, and what the release did. No file content and no folder of yours is written in it. Files dragged from the Finder work as before.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.16.0. macOS 13 or later.
+
 ## 0.8.1 - 2026-11-09
 
 **What's new**

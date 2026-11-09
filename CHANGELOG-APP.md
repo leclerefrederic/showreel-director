@@ -2,6 +2,10 @@
 
 Version of the Showreel Studio app (`app-swift/shared/app-version.json`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The skill and the project file format have their own numbers. Ship with `python3 tools/bump_app.py`, after writing the section of the new version in `RELEASE-NOTES-APP.md`.
 
+## 0.8.2 - 2026-11-09
+
+resource drag to scenes fix and drag log
+
 ## 0.8.1 - 2026-11-09
 
 test session fixes
