@@ -39,11 +39,13 @@ struct ViewerPane: View {
 
     var body: some View {
         VStack(spacing: 12) {
+            FilmBanners()
             if let v = project.viewerFilmVersion, !project.viewerShowsDraft {
                 FilmViewer(version: v, player: project.player)
             } else {
                 Spacer(minLength: 0)
                 if let fv = project.viewerFilmVersion { Button("Show the built film (\(fv))") { project.viewerShowsDraft = false }.buttonStyle(.borderless).font(.caption) }
+                switch project.selection { case .scene, .sceneNode, .none: PreviewTag(); default: EmptyView() }
                 content
                 Spacer(minLength: 0)
             }
@@ -357,7 +359,7 @@ struct SceneInspector: View {
                                 .help("Double-click to name the scene. The ID never changes.")
                         }
                         HStack(spacing: 4) {
-                            if !s.archived { SceneStateBadge(scene: s, size: 12) }
+                            if !s.archived { SceneStateBadge(scene: s, size: 12); BuildIndicator(id: s.id, labelled: true) }
                             Text(s.archived ? "Archived" : "\(s.durationLabel) · \(s.state.title)").font(.caption).foregroundStyle(.secondary)
                         }
                     }

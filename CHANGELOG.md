@@ -2,6 +2,10 @@
 
 Version of the skill (`metadata.version` in `showreel-director/SKILL.md`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The Studio file format has its own number (`schema` in `showreel.json`). Ship with `python3 tools/bump.py`.
 
+## 0.15.1 - 2026-11-09
+
+etat du film et des scenes par empreintes, assemblage sans IA, lecteur sur le film assemble
+
 ## 0.15.0 - 2026-11-09
 
 modules de scène en fichiers et assembleur sans IA

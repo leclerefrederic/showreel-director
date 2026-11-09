@@ -135,6 +135,8 @@ public final class Tools {
             return await operate(.sceneLock(ids: ids, locked: on))
         case "generate_scenes":
             return await generateScenes(input)
+        case "assemble_film":
+            return await assembleFilm(input)
         case "update_asset":
             let st = (input["status"] as? String).flatMap { AssetStatus(rawValue: $0) }
             if input["status"] is String, st == nil { return "unknown status: use " + AssetStatus.allCases.map { $0.rawValue }.joined(separator: ", ") }
@@ -285,6 +287,16 @@ public final class Tools {
             try await SceneGeneration.generate(ids, version: version, store: store, skill: skill, transport: transport, author: "clap")
             return "generated \(ids.joined(separator: ", ")) in \(version): only those scene files were written. The app assembles and checks the film when the user builds again."
         } catch { return "not generated: \(error.localizedDescription)" }
+    }
+
+    /// Assembles the film of a version, with no AI: film.json from the montage, the scene files into main.js, the page, the engine's checks. Free, so there is no card; it
+    /// is a line in the journal. The project is read-only while it runs; a failure leaves the version that works as it was.
+    private func assembleFilm(_ input: [String: Any]) async -> String {
+        let st = FilmBuild.status(store)
+        guard let version = (input["version"] as? String) ?? st.target else { return "refused: " + Reasons.nothingToAssemble.message }
+        if st.state == .legacy, version == st.target { return "refused: " + FilmBuild.legacySentence }
+        let r = await FilmAssembly.run(version: version, store: store, skill: skill, author: "clap")
+        return r.ok ? r.message : "not assembled: " + r.message
     }
 
     // MARK: the project's memory

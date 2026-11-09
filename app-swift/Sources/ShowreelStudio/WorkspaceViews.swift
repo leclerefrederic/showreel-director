@@ -454,6 +454,7 @@ struct SceneRowView: View {
     var body: some View {
         HStack(spacing: 8) {
             SceneStateBadge(scene: scene)
+            BuildIndicator(id: scene.id)
             Text(scene.id).font(.callout.monospaced().weight(.semibold))
             VStack(alignment: .leading, spacing: 0) {
                 InlineEdit(text: scene.name ?? "", placeholder: "Name this scene",
@@ -654,6 +655,7 @@ struct SceneTreeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
+            BuildIndicator(id: scene, labelled: true)
             ForEach(project.trees[scene] ?? []) { g in group(g) }
         }
         .animation(Motion.spring, value: project.trees[scene] ?? [])

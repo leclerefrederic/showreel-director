@@ -256,6 +256,19 @@
     }
   },
   {
+    "name": "assemble_film",
+    "description": "Assemble the film of a version with no AI and no cost: film.json is written from the montage (order, lengths, transitions, music), the assembler puts the scene files into main.js, build.py and the engine's checks run on a copy, and only a green result replaces the version's page. Use it after changes to the order, a transition, a length or the music, or to see the film with empty frames for the scenes that are not generated yet. A failure keeps the version that works as it was and says the engine's error. It does not write scene files (that is generate_scenes) and does not apply a transition's free instruction (a generation reads it). Nothing in the project can change while it runs. Not for a version in the older single main.js format.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "the version folder, for example v2; the newest one when omitted"
+        }
+      }
+    }
+  },
+  {
     "name": "update_asset",
     "description": "Change one asset of the Resources block by its id (from get_state): status (proposed, approved, excluded, placeholder, hold; a hold needs a note), note, licence_note, or the scenes that use it (for example S01,S07). The user sees a plain card and accepts or refuses. Approving a file held for confidential data or a forbidden font licence is refused: that goes through the skill's organiser.",
     "input_schema": {

@@ -91,11 +91,28 @@ final class SceneModuleTests: XCTestCase {
         XCTAssertNotNil(bytes("v1/scenes/S02.js"))
     }
 
-    func testTheLockGivenWhileTheModelWorksStillWins() async throws {
+    func testNothingCanBeLockedWhileTheModelWorksAndTheProjectIsEditableAgainAfter() async throws {
         let me = self
-        let m = SceneWriterModel { _ in try? me.store.apply(.sceneLock(ids: ["S01"], locked: true)); return "```js\nreturn function () {};\n```" }
-        do { _ = try await SceneGeneration.generate(["S01"], version: v, store: store, skill: skill, transport: m); XCTFail("refused") } catch { XCTAssertEqual(error.localizedDescription, SceneLock.reason("S01")) }
-        XCTAssertNil(bytes("v1/scenes/S01.js"))
+        var duringLock = "", duringState: ProjectActivity.Snapshot?
+        let m = SceneWriterModel { _ in
+            do { try me.store.apply(.sceneLock(ids: ["S01"], locked: true)) } catch { duringLock = error.localizedDescription }
+            duringState = me.store.activity.snapshot
+            return "```js\nreturn function () {};\n```"
+        }
+        _ = try await SceneGeneration.generate(["S01", "S02"], version: v, store: store, skill: skill, transport: m)
+        XCTAssertEqual(duringLock, Reasons.building.message, "the freeze of a build applies to a generation")
+        XCTAssertEqual(duringState?.build?.phase, .generating); XCTAssertEqual(duringState?.build?.total, 2)
+        XCTAssertNil(store.activity.snapshot.build, "the end lifts it")
+        XCTAssertNoThrow(try store.apply(.sceneLock(ids: ["S01"], locked: true)))
+        // an error and a cancellation lift it too
+        let bad = SceneWriterModel { _ in "no code" }
+        _ = try? await SceneGeneration.generate(["S02"], version: v, store: store, skill: skill, transport: bad)
+        XCTAssertNil(store.activity.snapshot.build)
+        let task = Task { try await SceneGeneration.generate(["S02", "S03"], version: v, store: store, skill: skill, transport: self.fake()) }
+        task.cancel()
+        _ = try? await task.value
+        XCTAssertNil(store.activity.snapshot.build)
+        XCTAssertNil(bytes("v1/scenes/S03.js"), "a cancelled generation writes nothing for the scenes it did not reach")
     }
 
     func testOtherRefusalsAndAModelThatReturnsNoCode() async throws {

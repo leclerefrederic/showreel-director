@@ -130,6 +130,7 @@ struct SceneListEditor: View {
                                 HStack(spacing: 8) {
                                     Handle()
                                     SceneStateBadge(scene: s)
+                                    BuildIndicator(id: s.id)
                                     Text(s.id).font(.callout.monospaced().weight(.semibold))
                                     VStack(alignment: .leading, spacing: 0) {
                                         Text(s.name ?? (s.text.isEmpty ? "(no text)" : s.text)).lineLimit(1).font(.callout)

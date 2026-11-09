@@ -127,7 +127,8 @@ struct StripToolbar: View {
                 Image(systemName: project.isPlaying ? "pause.fill" : "play.fill").font(.system(size: 13)).frame(width: 30, height: 24)
                     .background(Color.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
-            .buttonStyle(.plain).help(project.isPlaying ? "Pause (space)" : "Play from the playhead (space, while the pointer is over the strip)")
+            .buttonStyle(.plain).help(project.isPlaying ? "Pause (space)" : "Play the assembled film from the playhead (space, while the pointer is over the strip)")
+            .disabledWithReason(Availability.play(project.film).reasonText, way: Availability.play(project.film).wayText)
             Button { project.stepScene(by: 1) } label: { Image(systemName: "forward.end.fill") }.buttonStyle(.borderless).help("Next scene (right arrow)")
             Text(TimelineNav.timecode(project.playhead)).font(.system(size: 13, weight: .semibold, design: .monospaced)).foregroundStyle(StripColor.text)
                 .frame(minWidth: 52, alignment: .trailing)
@@ -146,6 +147,7 @@ struct StripToolbar: View {
                 }
                 .toggleStyle(.button).help("Ripple: when a scene is stretched, the scenes after it move with it. Off: they stay where they are.")
                 addMenu(f)
+                FilmStatusChip()
                 StripPrimaryAction()
             }
         }
@@ -362,6 +364,7 @@ struct FrameView: View {
                 SceneStateBadge(scene: scene, size: 12).frame(width: r.width, height: r.height)
                     .background(.black.opacity(0.6), in: Circle()).offset(x: r.minX, y: r.minY)
             }
+            BuildIndicator(id: scene.id).padding(4).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).allowsHitTesting(true)
             if let r = e.eye {
                 Button { project.setEnabled(scene.id, false) } label: { Image(systemName: "eye.slash").font(.system(size: 11)).frame(width: r.width, height: r.height) }
                     .buttonStyle(.plain).foregroundStyle(.white).background(.black.opacity(0.6), in: Circle()).offset(x: r.minX, y: r.minY)
@@ -477,7 +480,8 @@ struct TransitionMarker: View {
         }
         .frame(width: place.hit.width, height: place.hit.height)
         .contentShape(Rectangle())
-        .help(transition.text)
+        .help(project.transitionHelp(from: from, base: transition.text))
+        .overlay(alignment: .topTrailing) { if TransitionNotes.note(after: from, in: project.showreel ?? ShowreelFile(name: ""), store: project.store) != nil { Image(systemName: "exclamationmark.circle.fill").font(.system(size: 8)).foregroundStyle(.orange).allowsHitTesting(false) } }
         .onTapGesture { project.selectTransition(from: from) }
         .dropTarget(.marker(from: from))     // a transition dropped from the library lands here
         .contextMenu {

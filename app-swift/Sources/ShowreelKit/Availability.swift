@@ -71,7 +71,11 @@ public final class ProjectActivity: @unchecked Sendable {
         public var version: String
         public var phase: Phase
         public var started: Date
-        public init(version: String, phase: Phase, started: Date = Date()) { self.version = version; self.phase = phase; self.started = started }
+        /// For a generation of some scenes: how many, how many are done, and the one being written.
+        public var total: Int?
+        public var done = 0
+        public var current: String?
+        public init(version: String, phase: Phase, started: Date = Date(), total: Int? = nil) { self.version = version; self.phase = phase; self.started = started; self.total = total }
     }
     public enum ClapWork: Equatable, Sendable { case thinking, applying([ElementRef]) }
     public struct Pending: Equatable, Sendable, Identifiable {
@@ -122,8 +126,8 @@ public final class ProjectActivity: @unchecked Sendable {
 
 /// Why something is not available, how to get it back, and what blocked it.
 public struct Unavailable: Equatable, Sendable {
-    public enum Cause: String, Sendable { case building, proposal, locked, clapWorking, noKey, busy, notReady }
-    public enum Link: Equatable, Sendable { case proposal(String), scene(String), setting(String), build, key }
+    public enum Cause: String, Sendable { case building, proposal, locked, clapWorking, noKey, busy, notReady, notAssembled, legacy }
+    public enum Link: Equatable, Sendable { case proposal(String), scene(String), setting(String), build, key, assemble }
     public let cause: Cause
     public let reason: String
     public let way: String
@@ -245,6 +249,15 @@ public struct StatusLine: Equatable, Sendable {
     public let text: String
     public let targets: [ElementRef]
     public let undoable: Bool
+    public init(kind: Kind, text: String, targets: [ElementRef], undoable: Bool) { self.kind = kind; self.text = text; self.targets = targets; self.undoable = undoable }
+
+    /// The end of an assembly: "Film assembled: 6 scenes, 3 transitions".
+    public static func assembled(_ o: AssemblyOutcome) -> StatusLine { StatusLine(kind: .applied, text: o.message, targets: [], undoable: false) }
+
+    /// The end of a generation: "2 scenes generated".
+    public static func generated(_ ids: [String]) -> StatusLine {
+        StatusLine(kind: .applied, text: "\(ids.count) scene\(ids.count == 1 ? "" : "s") generated: \(ids.joined(separator: ", ")). Assemble the film to see \(ids.count == 1 ? "it" : "them").", targets: ids.map { .scene($0) }, undoable: false)
+    }
 
     /// "Applied: S02 duration 4 s to 6 s", from the card the operation made.
     public static func applied(_ op: ProjectOperation, card: OperationCard) -> StatusLine { applied(card: card, targets: op.targets) }
@@ -281,7 +294,7 @@ public enum BuildProgress {
     public static func sceneLine(done: Int, total: Int) -> String? { total == 0 ? nil : "Scene \(min(done + 1, total)) of \(total)" }
 
     /// The last version that was built and works (it has a page in dist/), or nil.
-    public static func lastWorking(_ store: ProjectStore) -> String? { Versions.list(store).last { Versions.hasDist(store, $0) } }
+    public static func lastWorking(_ store: ProjectStore) -> String? { Versions.working(store) }
 }
 
 // MARK: closing

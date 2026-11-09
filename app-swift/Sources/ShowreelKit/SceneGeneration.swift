@@ -37,6 +37,10 @@ public enum SceneGeneration {
             lines.append(Change("\(version)/scenes/\(id).js", before, "written again by the model"))
         }
         lines.append(Change("Other files", "kept", "untouched (the other scenes, film.json, reel.js)"))
+        if let sk = Skill.root() {
+            let e = estimate(ids, version: version, store: store, skill: sk)
+            lines.append(Change("Cost", "none to look at", "\(e.calls) model call\(e.calls == 1 ? "" : "s"), about \(kilo(e.tokensIn)) tokens in and up to \(kilo(e.tokensOut)) out (an estimate)"))
+        }
         return OperationCard(title: ids.count == 1 ? "Generate \(ids[0]) in \(version)" : "Generate \(ids.count) scenes in \(version): \(ids.joined(separator: ", "))", changes: lines)
     }
 
@@ -101,8 +105,15 @@ public enum SceneGeneration {
     @discardableResult
     public static func generate(_ ids: [String], version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, author: String = "user") async throws -> [String] {
         _ = try plan(ids, version: version, store: store)
+        // a generation is a long activity: while it runs nothing in the project can change (the panel, Cancel and the end are the build's)
+        let act = store.activity
+        if act.snapshot.isBuilding { throw AgentError.msg("A build is already running. Wait for the end, or Cancel the build") }
+        act.update { $0.build = .init(version: version, phase: .generating, total: ids.count) }
+        defer { act.update { $0.build = nil } }
         var out: [(String, String)] = []
-        for id in ids {
+        for (n, id) in ids.enumerated() {
+            try Task.checkCancellation()
+            act.update { $0.build?.done = n; $0.build?.current = id }
             let p = prompt(scene: id, version: version, store: store, skill: skill)
             let (content, _) = try await transport.stream(system: [["type": "text", "text": system]], tools: [], messages: [["role": "user", "content": p]], onText: { _ in })
             let answer = content.compactMap { ($0["type"] as? String) == "text" ? $0["text"] as? String : nil }.joined()

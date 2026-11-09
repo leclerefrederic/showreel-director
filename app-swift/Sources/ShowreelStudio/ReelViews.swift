@@ -25,6 +25,7 @@ struct TransitionInspector: View {
                     }
                     if Look.isPreviewOnly(p.item.type) { Label("Preview only: it does not run between two real scenes. Choose another or a cut.", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange) }
                     if let lib = Look.transitions().first(where: { $0.name == p.item.type }) { Text(lib.desc).font(.caption).foregroundStyle(.secondary) }
+                    TransitionNoteView(from: from)
                 }
                 if !p.item.isCut {
                     InspectorSection(title: "Timing and parameters") {

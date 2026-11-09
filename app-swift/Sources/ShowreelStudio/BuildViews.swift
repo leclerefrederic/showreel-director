@@ -50,8 +50,8 @@ struct BuildPanel: View {
 
     private var versionsRow: some View {
         HStack {
-            Picker("Version", selection: Binding(get: { project.playVersion ?? project.versions.last ?? "" }, set: { project.playVersion = $0; project.playNonce += 1 })) {
-                ForEach(project.versions, id: \.self) { Text($0).tag($0) }
+            Picker("Version", selection: Binding(get: { project.playVersion ?? project.film.playable ?? "" }, set: { project.playVersion = $0; project.playNonce += 1 })) {
+                ForEach(project.versions.filter { Versions.hasDist(project.store, $0) }, id: \.self) { Text($0).tag($0) }
             }.frame(maxWidth: 200)
             Button("Test it again") { project.runChecks(project.playVersion ?? project.versions.last ?? "") }.disabledWithReason(project.buildBusy ? "A build is running" : nil, way: "Wait for the end, or Cancel the build")
                 .help("Builds and tests this version again. Needs no AI.")

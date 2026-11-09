@@ -194,5 +194,9 @@ extension ProjectStore {
         f.gates["build"] = report.built && report.harnessClean ? "passed" : "open"
         f.gates["verify"] = report.built && report.harnessClean && report.smokeClean ? "passed" : "open"
         try save(f)
+        // what this version was tested to, kept per version: the version that is read is the last one whose result is green (see Versions.working)
+        let green = report.built && report.harnessClean && report.smokeClean
+        try? SceneModules.recordResult(version: report.version, ok: green, store: self)
+        if green, SceneModules.usesSceneFiles(version: report.version, store: self) { try? SceneModules.recordAssembly(version: report.version, store: self) }
     }
 }

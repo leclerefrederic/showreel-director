@@ -118,16 +118,15 @@ struct FilmViewer: View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
                 Text("\(version) built").font(.caption.weight(.semibold))
-                if current == false { Label("built before your last changes", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange).help("Build again to see the montage as it is now") }
                 Spacer()
-                Button("Show the draft thumbnails") { project.viewerShowsDraft = true }.buttonStyle(.borderless).font(.caption)
+                Button("Show the preview thumbnails") { project.viewerShowsDraft = true }.buttonStyle(.borderless).font(.caption)
             }
             ReelWebView(player: player)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Color.primary.opacity(0.15)))
             HStack(spacing: 10) {
-                Button { player.toggle() } label: { Image(systemName: player.playing ? "pause.fill" : "play.fill").frame(width: 18) }
+                Button { project.togglePlay() } label: { Image(systemName: player.playing ? "pause.fill" : "play.fill").frame(width: 18) }
                     .keyboardShortcut(.space, modifiers: []).help(player.playing ? "Pause" : "Play from the playhead")
                 Slider(value: Binding(get: { project.playhead }, set: { project.playhead = $0 }), in: 0...max(player.duration, 1))
                 Text(String(format: "%.1f / %.1f s", project.playhead, player.duration)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
@@ -168,7 +167,9 @@ struct TransitionPreview: View {
                     }
                     .frame(maxWidth: 760).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     Text("\(from) \u{2192} \(pair.next.id): \(pair.item.text)").font(.headline)
-                    Text("A preview made from the two scenes' thumbnails; the built film draws the scenes themselves.").font(.callout).foregroundStyle(.secondary)
+                    PreviewTag()
+                    Text("A preview made from the two scenes' thumbnails; the assembled film draws the scenes themselves.").font(.callout).foregroundStyle(.secondary)
+                    TransitionNoteView(from: from)
                 }
             }
         } else {

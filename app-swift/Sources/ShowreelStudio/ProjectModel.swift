@@ -212,6 +212,13 @@ final class ProjectModel: ObservableObject {
     /// Elements that just changed: lit for a second.
     @Published var flashed: Set<ElementRef> = []
     var buildCancelled = false
+    /// The state of the film and of each scene, from fingerprints (ShowreelKit's `FilmBuild`): recomputed whenever the project is read again.
+    @Published private(set) var film = FilmBuild.Status.empty
+    @Published var assembling = false
+    /// The engine's error when the last assembly failed, in the engine's own words; cleared by the next success.
+    @Published var assemblyError: String?
+    @Published var generationOffer: PendingGeneration?
+    private var genTask: Task<Void, Never>?
     weak var chat: ChatModel?
     @Published var pendingLook: PendingLookChange?
     /// The base configuration of a new project is not done: the workspace stays closed. And: the file is of an older revision (nothing was written on opening).
@@ -284,7 +291,8 @@ final class ProjectModel: ObservableObject {
         docIssues = DocSync.pending(store).filter { !dismissedDocs.contains($0.file) }
         decided = store.settings.decided
         versions = Versions.list(store)
-        if playVersion == nil, let last = versions.last, Versions.hasDist(store, last) { playVersion = last }
+        film = FilmBuild.status(store)
+        if playVersion == nil || !(playVersion.map { Versions.hasDist(store, $0) } ?? false) { playVersion = film.playable }
         wizardSteps = Wizard.steps(assets: assets, spec: spec, systemLanguage: Locale.current.language.languageCode?.identifier, file: showreel)
         for a in Blocks.areas { checks[a] = Checks.run(area: a, store: store) }
         music = showreel?.decisions.track?.file == nil ? nil : MusicAnalysis.load(root: root)
@@ -339,8 +347,13 @@ final class ProjectModel: ObservableObject {
     /// last working version. While the testing runs it is dropped: nothing is lost, it can be run again.
     func cancelBuild() {
         guard let b = store.activity.snapshot.build else { return }
+        if genTask != nil {                                  // a generation of some scenes: its request is cancelled, nothing is written
+            genTask?.cancel()
+            store.activity.update { $0.build?.phase = .cancelling }
+            return
+        }
         if b.phase == .testing {
-            testTask?.cancel(); testing = false
+            testTask?.cancel(); testing = false; assembling = false
             store.activity.update { $0.build = nil }
             showToast("The test of \(b.version) was cancelled. Nothing was lost: use Test it again to run it.")
             return
@@ -396,7 +409,7 @@ final class ProjectModel: ObservableObject {
             buildReport = report
             testing = false
             store.activity.update { $0.build = nil }                                                      // success or problems, the project is editable again
-            if report.built { playVersion = v; playNonce += 1 }
+            if report.built, report.harnessClean, report.smokeClean { playVersion = v; playNonce += 1 }
             refresh(); reloadTree()
             let p = BuildProgress.scenes(version: v, store: store)
             if report.ok { showToast("Build done: \(p.done) scene\(p.done == 1 ? "" : "s") generated, film assembled (\(v)). The previous version is kept.") }
@@ -498,8 +511,7 @@ final class ProjectModel: ObservableObject {
     /// The version the viewer can play: the one picked in Build, or the last one, when its page exists.
     var playableVersion: String? {
         if let v = playVersion, Versions.hasDist(store, v) { return v }
-        if let v = versions.last, Versions.hasDist(store, v) { return v }
-        return nil
+        return film.playable          // the last version that works, never a folder a stopped build left behind
     }
 
     /// Selects the marker after a scene and puts the playhead just before the transition starts (centred on the cut).
@@ -716,6 +728,14 @@ final class ProjectModel: ObservableObject {
     var isPlaying: Bool { playsBuiltFilm ? player.playing : draftPlaying }
 
     func togglePlay() {
+        // Play only ever plays the assembled film, never the draft thumbnails
+        if let u = Availability.play(film).why { react(StatusLine.refused(u.message)); return }
+        if film.state == .stale, film.target == film.playable, !player.playing { assembleFilm(thenPlay: true); return }
+        if !playsBuiltFilm, !isPlaying {
+            selection = .none; viewerShowsDraft = false; centerMode = .viewer
+            showToast("The assembled film is in the viewer now: press Play again.")
+            return
+        }
         if playsBuiltFilm { player.toggle(); return }
         if draftPlaying { stopDraft(); return }
         guard let f = showreel else { return }
@@ -1178,6 +1198,7 @@ final class ProjectModel: ObservableObject {
         reloadTree()
         let before = dismissedDocs
         dismissedDocs.subtract(paths)                      // a file edited again asks again
+        if paths.contains(where: { $0.contains("/scenes/") || $0.hasSuffix("/assembly.json") }) { refresh() }
         if paths.contains(where: { $0 == ShowreelFile.fileName || $0 == Assets.manifestPath || ProjectDocs.files.contains($0) }) || before != dismissedDocs { refresh() }
         for p in paths {
             guard let t = tab(p) else { continue }
@@ -1218,5 +1239,71 @@ final class WindowModel: ObservableObject {
         project = ProjectModel(path: path)
         chat = ChatModel(project: project)
         project.chat = chat
+    }
+}
+
+/// A generation of scenes waiting for the user's yes: the one card that lists them, the scenes that cannot be generated, and the version.
+struct PendingGeneration: Identifiable {
+    let id = UUID()
+    let version: String
+    let card: OperationCard
+    let ids: [String]
+    let excluded: [(id: String, reason: String)]
+}
+
+extension ProjectModel {
+    /// Assembles the film of the newest version with no AI (free). The project is read-only while it runs; a failure leaves the film that works as it was.
+    /// With `thenPlay`, the film plays when it is ready (Play on a stale film).
+    func assembleFilm(thenPlay: Bool = false) {
+        if let u = Availability.assemble(film, in: activity).why { react(StatusLine.refused(u.message)); return }
+        guard !assembling, let skill = Skill.root(), let v = film.target else { return }
+        assembling = true; assemblyError = nil
+        showToast("Assembling\u{2026}")
+        testTask = Task { @MainActor in
+            let r = await FilmAssembly.run(version: v, store: store, skill: skill)
+            assembling = false
+            guard !Task.isCancelled else { refresh(); return }
+            refresh(); reloadTree()
+            if r.ok {
+                playVersion = v; playNonce += 1
+                react(StatusLine.assembled(r))
+                if thenPlay {
+                    for _ in 0..<60 where !player.ready { try? await Task.sleep(nanoseconds: 100_000_000) }
+                    player.play()
+                }
+            } else {
+                assemblyError = r.message
+                showToast("Not assembled: " + (r.message.split(separator: "\n").first.map(String.init) ?? r.message), error: true)
+            }
+        }
+    }
+
+    /// The card that offers to generate the scenes that have no file. Explicit, never automatic.
+    func offerGeneration() {
+        guard let f = showreel, let v = film.target else { return }
+        let o = SceneGeneration.offer(version: v, store: store, file: f)
+        if let u = Availability.generate(o.ids, film, in: activity, hasKey: AppSettings.shared.hasKey, file: f).why { react(StatusLine.refused(u.message)); return }
+        do { generationOffer = PendingGeneration(version: v, card: try SceneGeneration.plan(o.ids, version: v, store: store), ids: o.ids, excluded: o.excluded) }
+        catch { react(StatusLine.refused(error.localizedDescription)) }
+    }
+
+    /// The user said yes to the card: one call per scene, with the build's panel, Cancel and end.
+    func confirmGeneration() {
+        guard let g = generationOffer, let skill = Skill.root(), let key = AppSettings.shared.apiKey() else { return }
+        generationOffer = nil
+        let s = AppSettings.shared
+        let transport = AnthropicTransport(apiKey: key, model: s.modelName, baseURL: s.baseURL, bearer: s.bearer)
+        genTask = Task { @MainActor in
+            do {
+                let ids = try await SceneGeneration.generate(g.ids, version: g.version, store: store, skill: skill, transport: transport)
+                react(StatusLine.generated(ids))
+            } catch is CancellationError {
+                showToast("Generation cancelled. Nothing was written.")
+            } catch {
+                showToast("Not generated: \(error.localizedDescription)", error: true)
+            }
+            genTask = nil
+            refresh(); reloadTree()
+        }
     }
 }
