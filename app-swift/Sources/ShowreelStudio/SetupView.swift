@@ -25,12 +25,12 @@ struct SetupView: View {
             HStack(spacing: 10) {
                 Button("Install missing") { env.install() }
                     .buttonStyle(.borderedProminent)
-                    .disabled(env.installing || env.checking || env.passed)
+                    .disabledWithReason(env.installing ? "Installing\u{2026}" : env.checking ? "Checking\u{2026}" : env.passed ? "Nothing is missing" : nil)
                 Button("Check again") { env.check() }
-                    .disabled(env.installing || env.checking)
+                    .disabledWithReason(env.installing ? "Installing\u{2026}" : env.checking ? "Checking\u{2026}" : nil)
                 Button("Continue without (reduced mode)") { env.skipped = true }
                     .buttonStyle(.link)
-                    .disabled(env.installing || env.isMissing("python3")) // without Python 3 no script runs: not a reduced mode
+                    .disabledWithReason(env.installing ? "Installing\u{2026}" : env.isMissing("python3") ? "Python 3 is missing" : nil, way: env.isMissing("python3") ? "Without it no script runs: install it first, then check again" : nil) // without Python 3 no script runs: not a reduced mode
             }
             if env.installing { ProgressView("Installing... this can take a few minutes").controlSize(.small) }
             if !env.log.isEmpty {

@@ -265,6 +265,10 @@ def cmd_check(a):
     ids = [r["id"] for r in rows]
     if len(ids) != len(set(ids)): bad.append("duplicate ids in MANIFEST.csv")
     listed = {r["file"] for r in rows if r["file"]}
+    for fam in sorted(os.listdir(os.path.join(assets, "fonts"))) if os.path.isdir(os.path.join(assets, "fonts")) else []:  # font files the host added for the Look: listed, never renamed
+        fd = os.path.join(assets, "fonts", fam)
+        for f in sorted(os.listdir(fd)) if os.path.isdir(fd) else []:
+            if not f.startswith(".") and f.lower().endswith((".ttf", ".otf", ".woff2")) and f"fonts/{fam}/{f}" not in listed: bad.append(f"fonts/{fam}/{f}: not in MANIFEST.csv")
     for d in ("prepared", "generated"):
         p = os.path.join(assets, d)
         if not os.path.isdir(p): continue
@@ -280,15 +284,15 @@ def cmd_check(a):
         if r["status"] not in STATUS: bad.append(f"{r['id']}: bad status {r['status']!r}")
     if os.path.isdir(assets):
         for f in sorted(os.listdir(assets)):
-            if f not in ORIGINS and f != "MANIFEST.csv" and not f.startswith("."): bad.append(f"assets/{f}: stray, run the organiser (plan, then --apply)")
+            if f not in ORIGINS and f not in ("fonts", "MANIFEST.csv") and not f.startswith("."): bad.append(f"assets/{f}: stray, run the organiser (plan, then --apply)")
     for v in sorted(os.listdir(a.project)) if os.path.isdir(a.project) else []:
         pj = os.path.join(a.project, v, "project.json")
         if re.fullmatch(r"(v|lt)\d+", v) and os.path.exists(pj):
             cfg = json.load(open(pj))
             paths = [cfg.get("track")] + [x.get("path") for x in cfg.get("fonts", [])] + list((cfg.get("images") or {}).values())
             for p in filter(None, paths):
-                if "/source/" in p.replace("\\", "/") or ("assets/" in p and not re.search(r"assets/(prepared|generated)/", p)):
-                    bad.append(f"{v}/project.json: {p} must point to assets/prepared or assets/generated")
+                if "/source/" in p.replace("\\", "/") or ("assets/" in p and not re.search(r"assets/(prepared|generated|fonts)/", p)):
+                    bad.append(f"{v}/project.json: {p} must point to assets/prepared, assets/generated or assets/fonts")
     print("\n".join("  FAIL " + b for b in bad) if bad else "assets OK: names, manifest, layout and version paths")
     return 1 if bad else 0
 

@@ -92,16 +92,17 @@ final class AvailabilityTests: XCTestCase {
         case .gridSettings: return .gridSettings(snap: "bar", ripple: true)
         case .moveAsset: return .moveAsset(id: "logo-01", after: "start")
         case .sceneLock: return .sceneLock(ids: ["S01"], locked: true)
+        case .addFontFiles: return .addFontFiles(FontPayload(family: "Fredoka", dir: "fredoka", files: [FontFile(name: "Fredoka-Bold.ttf", data: Data("x".utf8))]))
         }
     }
     var everyOperation: [ProjectOperation] {
         [.parameter(.audience, ""), .decisions([], title: nil), .asset(id: "", status: nil, note: nil, licence: nil, scenes: nil), .gate("", passed: true), .scene(id: "", SceneEdit()), .addScene(id: "", SceneEdit()),
          .sceneEnabled(id: "", enabled: true, montage: nil), .moveScene(id: "", after: "", montage: nil), .sceneLook(id: "", []), .content(scene: "", .remove(item: "")), .resize(scene: "", duration: 1, ripple: false),
-         .moveCut(before: "", after: "", at: 1), .transition(from: "", nil), .track(asset: nil), .grid(bpm: nil, firstBeat: nil), .gridSettings(snap: nil, ripple: nil), .moveAsset(id: "", after: ""), .sceneLock(ids: [], locked: true)].map(sample)
+         .moveCut(before: "", after: "", at: 1), .transition(from: "", nil), .track(asset: nil), .grid(bpm: nil, firstBeat: nil), .gridSettings(snap: nil, ripple: nil), .moveAsset(id: "", after: ""), .sceneLock(ids: [], locked: true), .addFontFiles(FontPayload(family: "", dir: "", files: []))].map(sample)
     }
 
     func testEveryOperationIsRefusedDuringABuildAndTheProjectStaysAsItWas() throws {
-        XCTAssertEqual(everyOperation.count, 18)
+        XCTAssertEqual(everyOperation.count, 19)
         let before = raw
         for op in everyOperation { if let e = try? store.plan(op) { XCTAssertFalse(e.title.isEmpty) } }
         build()

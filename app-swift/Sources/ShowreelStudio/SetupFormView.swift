@@ -60,7 +60,7 @@ struct SetupFormView: View {
                 if !missing.isEmpty {
                     Label("Still needed: " + missing.map { $0.title.lowercased() }.joined(separator: ", "), systemImage: "exclamationmark.circle").font(.callout).foregroundStyle(.orange)
                 }
-                Button("Open the workspace") { project.finishSetup() }.buttonStyle(.borderedProminent).controlSize(.large).disabled(!missing.isEmpty || f == nil)
+                Button("Open the workspace") { project.finishSetup() }.buttonStyle(.borderedProminent).controlSize(.large).disabledWithReason(f == nil ? "This project has no data yet" : missing.isEmpty ? nil : "Still to set: " + missing.map { $0.title.lowercased() }.joined(separator: ", "), way: f == nil ? "Confirm the import or create it with the banner above" : "Answer the questions above", caption: true)
             }
             .padding(28).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)
         }

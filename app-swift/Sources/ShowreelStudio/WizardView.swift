@@ -153,14 +153,14 @@ struct WizardStepView: View {
 
     private var footer: some View {
         HStack {
-            Button("Back") { project.wizardBack() }.disabled(index == 0)
+            Button("Back") { project.wizardBack() }.disabledWithReason(index == 0 ? "This is the first question" : nil)
             Spacer()
             Button { suggest() } label: { Label(step.kind == .scenes ? "Draft with AI" : "Suggest with AI", systemImage: "sparkles") }
                 .help("Optional. Clap suggests a value as a card you accept or refuse.")
             Button("Decide later") { project.wizardNext() }
             Button(nextTitle) { next() }
                 .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
-                .disabled(!canNext)
+                .disabledWithReason(canNext ? nil : nextReason, way: nil)
         }
         .padding(.horizontal, 24).padding(.vertical, 12)
     }
@@ -350,6 +350,15 @@ struct WizardStepView: View {
         case .text(let k, _, _):
             return typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : (k, typed)
         default: return nil
+        }
+    }
+
+    /// Why Next is not available, in the words of the rule below.
+    private var nextReason: String {
+        switch step.kind {
+        case .single, .multi, .number, .text: return "Answer the question first"
+        case .soon: return "This step is not built yet"
+        default: return "Decide this step first, with the editor above"
         }
     }
 

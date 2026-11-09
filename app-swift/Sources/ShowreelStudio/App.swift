@@ -1,4 +1,5 @@
 import AppKit
+import ShowreelKit
 import SwiftUI
 
 @main
@@ -60,22 +61,32 @@ struct StudioCommands: Commands {
     }
 
     var body: some Commands {
+        // About: the app's version and the skill it carries
+        CommandGroup(replacing: .appInfo) {
+            Button("About Showreel Studio") {
+                let credits = NSAttributedString(string: "Skill \(AppInfo.skillVersion) (fingerprint \(Skill.fingerprint()))", attributes: [.font: NSFont.systemFont(ofSize: 11)])
+                NSApplication.shared.orderFrontStandardAboutPanel(options: [.applicationName: "Showreel Studio", .applicationVersion: AppInfo.version, .version: "", .credits: credits])
+            }
+        }
         // A project window always belongs to a folder: there is no blank "New Window".
         CommandGroup(replacing: .newItem) {
             Button("Project Library") { openWindow(id: "library") }.keyboardShortcut("l", modifiers: [.command, .shift])
         }
         // Undo and redo of every typed operation of the project in front (a text field being edited keeps its own).
         CommandGroup(replacing: .undoRedo) {
-            Button(project?.undoTitle.map { "Undo \($0)" } ?? "Undo") {
+            let snap = project?.activity ?? ProjectActivity.Snapshot()
+            let canU = (project?.canUndo ?? false) || (fieldUndo?.canUndo ?? false), canR = (project?.canRedo ?? false) || (fieldUndo?.canRedo ?? false)
+            let u = Availability.undo(snap, can: canU), r = Availability.undo(snap, can: canR, redo: true)
+            Button(u.why?.cause == .building ? "Undo (building the film)" : project?.undoTitle.map { "Undo \($0)" } ?? ("Undo" + (u.isAvailable ? "" : " (\(u.why?.reason.lowercased() ?? ""))"))) {
                 if let m = fieldUndo, m.canUndo { m.undo() } else { project?.undo() }
             }
             .keyboardShortcut("z", modifiers: .command)
-            .disabled(!(project?.canUndo ?? false) && !(fieldUndo?.canUndo ?? false))
-            Button(project?.redoTitle.map { "Redo \($0)" } ?? "Redo") {
+            .disabled(!u.isAvailable)
+            Button(r.why?.cause == .building ? "Redo (building the film)" : project?.redoTitle.map { "Redo \($0)" } ?? ("Redo" + (r.isAvailable ? "" : " (\(r.why?.reason.lowercased() ?? ""))"))) {
                 if let m = fieldUndo, m.canRedo { m.redo() } else { project?.redo() }
             }
             .keyboardShortcut("z", modifiers: [.command, .shift])
-            .disabled(!(project?.canRedo ?? false) && !(fieldUndo?.canRedo ?? false))
+            .disabled(!r.isAvailable)
         }
     }
 }

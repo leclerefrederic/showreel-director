@@ -62,6 +62,11 @@
    "via": "Assemble (no AI, free) writes film.json from the montage and runs the assembler, build.py and the engine's checks on a copy, replacing the version's page only when they are green (the assemble_film tool for Clap, a line in the journal); Generate (AI) is generate_scenes, always on one card with the scenes, the number of calls and an estimated cost; each scene and the film have a state computed from fingerprints (not generated, up to date, stale, edited by hand; film never assembled, up to date, stale, old format), Play plays only the assembled film (a stale film is assembled when Play is pressed), the version that is read is the last one built and tested green, never a folder a stopped build left behind, and a transition's free instruction is marked pending until a generation has read it; and the build runs scripts/assemble.py (through build.py) on the version folder: film.json, one scenes/<ID>.js per scene and reel.js become main.js without any AI, deterministically; a scene without a usable file is a visible placeholder listed in assembly.json; Clap's generate_scenes tool writes the file of one or several scenes only (a card to confirm, never a locked scene), and .studio/build.json records what each scene file was generated from, so a scene is not generated, up to date or stale (not shown in the interface yet)"
   },
   {
+   "need": "Embed the Look's fonts in the film",
+   "provided": true,
+   "via": "each font of the Look shows its state (Needs files, Preview only, Embedded) in the font editor and the design board, with a sentence and a button when files are missing; Add font files (the user's button and Clap's add_font_files) shows one card (the font, the open Google Fonts repository from the skill's fixed list, the licence, the files and their size, the network) and accepting it downloads the weights the Look uses into assets/fonts/<family>/, approves them in the manifest, and is journalled and undoable; the build and the assembly embed the approved files through fonts.json and show an orange Fonts step for a font with no file; a dropped font file is a Font resource that needs its licence note before approval"
+  },
+  {
    "need": "Run scripts",
    "provided": true,
    "via": "bash runs in a login shell in the project folder"

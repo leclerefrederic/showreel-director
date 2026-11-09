@@ -218,6 +218,8 @@ final class ProjectModel: ObservableObject {
     /// The engine's error when the last assembly failed, in the engine's own words; cleared by the next success.
     @Published var assemblyError: String?
     @Published var generationOffer: PendingGeneration?
+    @Published var fontOffer: PendingFontOffer?
+    var fontSource: FontSource = GoogleFontsSource()
     private var genTask: Task<Void, Never>?
     weak var chat: ChatModel?
     @Published var pendingLook: PendingLookChange?
@@ -1246,9 +1248,13 @@ final class WindowModel: ObservableObject {
 struct PendingGeneration: Identifiable {
     let id = UUID()
     let version: String
-    let card: OperationCard
+    var card: OperationCard
+    /// The scenes to generate without any extra question; the hand-edited ones join them only when the user ticks them.
     let ids: [String]
     let excluded: [(id: String, reason: String)]
+    let handEdited: [String]
+    var overwrite: Set<String> = []
+    var all: [String] { ids + handEdited.filter { overwrite.contains($0) } }
 }
 
 extension ProjectModel {
@@ -1282,9 +1288,18 @@ extension ProjectModel {
     func offerGeneration() {
         guard let f = showreel, let v = film.target else { return }
         let o = SceneGeneration.offer(version: v, store: store, file: f)
+        let plain = o.ids.filter { !o.handEdited.contains($0) }
         if let u = Availability.generate(o.ids, film, in: activity, hasKey: AppSettings.shared.hasKey, file: f).why { react(StatusLine.refused(u.message)); return }
-        do { generationOffer = PendingGeneration(version: v, card: try SceneGeneration.plan(o.ids, version: v, store: store), ids: o.ids, excluded: o.excluded) }
+        do { generationOffer = PendingGeneration(version: v, card: try SceneGeneration.plan(plain.isEmpty ? o.ids : plain, version: v, store: store), ids: plain, excluded: o.excluded, handEdited: o.handEdited) }
         catch { react(StatusLine.refused(error.localizedDescription)) }
+    }
+
+    /// The line that asks before a hand edit is overwritten: ticking it adds the scene to the card.
+    func toggleOverwrite(_ id: String) {
+        guard var g = generationOffer else { return }
+        if g.overwrite.contains(id) { g.overwrite.remove(id) } else { g.overwrite.insert(id) }
+        if let c = try? SceneGeneration.plan(g.all.isEmpty ? g.handEdited : g.all, version: g.version, store: store) { g.card = c }
+        generationOffer = g
     }
 
     /// The user said yes to the card: one call per scene, with the build's panel, Cancel and end.
@@ -1295,7 +1310,7 @@ extension ProjectModel {
         let transport = AnthropicTransport(apiKey: key, model: s.modelName, baseURL: s.baseURL, bearer: s.bearer)
         genTask = Task { @MainActor in
             do {
-                let ids = try await SceneGeneration.generate(g.ids, version: g.version, store: store, skill: skill, transport: transport)
+                let ids = try await SceneGeneration.generate(g.all, version: g.version, store: store, skill: skill, transport: transport, overwriting: g.overwrite)
                 react(StatusLine.generated(ids))
             } catch is CancellationError {
                 showToast("Generation cancelled. Nothing was written.")
@@ -1304,6 +1319,37 @@ extension ProjectModel {
             }
             genTask = nil
             refresh(); reloadTree()
+        }
+    }
+}
+
+/// The card of "Add font files", waiting for the user's yes. Nothing is downloaded before it.
+struct PendingFontOffer: Identifiable {
+    let id = UUID()
+    let offer: FontOffer
+}
+
+extension ProjectModel {
+    /// Looks up the files of a Look font (names and sizes only) and shows the card.
+    func addFontFiles(_ family: String) {
+        if let u = Availability.addFontFiles(family, in: activity, store: store).why { react(StatusLine.refused(u.message)); return }
+        showToast("Looking up the files of \(family)\u{2026}")
+        Task { @MainActor in
+            do { fontOffer = PendingFontOffer(offer: try await FontFiles.offer(family, store: store, source: fontSource)) }
+            catch { react(StatusLine.refused(error.localizedDescription)) }
+        }
+    }
+
+    /// The card was accepted: download, then one typed operation (undoable, in the journal) puts the files in the project and approves them.
+    func confirmFontOffer() {
+        guard let o = fontOffer?.offer else { return }
+        fontOffer = nil
+        showToast("Downloading the files of \(o.family)\u{2026}")
+        Task { @MainActor in
+            do {
+                let payload = try await FontFiles.fetch(o, source: fontSource)
+                perform(.addFontFiles(payload)); reloadTree()
+            } catch { react(StatusLine.refused(error.localizedDescription)) }
         }
     }
 }

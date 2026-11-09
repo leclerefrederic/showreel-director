@@ -306,11 +306,14 @@ struct AssetRowView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(row.name).font(.callout).lineLimit(1).truncationMode(.middle)
                 Text("\(row.id) · \(row.type)").font(.caption2).foregroundStyle(.secondary)
+                if row.type == "font", let d = FontUse.describe(row, store: project.store) { Text(d).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }
             }
             Spacer(minLength: 4)
+            BlockMarker(ref: .asset(row.id))
             Text(row.status.capitalized).font(.caption2.weight(.semibold)).foregroundStyle(row.statusColor)
         }
         .opacity(row.status == "excluded" ? 0.5 : 1)
+        .temporaryVeil(.asset(row.id))
     }
 }
 
@@ -453,8 +456,7 @@ struct SceneRowView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            SceneStateBadge(scene: scene)
-            BuildIndicator(id: scene.id)
+            SceneBadges(scene: scene)
             Text(scene.id).font(.callout.monospaced().weight(.semibold))
             VStack(alignment: .leading, spacing: 0) {
                 InlineEdit(text: scene.name ?? "", placeholder: "Name this scene",
@@ -471,6 +473,7 @@ struct SceneRowView: View {
         }
         .opacity(on ? 1 : 0.5)
         .flashWhenChanged(.scene(scene.id))
+        .temporaryVeil(.scene(scene.id))
     }
 }
 
@@ -655,7 +658,10 @@ struct SceneTreeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            BuildIndicator(id: scene, labelled: true)
+            if let s = project.showreel?.scenes.first(where: { $0.id == scene }) {
+                HStack(spacing: 6) { SceneBadges(scene: s); BuildIndicator(id: scene, labelled: true); Spacer(); BlockMarker(ref: .scene(scene)) }
+                    .padding(.vertical, 2).temporaryVeil(.scene(scene), radius: 5)
+            }
             ForEach(project.trees[scene] ?? []) { g in group(g) }
         }
         .animation(Motion.spring, value: project.trees[scene] ?? [])
@@ -694,6 +700,7 @@ struct SceneTreeView: View {
                         Text(n.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 2)
+                    if let i = item { BlockMarker(ref: .item(scene: scene, item: i)) }
                     if let st = n.status { Text(st.rawValue).font(.caption2.weight(.semibold)).foregroundStyle(st.color) }
                     if let o = n.origin { Text(o.rawValue).font(.caption2).foregroundStyle(o == .overridden ? Color.orange : .secondary) }
                 }

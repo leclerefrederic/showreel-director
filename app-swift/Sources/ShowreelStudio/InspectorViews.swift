@@ -359,7 +359,7 @@ struct SceneInspector: View {
                                 .help("Double-click to name the scene. The ID never changes.")
                         }
                         HStack(spacing: 4) {
-                            if !s.archived { SceneStateBadge(scene: s, size: 12); BuildIndicator(id: s.id, labelled: true) }
+                            if !s.archived { SceneBadges(scene: s, size: 12) }
                             Text(s.archived ? "Archived" : "\(s.durationLabel) · \(s.state.title)").font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -438,7 +438,7 @@ struct SceneLookTab: View {
                         }
                     }
                     Button("Apply this palette to the scene") { project.setSceneLook(id, [DecisionChange(.palette, palette.joined(separator: ", "))]) }
-                        .disabled(palette.count < 2 || palette.map { $0.uppercased() } == eff(.palette).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).uppercased() })
+                        .disabledWithReason(palette.count < 2 ? "A palette needs at least 2 colours" : palette.map { $0.uppercased() } == eff(.palette).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).uppercased() } ? "This already is the scene's palette" : nil)
                 } else {
                     let p = eff(.palette).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                     if p.isEmpty { locked(["no palette chosen in the project yet"]) } else { Swatches(colours: p).opacity(0.85) }

@@ -77,7 +77,7 @@ public enum BuildRunner {
         5. The montage, exactly as the app wrote it to \(version)/film.json (starts and durations in seconds, the transition from a scene to the next one; a scene without one is cut on the beat), and the music grid:
         \(filmBrief(f))
         \(reelBrief(f, store: store))
-        6. Use only approved assets listed in assets/MANIFEST.csv, from assets/prepared or assets/generated. Do not embed a font file that is not an approved asset: set the family in tokens and let the reel fall back to a system font, and say so in your answer. Add the formats of the brief (16:9 as d, 9:16 as m).
+        6. Use only approved assets listed in assets/MANIFEST.csv, from assets/prepared or assets/generated. The fonts of the Look are embedded by the app (it writes \(version)/fonts.json from the approved font files): do not list them in project.json, set their family names exactly as the Look gives them in tokens and in the drawing code, and do not embed any other font file. Add the formats of the brief (16:9 as d, 9:16 as m).
         7. Do not change any decision, scene or asset, do not run build.py, the harness or the smoke test (the app runs them next and shows the user the result), and do not give or assume any Go beyond this one. Do not write outside \(version)/.
         Answer in two short lines: what you built, and anything you could not do.
         """
@@ -140,6 +140,7 @@ public enum BuildRunner {
             return BuildReport(version: version, steps: [r("make", "Build \(version)", .fail, "\(version) has no project.json, and neither main.js nor a scenes/ folder, yet.")])
         }
         var steps: [CheckResult] = []
+        let embeddedFonts = FontEmbedding.write(version: version, store: store)         // the Look's approved font files, for build.py to embed (only the weights used)
         func tail(_ s: String, _ n: Int = 700) -> String { let t = s.trimmingCharacters(in: .whitespacesAndNewlines); return t.count > n ? "..." + t.suffix(n) : t }
 
         guard let b = await Shell.run("python3 \(q(scripts.appendingPathComponent("build.py"))) \(q(vdir))", in: store.root, timeout: 180) else {
@@ -150,6 +151,8 @@ public enum BuildRunner {
         }
         let weight = b.out.split(separator: "\n").last.map(String.init) ?? "built"
         steps.append(r("make", "Build \(version)", .ok, tail(weight, 200)))
+        // a Look font with no approved file is said, never silently replaced by a system font
+        if let fs = FontEmbedding.step(store, entries: embeddedFonts) { steps.append(r("fonts", "Fonts", fs.ok ? .ok : .tight, fs.text)) }
         // scene-file format: a scene with no usable file is a placeholder frame in the film, said here instead of hidden (the older format has no such step)
         if SceneModules.usesSceneFiles(version: version, store: store) {
             let gone = SceneModules.ungenerated(version: version, store: store)

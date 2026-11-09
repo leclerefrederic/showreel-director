@@ -11,10 +11,10 @@ struct PreviewPane: View {
                 Spacer()
                 Button { model.pastePicks() } label: { Label("Send my picks to the chat", systemImage: "arrowshape.turn.up.left") }
                     .help("Pastes what the page copied to the clipboard into the message box")
-                    .disabled(model.previewURL == nil)
+                    .disabledWithReason(model.previewURL == nil ? "Nothing is shown yet" : nil)
                 Button { model.revealPreview() } label: { Image(systemName: "folder") }
                     .help("Show in Finder")
-                    .disabled(model.previewURL == nil)
+                    .disabledWithReason(model.previewURL == nil ? "Nothing is shown yet" : nil)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

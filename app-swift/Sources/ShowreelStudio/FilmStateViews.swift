@@ -14,12 +14,13 @@ struct BuildIndicator: View {
     var body: some View {
         if project.film.state != .legacy, project.film.target != nil, let st = project.film.scenes[id] {
             let m = Self.mark(st)
+            let lockedWhy = st.state == .stale ? Availability.regenerate(id, project.film, file: project.showreel).why?.message : nil
             HStack(spacing: 4) {
                 Image(systemName: m.symbol).font(.system(size: 9, weight: .bold)).foregroundStyle(m.color)
                     .frame(width: 16, height: 16).background(m.color.opacity(0.15), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 if labelled { Text(m.title).font(.caption).foregroundStyle(.secondary) }
             }
-            .help(m.help)
+            .help(lockedWhy.map { "Stale. " + $0 } ?? m.help)
         }
     }
 
@@ -30,6 +31,24 @@ struct BuildIndicator: View {
         case .upToDate:
             return s.moduleEdited ? ("square.and.pencil", .blue, "Edited by hand", "Edited by hand: the file is not the one that was generated. It is kept; the scene is not stale.")
                                   : ("checkmark", .green, "Generated", "Generated from its present content, length and look.")
+        }
+    }
+}
+
+/// The persistent badges of a scene, in the order the layout rule gives: the review state, then the build state. The same on the list, the tree, the reel and the inspector.
+struct SceneBadges: View {
+    let scene: ShowreelFile.Scene
+    var size: CGFloat = 14
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(MarkLayout.badges(for: scene, film: project.film), id: \.self) { b in
+                switch b {
+                case .review: SceneStateBadge(scene: scene, size: size)
+                case .build: BuildIndicator(id: scene.id)
+                }
+            }
         }
     }
 }
@@ -96,7 +115,9 @@ struct FilmBanners: View {
     var body: some View {
         let f = project.film
         let locked = Set((project.showreel?.scenes ?? []).filter { $0.isLocked }.map { $0.id })
-        let offer = GenerationOffer(ids: f.ungenerated.filter { !locked.contains($0) }, excluded: f.ungenerated.filter { locked.contains($0) }.map { ($0, SceneLock.reason($0)) })
+        let want = f.toGenerate
+        let offer = GenerationOffer(ids: want.filter { !locked.contains($0) }, excluded: want.filter { locked.contains($0) }.map { ($0, SceneLock.reason($0)) },
+                                    handEdited: want.filter { !locked.contains($0) && (f.scenes[$0]?.moduleEdited ?? false) }, missing: f.ungenerated)
         VStack(spacing: 6) {
             ForEach(f.incomplete, id: \.self) { v in
                 banner("Version \(v) is incomplete (the build was stopped). Build again, or generate the missing scenes.", symbol: "exclamationmark.triangle", tint: .orange)
@@ -110,8 +131,9 @@ struct FilmBanners: View {
             } else if let line = f.staleLine {
                 banner(line + ".", symbol: "arrow.triangle.2.circlepath", tint: .orange) { assembleButton(f) }
             }
-            if let line = offer.bannerLine, f.state != .legacy {
-                banner(line + ".", symbol: "square.dashed", tint: .orange) {
+            if let line = offer.staleLine, f.state != .legacy { banner(line + ".", symbol: "arrow.triangle.2.circlepath", tint: .orange) }
+            if (offer.bannerLine != nil || offer.staleLine != nil), f.state != .legacy {
+                banner(offer.bannerLine.map { $0 + "." } ?? "Generate again to follow the changes.", symbol: "square.dashed", tint: .orange) {
                     let a = Availability.generate(offer.ids, f, in: project.activity, hasKey: AppSettings.shared.hasKey, file: project.showreel)
                     Button("Generate \(offer.ids.count) scene\(offer.ids.count == 1 ? "" : "s")") { project.offerGeneration() }
                         .buttonStyle(.borderedProminent).controlSize(.small)
@@ -151,12 +173,18 @@ struct GenerateScenesSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(pending.card.title, systemImage: ClapMark.symbol).font(.headline)
             VStack(alignment: .leading, spacing: 8) { ForEach(Array(pending.card.changes.enumerated()), id: \.offset) { _, c in ChangeRow(change: c) } }
+            ForEach(pending.handEdited, id: \.self) { id in
+                Toggle(isOn: Binding(get: { pending.overwrite.contains(id) }, set: { _ in project.toggleOverwrite(id) })) {
+                    Text("\(id) was edited by hand. Generate it too, and overwrite my edit.").font(.callout)
+                }.toggleStyle(.checkbox)
+            }
             ForEach(pending.excluded, id: \.id) { x in Text("\(x.id) is left out: \(x.reason).").font(.caption).foregroundStyle(.secondary) }
             Text("The project is read-only while the scenes are generated. Cancel stops the request; what was not written is not written.").font(.caption).foregroundStyle(.secondary)
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { project.generationOffer = nil }.keyboardShortcut(.cancelAction)
-                Button("Generate \(pending.ids.count) scene\(pending.ids.count == 1 ? "" : "s")") { project.confirmGeneration() }.buttonStyle(.borderedProminent)
+                Button("Generate \(pending.all.count) scene\(pending.all.count == 1 ? "" : "s")") { project.confirmGeneration() }.buttonStyle(.borderedProminent)
+                    .disabledWithReason(pending.all.isEmpty ? "No scene is selected" : nil, way: "Tick a hand-edited scene to overwrite it")
             }
         }
         .padding(20).frame(width: 460)

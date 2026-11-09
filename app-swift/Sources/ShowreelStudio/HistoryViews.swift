@@ -76,7 +76,7 @@ struct WhatClapKnows: View {
             }
             HStack {
                 TextField("Why (optional)", text: $reason).textFieldStyle(.roundedBorder).onSubmit { save() }
-                Button("Add") { save() }.buttonStyle(.borderedProminent).disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button("Add") { save() }.buttonStyle(.borderedProminent).disabledWithReason(text.trimmingCharacters(in: .whitespaces).isEmpty ? "Write the note first" : nil)
             }
             if let p = problem { Label(p, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
         }

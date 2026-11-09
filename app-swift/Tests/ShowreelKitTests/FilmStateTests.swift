@@ -46,7 +46,7 @@ final class FilmStateTests: XCTestCase {
             try change()
             let s = status()
             XCTAssertEqual(s.state, film ? .stale : .upToDate, "\(what): film"); XCTAssertEqual(s.scenes.filter { $0.value.state == .stale }.keys.sorted(), scenes, "\(what): scenes")
-            if film { XCTAssertFalse(s.staleReasons.isEmpty, what); XCTAssertEqual(s.counter, "Film stale"); XCTAssertTrue(s.staleLine?.hasPrefix("Stale since the last assembly: ") == true) }
+            if film { XCTAssertFalse(s.staleReasons.isEmpty, what); XCTAssertEqual(s.counter, scenes.isEmpty ? "Film stale" : "\(scenes.count) scene\(scenes.count == 1 ? "" : "s") to generate"); XCTAssertTrue(s.staleLine?.hasPrefix("Stale since the last assembly: ") == true) }
             try undo()
             XCTAssertTrue(status().isOK, "\(what): back to up to date once put back")
         }
@@ -74,6 +74,32 @@ final class FilmStateTests: XCTestCase {
         try store.apply(.scene(id: "S01", SceneEdit(text: "Changed")))
         XCTAssertEqual(sceneState("S01"), .stale); XCTAssertEqual(status().state, .stale)
         XCTAssertFalse(status().isOK)
+    }
+
+    // MARK: a locked scene whose inherited look changed
+
+    func testALockedSceneWhoseLookChangedIsStaleAndNeverGeneratedAgainWithoutUnlocking() async throws {
+        try assembledV1()
+        try store.apply(.sceneLock(ids: ["S02"], locked: true))
+        XCTAssertEqual(sceneState("S02"), .upToDate, "locking changes no input")
+        try store.apply(.decisions([DecisionChange(.palette, "#000009, #FFFFFF, #FF0000, #00FF00")], title: nil))      // what the card of a global change lets the owner apply
+        XCTAssertEqual(sceneState("S02"), .stale); XCTAssertEqual(status().state, .stale)
+        let a = Availability.regenerate("S02", status(), file: file).why
+        XCTAssertEqual(a?.message, "S02 is locked and its look changed. Unlock it to generate it again"); XCTAssertEqual(a?.link, .scene("S02"))
+        XCTAssertTrue(Availability.regenerate("S01", status(), file: file).isAvailable)
+        // not by the Generate card, the offer, the operation, nor Clap
+        XCTAssertThrowsError(try SceneGeneration.plan(["S02"], version: v, store: store)) { XCTAssertEqual($0.localizedDescription, SceneLock.reason("S02")) }
+        let m = SceneWriterModel { _ in "```js\nreturn function () {};\n```" }
+        let before = try Data(contentsOf: SceneModules.url(version: v, scene: "S02", store: store))
+        do { _ = try await SceneGeneration.generate(["S01", "S02"], version: v, store: store, skill: skill, transport: m); XCTFail("refused") } catch {}
+        XCTAssertTrue(m.prompts.isEmpty); XCTAssertEqual(try Data(contentsOf: SceneModules.url(version: v, scene: "S02", store: store)), before)
+        let ui = ScriptedUI(); let tools = Tools(project: dir, skill: skill, ui: ui); tools.sceneTransport = m
+        let out = await tools.run("generate_scenes", ["scenes": ["S02"]]).text
+        XCTAssertTrue(out.hasPrefix("refused:") && out.contains("S02 is locked"), out); XCTAssertTrue(ui.cards.isEmpty)
+        // unlocked, it can be generated again
+        try store.apply(.sceneLock(ids: ["S02"], locked: false))
+        XCTAssertTrue(Availability.regenerate("S02", status(), file: file).isAvailable)
+        XCTAssertNoThrow(try SceneGeneration.plan(["S02"], version: v, store: store))
     }
 
     // MARK: the version that is read
@@ -132,6 +158,7 @@ final class FilmStateTests: XCTestCase {
     func testAssemblingWithAMissingSceneSucceedsAndStaysFlagged() async throws {
         try await engineThere()
         try versionFolder(v, scenes: ["S01", "S02"], dist: false)
+        try SceneModules.recordGeneration(version: v, store: store)
         let r = await FilmAssembly.run(version: v, store: store, skill: skill)
         XCTAssertTrue(r.ok, r.message); XCTAssertEqual(r.ungenerated, ["S03"]); XCTAssertEqual(r.scenes, 3)
         XCTAssertTrue(r.message.hasPrefix("Film assembled: 3 scenes, 0 transitions") && r.message.contains("S03 not generated"), r.message)
@@ -198,6 +225,7 @@ final class FilmStateTests: XCTestCase {
 
     func testTheOfferLeavesOutLockedScenesWithTheirReasonAndIsOneCard() throws {
         try versionFolder(v, scenes: ["S02"], dist: false)
+        try SceneModules.recordGeneration(version: v, store: store)
         try store.apply(.sceneLock(ids: ["S03"], locked: true))
         let o = SceneGeneration.offer(version: v, store: store, file: file)
         XCTAssertEqual(o.ids, ["S01"]); XCTAssertEqual(o.excluded.map { $0.id }, ["S03"]); XCTAssertEqual(o.excluded.first?.reason, SceneLock.reason("S03"))

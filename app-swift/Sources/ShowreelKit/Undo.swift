@@ -61,14 +61,21 @@ private struct Capture {
 
 extension ProjectStore {
     static let undoTexts = [ShowreelFile.fileName, Assets.manifestPath]
-    static let undoDirs = ["assets/source", "assets/prepared"]
+    static let undoDirs = ["assets/source", "assets/prepared", "assets/fonts"]
 
     private func capture(keeping files: [String]) -> Capture {
         var c = Capture()
         for rel in Self.undoTexts { c.texts[rel] = read(rel) }
         for d in Self.undoDirs {
-            let names = (try? FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent(d).path)) ?? []
-            c.listing[d] = Set(names.filter { !$0.hasPrefix(".") })
+            // every file under the folder, by its path inside it (a font goes in assets/fonts/<family>/<file>)
+            var names: [String] = []
+            if let en = FileManager.default.enumerator(atPath: root.appendingPathComponent(d).path) {
+                for case let n as String in en where !n.split(separator: "/").contains(where: { $0.hasPrefix(".") }) {
+                    var isDir: ObjCBool = false
+                    if FileManager.default.fileExists(atPath: root.appendingPathComponent(d).appendingPathComponent(n).path, isDirectory: &isDir), !isDir.boolValue { names.append(n) }
+                }
+            }
+            c.listing[d] = Set(names)
         }
         for rel in files { if let u = try? resolve(rel), let d = try? Data(contentsOf: u) { c.blobs[rel] = d } }
         return c
@@ -144,7 +151,7 @@ extension ProjectStore {
         if dropUndoIfStale() { throw AgentError.msg("undo is not available: the project's data was changed outside the app") }
         var e = undoLog.popUndo()
         let fm = FileManager.default
-        for rel in e.created { if let u = try? resolve(rel) { if let d = try? Data(contentsOf: u) { e.kept[rel] = d }; try? fm.removeItem(at: u) } }
+        for rel in e.created { if let u = try? resolve(rel) { if let d = try? Data(contentsOf: u) { e.kept[rel] = d }; try? fm.removeItem(at: u); Self.removeEmptyParents(of: u, below: root, fm) } }
         for (rel, data) in e.removed { let u = try resolve(rel); try fm.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true); try data.write(to: u) }
         try writeTexts(e.before)
         undoLog.pushRedo(e)
@@ -167,5 +174,20 @@ extension ProjectStore {
         undoLog.pushUndo(e)
         for j in e.journal { journal.append(j.derived("redone", author: "user", session: sessionID, swap: false)) }
         return e.title
+    }
+}
+
+extension ProjectStore {
+    /// After a file was taken away, the folders it leaves empty go too, up to the assets folder.
+    static func removeEmptyParents(of file: URL, below root: URL, _ fm: FileManager) {
+        var dir = file.deletingLastPathComponent()
+        let stop = root.appendingPathComponent("assets").standardizedFileURL.path
+        while dir.standardizedFileURL.path.hasPrefix(stop + "/"), dir.standardizedFileURL.path != stop {
+            let left = ((try? fm.contentsOfDirectory(atPath: dir.path)) ?? []).filter { $0 != ".DS_Store" }
+            guard left.isEmpty, (try? fm.removeItem(at: dir)) != nil else { break }
+            let parent = dir.deletingLastPathComponent()
+            if parent.lastPathComponent == "assets" { break }
+            dir = parent
+        }
     }
 }

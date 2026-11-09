@@ -12,7 +12,10 @@ if [ "$1" = "--check-only" ]; then echo "BUILD VALID"; exit 0; fi
 APP="build/ShowreelStudio.app"
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/"
-cat > "$APP/Contents/Info.plist" <<'P'
+# the version of the app has one source: shared/app-version.json (tools/bump_app.py changes it)
+APPVER=$(python3 -c 'import json,sys; print(json.load(open("shared/app-version.json"))["version"])')
+[ -n "$APPVER" ] || { echo "no version in shared/app-version.json"; exit 1; }
+cat > "$APP/Contents/Info.plist" <<P
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -21,7 +24,8 @@ cat > "$APP/Contents/Info.plist" <<'P'
 <key>CFBundleExecutable</key><string>ShowreelStudio</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleVersion</key><string>0.1.0</string>
+<key>CFBundleVersion</key><string>$APPVER</string>
+<key>CFBundleShortVersionString</key><string>$APPVER</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>

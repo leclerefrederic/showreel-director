@@ -310,8 +310,8 @@ struct PaletteEditor: View {
                 }
                 HStack {
                     Button("Save palette") { project.perform(.decisions([DecisionChange(.palette, draft.joined(separator: ", "))], title: nil)) }
-                        .buttonStyle(.borderedProminent).disabled(!dirty || draft.count < 2)
-                    Button("Revert") { draft = saved.isEmpty ? ["#101820", "#FFFFFF", "#F2AA4C"] : saved }.disabled(!dirty)
+                        .buttonStyle(.borderedProminent).disabledWithReason(draft.count < 2 ? "A palette needs at least 2 colours" : !dirty ? "No change to save" : nil)
+                    Button("Revert") { draft = saved.isEmpty ? ["#101820", "#FFFFFF", "#F2AA4C"] : saved }.disabledWithReason(dirty ? nil : "Nothing to revert: no change yet")
                 }
             }
         }
@@ -365,6 +365,7 @@ struct FontPickerView: View {
                 Text(ctx.text).font(.custom(FontRegistry.shared.family(name), size: 30)).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
                 Text(name).font(.callout.weight(.semibold))
                 LicenceBadge(assessment: FontLicense.assess(name: name, assets: project.assets, store: project.store))
+                FontStateView(family: name)
             }
         }
     }
@@ -489,7 +490,7 @@ struct MoodsPickerView: View {
                 if part.current.isEmpty { CurrentCard(label: "No mood yet") { Text("Pick one or two moods below. Each is a coherent set of motion.").font(.callout).foregroundStyle(.secondary) } }
                 HStack {
                     Button("Use these moods") { project.perform(.decisions([DecisionChange(.moods, selected.joined(separator: ", "))], title: nil)) }
-                        .buttonStyle(.borderedProminent).disabled(selected.isEmpty || selected == saved)
+                        .buttonStyle(.borderedProminent).disabledWithReason(selected.isEmpty ? "Choose one or two moods first" : selected == saved ? "These moods already are the ones in use" : nil)
                     if !saved.isEmpty && selected == saved { Label("Saved", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
                 }
             }

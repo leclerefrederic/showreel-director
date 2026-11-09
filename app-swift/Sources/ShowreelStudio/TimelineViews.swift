@@ -361,10 +361,10 @@ struct FrameView: View {
             LinearGradient(colors: [.black.opacity(0.55), .clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom).allowsHitTesting(false)
             if let r = e.label { label(e.mode).frame(maxWidth: r.width, alignment: .leading).offset(x: r.minX, y: r.minY) }
             if let r = e.status {
-                SceneStateBadge(scene: scene, size: 12).frame(width: r.width, height: r.height)
-                    .background(.black.opacity(0.6), in: Circle()).offset(x: r.minX, y: r.minY)
+                SceneBadges(scene: scene, size: 12).padding(2).frame(minWidth: r.width, minHeight: r.height)
+                    .background(.black.opacity(0.6), in: Capsule()).offset(x: r.minX, y: r.minY)
             }
-            BuildIndicator(id: scene.id).padding(4).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).allowsHitTesting(true)
+            BlockMarker(ref: .scene(scene.id)).padding(4).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             if let r = e.eye {
                 Button { project.setEnabled(scene.id, false) } label: { Image(systemName: "eye.slash").font(.system(size: 11)).frame(width: r.width, height: r.height) }
                     .buttonStyle(.plain).foregroundStyle(.white).background(.black.opacity(0.6), in: Circle()).offset(x: r.minX, y: r.minY)
@@ -385,6 +385,7 @@ struct FrameView: View {
         .frame(width: width, height: height)
         .background(StripColor.frame)
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .temporaryVeil(.scene(scene.id), radius: 6)
         .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(selected ? Color.accentColor : hovering ? Color.white.opacity(0.65) : Color.white.opacity(0.28), lineWidth: selected ? 3 : hovering ? 2 : 1))
         .shadow(color: selected ? Color.accentColor.opacity(0.55) : .clear, radius: 6)
         .contentShape(Rectangle())

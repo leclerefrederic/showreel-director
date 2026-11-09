@@ -129,9 +129,10 @@ final class SceneStateTests: XCTestCase {
         case .gridSettings: return "gridSettings"
         case .moveAsset: return "moveAsset"
         case .sceneLock: return "sceneLock"
+        case .addFontFiles: return "addFontFiles"
         }
     }
-    static let allKinds: Set<String> = ["parameter", "decisions", "asset", "gate", "scene", "addScene", "sceneEnabled", "moveScene", "sceneLook", "content", "resize", "moveCut", "transition", "track", "grid", "gridSettings", "moveAsset", "sceneLock"]
+    static let allKinds: Set<String> = ["parameter", "decisions", "asset", "gate", "scene", "addScene", "sceneEnabled", "moveScene", "sceneLook", "content", "resize", "moveCut", "transition", "track", "grid", "gridSettings", "moveAsset", "sceneLock", "addFontFiles"]
 
     /// A project with a locked S02 between two WIP scenes, a resource and an element in S02.
     func lockedProject() throws -> String {
@@ -191,7 +192,7 @@ final class SceneStateTests: XCTestCase {
             .scene(id: "S02", SceneEdit(text: "x")), .addScene(id: "", SceneEdit(text: "x")), .sceneEnabled(id: "S02", enabled: false, montage: nil), .moveScene(id: "S02", after: "start", montage: nil),
             .sceneLook(id: "S02", []), .content(scene: "S02", .remove(item: item)), .resize(scene: "S02", duration: 5, ripple: true), .moveCut(before: "S01", after: "S02", at: 3),
             .transition(from: "S02", nil), .track(asset: nil), .grid(bpm: 100, firstBeat: 0), .gridSettings(snap: nil, ripple: true), .moveAsset(id: logo, after: "start"),
-            .sceneLock(ids: ["S02"], locked: false)]
+            .sceneLock(ids: ["S02"], locked: false), .addFontFiles(FontPayload(family: "Fredoka", dir: "fredoka", files: []))]
         XCTAssertEqual(Set(one.map(kind)), Self.allKinds, "an operation was added: say here what a locked scene does with it")
         // what changes a scene's insides must name that scene; the rest must not
         let touching = Set(one.filter { !store.scenesChanged(by: $0, in: file).isEmpty }.map(kind))

@@ -9,6 +9,11 @@ for f in skill/SKILL.md skill/engine skill/scripts skill/references shared/tools
          shared/capabilities.json shared/process.json shared/engine-host.js shared/look-packages.json skill/engine/fonts-preview setup-env.sh AppIcon.icns skill.hash; do
   [ -e "$R/$f" ] || { echo "MISSING in the bundle: $f"; fail=1; }
 done
+# the version of the bundle is the one of the single source
+SRC_VER=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$(cd "$(dirname "$0")/.." && pwd)/app-swift/shared/app-version.json")
+BUNDLE_VER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist" 2>/dev/null)
+[ "$SRC_VER" = "$BUNDLE_VER" ] || { echo "app version: the bundle says '$BUNDLE_VER', shared/app-version.json says '$SRC_VER'"; fail=1; }
+[ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$R/shared/app-version.json" 2>/dev/null)" = "$SRC_VER" ] || { echo "the bundled shared/app-version.json differs from the source"; fail=1; }
 # only system libraries: nothing may point back to a build folder
 bad=$(otool -L "$APP/Contents/MacOS/ShowreelStudio" | tail -n +2 | awk '{print $1}' | grep -v -E '^(/usr/lib/|/System/)' || true)
 [ -z "$bad" ] || { echo "non-system libraries: $bad"; fail=1; }

@@ -89,7 +89,7 @@ struct DesignBoardView: View {
             HStack { Text(role).font(.headline); Spacer(); Text(name ?? "not chosen yet").font(.callout).foregroundStyle(.secondary) }
             Text("Aa").font(family.map { Font.custom($0, size: 64) } ?? .system(size: 64)).lineLimit(1)
             Text(sample).font(family.map { Font.custom($0, size: size) } ?? .system(size: size)).lineLimit(4).fixedSize(horizontal: false, vertical: true)
-            if let n = name { LicenceBadge(assessment: FontLicense.assess(name: n, assets: project.assets, store: project.store)) }
+            if let n = name { LicenceBadge(assessment: FontLicense.assess(name: n, assets: project.assets, store: project.store)); FontStateView(family: n) }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))

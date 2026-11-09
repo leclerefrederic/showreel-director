@@ -39,6 +39,8 @@ def main():
             elif rel.get("version") != ver: bad("tools/released.json does not match version %s (run tools/bump.py)" % ver)
             elif rel.get("fingerprint") != skill_hash.fingerprint(): print("  WARN skill changed since %s was released: run tools/bump.py when you ship it" % ver)
             else: ok("version %s: changelog and release record match the skill" % ver)
+            rn = os.path.join(package.ROOT, "RELEASE-NOTES-SKILL.md"); rtxt = open(rn, encoding="utf-8").read() if os.path.exists(rn) else ""
+            ok("RELEASE-NOTES-SKILL.md has a section for %s" % ver) if re.search(r"^## " + re.escape(ver) + r"\b", rtxt, re.M) else bad("RELEASE-NOTES-SKILL.md has no section '## %s' (write it, then run tools/bump.py)" % ver)
         # files named in SKILL.md
         names = set(re.findall(r"`((?:references|engine|scripts|demo)/[\w./-]+)`", s))
         missing = sorted(n for n in names if not os.path.exists(os.path.join(SK, n)) and "<" not in n and "*" not in n and not n.startswith("demo/"))  # demo/ is optional, outside the package
@@ -263,6 +265,19 @@ def main():
             else:
                 ok("scene files: the assembled film passes the harness (issues: 0) and the player test") if rb5.returncode == 0 and rh5 and "issues: 0" in rh5.stdout and sm5 and sm5.returncode == 0 and "FAIL" not in sm5.stdout \
                     else bad("scene files: assembled film failed: " + (rb5.stderr + (rh5.stdout if rh5 else "") + (sm5.stdout if sm5 else ""))[-400:])
+        # fonts of the host (fonts.json): embedded when approved and listed, refused otherwise
+        fprev = os.path.join(SK, "engine", "fonts-preview", "poppins.woff2")
+        if os.path.exists(fprev):
+            fp = os.path.join(td, "fontproj"); os.makedirs(os.path.join(fp, "v1")); os.makedirs(os.path.join(fp, "assets", "fonts", "poppins"))
+            for n in ("project.json", "film.json"): _sh.copy(os.path.join(SK, "evals", "film-spike", "v2", n), os.path.join(fp, "v1", n))
+            _sh.copy(os.path.join(SK, "evals", "film-spike", "v2", "main.js"), os.path.join(fp, "v1", "main.js")); _sh.copy(fprev, os.path.join(fp, "assets", "fonts", "poppins", "Poppins-Regular.woff2"))
+            open(os.path.join(fp, "v1", "fonts.json"), "w").write(_json.dumps({"schema": 1, "fonts": [{"family": "Poppins", "weight": "400", "style": "normal", "path": "../assets/fonts/poppins/Poppins-Regular.woff2"}]}))
+            def manifest(status): open(os.path.join(fp, "assets", "MANIFEST.csv"), "w").write("id,file,original,origin,type,status,licence_note,scene,notes\nfont-01,fonts/poppins/Poppins-Regular.woff2,,fonts,font,%s,SIL Open Font License 1.1,,\n" % status)
+            manifest("approved"); fo = os.path.join(td, "fontproj.html")
+            r1 = run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(fp, "v1"), "--out", fo]); page = open(fo, encoding="utf-8").read() if r1.returncode == 0 else ""
+            manifest("hold"); r2 = run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(fp, "v1"), "--out", fo])
+            ok("fonts.json: an approved, listed font file is embedded (@font-face with the weight); a font on hold is refused by the asset guard") if r1.returncode == 0 and '@font-face{font-family:"Poppins";font-weight:400;' in page and r2.returncode != 0 and "hold" in (r2.stderr + r2.stdout) \
+                else bad("fonts.json embedding failed: " + (r1.stderr + r1.stdout + r2.stderr)[-300:])
         # syntax
         for f in package.skill_files():
             if f.endswith(".py"):
@@ -305,19 +320,37 @@ def main():
             if set(inzip) != set(disk): bad(".skill file list differs from the folder. Only in the .skill (not in the folder): " + (", ".join(sorted(set(inzip) - set(disk))[:6]) or "none") + ". Only in the folder (not in the .skill): " + (", ".join(sorted(set(disk) - set(inzip))[:6]) or "none"))
             elif any(hashlib.md5(inzip[n]).digest() != hashlib.md5(disk[n]).digest() for n in disk): bad(".skill content differs from the folder (run: python3 tools/package.py)")
             else: ok(f".skill identical to the folder ({len(disk)} files)")
-        # demo harness
-        demo = os.path.join(ROOT, "demo", "showreel-director-demo.html")
-        if os.path.exists(demo):
-            r = run(["node", os.path.join(SK, "scripts", "harness.js"), demo, "--step", "0.5"])
-            line = next((l for l in r.stdout.splitlines() if l.startswith("issues:")), "issues: ?")
-            ok("demo harness " + line) if line == "issues: 0" else bad("demo harness " + line)
+        # trailers harness
+        for name in ("showreel-director-trailer.html", "showreel-studio-trailer.html"):
+            demo = os.path.join(ROOT, "demo", name)
+            if os.path.exists(demo):
+                r = run(["node", os.path.join(SK, "scripts", "harness.js"), demo, "--step", "0.5"])
+                line = next((l for l in r.stdout.splitlines() if l.startswith("issues:")), "issues: ?")
+                ok(name + " harness " + line) if line == "issues: 0" else bad(name + " harness " + line)
     # native app: shared files exist, every tool is implemented, UI script parses
     sdir = os.path.join(ROOT, "app-swift")
     if os.path.isdir(sdir):
         import json
-        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "shared/process.json", "shared/engine-host.js", "shared/look-packages.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "BlockViews.swift", "EditorViews.swift", "LibraryView.swift", "LookViews.swift", "EngineService.swift", "WizardView.swift", "StoryboardViews.swift", "BuildViews.swift", "WorkspaceViews.swift", "InspectorViews.swift", "ContentViews.swift", "ReelViews.swift", "PlayerViews.swift", "DragDropViews.swift", "PickerViews.swift", "ProjectSettingsPanel.swift", "DesignBoardView.swift", "SetupFormView.swift", "ProjectLifecycleViews.swift", "TimelineViews.swift", "HistoryViews.swift", "ReactionViews.swift", "FilmStateViews.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift", "Assets.swift", "ProjectDocs.swift", "Operations.swift", "Process.swift", "JSONValue.swift", "Engine.swift", "Look.swift", "Checks.swift", "Wizard.swift", "Storyboard.swift", "Build.swift", "SceneTree.swift", "Content.swift", "Reel.swift", "Music.swift", "Film.swift", "Undo.swift", "Drops.swift", "Catalogue.swift", "Composition.swift", "SceneStates.swift", "Availability.swift", "FilmState.swift", "LockedLook.swift", "SceneModules.swift", "SceneGeneration.swift", "LookRules.swift", "Setup.swift", "Revision.swift", "CheckPanel.swift", "LookSections.swift", "Timeline.swift", "Journal.swift", "Memory.swift", "Sessions.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift", "StudioFileTests.swift", "BlocksTests.swift", "DocsTests.swift", "AssetTests.swift", "EngineTests.swift", "LookTests.swift", "ChecksTests.swift", "WizardTests.swift", "SceneTests.swift", "WorkspaceTests.swift", "SceneTreeTests.swift", "ContentTests.swift", "ReelTests.swift", "LayoutTests.swift", "FilmTests.swift", "InteractionTests.swift", "LookSettingsTests.swift", "ErgonomicsTests.swift", "LifecycleTests.swift", "TimelineTests.swift", "MemoryTests.swift", "SceneStateTests.swift", "LockedLookTests.swift", "SceneModuleTests.swift", "AvailabilityTests.swift", "FilmStateTests.swift")]
+        need = ["shared/tools.json", "shared/addendum.md", "shared/capabilities.json", "shared/process.json", "shared/engine-host.js", "shared/look-packages.json", "Package.swift"] + ["Sources/ShowreelStudio/" + f for f in ("App.swift", "ChatModel.swift", "ChatView.swift", "PreviewPane.swift", "EnvModel.swift", "SetupView.swift", "SelfCheck.swift", "ProjectModel.swift", "ProjectView.swift", "BlockViews.swift", "EditorViews.swift", "LibraryView.swift", "LookViews.swift", "EngineService.swift", "WizardView.swift", "StoryboardViews.swift", "BuildViews.swift", "WorkspaceViews.swift", "InspectorViews.swift", "ContentViews.swift", "ReelViews.swift", "PlayerViews.swift", "DragDropViews.swift", "PickerViews.swift", "ProjectSettingsPanel.swift", "DesignBoardView.swift", "SetupFormView.swift", "ProjectLifecycleViews.swift", "TimelineViews.swift", "HistoryViews.swift", "ReactionViews.swift", "FilmStateViews.swift", "FontStateViews.swift")] + ["Sources/ShowreelKit/" + f for f in ("Agent.swift", "AgentUI.swift", "Tools.swift", "Skill.swift", "Util.swift", "ProjectStore.swift", "ShowreelFile.swift", "MarkdownTable.swift", "Assets.swift", "ProjectDocs.swift", "Operations.swift", "Process.swift", "JSONValue.swift", "Engine.swift", "Look.swift", "Checks.swift", "Wizard.swift", "Storyboard.swift", "Build.swift", "SceneTree.swift", "Content.swift", "Reel.swift", "Music.swift", "Film.swift", "Undo.swift", "Drops.swift", "Catalogue.swift", "Composition.swift", "SceneStates.swift", "Availability.swift", "FilmState.swift", "AppInfo.swift", "FontFiles.swift", "FontInfo.swift", "Marks.swift", "LockedLook.swift", "SceneModules.swift", "SceneGeneration.swift", "LookRules.swift", "Setup.swift", "Revision.swift", "CheckPanel.swift", "LookSections.swift", "Timeline.swift", "Journal.swift", "Memory.swift", "Sessions.swift")] + ["Tests/ShowreelKitTests/" + f for f in ("MarkdownTests.swift", "ProjectTests.swift", "AgentTests.swift", "StudioFileTests.swift", "BlocksTests.swift", "DocsTests.swift", "AssetTests.swift", "EngineTests.swift", "LookTests.swift", "ChecksTests.swift", "WizardTests.swift", "SceneTests.swift", "WorkspaceTests.swift", "SceneTreeTests.swift", "ContentTests.swift", "ReelTests.swift", "LayoutTests.swift", "FilmTests.swift", "InteractionTests.swift", "LookSettingsTests.swift", "ErgonomicsTests.swift", "LifecycleTests.swift", "TimelineTests.swift", "MemoryTests.swift", "SceneStateTests.swift", "LockedLookTests.swift", "SceneModuleTests.swift", "AvailabilityTests.swift", "FilmStateTests.swift", "ReleaseTests.swift", "FontFilesTests.swift", "MarksTests.swift")]
         gone = [n for n in need if not os.path.exists(os.path.join(sdir, n))]
         ok("swift app files present") if not gone else bad("app-swift missing: " + ", ".join(gone))
+        # the app's version: one source, the short register, the release record and the release notes agree; a warning when the sources changed after the release
+        import json as _ja
+        try:
+            import app_hash
+            avp = os.path.join(sdir, "shared", "app-version.json"); aver = _ja.load(open(avp))["version"]
+            acl = open(os.path.join(package.ROOT, "CHANGELOG-APP.md"), encoding="utf-8").read() if os.path.exists(os.path.join(package.ROOT, "CHANGELOG-APP.md")) else ""
+            atop = re.search(r"^## (\d+\.\d+\.\d+)", acl, re.M)
+            arp = os.path.join(package.ROOT, "tools", "released-app.json"); arel = _ja.load(open(arp)) if os.path.exists(arp) else {}
+            if not atop or atop.group(1) != aver: bad("CHANGELOG-APP.md: the first entry must be ## %s (the version in app-swift/shared/app-version.json; run tools/bump_app.py)" % aver)
+            elif arel.get("version") != aver: bad("tools/released-app.json does not match the app version %s (run tools/bump_app.py)" % aver)
+            else:
+                arn = os.path.join(package.ROOT, "RELEASE-NOTES-APP.md"); antxt = open(arn, encoding="utf-8").read() if os.path.exists(arn) else ""
+                if not re.search(r"^## " + re.escape(aver) + r"\b", antxt, re.M): bad("RELEASE-NOTES-APP.md has no section '## %s' (write it, then run tools/bump_app.py)" % aver)
+                else:
+                    ok("app version %s: source, changelog, release record and release notes agree" % aver)
+                    if arel.get("fingerprint") != app_hash.fingerprint(): print("  WARN the app's sources changed since %s was released: run tools/bump_app.py when you ship it" % aver)
+        except Exception as e: bad("app version check failed: %s" % e)
         capf = os.path.join(sdir, "shared", "capabilities.json")
         port = os.path.join(SK, "references", "portability.md")
         if os.path.exists(capf) and os.path.exists(port):

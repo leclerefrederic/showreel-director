@@ -106,7 +106,8 @@ public enum SceneModules {
     public static func filmParts(_ f: ShowreelFile, version: String, store: ProjectStore) -> [String: String] {
         let enc = JSONEncoder(); enc.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         let music = (try? enc.encode(f.decisions.track)).map { String(decoding: $0, as: UTF8.self) } ?? "none"
-        var parts = ["montage": hex(SHA256.hash(data: Data(Film.text(f).utf8)).prefix(8)), "music": hex(SHA256.hash(data: Data(music.utf8)).prefix(8))]
+        var parts = ["montage": hex(SHA256.hash(data: Data(Film.text(f).utf8)).prefix(8)), "music": hex(SHA256.hash(data: Data(music.utf8)).prefix(8)),
+                     "fonts": hex(SHA256.hash(data: Data(FontEmbedding.fingerprint(store).utf8)).prefix(8))]
         for s in f.film { parts[s.id] = inputs(of: s, in: f) + "|" + (moduleHash(version: version, scene: s.id, store: store).map { String($0.prefix(16)) } ?? "-") }
         return parts
     }

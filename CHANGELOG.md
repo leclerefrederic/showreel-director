@@ -2,6 +2,14 @@
 
 Version of the skill (`metadata.version` in `showreel-director/SKILL.md`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The Studio file format has its own number (`schema` in `showreel.json`). Ship with `python3 tools/bump.py`.
 
+## 0.16.0 - 2026-11-09
+
+fonts.json: the host embeds the Look's approved font files (assets/fonts), checked like any asset
+
+## 0.15.2 - 2026-11-09
+
+about-skill.md: the demo reel is now the Showreel Director trailer (demo/showreel-director-trailer.html)
+
 ## 0.15.1 - 2026-11-09
 
 etat du film et des scenes par empreintes, assemblage sans IA, lecteur sur le film assemble
@@ -50,6 +58,6 @@ Portability table: two rows for the desktop app, one to write the storyboard, re
 
 Portability table: a row for picking the look (palette, fonts, background, effects mood) on screens in the desktop app, with the usual fallback to the look board, font picker, background picker and effects lab pages. No change to the method.
 
-## 0.9.0 - 2026-11-09
+## 0.9.0 - 2026-11-08
 
 First numbered version. Interview-led brief, feasibility gates, scene-by-scene review, self-contained HTML build, MP4 export, audio analysis, look board, font and background pickers, effects lab, asset organiser, reduced-motion support, portability fallbacks, and export of a project to Showreel Studio (`scripts/export_studio.py`).

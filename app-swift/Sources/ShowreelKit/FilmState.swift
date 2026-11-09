@@ -35,12 +35,14 @@ public enum FilmBuild {
         public let incomplete: [String]
         public let scenes: [String: SceneModules.Status]
 
+        /// The scenes whose file is missing or out of date: what "Generate" is about (the ones that are locked cannot be generated, but they are still counted).
+        public var toGenerate: [String] { ungenerated + scenes.filter { $0.value.state == .stale }.keys.sorted() }
         public static var empty: Status { Status(state: .neverAssembled, target: nil, playable: nil, ungenerated: [], staleReasons: [], incomplete: [], scenes: [:]) }
 
         /// The counter of the reel's header.
         public var counter: String {
             if state == .legacy { return "Old format" }
-            if !ungenerated.isEmpty { return "\(ungenerated.count) scene\(ungenerated.count == 1 ? "" : "s") to generate" }
+            if !toGenerate.isEmpty { return "\(toGenerate.count) scene\(toGenerate.count == 1 ? "" : "s") to generate" }
             switch state {
             case .neverAssembled: return "Film not assembled"
             case .stale: return "Film stale"
@@ -75,13 +77,14 @@ public enum FilmBuild {
         var reasons: [String] = []
         if rec.parts["montage"] != now["montage"] { reasons.append("the order, a length or a transition changed") }
         if rec.parts["music"] != now["music"] { reasons.append("the music changed") }
+        if rec.parts["fonts"] != now["fonts"] { reasons.append("the embedded fonts changed") }
         for s in f.film {
             let a = rec.parts[s.id], b = now[s.id]
             if a == b { continue }
             let (ai, am) = split(a), (bi, bm) = split(b)
             reasons.append(am != bm && ai == bi ? "the file of \(s.id) changed" : "\(s.id) changed (content, length or look)")
         }
-        for id in rec.parts.keys where id != "montage" && id != "music" && !f.film.contains(where: { $0.id == id }) { reasons.append("\(id) left the film") }
+        for id in rec.parts.keys where id != "montage" && id != "music" && id != "fonts" && !f.film.contains(where: { $0.id == id }) { reasons.append("\(id) left the film") }
         return Status(state: reasons.isEmpty ? .upToDate : .stale, target: target, playable: playable, ungenerated: gone, staleReasons: reasons.sorted(), incomplete: incomplete, scenes: scenes)
     }
 
@@ -116,6 +119,23 @@ public extension Availability {
         return .available
     }
 
+    /// Whether one scene can be generated (again): a locked scene never, whatever changed; when its inherited look changed it is stale and says so.
+    public static func regenerate(_ id: String, _ s: FilmBuild.Status, file: ShowreelFile?) -> Availability {
+        guard file?.scenes.first(where: { $0.id == id })?.isLocked == true else { return .available }
+        let stale = s.scenes[id]?.state == .stale
+        return .unavailable(Unavailable(.locked, reason: stale ? "\(id) is locked and its look changed" : "\(id) is locked", way: stale ? "Unlock it to generate it again" : "Unlock it first", link: .scene(id)))
+    }
+
+    /// Add the font files of a free font to the project: not while a build runs, only a font of the skill's list, and not when it is already embedded.
+    static func addFontFiles(_ family: String, in snap: ProjectActivity.Snapshot, store: ProjectStore) -> Availability {
+        if snap.isBuilding { return .unavailable(Reasons.building) }
+        guard Look.freeFonts().contains(where: { $0.name.caseInsensitiveCompare(family) == .orderedSame }) else {
+            return .unavailable(Unavailable(.notReady, reason: "\(family) is not in the skill's list of free fonts", way: "Download it from its own page and drop the files in the Resources tab"))
+        }
+        if case .embedded = FontUse.state(family, store: store) { return .unavailable(Unavailable(.notReady, reason: "\(family) already is embedded", way: "Nothing to add")) }
+        return .available
+    }
+
     /// Generate scenes with the AI: a key, no build running, not the old format, and no scene that is locked.
     static func generate(_ ids: [String], _ s: FilmBuild.Status, in snap: ProjectActivity.Snapshot, hasKey: Bool, file: ShowreelFile?) -> Availability {
         if snap.isBuilding { return .unavailable(Reasons.building) }
@@ -130,26 +150,46 @@ public extension Availability {
 // MARK: generating the scenes that have no file
 
 public struct GenerationOffer: Equatable, Sendable {
+    /// The scenes to generate: no file, or a file that is out of date. A locked one is never in it.
     public let ids: [String]
     public let excluded: [(id: String, reason: String)]
-    public init(ids: [String], excluded: [(id: String, reason: String)]) { self.ids = ids; self.excluded = excluded }
-    public static func == (a: GenerationOffer, b: GenerationOffer) -> Bool { a.ids == b.ids && a.excluded.map { $0.id } == b.excluded.map { $0.id } }
+    /// Of `ids`, the ones whose file was edited by hand: generating them overwrites the edit, so they need their own confirmation.
+    public let handEdited: [String]
+    /// Of `ids` and `excluded`, the ones that have no file at all (the others are stale).
+    public let missing: [String]
+    public init(ids: [String], excluded: [(id: String, reason: String)], handEdited: [String] = [], missing: [String]? = nil) { self.ids = ids; self.excluded = excluded; self.handEdited = handEdited; self.missing = missing ?? ids }
+    public static func == (a: GenerationOffer, b: GenerationOffer) -> Bool { a.ids == b.ids && a.excluded.map { $0.id } == b.excluded.map { $0.id } && a.handEdited == b.handEdited && a.missing == b.missing }
     /// "S03 and S05 are not generated: shown as empty frames".
     public var bannerLine: String? {
-        let all = ids + excluded.map { $0.id }
-        guard !all.isEmpty else { return nil }
-        return LockedLook.list(all.sorted()) + (all.count == 1 ? " is" : " are") + " not generated: shown as empty frames"
+        let gone = missing.sorted()
+        guard !gone.isEmpty else { return nil }
+        return LockedLook.list(gone) + (gone.count == 1 ? " is" : " are") + " not generated: shown as empty frames"
+    }
+    /// "S02 is stale: its content, length or look changed since its file was generated".
+    public var staleLine: String? {
+        let stale = (ids + excluded.map { $0.id }).filter { !missing.contains($0) }.sorted()
+        guard !stale.isEmpty else { return nil }
+        return LockedLook.list(stale) + (stale.count == 1 ? " is" : " are") + " stale: " + (stale.count == 1 ? "its" : "their") + " content, length or look changed since the file was generated"
+    }
+    /// What the extra confirmation says.
+    public var overwriteLine: String? {
+        handEdited.isEmpty ? nil : "\(LockedLook.list(handEdited)) \(handEdited.count == 1 ? "was" : "were") edited by hand: generating again overwrites the edit."
     }
 }
 
 extension SceneGeneration {
     /// The scenes with no file that can be generated, and those that cannot (locked), with the reason.
     public static func offer(version: String, store: ProjectStore, file f: ShowreelFile) -> GenerationOffer {
-        var ids: [String] = [], out: [(id: String, reason: String)] = []
-        for s in f.film where SceneModules.status(of: s, version: version, in: f, store: store).state == .notGenerated {
-            if let why = refusal(s.id, version: version, in: f, store: store) { out.append((s.id, why)) } else { ids.append(s.id) }
+        var ids: [String] = [], out: [(id: String, reason: String)] = [], edited: [String] = [], missing: [String] = []
+        for s in f.film {
+            let st = SceneModules.status(of: s, version: version, in: f, store: store)
+            guard st.state != .upToDate else { continue }
+            if st.state == .notGenerated { missing.append(s.id) }
+            if let why = refusal(s.id, version: version, in: f, store: store) { out.append((s.id, why)); continue }
+            ids.append(s.id)
+            if st.moduleEdited { edited.append(s.id) }
         }
-        return GenerationOffer(ids: ids, excluded: out)
+        return GenerationOffer(ids: ids, excluded: out, handEdited: edited, missing: missing)
     }
 
     /// A rough cost: one call per scene, about a quarter of a token per character in, and a scene file of up to 3000 tokens out. An estimate, said as one.
@@ -200,9 +240,9 @@ public enum FilmAssembly {
             return fail("Assembly failed, \(version) is unchanged and still the film that works.\n" + text)
         }
         do {
-            for name in ["film.json", "main.js", "assembly.json", "dist"] {
+            for name in ["film.json", "main.js", "assembly.json", "fonts.json", "dist"] {
                 let from = stage.appendingPathComponent(name), to = src.appendingPathComponent(name)
-                guard fm.fileExists(atPath: from.path) else { continue }
+                guard fm.fileExists(atPath: from.path) else { if name == "fonts.json" { try? fm.removeItem(at: to) }; continue }
                 if fm.fileExists(atPath: to.path) { try fm.removeItem(at: to) }
                 try fm.moveItem(at: from, to: to)
             }

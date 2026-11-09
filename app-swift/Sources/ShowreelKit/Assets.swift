@@ -208,8 +208,11 @@ public enum Assets {
 
     /// The refusal for a change, or nil when it is allowed (the organiser's guards: a note for a hold, no approval of sensitive or
     /// licence-blocked files from here).
-    public static func refusal(for row: AssetRow, status: AssetStatus?, note: String?) -> String? {
+    public static func refusal(for row: AssetRow, status: AssetStatus?, note: String?, licence: String? = nil) -> String? {
         guard let st = status else { return nil }
+        if st == .approved, row.type == "font", row.status != "approved", (licence ?? row.licenceNote).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "\(row.name) needs its licence note before it can be approved: say what the licence allows (embedding in a film, web or app use)"
+        }
         if st == .hold {
             let n = (note ?? row.notes).trimmingCharacters(in: .whitespacesAndNewlines)
             if n.isEmpty { return "a held asset needs a note that says why" }
@@ -230,7 +233,7 @@ public enum Assets {
     public static func update(_ id: String, status: AssetStatus?, note: String?, licence: String?, scenes: String?, in store: ProjectStore) throws {
         var rows = load(store)
         guard let i = rows.firstIndex(where: { $0.id == id }) else { throw AgentError.msg("unknown asset \(id)") }
-        if let why = refusal(for: rows[i], status: status, note: note) { throw AgentError.msg(why) }
+        if let why = refusal(for: rows[i], status: status, note: note, licence: licence) { throw AgentError.msg(why) }
         let fm = FileManager.default
         let assets = store.root.appendingPathComponent("assets")
         if let st = status {

@@ -46,7 +46,7 @@ struct UpdateSheet: View {
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Back up and update") { run(); dismiss() }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent).disabled(plan == nil)
+                Button("Back up and update") { run(); dismiss() }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent).disabledWithReason(plan == nil ? "Nothing to update: this project already is at the current revision" : nil)
             }
         }
         .padding(18).frame(width: 540)
@@ -78,7 +78,7 @@ struct RestoreSheet: View {
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Restore") { if let b = list.first(where: { $0.id == picked }) { run(b); dismiss() } }.buttonStyle(.borderedProminent).disabled(picked == nil)
+                Button("Restore") { if let b = list.first(where: { $0.id == picked }) { run(b); dismiss() } }.buttonStyle(.borderedProminent).disabledWithReason(picked == nil ? "Pick a backup first" : nil)
             }
         }
         .padding(18).frame(width: 480)

@@ -229,10 +229,15 @@ public enum Checks {
                 if !listed.contains("\(d)/\(n)") { naming.append("\(d)/\(n): not in the manifest") }
             }
         }
+        for fam in ((try? fm.contentsOfDirectory(atPath: store.root.appendingPathComponent("assets/fonts").path)) ?? []).sorted() where !fam.hasPrefix(".") {
+            for n in ((try? fm.contentsOfDirectory(atPath: store.root.appendingPathComponent("assets/fonts/" + fam).path)) ?? []).sorted() where !n.hasPrefix(".") && ["ttf", "otf", "woff2"].contains((n as NSString).pathExtension.lowercased()) {
+                if !listed.contains("fonts/\(fam)/\(n)") { naming.append("fonts/\(fam)/\(n): not in the manifest") }
+            }
+        }
         out.append(naming.isEmpty ? r("names", "Typed names, all listed", .ok, "prepared and generated files follow the naming convention and are in the manifest")
                                   : r("names", "Typed names, all listed", .fail, naming.joined(separator: "; ")))
         let stray = ((try? fm.contentsOfDirectory(atPath: store.root.appendingPathComponent("assets").path)) ?? [])
-            .filter { !["source", "prepared", "generated", "MANIFEST.csv"].contains($0) && !$0.hasPrefix(".") }
+            .filter { !["source", "prepared", "generated", "fonts", "MANIFEST.csv"].contains($0) && !$0.hasPrefix(".") }
         out.append(stray.isEmpty ? r("stray", "No stray file", .ok, "nothing loose in assets/")
                                  : r("stray", "No stray file", .fail, stray.map { "assets/\($0): stray, run the organiser" }.joined(separator: "; ")))
         let ph = rows.filter { $0.status == "placeholder" }

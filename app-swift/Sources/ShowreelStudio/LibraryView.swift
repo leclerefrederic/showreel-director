@@ -210,7 +210,7 @@ struct NewProjectSheet: View {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Create") { create() }
                     .keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabledWithReason(name.trimmingCharacters(in: .whitespaces).isEmpty ? "Give the project a name" : nil)
             }
             .padding(12)
         }

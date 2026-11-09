@@ -24,6 +24,12 @@ public enum SceneGeneration {
     }
 
     /// The card shown before anything is asked of the model: which files will be written, and what each is now.
+    /// The scenes among `ids` whose file was edited by hand since it was generated: generating them again overwrites the edit.
+    public static func handEdited(_ ids: [String], version: String, store: ProjectStore) -> [String] {
+        guard let f = store.loadShowreel() else { return [] }
+        return ids.filter { id in f.scenes.first { $0.id == id }.map { SceneModules.status(of: $0, version: version, in: f, store: store).moduleEdited } ?? false }
+    }
+
     public static func plan(_ ids: [String], version: String, store: ProjectStore) throws -> OperationCard {
         guard let f = store.loadShowreel() else { throw AgentError.msg("there is no readable showreel.json: create the project first") }
         guard !ids.isEmpty else { throw AgentError.msg("no scene to generate") }
@@ -36,6 +42,8 @@ public enum SceneGeneration {
             let before = now.map { $0.state == .notGenerated ? "not generated" : $0.state == .stale ? "out of date" : "up to date" } ?? "?"
             lines.append(Change("\(version)/scenes/\(id).js", before, "written again by the model"))
         }
+        let edited = handEdited(ids, version: version, store: store)
+        if !edited.isEmpty { lines.append(Change("Your edits", "\(LockedLook.list(edited)) \(edited.count == 1 ? "was" : "were") edited by hand", "overwritten by the new file")) }
         lines.append(Change("Other files", "kept", "untouched (the other scenes, film.json, reel.js)"))
         if let sk = Skill.root() {
             let e = estimate(ids, version: version, store: store, skill: sk)
@@ -103,8 +111,11 @@ public enum SceneGeneration {
     /// Generates the modules of `ids` in `version`: asks the model once per scene, then writes those files and nothing else (and records them in
     /// `.studio/build.json`). Nothing is written when a scene is refused or the model fails or does not return a scene file for one of them.
     @discardableResult
-    public static func generate(_ ids: [String], version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, author: String = "user") async throws -> [String] {
+    public static func generate(_ ids: [String], version: String, store: ProjectStore, skill: URL, transport: MessagesTransport, author: String = "user", overwriting: Set<String> = []) async throws -> [String] {
         _ = try plan(ids, version: version, store: store)
+        // a file edited by hand is only written again when the caller confirmed it (a card that said so, or the extra line of the player's card)
+        let unconfirmed = handEdited(ids, version: version, store: store).filter { !overwriting.contains($0) }
+        if let first = unconfirmed.first { throw AgentError.msg("\(first) was edited by hand: generating it again overwrites your edit. Confirm that first. Nothing was written") }
         // a generation is a long activity: while it runs nothing in the project can change (the panel, Cancel and the end are the build's)
         let act = store.activity
         if act.snapshot.isBuilding { throw AgentError.msg("A build is already running. Wait for the end, or Cancel the build") }

@@ -68,6 +68,7 @@ extension ProjectOperation {
         case .gridSettings: return "gridSettings"
         case .moveAsset: return "moveAsset"
         case .sceneLock: return "sceneLock"
+        case .addFontFiles: return "addFontFiles"
         }
     }
 
@@ -93,6 +94,7 @@ extension ProjectOperation {
         case .transition(let from, _): return from
         case .track(let a): return a ?? "none"
         case .sceneLock(let ids, _): return ids.joined(separator: " ")
+        case .addFontFiles(let p): return p.family
         case .grid, .gridSettings: return "grid"
         case .moveAsset(let id, _): return id
         }

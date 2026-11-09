@@ -34,7 +34,7 @@ struct EditorView: View {
                 .help("Earlier versions, with diff and restore")
             Button { project.save(tab) } label: { Label("Save", systemImage: "square.and.arrow.down") }
                 .keyboardShortcut("s", modifiers: .command)
-                .disabled(!tab.dirty || (tab.kind == .json && jsonError != nil))
+                .disabledWithReason(tab.kind == .json && jsonError != nil ? "The JSON has an error: \(jsonError ?? "")" : !tab.dirty ? "No change to save" : nil, way: tab.kind == .json && jsonError != nil ? "Fix it first" : nil)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)

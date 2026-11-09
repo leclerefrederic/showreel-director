@@ -13,12 +13,15 @@ Action/reaction. The interface is alive: every action gets a visible reaction, a
 
 ## Action/reaction: remaining
 
-Built in Q5: the state and reason model (`Availability`, `ProjectActivity`), the freeze during a build, the proposals banner, the marks on blocked elements, the activity chip, the build panel, the closing alert, the status line with Undo. The standard control (`disabledWithReason`) replaced the silent disabled controls of the storyboard review, the scene editor's Save, the reel's Apply and Revert, the content item's Apply, the Build and Test it again buttons, Reset layout and Validate storyboard. Left, with where:
-- Menu items that are disabled without a reason: Undo and Redo in the Edit menu (`App.swift`), the state choices of a scene's badge menu (`SceneStateViews.swift`: the reason is in the item's title), the "Move to the top / bottom" items of a content item's context menu (`ContentViews.swift`).
-- Form buttons that are disabled while a field is empty or unchanged, without a line saying so: the wizard (`WizardView.swift`: Back, Next, the held-file note), the new project sheet (`LibraryView.swift`), the palette editor (`LookViews.swift`, `InspectorViews.swift`), the moods picker (`LookViews.swift`), the memory form (`HistoryViews.swift`), the editor's Save (`EditorViews.swift`), the set-up form and the set-up screen (`SetupFormView.swift`, `SetupView.swift`), the Update and Restore sheets (`ProjectLifecycleViews.swift`), the preview pane's reload and open buttons (`PreviewPane.swift`), the music toggle (`PlayerViews.swift` has a tooltip only).
-- The Go button and the Validate-storyboard blocker are explained by text near them; they do not use the standard control yet (`StoryboardViews.swift`).
-- Elements are marked and made read-only in the library's scene rows, the inspector (scene, music, global look), the project settings and the content items. Not marked yet: the timeline's frames and markers, the resource rows, the scene tree on the left (their drags and drops are refused with the reason in the line at the bottom).
-- An outdated project stays editable (the banner offers Update project); nothing blocks it.
+Built in Q5 and Q6: the state and reason model (`Availability`, `ProjectActivity`, `Marks`), the freeze during a build, the proposals banner, the temporary marks on every surface (the list, the tree, the reel, the inspector and the resources: a veil around the row and a small button at its end, the same tooltip and the same way to the proposal's card), the persistent badges in one order (review state, then build state), the activity chip, the build panel, the closing alert, the status line with Undo, and the standard disabled control (`disabledWithReason`) on the storyboard review, Save scene, the reel's Apply and Revert, the content item's Apply, Build and Test it again, Reset layout, Validate storyboard, the palette editors, the moods picker, the memory form, the editor's Save, the set-up form and screen, the new project and Update and Restore sheets, the preview pane, the wizard's Back and Next. Undo and Redo of the Edit menu, and the move items of a content item's menu, say why in their own title (a menu item has no tooltip).
+
+Left, and why:
+- The state choices of a scene's badge menu (`SceneStateViews.swift`) keep the reason in the item's title; the lock switch and the Go button explain themselves with the text beside them. They do not use the standard control: a menu item and a text-led control do not take one.
+- The Library's own buttons other than Create (Open, Remove, Locate, Trash) are never disabled today: nothing to do.
+- The music toggle of the player (`PlayerViews.swift`) has a tooltip only ("This build has no music"): a toolbar toggle in a custom bar; it needs a small component of its own.
+- Clap's own composer (the send button turning into Stop) has no reason line: its rule (busy, no key) is shown by the connect box and the chip.
+- An outdated project stays editable: the banner offers Update project, nothing blocks it. Blocking it would be a new rule (decided by the owner).
+- The mark of "Clap is applying changes to S02" is shown on scenes and items only, not on the transition markers, the music lane or the settings rows: a transition and the music are not elements with a row of their own yet.
 
 ## Application (launch, library, settings)
 

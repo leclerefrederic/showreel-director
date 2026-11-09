@@ -152,8 +152,8 @@ struct ContentItemRow: View {
         }
         .contextMenu {
             Button("Duplicate") { project.duplicateItem(scene, item.id) }
-            Button("Move to the top") { project.moveItem(scene, item.id, by: -count) }.disabled(priority == 1)
-            Button("Move to the bottom") { project.moveItem(scene, item.id, by: count) }.disabled(priority == count)
+            Button(priority == 1 ? "Move to the top (it already is first)" : "Move to the top") { project.moveItem(scene, item.id, by: -count) }.disabled(priority == 1)
+            Button(priority == count ? "Move to the bottom (it already is last)" : "Move to the bottom") { project.moveItem(scene, item.id, by: count) }.disabled(priority == count)
             Divider()
             Button("Remove", role: .destructive) { project.removeItem(scene, item.id) }
         }

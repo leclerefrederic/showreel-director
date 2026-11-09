@@ -34,7 +34,7 @@ def guard_assets(cfg, root, allow_unlisted=False):
     for p in filter(None, paths):
         full = os.path.normpath(os.path.join(root, p)); rel = os.path.relpath(full, assets).replace(os.sep, "/")
         if rel.startswith("source/"): errs.append(f"{p}: points into assets/source (originals are never embedded); use the prepared copy")
-        elif not (rel.startswith("prepared/") or rel.startswith("generated/")): print(f"warning: {p} is outside assets/prepared and assets/generated (run scripts/organize_assets.py)")
+        elif not (rel.startswith("prepared/") or rel.startswith("generated/") or rel.startswith("fonts/")): print(f"warning: {p} is outside assets/prepared, assets/generated and assets/fonts (run scripts/organize_assets.py)")
         elif rows:
             r = next((x for x in rows if x["file"] == rel), None)
             if not r and allow_unlisted: print(f"warning: {rel} is not listed in assets/MANIFEST.csv (allowed for scratch work)")
@@ -57,6 +57,18 @@ def main():
     if cut:
         if cut not in (cfg.get("cuts") or {}): sys.exit(f"unknown cut {cut!r}; declared cuts: {', '.join((cfg.get('cuts') or {}).keys()) or 'none'}")
         cfg = dict(cfg); cfg.update(cfg["cuts"][cut])
+    # fonts.json next to project.json: the font files the host (the desktop app) embeds for the Look, only the weights used. It adds to project.json's own "fonts" list
+    # (the same family, weight and style replaces the entry of project.json) and its files go through the same asset guard.
+    fj = os.path.join(root, "fonts.json")
+    if os.path.exists(fj):
+        try: host = json.load(open(fj, encoding="utf-8")).get("fonts", [])
+        except (ValueError, AttributeError): sys.exit("fonts.json: not valid JSON")
+        merged = list(cfg.get("fonts", []))
+        for h in host:
+            if not (isinstance(h, dict) and h.get("family") and h.get("path")): sys.exit("fonts.json: every font needs a family and a path")
+            merged = [m for m in merged if (m["family"], str(m.get("weight", 400)), m.get("style", "normal")) != (h["family"], str(h.get("weight", 400)), h.get("style", "normal"))]
+            merged.append({"family": h["family"], "weight": h.get("weight", 400), "style": h.get("style", "normal"), "path": h["path"]})
+        cfg = dict(cfg); cfg["fonts"] = merged
     guard_assets(cfg, root, a.allow_unlisted)
     # scene-file format: a scenes/ folder next to film.json is assembled into main.js (no AI); a version with only a main.js builds as it is
     if ASM.uses_scene_files(root):

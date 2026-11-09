@@ -59,6 +59,9 @@ enum SelfCheck {
 
         let root = Skill.root()
         check(root != nil && inside(root), "skill folder found" + (bundled ? " inside the app" : ""))
+        print("app version \(AppInfo.version)"); print("skill version \(AppInfo.skillVersion)")
+        check(AppInfo.version.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil && AppInfo.skillVersion.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil, "the app and its skill have a version (\(AppInfo.line))")
+        if bundled, let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String { check(v == AppInfo.version, "the bundle's version is the one of shared/app-version.json (\(v))") }
         let shared = resource("shared", dev: "app-swift/shared")
         for f in ["tools.json", "addendum.md", "capabilities.json"] {
             let u = shared?.appendingPathComponent(f)

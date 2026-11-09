@@ -216,6 +216,8 @@ public enum ProjectOperation: Equatable, Sendable {
     case moveAsset(id: String, after: String)
     /// Locks Validated scenes, or unlocks Locked ones (back to Validated), as one card.
     case sceneLock(ids: [String], locked: Bool)
+    /// The files of a free font, already downloaded after the user accepted the card: they go to assets/fonts/ and are approved for the reel.
+    case addFontFiles(FontPayload)
 }
 
 public enum Operations {
@@ -302,7 +304,7 @@ extension ProjectStore {
         case .asset(let id, let status, let note, let licence, let scenes):
             let rows = Assets.load(self)
             guard let r = rows.first(where: { $0.id == id }) else { throw AgentError.msg("unknown asset \(id)") }
-            if let why = Assets.refusal(for: r, status: status, note: note) { throw AgentError.msg(why) }
+            if let why = Assets.refusal(for: r, status: status, note: note, licence: licence) { throw AgentError.msg(why) }
             var ch: [Change] = []
             if let s = status, s.rawValue != r.status { ch.append(Change("Status", r.status, s.rawValue)) }
             if let n = note, n != r.notes { ch.append(Change("Note", Operations.shown(r.notes), Operations.shown(n))) }
@@ -325,6 +327,7 @@ extension ProjectStore {
         case .gridSettings(let s, let r): return try planGridSettings(snap: s, ripple: r).card
         case .moveAsset(let id, let after): return try planMoveAsset(id, after: after).card
         case .sceneLock(let ids, let on): return try planLock(ids, locked: on).card
+        case .addFontFiles(let p): return try planAddFontFiles(p).card
         case .gate(let key, let passed):
             let f = try needShowreel()
             guard ShowreelFile.gateKeys.contains(key) else { throw AgentError.msg("unknown gate \(key)") }
@@ -379,6 +382,7 @@ extension ProjectStore {
         case .gridSettings(let s, let r): try planGridSettings(snap: s, ripple: r).run()
         case .moveAsset(let id, let after): try planMoveAsset(id, after: after).run()
         case .sceneLock(let ids, let on): try planLock(ids, locked: on).run()
+        case .addFontFiles(let p): try planAddFontFiles(p).run()
         case .gate(let key, let passed):
             var f = try needShowreel()
             f.gates[key] = passed ? "passed" : "open"

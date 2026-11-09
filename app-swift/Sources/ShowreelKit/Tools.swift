@@ -32,6 +32,8 @@ public final class Tools {
     public let store: ProjectStore
     /// The model that writes a scene file for `generate_scenes` (the agent's own transport; a test scripts it). nil: that tool is not available.
     public var sceneTransport: MessagesTransport?
+    /// Where the files of a free font come from (the open Google Fonts repository; a test gives its own).
+    public var fontSource: FontSource = GoogleFontsSource()
 
     public init(project: URL, skill: URL, ui: AgentUI) {
         self.project = project; self.skill = skill; self.ui = ui
@@ -135,6 +137,8 @@ public final class Tools {
             return await operate(.sceneLock(ids: ids, locked: on))
         case "generate_scenes":
             return await generateScenes(input)
+        case "add_font_files":
+            return await addFontFiles(input)
         case "assemble_film":
             return await assembleFilm(input)
         case "update_asset":
@@ -284,7 +288,8 @@ public final class Tools {
         do { card = try SceneGeneration.plan(ids, version: version, store: store) } catch { return "refused: \(error.localizedDescription)" }
         guard await ui.proposeOperation(card) else { return "refused by the user: nothing was generated. Ask what they want instead." }
         do {
-            try await SceneGeneration.generate(ids, version: version, store: store, skill: skill, transport: transport, author: "clap")
+            // the card said which hand edits are overwritten: accepting it is the confirmation
+            try await SceneGeneration.generate(ids, version: version, store: store, skill: skill, transport: transport, author: "clap", overwriting: Set(SceneGeneration.handEdited(ids, version: version, store: store)))
             return "generated \(ids.joined(separator: ", ")) in \(version): only those scene files were written. The app assembles and checks the film when the user builds again."
         } catch { return "not generated: \(error.localizedDescription)" }
     }
@@ -297,6 +302,21 @@ public final class Tools {
         if st.state == .legacy, version == st.target { return "refused: " + FilmBuild.legacySentence }
         let r = await FilmAssembly.run(version: version, store: store, skill: skill, author: "clap")
         return r.ok ? r.message : "not assembled: " + r.message
+    }
+
+    /// Proposes the files of a Look font that has none: the card says what, from where, which licence, how big and that the network is needed; accepting it approves the
+    /// files for the reel. Clap never downloads before the card is accepted, and only fonts of the skill's list.
+    private func addFontFiles(_ input: [String: Any]) async -> String {
+        guard let name = input["font"] as? String else { return "font is required" }
+        if let u = Availability.addFontFiles(name, in: store.activity.snapshot, store: store).why { return "refused: " + u.message }
+        let offer: FontOffer
+        do { offer = try await FontFiles.offer(name, store: store, source: fontSource) } catch { return "refused: \(error.localizedDescription)" }
+        guard await ui.proposeOperation(offer.card) else { return "refused by the user: no font file was downloaded or added. Ask what they want instead." }
+        do {
+            let payload = try await FontFiles.fetch(offer, source: fontSource)
+            try store.apply(.addFontFiles(payload), author: "clap", reason: reason)
+            return "accepted and applied: the files of \(offer.family) are in assets/fonts/\(offer.dir)/ and approved. The film embeds them at the next assembly."
+        } catch { return "not added: \(error.localizedDescription)" }
     }
 
     // MARK: the project's memory

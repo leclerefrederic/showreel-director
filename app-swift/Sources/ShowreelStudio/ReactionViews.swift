@@ -161,7 +161,25 @@ struct FlashWhenChanged: ViewModifier {
     }
 }
 
+/// The temporary mark: a thin tinted outline around the whole row or frame while a proposal waits on it or the build runs. It sits under the badges and never hides them
+/// (`MarkLayout`); the small button at the end of the row (`BlockMarker`) takes the user to the answer.
+struct TemporaryVeil: ViewModifier {
+    let ref: ElementRef
+    var radius: CGFloat = 8
+    @EnvironmentObject var project: ProjectModel
+
+    func body(content: Content) -> some View {
+        let on = project.blocked(ref) != nil
+        content.overlay(
+            RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(Color.orange.opacity(on ? 0.85 : 0), lineWidth: 1.5)
+                .background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Color.orange.opacity(on ? 0.07 : 0)))
+                .allowsHitTesting(false))
+            .animation(Motion.quick, value: on)
+    }
+}
+
 extension View {
+    func temporaryVeil(_ ref: ElementRef, radius: CGFloat = 8) -> some View { modifier(TemporaryVeil(ref: ref, radius: radius)) }
     func readOnlyWhenBlocked(_ refs: ElementRef...) -> some View { modifier(ReadOnlyWhenBlocked(refs: refs)) }
     func flashWhenChanged(_ ref: ElementRef) -> some View { modifier(FlashWhenChanged(ref: ref)) }
 

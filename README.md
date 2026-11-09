@@ -24,7 +24,7 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 ## Layout
 - `showreel-director/` the skill: `SKILL.md`, `references/`, `engine/`, `scripts/`, `evals/` (7 cases, English; first results in `evals/RESULTS.md`)
 - `tools/` repo tooling (`package.py`, `check.py`), `.github/workflows/check.yml`
-- `demo/` demo reel (HTML) and its notes, kept outside the packaged skill
+- `demo/` the two trailers (HTML): `showreel-director-trailer.html` and `showreel-studio-trailer.html`, and their notes, kept outside the packaged skill
 - `ROADMAP.md` ideas on hold
 - `CHANGELOG.md` and `tools/bump.py`: skill versions (ship with `python3 tools/bump.py patch|minor|major "note"`)
 - `showreel-director.skill` packaged skill (zip of the folder, `evals/` excluded)
@@ -34,9 +34,9 @@ Claude skill that directs motion-design showreels: interview-led brief, feasibil
 Open `showreel-director.skill` in Claude and click "Save skill".
 
 ## Try it
-Demo reel (plays in the browser, click "Start with sound"): https://leclerefrederic.github.io/showreel-director/
+Trailers (play in the browser, click "Start with sound"): https://leclerefrederic.github.io/showreel-director/ (Showreel Director) and https://leclerefrederic.github.io/showreel-director/demo/showreel-studio-trailer.html (Showreel Studio)
 
-Ask the skill what it can do, then pick the effects lab, or the demo reel (`demo/`, not part of the packaged skill).
+Ask the skill what it can do, then pick the effects lab, or the trailer (`demo/`, not part of the packaged skill).
 
 ## Maintenance
 - Effects live in `showreel-director/engine/effects/*.js`. After editing them run `python3 tools/check.py --fix` (refreshes `references/effects-index.md` and the sample lab, then re-checks).
@@ -47,7 +47,7 @@ Ask the skill what it can do, then pick the effects lab, or the demo reel (`demo
 Python 3 with numpy and ffmpeg (audio analysis), Node 16+ (tests). Optional: fontTools, brotli, jsdom, `@napi-rs/canvas` (MP4 export), a headless browser. `showreel-director/scripts/check_env.py` lists what is missing.
 
 ## Licence notes
-- `demo/` embeds the track "Deep-Space Funk", generated with Suno. This project is non-commercial and the track is provided for non-commercial use only, under Suno's terms. Do not reuse the track commercially.
-- Demo fonts: Liberation Sans Narrow Bold and Liberation Mono Bold.
+- `demo/showreel-director-trailer.html` embeds the track "Deep-Space Funk" and `demo/showreel-studio-trailer.html` the track "Funk Groove", both generated with Suno. This project is non-commercial and the tracks are provided for non-commercial use only, under Suno's terms. Do not reuse them commercially.
+- Fonts: Liberation Sans Narrow Bold and Liberation Mono Bold (Director trailer); Unbounded and Space Grotesk, Latin subsets under the SIL OFL (Studio trailer).
 - `evals/` contains synthetic test fixtures (fictional brand "Ploma", placeholder fonts, photo, audio, video; about 8 MB).
 - Code: MIT, see `LICENSE`. The MIT licence covers the code and documentation only, not the Suno-generated demo track (non-commercial, Suno's terms) nor the fonts, which keep their own licences.

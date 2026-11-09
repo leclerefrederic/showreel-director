@@ -1,6 +1,50 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>showreel-director</title>
-<meta http-equiv="refresh" content="0; url=demo/showreel-director-demo.html">
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0a0a0a;color:#f5f5f0;font:16px system-ui,sans-serif}a{color:#e6ff00}</style>
-</head><body><p>Opening the demo reel... <a href="demo/showreel-director-demo.html">Click here if nothing happens</a>.</p></body></html>
+<title>Showreel Director and Showreel Studio: trailers</title>
+<style>
+:root{--bg:#12001F;--fg:#fff;--pink:#FF2E93;--lime:#C8FF00;--cyan:#19E3FF;--panel:#1F0A3D;--line:#6A2CFF}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:ui-rounded,"Avenir Next",system-ui,sans-serif;overflow-x:hidden;position:relative}
+.shape{position:fixed;opacity:.22;z-index:0;animation:drift 14s ease-in-out infinite alternate;pointer-events:none}
+.s1{width:120px;height:120px;border-radius:50%;background:#E88FBE;left:6%;top:12%}
+.s2{width:90px;height:90px;background:#C9E27A;right:10%;top:18%;animation-delay:-3s;transform:rotate(18deg)}
+.s3{width:0;height:0;border:60px solid transparent;border-bottom:100px solid #8FD6E6;border-top:0;left:14%;bottom:12%;animation-delay:-6s}
+.s4{width:140px;height:140px;border-radius:50%;border:34px solid #A48AE6;right:8%;bottom:10%;animation-delay:-9s}
+.s5{width:170px;height:44px;border-radius:22px;background:#E8B07A;left:46%;top:6%;animation-delay:-4s}
+@keyframes drift{from{transform:translate(0,0) rotate(0)}to{transform:translate(40px,-60px) rotate(40deg)}}
+main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:7vh 24px 5vh;text-align:center}
+h1{font-size:clamp(36px,7vw,84px);line-height:1;margin:0 0 14px;letter-spacing:-.02em;text-transform:uppercase;text-shadow:5px 5px 0 #000}
+h1 span{color:var(--lime)}
+.lead{font-size:clamp(16px,2.2vw,22px);opacity:.85;margin:0 auto 6vh;max-width:640px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px}
+a.card{display:block;text-decoration:none;color:inherit;background:var(--panel);border:4px solid var(--line);border-radius:28px;padding:32px 28px 28px;text-align:left;transition:transform .18s,border-color .18s,box-shadow .18s}
+a.card:hover,a.card:focus-visible{transform:translate(-4px,-6px) rotate(-.6deg);border-color:var(--lime);box-shadow:10px 12px 0 #000;outline:none}
+.tag{display:inline-block;font:700 13px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:#12001F;background:var(--lime);padding:7px 12px;border-radius:99px}
+.card.studio .tag{background:var(--pink);color:#fff}
+.card h2{font-size:clamp(26px,3.4vw,38px);margin:18px 0 8px;line-height:1.05;text-transform:uppercase;text-shadow:3px 3px 0 #000}
+.card p{margin:0 0 22px;opacity:.88;line-height:1.45}
+.play{display:inline-flex;align-items:center;gap:12px;font-weight:800;font-size:18px;background:var(--pink);color:#fff;padding:14px 22px;border-radius:99px;box-shadow:4px 5px 0 #000}
+.card.studio .play{background:var(--lime);color:#12001F}
+.play i{width:0;height:0;border-left:16px solid currentColor;border-top:10px solid transparent;border-bottom:10px solid transparent}
+.meta{margin-top:16px;font:13px ui-monospace,Menlo,monospace;opacity:.6}
+footer{margin-top:7vh;font-size:13px;opacity:.6;line-height:1.6}
+footer a{color:var(--cyan)}
+@media (prefers-reduced-motion:reduce){.shape{animation:none}a.card{transition:none}}
+</style></head><body>
+<i class="shape s1"></i><i class="shape s2"></i><i class="shape s3"></i><i class="shape s4"></i><i class="shape s5"></i>
+<main>
+<h1>Two trailers.<br><span>One method.</span></h1>
+<p class="lead">Both were built with the Showreel Director skill. Click, then press "Start with sound".</p>
+<div class="cards">
+<a class="card" href="demo/showreel-director-trailer.html">
+<span class="tag">The skill</span><h2>Showreel Director</h2>
+<p>An interview, a storyboard you review scene by scene, then a self-contained reel synced to your music.</p>
+<span class="play"><i></i>Play trailer</span><div class="meta">about 90 s · 16:9 and 9:16 · English</div></a>
+<a class="card studio" href="demo/showreel-studio-trailer.html">
+<span class="tag">The Mac app</span><h2>Showreel Studio</h2>
+<p>A native macOS workspace with a copilot: pick the look, review every scene, cut on the beat, then say Go.</p>
+<span class="play"><i></i>Play trailer</span><div class="meta">about 89 s · 16:9 and 9:16 · English</div></a>
+</div>
+<footer>Music generated with Suno, for non-commercial use only. The trailers are examples of what the skill can produce, not templates.<br>
+<a href="https://github.com/leclerefrederic/showreel-director">Source on GitHub</a></footer>
+</main></body></html>

@@ -108,6 +108,7 @@ struct ProjectView: View {
         .sheet(isPresented: $project.showUpdateSheet) { UpdateSheet(store: project.store) { project.updateProject() } }
         .sheet(item: $project.pendingLook) { LockedLookSheet(pending: $0) }
         .sheet(item: $project.generationOffer) { GenerateScenesSheet(pending: $0) }
+        .sheet(item: $project.fontOffer) { FontOfferSheet(pending: $0) }
         .sheet(item: $project.historyFor) { tab in HistoryView(tab: tab) }
         .sheet(isPresented: Binding(get: { project.reimport != nil }, set: { if !$0 { project.reimport = nil } })) { ReimportSheet() }
         // a drop that would replace a scene's look asks first; saying no changes nothing
