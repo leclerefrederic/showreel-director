@@ -86,12 +86,7 @@ struct ResourcesLibrary: View {
         .buttonStyle(.plain).help(folded ? "Show" : "Fold")
     }
 
-    private func row(_ a: AssetRow) -> some View {
-        LibraryRow(selected: project.selection == .asset(a.id), action: { project.select(.asset(a.id)); project.libraryTab = .resources }) { AssetRowView(row: a) }
-            .padding(.vertical, 1).padding(.leading, 28)
-            .dragSource(.resource(a.id), label: a.name, icon: a.symbolName)
-            .contextMenu { menu(a) }
-    }
+    private func row(_ a: AssetRow) -> some View { ResourceRow(row: a).padding(.vertical, 1).padding(.leading, 28).contextMenu { menu(a) } }
 
     @ViewBuilder private func menu(_ a: AssetRow) -> some View {
         switch a.state(in: project.showreel) {
@@ -100,6 +95,8 @@ struct ResourcesLibrary: View {
         case .needsAttention: Button("Leave it out", role: .destructive) { project.setAssetStatus(a.id, .excluded) }
         default: Button("Exclude from the project", role: .destructive) { project.setAssetStatus(a.id, .excluded) }
         }
+        Divider()
+        ResourceUseMenu(row: a)
         if let u = AssetFiles.url(a, in: project.root) { Divider(); Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([u]) } }
     }
 
@@ -122,16 +119,88 @@ private struct RenameTagField: View {
     }
 }
 
+/// The small pictures of the resource rows and of the drag preview, from memory only: a row that has none yet draws its icon and asks for the picture to be read in the background.
+final class AssetThumbs: ObservableObject {
+    static let shared = AssetThumbs()
+    @Published private(set) var tick = 0
+
+    func image(_ row: AssetRow, in root: URL) -> NSImage? {
+        let key = row.id + "|" + row.file + "|" + row.original
+        if let c = ThumbnailCache.shared.cached(key) { return NSImage(cgImage: c, size: NSSize(width: c.width, height: c.height)) }
+        guard ThumbnailCache.shared.shouldLoad(key) else { return nil }
+        guard let u = AssetFiles.url(row, in: root), ["png", "jpg", "jpeg", "gif", "webp", "heic", "tif", "tiff"].contains(u.pathExtension.lowercased()) else { ThumbnailCache.shared.done(key); return nil }
+        DispatchQueue.global(qos: .utility).async {
+            let loaded = ThumbnailCache.shared.load(u, key: key) != nil
+            if loaded { DispatchQueue.main.async { self.tick += 1 } }
+        }
+        return nil
+    }
+}
+
+/// A row of the grouped list. It is not a Button: a button takes the press for itself and a drag never starts from it. The whole row selects on a click and drags from any
+/// point of its surface, with a handle that appears under the pointer and an open hand as the cursor.
+struct ResourceRow: View {
+    let row: AssetRow
+    @EnvironmentObject var project: ProjectModel
+    @State private var hovering = false
+    @ObservedObject private var thumbs = AssetThumbs.shared
+
+    var body: some View {
+        let selected = project.selection == .asset(row.id)
+        HStack(spacing: 4) {
+            Image(systemName: "line.3.horizontal").font(.system(size: 10, weight: .semibold)).foregroundStyle(.tertiary).frame(width: 12).opacity(hovering ? 1 : 0)
+            AssetRowView(row: row)
+        }
+        .padding(.horizontal, 8).padding(.vertical, 5)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(selected ? Color.accentColor.opacity(0.2) : hovering ? Color.primary.opacity(0.07) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .contentShape(Rectangle())
+        .onHover { h in hovering = h; if h { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }          // set, never pushed: nothing to leave unbalanced
+        .onTapGesture { project.select(.asset(row.id)); project.libraryTab = .resources }
+        .dragSource(.resource(row.id), label: row.name, icon: row.symbolName, thumbnail: thumbs.image(row, in: project.root))
+        .animation(Motion.quick, value: hovering)
+        .help("Drag onto a scene to use it there, or right-click: Add to scene")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: "Select") { project.select(.asset(row.id)) }
+    }
+}
+
+/// "Add to scene" and "Use as the project's music": the way to use a resource without dragging it. The same typed operations as a drop; a scene that cannot take it is greyed
+/// with its reason, and the result is the line at the bottom, with Undo.
+struct ResourceUseMenu: View {
+    let row: AssetRow
+    /// False in the inspector's own menu, where the scenes are listed directly.
+    var nested = true
+    @EnvironmentObject var project: ProjectModel
+
+    @ViewBuilder private var scenes: some View {
+        let choices = ResourceMenu.sceneChoices(asset: row.id, store: project.store)
+        if choices.isEmpty { Text("No scene is in the film yet") }
+        ForEach(choices) { c in
+            Button(c.reason.map { "\(c.label) (\($0))" } ?? c.label) { _ = project.performDrop(.resource(row.id), on: .scene(c.id)) }.disabled(c.reason != nil)
+        }
+    }
+
+    var body: some View {
+        if nested { Menu("Add to scene") { scenes }.help(ResourceMenu.addRefusal(asset: row.id, store: project.store) ?? "Link this resource to a scene") } else { scenes }
+        let m = ResourceMenu.music(asset: row.id, store: project.store)
+        if m.offered {
+            Button(m.reason.map { "Use as the project's music (\($0))" } ?? "Use as the project's music") { _ = project.performDrop(.resource(row.id), on: .musicLane) }.disabled(m.reason != nil)
+        }
+    }
+}
+
 struct AssetRowView: View {
     let row: AssetRow
     @EnvironmentObject var project: ProjectModel
+    @ObservedObject private var thumbs = AssetThumbs.shared
 
     var body: some View {
         let state = row.state(in: project.showreel)
         HStack(spacing: 8) {
             ZStack {
                 RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.06))
-                if let img = AssetFiles.thumbnail(row, in: project.root) { Image(nsImage: img).resizable().scaledToFit().padding(2) }
+                if let img = AssetThumbs.shared.image(row, in: project.root) { Image(nsImage: img).resizable().scaledToFit().padding(2) }
                 else { Image(systemName: row.symbolName).foregroundStyle(.secondary) }
             }
             .frame(width: 36, height: 28)
@@ -172,6 +241,7 @@ struct AssetInspector: View {
                 if state == .proposal { proposal(row) }
                 if state == .needsAttention { attention(row) }
                 if row.type == "font", let d = FontUse.describe(row, store: project.store) { Text(d).font(.callout).foregroundStyle(.secondary) }
+                useInScene(row)
                 tags(row)
                 DetailsSection(row: row)
                 if state == .declined { Button("Put back") { project.setAssetStatus(row.id, .approved) }.help("It becomes available again") }
@@ -180,6 +250,13 @@ struct AssetInspector: View {
         } else {
             Text("This resource is not in the project any more.").foregroundStyle(.secondary)
         }
+    }
+
+    private func useInScene(_ row: AssetRow) -> some View {
+        let refusal = ResourceMenu.addRefusal(asset: row.id, store: project.store)
+        return Menu { ResourceUseMenu(row: row, nested: false) } label: { Label("Use in a scene\u{2026}", systemImage: "rectangle.badge.plus") }
+            .menuStyle(.borderedButton).fixedSize()
+            .disabledWithReason(refusal, way: refusal == nil ? nil : "Fix the resource or wait for the end of the build")
     }
 
     private func chips(_ scenes: [String]) -> some View {

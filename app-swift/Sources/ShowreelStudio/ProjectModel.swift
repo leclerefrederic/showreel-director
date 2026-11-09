@@ -839,17 +839,6 @@ final class ProjectModel: ObservableObject {
         return carryOutDrop(item, on: target)
     }
 
-    /// A resource released on a scene target by its own typed token. Always ends with a line at the bottom: what was linked, or why not.
-    func dropResourceToken(_ token: String?, on target: DropTarget) -> Bool {
-        defer { dnd.end() }
-        let o = DropPlan.resolve(token: token, target: target, store: store)
-        DragLog.shared.note("release(token)", "\(DragLog.name(of: target)): \(o.isValid ? "ok" : "refused") - \(o.text)")
-        guard o.isValid, let item = DropPlan.item(token: token) else { showToast(o.text, error: true); return false }
-        let done = performDrop(item, on: target)
-        DragLog.shared.note("result", done ? "done" : "failed")
-        return done
-    }
-
     func confirmPendingDrop() {
         guard let p = pendingDrop else { return }
         pendingDrop = nil

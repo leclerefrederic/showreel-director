@@ -18,17 +18,6 @@ enum Motion {
 
 enum Workspace { static let space = "workspace" }
 
-extension UTType {
-    /// The kind of data an internal drag of a resource carries, besides its plain-text token: declared in the Info.plist by make-app.sh.
-    static let studioResource = UTType(exportedAs: "com.showreelstudio.resource-token")
-}
-
-/// A resource dragged inside the app: its token (`studio:resource:<id>`), as a typed payload that a drop target takes directly.
-struct ResourceToken: Codable, Transferable {
-    let token: String
-    static var transferRepresentation: some TransferRepresentation { CodableRepresentation(contentType: .studioResource) }
-}
-
 // MARK: state
 
 /// What is being dragged and over what. Separate from the project model, so a drag redraws only what shows it.
@@ -45,29 +34,39 @@ final class DragState: ObservableObject {
     private var timer: Timer?
     private var idle = 0
     /// The last item and target the pointer was valid on: the release uses it when the pointer cannot be resolved again at that instant.
-    var lastValid: (item: DragItem, target: DropTarget)?
+    var lastValid: (item: DragItem, target: DropTarget)? { session.lastValid }
+    /// Everything about the drag that is not drawn: it ends in one place, `end`, whatever the outcome.
+    var session = DragRun()
 
     func begin(_ i: DragItem) {
-        verdicts = [:]; refusal = nil; lastValid = nil
+        verdicts = [:]; refusal = nil
+        session.begin(i)
         item = i; hover = nil
         idle = 0
         timer?.invalidate()
         // SwiftUI tells us when a drag starts, not when it is abandoned: watch the mouse button.
         let t = Timer(timeInterval: 0.15, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            if NSEvent.pressedMouseButtons & 1 == 0 { self.idle += 1; if self.idle >= 2 { self.end() } } else { self.idle = 0 }
+            if NSEvent.pressedMouseButtons & 1 == 0 { self.idle += 1; if self.idle >= 2 { self.end(self.hover == nil ? .cancelled : .outsideTarget) } } else { self.idle = 0 }
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
+        // if no drop target reports this drag soon, the log says so: the next reading needs no screen
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            if let s = self, s.session.isActive, !s.session.seenByATarget { DragLog.shared.note("drag", "no drop target has seen the drag 1.5 s after it began") }
+        }
     }
 
     func setHover(_ t: DropTarget?) {
+        session.reported()
         guard t != hover else { return }
         Motion.go { hover = t }
     }
 
-    func end() {
+    func end(_ outcome: DragRun.Outcome = .outsideTarget) {
         timer?.invalidate(); timer = nil
+        if session.isActive { DragLog.shared.note(session.finish(outcome)) }
+        session = DragRun()
         // released over a target that refuses: say why (the red reason was already on the target; this keeps it after the release)
         if let why = refusal, Date().timeIntervalSince(refusalAt) < 2 { onRefused?(why) }
         refusal = nil
@@ -117,7 +116,7 @@ private func registration(_ kind: DropRegistration.Kind) -> some View {
 
 extension View {
     /// This view can be dragged: it carries `item`. `label` and `icon` draw the chip under the pointer.
-    func dragSource(_ item: DragItem, label: String, icon: String) -> some View { modifier(DragSource(item: item, label: label, icon: icon)) }
+    func dragSource(_ item: DragItem, label: String, icon: String, thumbnail: NSImage? = nil) -> some View { modifier(DragSource(item: item, label: label, icon: icon, thumbnail: thumbnail)) }
     /// This view takes drops on `target`: it lights up while a valid item is dragged, and says why when an invalid one is over it.
     func dropTarget(_ target: DropTarget) -> some View { modifier(DropTargetModifier(target: target)) }
     /// Registers a place as a target without drawing anything on it (an empty list's slot).
@@ -132,30 +131,28 @@ private struct DragSource: ViewModifier {
     let item: DragItem
     let label: String
     let icon: String
+    var thumbnail: NSImage?
     @EnvironmentObject var project: ProjectModel
 
     func body(content: Content) -> some View {
         content.onDrag {
+            // the same provider as a scene's handle, which works: the plain-text token only, no other type
+            let t0 = Date()
             project.dnd.begin(item)
             let provider = NSItemProvider(object: item.token as NSString)
-            var types = [UTType.utf8PlainText.identifier]
-            if case .resource = item {                         // a resource also carries its typed token, which the scene targets take directly
-                let data = (try? JSONEncoder().encode(ResourceToken(token: item.token))) ?? Data()
-                provider.registerDataRepresentation(forTypeIdentifier: UTType.studioResource.identifier, visibility: .all) { done in done(data, nil); return nil }
-                types.append(UTType.studioResource.identifier)
-            }
-            DragLog.shared.note("drag begin", "\(DragLog.name(of: item)) types=\(types.joined(separator: ","))")
+            DragLog.shared.note("drag begin", "\(DragLog.name(of: item)) types=\(UTType.utf8PlainText.identifier) preview=\(thumbnail == nil ? "icon" : "thumbnail") setup=\(Int(Date().timeIntervalSince(t0) * 1000))ms")
             return provider
-        } preview: { DragChip(label: label, icon: icon) }
+        } preview: { DragChip(label: label, icon: icon, thumbnail: thumbnail) }
     }
 }
 
 struct DragChip: View {
     let label: String
     let icon: String
+    var thumbnail: NSImage?
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: icon)
+            if let t = thumbnail { Image(nsImage: t).resizable().scaledToFill().frame(width: 34, height: 24).clipShape(RoundedRectangle(cornerRadius: 4)) } else { Image(systemName: icon) }
             Text(label).lineLimit(1)
         }
         .font(.callout.weight(.medium)).padding(.horizontal, 10).padding(.vertical, 6)
@@ -171,28 +168,6 @@ private struct DropTargetModifier: ViewModifier {
         content
             .background(registration(.target(target)))
             .overlay(DropGlow(target: target))
-            .modifier(ResourceDestination(target: target))
-    }
-}
-
-/// A scene target also takes a resource by its own typed token, straight on the view under the pointer: no geometry to resolve, no state that can be lost.
-private struct ResourceDestination: ViewModifier {
-    let target: DropTarget
-    @EnvironmentObject var project: ProjectModel
-
-    private var takesResources: Bool {
-        switch target { case .scene, .sceneNode: return true; default: return false }
-    }
-
-    @ViewBuilder func body(content: Content) -> some View {
-        if takesResources {
-            content.dropDestination(for: ResourceToken.self) { tokens, _ in
-                project.dropResourceToken(tokens.first?.token, on: target)
-            } isTargeted: { on in
-                project.dnd.setHover(on ? target : nil)
-                if on, let item = project.dnd.item { let v = project.verdict(item, target); DragLog.shared.note("hover(token)", "\(DragLog.name(of: target)) \(v.isValid ? "ok" : "refused"): \(v.text)") }
-            }
-        } else { content }
     }
 }
 
@@ -285,7 +260,7 @@ struct WorkspaceDropDelegate: DropDelegate {
         guard let target = t else { dnd.refusal = nil; return nil }
         let v = project.verdict(item, target)
         dnd.refusal = v.isValid ? nil : v.text
-        if v.isValid { dnd.lastValid = (item, target) }
+        if v.isValid { dnd.session.over(target, valid: true) }
         DragLog.shared.note("hover", "\(DragLog.name(of: item)) over \(DragLog.name(of: target)): \(v.isValid ? "ok" : "refused") - \(v.text)")
         return (item, target, v)
     }
@@ -295,6 +270,7 @@ struct WorkspaceDropDelegate: DropDelegate {
     }
 
     func validateDrop(info: DropInfo) -> Bool {
+        dnd.session.reported()
         let ok = info.hasItemsConforming(to: [.plainText, .fileURL])
         DragLog.shared.note("validate", "\(ok ? "accepts" : "refuses") types=\(types(info))")
         return ok
@@ -333,7 +309,7 @@ struct WorkspaceDropDelegate: DropDelegate {
         guard let r = landed, r.verdict.isValid else {
             if landed == nil { DragLog.shared.note("release", "refused: no target under the pointer"); project.showToast("Nothing here takes this: drop it on a scene, a frame of the reel or in the scene's tree.", error: true) }
             else { DragLog.shared.note("release", "refused: \(landed?.verdict.text ?? "")") }
-            dnd.end(); return false
+            dnd.end(landed == nil ? .outsideTarget : .refused); return false
         }
         let project = self.project
         if case .files = r.item {
@@ -348,11 +324,11 @@ struct WorkspaceDropDelegate: DropDelegate {
                 }
             }
             let target = r.target
-            group.notify(queue: .main) { project.performDrop(.files(urls), on: target); project.dnd.end() }
+            group.notify(queue: .main) { project.performDrop(.files(urls), on: target); project.dnd.end(.dropped) }
             return !providers.isEmpty
         }
         let ok = project.performDrop(r.item, on: r.target)
-        dnd.end()
+        dnd.end(ok ? .dropped : .refused)
         return ok
     }
 }

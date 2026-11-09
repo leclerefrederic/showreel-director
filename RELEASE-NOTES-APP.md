@@ -2,6 +2,32 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.8.4 - 2026-11-09
+
+**Fixed**
+- **Dragging a resource no longer blocks the Resources panel.** A drag now ends in one place whatever happens (dropped, refused, outside any target, cancelled with Escape) and leaves nothing behind. The drag carries the same plain-text token as the handle of a scene, which works, and no longer carries an extra type of its own. The small pictures of the rows and of the drag preview are read once in the background and kept in memory, so starting a drag reads no file. The open hand under the pointer is set, not stacked.
+- **The drag log can no longer hold the app.** It is written in the background and a write error is ignored. It now also says how each drag ended and whether any target ever saw it.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.16.0. macOS 13 or later.
+
+## 0.8.3 - 2026-11-09
+
+**What's new**
+- **Add a resource to a scene without dragging.** Right-click a resource: "Add to scene" lists the scenes of the film (a locked scene is greyed with its reason; an archived scene is not offered) and, for a music file, "Use as the project's music". In the inspector of a resource, "Use in a scene..." opens the same choice. The result is the line at the bottom ("Linked X to S03") with Undo; during a build everything is greyed and says why.
+
+**Fixed**
+- **Dragging a resource from the Resources tab now starts.** A row was a button, and a button takes the press for itself, so no drag could begin from it. The whole row now drags, shows a handle and an open hand under the pointer, and the drag carries a preview with the thumbnail and the name. Every drag start is written in `~/Library/Logs/ShowreelStudio/drag.log`.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.16.0. macOS 13 or later.
+
 ## 0.8.2 - 2026-11-09
 
 **Fixed**

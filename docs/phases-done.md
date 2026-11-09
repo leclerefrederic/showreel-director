@@ -170,3 +170,15 @@ batch D1 is built (a resource dragged to a scene: the scene targets take the res
 
 Rules in ShowreelKit: `DragLog.swift` (`DragLog`, `DropPlan`), `Drops.swift`
 
+## D2
+
+batch D2 is built (the drag of a resource did not start because its row was a Button, which takes the press: the row is now a plain view that selects on a click and drags from its whole surface, with a handle and an open-hand cursor on hover, a preview with the thumbnail and the name, and the start of the drag in `drag.log`; a way without dragging: the right-click menu of a resource with "Add to scene" (locked scenes greyed with their reason, archived ones left out, everything greyed during a build) and "Use as the project's music", and "Use in a scene..." in the inspector of a resource, all through the typed drop operations, with the line at the bottom and Undo)
+
+Rules in ShowreelKit: `ResourceMenu.swift`, `DragLog.swift` (`DropPlan`), `Drops.swift`
+
+## D3
+
+batch D3 is built (the drag of a resource blocked the panel; the report of the one crash found was older and unrelated; a drag ends in one place, `DragRun.finish`, whatever the outcome, and says it in `drag.log`, with a line when no drop target saw the drag; the resource drag carries only the plain-text token like a scene handle and the typed token of D1 and its drop destinations are removed; pictures of rows and of the drag preview come from `ThumbnailCache` (memory, read once in the background); the drag log writes on its own queue and ignores errors)
+
+Rules in ShowreelKit: `DragSession.swift` (`DragRun`, `ThumbnailCache`), `DragLog.swift`
+

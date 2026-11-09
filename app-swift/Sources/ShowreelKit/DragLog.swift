@@ -7,6 +7,8 @@ public final class DragLog: @unchecked Sendable {
     public let maxBytes: Int
     private let lock = NSLock()
     private var lastLine = ""
+    /// Writing happens on its own queue: a slow or failing disk can never hold the interface, and an error is ignored.
+    private let queue = DispatchQueue(label: "showreel.draglog", qos: .utility)
 
     public static let shared = DragLog(url: standardURL)
     public static var standardURL: URL {
@@ -18,24 +20,32 @@ public final class DragLog: @unchecked Sendable {
     /// One line: the time, the event and a short detail. The same line twice in a row (a hover that did not change) is written once.
     public func note(_ event: String, _ detail: String = "") {
         let line = Self.sanitize(detail.isEmpty ? event : event + " " + detail)
-        lock.lock(); defer { lock.unlock() }
-        guard line != lastLine else { return }
+        lock.lock()
+        let same = line == lastLine
         lastLine = line
-        let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let text = f.string(from: Date()) + " " + String(line.prefix(600)) + "\n"
-        let fm = FileManager.default
-        try? fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let size = (try? fm.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
-        if size + text.utf8.count > maxBytes {
-            let old = url.appendingPathExtension("1")
-            try? fm.removeItem(at: old)
-            try? fm.moveItem(at: url, to: old)
+        lock.unlock()
+        guard !same else { return }
+        let time = Date()
+        queue.async { [url, maxBytes] in
+            let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let text = f.string(from: time) + " " + String(line.prefix(600)) + "\n"
+            let fm = FileManager.default
+            try? fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let size = (try? fm.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
+            if size + text.utf8.count > maxBytes {
+                let old = url.appendingPathExtension("1")
+                try? fm.removeItem(at: old)
+                try? fm.moveItem(at: url, to: old)
+            }
+            if let h = try? FileHandle(forWritingTo: url) {
+                defer { try? h.close() }
+                _ = try? h.seekToEnd(); try? h.write(contentsOf: Data(text.utf8))
+            } else { try? Data(text.utf8).write(to: url, options: .atomic) }
         }
-        if let h = try? FileHandle(forWritingTo: url) {
-            defer { try? h.close() }
-            _ = try? h.seekToEnd(); try? h.write(contentsOf: Data(text.utf8))
-        } else { try? Data(text.utf8).write(to: url, options: .atomic) }
     }
+
+    /// Waits for the lines written so far (tests; the app never waits).
+    public func flush() { queue.sync {} }
 
     /// Takes the user's folders out of a text: the home folder becomes "~", any other path of two or more parts becomes "<path>".
     public static func sanitize(_ s: String) -> String {

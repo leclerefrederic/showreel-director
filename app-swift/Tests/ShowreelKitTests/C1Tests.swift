@@ -299,17 +299,20 @@ final class D1Tests: XCTestCase {
         let log = DragLog(url: url, maxBytes: 2000)
         log.note("drag begin", "resource:logo-01 types=public.utf8-plain-text")
         log.note("result", "refused: cannot read \(NSHomeDirectory())/Documents/Secret Plan/notes.pdf and /Users/someone/Desktop/a.png")
+        log.flush()
         let text = try String(contentsOf: url, encoding: .utf8)
         XCTAssertTrue(text.contains("logo-01"))
         XCTAssertFalse(text.contains(NSHomeDirectory()) || text.contains("/Users/someone") || text.contains("Secret Plan"), text)
         XCTAssertTrue(text.contains("<path>") || text.contains("~"))
         XCTAssertEqual(DragLog.name(of: .files([URL(fileURLWithPath: "/Users/x/Private/a.png")])), "files(1)", "files are counted, never named")
         for n in 0..<400 { log.note("hover", "resource:logo-01 over scene S0\(n % 9): ok step \(n)") }
+        log.flush()
         let size = try XCTUnwrap(FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int)
         XCTAssertLessThanOrEqual(size, 2000, "the file stays under its ceiling")
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.appendingPathExtension("1").path), "and the older lines were rotated")
         let before = size
         log.note("hover", "resource:logo-01 over scene S03: ok step 399")      // the same line twice in a row is one line
+        log.flush()
         XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int, before)
         XCTAssertTrue(DragLog.standardURL.path.hasSuffix("Library/Logs/ShowreelStudio/drag.log"))
     }
@@ -319,5 +322,139 @@ final class D1Tests: XCTestCase {
         let t = DragItem.resource(row.id).token
         XCTAssertEqual(DropPlan.item(token: t), .resource(row.id))
         XCTAssertEqual(DragLog.name(of: .resource(row.id)), "resource:" + row.id)
+    }
+}
+
+/// Batch D2: the menu of a resource, the way to use it without a drag.
+final class D2Tests: XCTestCase {
+    var dir: URL!
+    var inbox: URL!
+    var store: ProjectStore!
+    override func setUp() {
+        dir = makeTempDir("d2"); inbox = makeTempDir("d2-in"); store = ProjectStore(root: dir)
+        try? store.create(name: "D", conversationLanguage: "en", reelLanguages: ["en"])
+        for t in ["One", "Two", "Three", "Four"] { try? store.apply(.addScene(id: "", SceneEdit(duration: "3", text: t))) }
+        store.undoLog.clear(); store.activity.reset()
+    }
+    override func tearDown() { store.activity.reset(); try? FileManager.default.removeItem(at: dir); try? FileManager.default.removeItem(at: inbox) }
+    func add(_ name: String) throws -> AssetRow {
+        let u = inbox.appendingPathComponent(name); try "x".write(to: u, atomically: true, encoding: .utf8)
+        return try XCTUnwrap(try Assets.add([u], to: store).first)
+    }
+
+    func testAddToSceneListsTheFilmWithLockedGreyedAndArchivedLeftOut() throws {
+        let logo = try add("Acme Logo.svg")
+        try store.apply(.scene(id: "S02", SceneEdit(status: "ok"))); try store.apply(.sceneLock(ids: ["S02"], locked: true))
+        try store.apply(.scene(id: "S04", SceneEdit(archived: true)))
+        let c = ResourceMenu.sceneChoices(asset: logo.id, store: store)
+        XCTAssertEqual(c.map { $0.id }, ["S01", "S02", "S03"], "the archived scene is not offered")
+        XCTAssertNil(c[0].reason); XCTAssertNil(c[2].reason)
+        XCTAssertTrue(c[1].reason?.lowercased().contains("lock") == true, c[1].reason ?? "nil")
+        XCTAssertNil(ResourceMenu.addRefusal(asset: logo.id, store: store))
+        // a scene that already has it says so
+        XCTAssertTrue(ResourceMenu.add(asset: logo.id, to: "S01", store: store).isValid)
+        XCTAssertTrue(ResourceMenu.sceneChoices(asset: logo.id, store: store)[0].reason?.contains("already linked") == true)
+    }
+
+    func testABuildGreysEverySceneWithItsReason() throws {
+        let logo = try add("Acme Logo.svg")
+        store.activity.update { $0.build = .init(version: "v1", phase: .generating) }
+        let c = ResourceMenu.sceneChoices(asset: logo.id, store: store)
+        XCTAssertEqual(c.count, 4)
+        XCTAssertTrue(c.allSatisfy { $0.reason?.contains("Building the film") == true })
+        XCTAssertNotNil(ResourceMenu.addRefusal(asset: logo.id, store: store))
+        XCTAssertFalse(ResourceMenu.add(asset: logo.id, to: "S01", store: store).isValid)
+        XCTAssertEqual(Assets.load(store).first?.sceneIDs, [])
+    }
+
+    func testAddingLinksTheResourceWithUndoAndAFlaggedFileIsRefused() throws {
+        let logo = try add("Acme Logo.svg")
+        XCTAssertEqual(ResourceMenu.add(asset: logo.id, to: "S03", store: store), .operation("Link Acme Logo.svg to S03"))
+        XCTAssertEqual(Assets.load(store).first?.sceneIDs, ["S03"])
+        _ = try store.undo()
+        XCTAssertEqual(Assets.load(store).first?.sceneIDs, [], "one undo step")
+        let held = try add("client-photo.jpg")
+        XCTAssertEqual(held.status, "hold")
+        XCTAssertNotNil(ResourceMenu.addRefusal(asset: held.id, store: store))
+        XCTAssertTrue(ResourceMenu.sceneChoices(asset: held.id, store: store).allSatisfy { $0.reason?.contains("needs attention") == true })
+    }
+
+    func testUseAsMusicIsOfferedForATrackOnlyAndPicksTheTrack() throws {
+        let logo = try add("Acme Logo.svg"), track = try add("theme.mp3")
+        XCTAssertFalse(ResourceMenu.music(asset: logo.id, store: store).offered)
+        var m = ResourceMenu.music(asset: track.id, store: store)
+        XCTAssertTrue(m.offered); XCTAssertNil(m.reason)
+        XCTAssertTrue(ResourceMenu.useAsMusic(asset: track.id, store: store).isValid)
+        XCTAssertEqual(store.loadShowreel()?.decisions.track?.file, "assets/" + track.file)
+        m = ResourceMenu.music(asset: track.id, store: store)
+        XCTAssertTrue(m.reason?.contains("already") == true, m.reason ?? "nil")
+        store.activity.update { $0.build = .init(version: "v1", phase: .generating) }
+        XCTAssertNotNil(ResourceMenu.music(asset: track.id, store: store).reason)
+    }
+
+    func testTheDragTokenOfAResourceCarriesItsIdentifier() throws {
+        let logo = try add("Acme Logo.svg")
+        XCTAssertEqual(DragItem.resource(logo.id).token, "studio:resource:" + logo.id)
+        XCTAssertEqual(DragItem(token: DragItem.resource(logo.id).token), .resource(logo.id))
+        XCTAssertEqual(DragLog.name(of: .resource(logo.id)), "resource:" + logo.id)
+    }
+}
+
+
+/// Batch D3: a drag always ends clean, the log cannot hold or break anything, and the preview needs no file.
+final class D3Tests: XCTestCase {
+    func testEveryOutcomeGivesACleanSession() {
+        for outcome in [DragRun.Outcome.dropped, .refused, .outsideTarget, .cancelled] {
+            var s = DragRun()
+            s.begin(.resource("logo-01"))
+            XCTAssertTrue(s.isActive)
+            s.over(.scene("S01"), valid: true)
+            XCTAssertNotNil(s.hover); XCTAssertNotNil(s.lastValid)
+            let line = s.finish(outcome)
+            XCTAssertEqual(s, DragRun(), "\(outcome): nothing of the drag stays")
+            XCTAssertFalse(s.isActive); XCTAssertNil(s.hover); XCTAssertNil(s.lastValid)
+            XCTAssertTrue(line.contains("resource:logo-01") && line.contains(outcome.rawValue), line)
+        }
+        var s = DragRun(); s.begin(.resource("a"))
+        XCTAssertTrue(s.finish(.cancelled).contains("no drop target ever saw this drag"), "the log says when no target saw the drag")
+        XCTAssertEqual(s.finish(.cancelled), "drag end none cancelled after 0 ms (no drop target ever saw this drag)", "ending twice is harmless")
+        s.begin(.resource("b")); s.begin(.resource("c"))
+        XCTAssertEqual(s.item, .resource("c"), "a second start replaces the first")
+    }
+
+    func testTheLogToleratesAWriteError() throws {
+        let base = makeTempDir("d3")
+        defer { try? FileManager.default.removeItem(at: base) }
+        let blocker = base.appendingPathComponent("blocker"); try "x".write(to: blocker, atomically: true, encoding: .utf8)
+        let log = DragLog(url: blocker.appendingPathComponent("logs/drag.log"))       // its folder cannot be created: a file is in the way
+        for n in 0..<20 { log.note("hover", "step \(n)") }
+        log.flush()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: blocker.appendingPathComponent("logs").path))
+        let readOnly = base.appendingPathComponent("ro"); try FileManager.default.createDirectory(at: readOnly, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: readOnly.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: readOnly.path) }
+        DragLog(url: readOnly.appendingPathComponent("drag.log")).note("x", "y")
+        // writing never blocks: a thousand notes return at once
+        let t = Date(); let fast = DragLog(url: base.appendingPathComponent("fast/drag.log"))
+        for n in 0..<1000 { fast.note("hover", "n \(n)") }
+        XCTAssertLessThan(Date().timeIntervalSince(t), 1.0)
+        fast.flush()
+    }
+
+    func testThePreviewNeedsNoFileRead() throws {
+        let base = makeTempDir("d3t"); defer { try? FileManager.default.removeItem(at: base) }
+        let cache = ThumbnailCache()
+        let u = base.appendingPathComponent("p.png")
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 400, pixelsHigh: 300, bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        try rep.representation(using: .png, properties: [:])!.write(to: u)
+        XCTAssertNil(cache.cached("photo-01"), "a miss reads nothing")
+        XCTAssertTrue(cache.shouldLoad("photo-01")); XCTAssertFalse(cache.shouldLoad("photo-01"), "one load at a time")
+        let img = try XCTUnwrap(cache.load(u, key: "photo-01"))
+        XCTAssertLessThanOrEqual(max(img.width, img.height), 128, "a small picture, not the file")
+        try FileManager.default.removeItem(at: u)                                    // the file is gone: the preview still has its picture
+        XCTAssertNotNil(cache.cached("photo-01"))
+        XCTAssertFalse(cache.shouldLoad("photo-01"))
+        XCTAssertNil(cache.load(base.appendingPathComponent("missing.png"), key: "none"), "an unreadable file is nil, not a crash")
+        XCTAssertTrue(cache.shouldLoad("none"), "and can be tried again")
     }
 }
