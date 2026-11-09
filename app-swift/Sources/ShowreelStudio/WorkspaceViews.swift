@@ -325,7 +325,7 @@ struct ScenesLibrary: View {
     private func draft() {
         guard settings.hasKey else { project.error = "Drafting needs an AI. Connect one in Settings, or write the scenes by hand: everything else works without it."; return }
         project.inspectorTab = .copilot
-        chat.ask(prompt: Wizard.draftScenesPrompt)
+        chat.ask(prompt: Wizard.draftScenesPrompt, status: "Scene draft requested")
     }
 }
 

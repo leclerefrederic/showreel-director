@@ -13,7 +13,7 @@ struct ProjectForm: View {
     @State private var commitTask: DispatchWorkItem?
 
     private static let formats: [(id: String, name: String, w: CGFloat, h: CGFloat)] = [("16:9", "Desktop", 16, 9), ("9:16", "Mobile", 9, 16), ("1:1", "Square", 1, 1), ("4:5", "Portrait feed", 4, 5)]
-    private static let presets = [15, 30, 45, 60, 90]
+    private static let presets = ProjectSetup.durationChoices
     private static let typed: [ParameterKey] = [.name, .audience, .message, .tone, .duration, .constraints]
     private static let examples: [ParameterKey: String] = [
         .audience: "For example: marketing leads at mid-size software companies, watching on a laptop",

@@ -59,7 +59,7 @@ final class WizardTests: XCTestCase {
         guard case .multi(_, _, let recFormats) = s[6].kind else { return XCTFail() }
         XCTAssertEqual(recFormats, ["16:9"])
         guard case .number(_, let presets) = s[5].kind else { return XCTFail() }
-        XCTAssertEqual(presets.map { $0.value }, ["30", "60", "90"])
+        XCTAssertEqual(presets.map { $0.value }, ["30", "45", "60", "75", "90"])
         // looking at the steps wrote nothing, and nothing counts as decided
         let f = try XCTUnwrap(store.loadShowreel())
         XCTAssertNil(f.conversationLanguage); XCTAssertTrue(f.reelLanguages.isEmpty); XCTAssertNil(f.decisions.duration); XCTAssertNil(f.decisions.formats)

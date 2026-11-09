@@ -2,6 +2,27 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.8.1 - 2026-11-09
+
+**What's new**
+- **The app asks before a build when a font has no file.** When you start a Build or an Assemble and a font of the Look is still on "Needs files", a card names the fonts, the source (the open Google Fonts repository), the licence and the size, and offers three choices: "Download and continue" (the files are downloaded and approved for the reel, as with Add font files), "Continue with a system font" (the build starts now and the orange Fonts step says so) and "Cancel". Nothing is downloaded without your yes, your choice is in the journal, and the card does not appear when every font has its files.
+
+**Fixed**
+- **Dragging a resource onto a scene.** The release now always does something: it links the resource to the scene (it reads "Used in S0x"), or says in the bottom line why it cannot (a locked scene, a build running, a nowhere target). Before, a release that could not be matched to a target again ended without a word.
+- **Covers of MP3 files.** The picture embedded in an MP3 (the ID3 tag) is now found, shown in the preview and counted in the details; files without a picture, or with a damaged tag, simply have no cover.
+- **Downloading fonts.** When the font repository refuses, the message gives the HTTP code and the address asked. When GitHub's limit for anonymous requests is reached (60 an hour for one address, easy to hit on a shared company network), it says so in plain words, keeps the manual way (the font's page, then the Resources tab) and offers "Try again".
+- **The app's own instructions are no longer drawn as your messages.** The start of the Wizard, a build request or a scene draft show a short line ("Wizard started", "Build requested") instead of the text sent to Clap. The text is still sent, still kept in the transcript, and the Sessions view shows it behind "Show the app's instructions" (off by default).
+- **Durations.** The Wizard's question and the presets of the Manual form now offer the same five durations: 30, 45, 60, 75 and 90 seconds (a typed value is still accepted).
+- **The eye on the frames of the reel is gone.** Take a scene out of the film with the Delete key or "Remove from film" in its menu; it stays under the strip as a dimmed chip (click it or drag it back). The eye with two states stays in the scene list of the library.
+- **No more "Mark as validated" in the Look editors.** The style sheet counts as validated as soon as the palette, the fonts and the background are chosen.
+- **One thumbnail per frame.** A frame whose scene has a single still no longer repeats it.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.16.0. macOS 13 or later.
+
 ## 0.8.0 - 2026-11-09
 
 **What's new**

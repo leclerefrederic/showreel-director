@@ -86,6 +86,11 @@ struct ProjectView: View {
         .sheet(item: $project.pendingLook) { LockedLookSheet(pending: $0) }
         .sheet(item: $project.generationOffer) { GenerateScenesSheet(pending: $0) }
         .sheet(item: $project.fontOffer) { FontOfferSheet(pending: $0) }
+        .sheet(item: $project.fontsAtBuild) { FontsAtBuildSheet(pending: $0) }
+        .alert(item: $project.fontFailure) { f in
+            Alert(title: Text("The files of \(f.family) could not be added"), message: Text(f.text),
+                  primaryButton: .default(Text("Try again")) { if let r = f.retry { r() } else { project.addFontFiles(f.family) } }, secondaryButton: .cancel(Text("Close")))
+        }
         .sheet(item: $project.historyFor) { tab in HistoryView(tab: tab) }
         .sheet(isPresented: Binding(get: { project.reimport != nil }, set: { if !$0 { project.reimport = nil } })) { ReimportSheet() }
         // a drop that would replace a scene's look asks first; saying no changes nothing

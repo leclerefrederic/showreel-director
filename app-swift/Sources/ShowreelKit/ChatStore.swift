@@ -5,7 +5,29 @@ public struct ChatRecord: Codable, Equatable {
     public var role: String   // "user" or "assistant"
     public var text: String
     public var date: Date
-    public init(role: String, text: String, date: Date = Date()) { self.role = role; self.text = text; self.date = date }
+    /// "app" for an instruction the app sent on the user's behalf (the wizard's start, a build request): it is sent to the model and kept here, but never drawn as the
+    /// user's own bubble. Nil for what the user typed and for what the model said.
+    public var origin: String?
+    /// The short neutral line the conversation shows in place of an app instruction ("Wizard started").
+    public var status: String?
+    public init(role: String, text: String, date: Date = Date(), origin: String? = nil, status: String? = nil) { self.role = role; self.text = text; self.date = date; self.origin = origin; self.status = status }
+
+    public var fromApp: Bool { origin == ChatRecord.appOrigin }
+    public static let appOrigin = "app"
+}
+
+public enum ChatDisplay {
+    /// What the conversation draws for a record: a bubble for what the user typed or Clap said, a short neutral line for an app instruction (never its text), nothing else.
+    public enum Line: Equatable { case bubble(role: String, text: String), status(String) }
+
+    public static func line(for r: ChatRecord) -> Line {
+        r.fromApp ? .status(r.status ?? "Request sent to Clap") : .bubble(role: r.role, text: r.text)
+    }
+
+    /// The transcript of a session in the Sessions view: the app's instructions only when "Show the app's instructions" is ticked.
+    public static func transcript(_ records: [ChatRecord], showAppInstructions: Bool) -> [ChatRecord] {
+        showAppInstructions ? records : records.filter { !$0.fromApp }
+    }
 }
 
 /// Chat history of a project: `.studio/chat/<session>.jsonl`, one session per file, one record per line.

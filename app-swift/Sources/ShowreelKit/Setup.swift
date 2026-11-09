@@ -11,6 +11,9 @@ public struct SetupItem: Equatable, Identifiable, Sendable {
 }
 
 public enum ProjectSetup {
+    /// The durations offered, in seconds: the Wizard's question and the presets of the Manual form read this one list. The form also takes any other number typed.
+    public static let durationChoices = [30, 45, 60, 75, 90]
+
     public static let optional = ["audience", "message", "tone"]
 
     /// What is still missing, in the order a person fills it in. Empty: the base configuration is complete.
@@ -75,9 +78,13 @@ public extension Availability {
 }
 
 public extension ShowreelFile {
-    /// The state of a gate. The interview's is derived from the project: it is passed when the base configuration is complete (a value stored earlier still counts, so that
-    /// nothing a project had is taken away). No button sets it any more.
+    /// The state of a gate. The interview's is derived from the project: it is passed when the base configuration is complete, and the style sheet's when the look is
+    /// chosen (palette, fonts and background); a value stored earlier still counts, so that nothing a project had is taken away. No button sets them any more.
     func gateState(_ key: String) -> String {
+        if key == "style" {
+            let lookSet = ProjectSetup.requirements(self).first { $0.id == "look" }?.isSet == true
+            return lookSet || gates[key] == "passed" ? "passed" : (gates[key] ?? "open")
+        }
         if key == "interview" { return ProjectSetup.isComplete(self) || gates[key] == "passed" ? "passed" : (gates[key] ?? "open") }
         return gates[key] ?? "open"
     }

@@ -88,7 +88,6 @@ struct GlobalLookSettings: View {
                         Spacer()
                         Text(section.title).font(.headline)
                         Spacer()
-                        ValidateButton(gate: "style", block: "inspector")
                     }
                     editor(section)
                 }
@@ -96,7 +95,6 @@ struct GlobalLookSettings: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(LookSection.allCases) { s in LookRow(section: s) }
-                    HStack { Spacer(); ValidateButton(gate: "style", block: "inspector") }.padding(.top, 6)
                 }
                 .transition(.move(edge: .leading).combined(with: .opacity))
             }

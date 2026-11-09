@@ -223,6 +223,9 @@ final class ProjectModel: ObservableObject {
     @Published var assemblyError: String?
     @Published var generationOffer: PendingGeneration?
     @Published var fontOffer: PendingFontOffer?
+    @Published var fontFailure: FontFailure?
+    @Published var fontsAtBuild: PendingFontsAtBuild?
+    var checkingFonts = false
     /// The folded groups of the Resources list (remembered per project), the tag the list is filtered by, and a tag being renamed.
     @Published var foldMemory: [String]?
     @Published var tagFilter: String?
@@ -377,6 +380,11 @@ final class ProjectModel: ObservableObject {
     func startBuild(with chat: ChatModel) {
         guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it from the toolbar once every scene is OK."; return }
         guard !buildBusy else { return }
+        askAboutFonts { [weak self] in self?.beginBuild(with: chat) }
+    }
+
+    private func beginBuild(with chat: ChatModel) {
+        guard !buildBusy else { return }
         let v = Versions.next(store)
         do { try Film.write(version: v, store: store) } catch { self.error = "Could not write \(v)/film.json: \(error.localizedDescription)"; return }   // the exact montage, for the build to read
         buildVersion = v
@@ -384,7 +392,7 @@ final class ProjectModel: ObservableObject {
         buildReport = nil
         buildCancelled = false; self.chat = chat
         store.activity.update { $0.build = .init(version: v, phase: .generating) }          // from here every change is refused, with its reason, until the end
-        let sent = chat.ask(prompt: BuildRunner.prompt(version: v, store: store)) { [weak self] in self?.finishGeneration(v) }
+        let sent = chat.ask(prompt: BuildRunner.prompt(version: v, store: store), status: "Build requested") { [weak self] in self?.finishGeneration(v) }
         if !sent { generating = false; store.activity.update { $0.build = nil } } else { inspectorTab = .copilot; centerMode = .build }       // the user sees what the copilot does
     }
 
@@ -1232,6 +1240,14 @@ extension ProjectModel {
     /// With `thenPlay`, the film plays when it is ready (Play on a stale film).
     func assembleFilm(thenPlay: Bool = false) {
         if let u = Availability.assemble(film, in: activity).why { react(StatusLine.refused(u.message)); return }
+        guard !assembling, fontsAtBuild == nil, !checkingFonts, skill() != nil, film.target != nil else { return }
+        askAboutFonts { [weak self] in self?.reallyAssemble(thenPlay: thenPlay) }
+    }
+
+    private func skill() -> URL? { Skill.root() }
+
+    private func reallyAssemble(thenPlay: Bool) {
+        if let u = Availability.assemble(film, in: activity).why { react(StatusLine.refused(u.message)); return }
         guard !assembling, let skill = Skill.root(), let v = film.target else { return }
         assembling = true; assemblyError = nil
         showToast("Assembling\u{2026}")
@@ -1251,6 +1267,36 @@ extension ProjectModel {
             } else {
                 assemblyError = r.message
                 showToast("Not assembled: " + (r.message.split(separator: "\n").first.map(String.init) ?? r.message), error: true)
+            }
+        }
+    }
+
+    /// Before a Build or an Assemble: when a font of the Look has no file, the card asks (download and continue, continue with a system font, cancel). When nothing is
+    /// missing, `go` runs at once and nothing is asked.
+    func askAboutFonts(_ go: @escaping () -> Void) {
+        guard fontsAtBuild == nil, !checkingFonts else { return }
+        guard !FontsAtBuild.missing(store).isEmpty else { go(); return }
+        checkingFonts = true
+        showToast("Looking up the fonts of the Look\u{2026}")
+        Task { @MainActor in
+            let q = await FontsAtBuild.prepare(store, source: fontSource)
+            checkingFonts = false
+            if let q = q { fontsAtBuild = PendingFontsAtBuild(question: q, then: go) } else { go() }
+        }
+    }
+
+    func answerFonts(_ choice: FontsAtBuild.Choice) {
+        guard let p = fontsAtBuild else { return }
+        fontsAtBuild = nil
+        if choice == .download { showToast("Downloading the fonts\u{2026}") }
+        Task { @MainActor in
+            do {
+                let action = try await p.question.resolve(choice, store: store, source: fontSource)
+                refresh(); reloadTree()
+                if action == .proceed { p.then() } else { showToast("Cancelled: nothing was downloaded and the build did not start.") }
+            } catch {
+                react(StatusLine.refused(error.localizedDescription))
+                fontFailure = FontFailure(family: p.question.families.joined(separator: ", "), text: error.localizedDescription, retry: { [weak self] in self?.askAboutFonts(p.then) })
             }
         }
     }
@@ -1294,6 +1340,20 @@ extension ProjectModel {
     }
 }
 
+/// A font lookup or download that failed, shown with Try again.
+struct FontFailure: Identifiable {
+    let id = UUID(); let family: String; let text: String
+    /// What Try again does; by default, the lookup of the font again.
+    var retry: (() -> Void)?
+}
+
+/// The question before a build: fonts of the Look without files. `then` is the build or the assembly that waits for the answer.
+struct PendingFontsAtBuild: Identifiable {
+    let id = UUID()
+    let question: FontsAtBuild
+    let then: () -> Void
+}
+
 /// The card of "Add font files", waiting for the user's yes. Nothing is downloaded before it.
 struct PendingFontOffer: Identifiable {
     let id = UUID()
@@ -1307,7 +1367,7 @@ extension ProjectModel {
         showToast("Looking up the files of \(family)\u{2026}")
         Task { @MainActor in
             do { fontOffer = PendingFontOffer(offer: try await FontFiles.offer(family, store: store, source: fontSource)) }
-            catch { react(StatusLine.refused(error.localizedDescription)) }
+            catch { fontFailed(error, family: family) }
         }
     }
 
@@ -1320,8 +1380,14 @@ extension ProjectModel {
             do {
                 let payload = try await FontFiles.fetch(o, source: fontSource)
                 perform(.addFontFiles(payload)); reloadTree()
-            } catch { react(StatusLine.refused(error.localizedDescription)) }
+            } catch { fontFailed(error, family: o.family) }
         }
+    }
+
+    /// A lookup or a download that failed: the status line says why, and an alert offers Try again (the manual way is in the text).
+    private func fontFailed(_ error: Error, family: String) {
+        react(StatusLine.refused(error.localizedDescription))
+        if (error as? FontLookupError)?.retryable == true { fontFailure = FontFailure(family: family, text: error.localizedDescription) }
     }
 }
 
@@ -1334,7 +1400,7 @@ extension ProjectModel {
         guard mode == StudioSettings.wizard, needsSetup, !wizardStarted, showreel != nil, AppSettings.shared.hasKey else { return }
         wizardStarted = true
         showCopilot = true; inspectorTab = .copilot
-        chat.ask(prompt: WizardInterview.prompt(projectName: title, conversationLanguage: showreel?.conversationLanguage, file: showreel))
+        chat.ask(prompt: WizardInterview.prompt(projectName: title, conversationLanguage: showreel?.conversationLanguage, file: showreel), status: "Wizard started")
     }
 
     /// The way out of a wizard that cannot go on (no key, a failed request, or the user's choice): the answers already given become typed changes, and the

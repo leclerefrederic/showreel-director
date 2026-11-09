@@ -169,26 +169,63 @@ public struct RepoFile: Equatable, Sendable { public let name: String; public le
 public struct FontFile: Equatable, Sendable { public let name: String; public let data: Data
     public init(name: String, data: Data) { self.name = name; self.data = data } }
 
+/// A failed lookup of a font's files, with what the card needs to offer: say what happened and try again.
+public struct FontLookupError: Error, LocalizedError, Equatable, Sendable {
+    public let family: String
+    public let text: String
+    public let retryable: Bool
+    public var errorDescription: String? { text }
+}
+
 /// Where the files come from. The real one is the open Google Fonts repository; a test gives its own.
 public protocol FontSource: Sendable {
     func listing(dir: String) async throws -> [RepoFile]
     func download(_ file: RepoFile) async throws -> Data
 }
 
+/// Why the repository did not give what was asked: the HTTP code and the address are kept, and a call limit is told apart, because the fix is different (wait, or do it by hand).
+public struct FontRepositoryError: Error, LocalizedError, Equatable, Sendable {
+    public let status: Int?
+    public let url: String
+    public let rateLimited: Bool
+    public let detail: String
+    public init(status: Int?, url: String, rateLimited: Bool = false, detail: String = "") { self.status = status; self.url = url; self.rateLimited = rateLimited; self.detail = detail }
+
+    public var errorDescription: String? {
+        let at = (status.map { "HTTP \($0) from " } ?? "") + url
+        if rateLimited { return "The anonymous request limit of GitHub was reached; try again later or download the font by hand (\(at))" }
+        return (detail.isEmpty ? "the repository answered with an error" : detail) + " (\(at))"
+    }
+
+    /// The answer of the repository, judged: a call limit is a 429, or a 403 that says it (the header of calls left, or the words of GitHub's message).
+    static func judge(status: Int, headers: [AnyHashable: Any], body: Data, url: String) -> FontRepositoryError {
+        let left = (headers["x-ratelimit-remaining"] ?? headers["X-RateLimit-Remaining"]) as? String
+        let text = String(decoding: body.prefix(600), as: UTF8.self).lowercased()
+        let limited = status == 429 || (status == 403 && (left == "0" || text.contains("rate limit")))
+        let message = (try? JSONSerialization.jsonObject(with: body) as? [String: Any])?["message"] as? String
+        return FontRepositoryError(status: status, url: url, rateLimited: limited, detail: limited ? "" : (message.map { "the repository said: \($0)" } ?? ""))
+    }
+}
+
 public struct GoogleFontsSource: FontSource {
     public init() {}
+    static let api = "https://api.github.com/repos/google/fonts/contents/ofl/"
     public func listing(dir: String) async throws -> [RepoFile] {
-        guard let u = URL(string: "https://api.github.com/repos/google/fonts/contents/ofl/" + dir) else { throw AgentError.msg("bad font folder") }
-        var r = URLRequest(url: u); r.setValue("showreel-studio-font-fetch", forHTTPHeaderField: "User-Agent"); r.timeoutInterval = 20
+        let address = Self.api + dir
+        guard let u = URL(string: address) else { throw AgentError.msg("bad font folder") }
+        var r = URLRequest(url: u); r.setValue("showreel-studio-font-fetch", forHTTPHeaderField: "User-Agent"); r.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept"); r.timeoutInterval = 20
         let (d, resp) = try await URLSession.shared.data(for: r)
-        guard (resp as? HTTPURLResponse)?.statusCode == 200, let a = try JSONSerialization.jsonObject(with: d) as? [[String: Any]] else { throw AgentError.msg("the repository answered with an error") }
+        guard let http = resp as? HTTPURLResponse else { throw FontRepositoryError(status: nil, url: address, detail: "no answer") }
+        guard http.statusCode == 200 else { throw FontRepositoryError.judge(status: http.statusCode, headers: http.allHeaderFields, body: d, url: address) }
+        guard let a = try JSONSerialization.jsonObject(with: d) as? [[String: Any]] else { throw FontRepositoryError(status: 200, url: address, detail: "the answer was not a list of files (this folder may not exist)") }
         return a.compactMap { o in (o["name"] as? String).flatMap { n in (o["download_url"] as? String).map { RepoFile(name: n, size: o["size"] as? Int ?? 0, url: $0) } } }
     }
     public func download(_ file: RepoFile) async throws -> Data {
         guard let u = URL(string: file.url), u.host == "raw.githubusercontent.com" else { throw AgentError.msg("refused: a font only comes from the open font repository") }
         var r = URLRequest(url: u); r.setValue("showreel-studio-font-fetch", forHTTPHeaderField: "User-Agent"); r.timeoutInterval = 60
         let (d, resp) = try await URLSession.shared.data(for: r)
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw AgentError.msg("the repository answered with an error") }
+        guard let http = resp as? HTTPURLResponse else { throw FontRepositoryError(status: nil, url: file.url, detail: "no answer") }
+        guard http.statusCode == 200 else { throw FontRepositoryError.judge(status: http.statusCode, headers: http.allHeaderFields, body: d, url: file.url) }
         return d
     }
 }
@@ -263,7 +300,7 @@ public enum FontFiles {
         guard !roles.isEmpty else { throw AgentError.msg("\(f.name) is not chosen in the Look: choose it for the titles or the text first, then add its files") }
         if case .embedded = FontUse.state(f.name, store: store) { throw AgentError.msg("no change: \(f.name) already is embedded") }
         let listing: [RepoFile]
-        do { listing = try await source.listing(dir: f.dir) } catch { throw AgentError.msg("Could not reach the font repository (\(error.localizedDescription)). Nothing was added. " + manualWay(f)) }
+        do { listing = try await source.listing(dir: f.dir) } catch { throw FontLookupError(family: f.name, text: "Could not reach the font repository (\(error.localizedDescription)). Nothing was added. " + manualWay(f), retryable: true) }
         let chosen = choose(listing, weights: Array(Set(roles.map { $0.weight })).sorted())
         guard chosen.contains(where: { FontPayload.isFont($0.name) }) else { throw AgentError.msg("The repository has no file for the weights the Look uses (\(roles.map { "\($0.title.lowercased()) \($0.weight)" }.joined(separator: ", "))). " + manualWay(f)) }
         return FontOffer(family: f.name, dir: f.dir, files: chosen, card: card(f, files: chosen.map { ($0.name, $0.size) }))
@@ -273,7 +310,7 @@ public enum FontFiles {
     public static func fetch(_ offer: FontOffer, source: FontSource) async throws -> FontPayload {
         var out: [FontFile] = []
         do { for r in offer.files { out.append(FontFile(name: r.name, data: try await source.download(r))) } }
-        catch { throw AgentError.msg("The download failed (\(error.localizedDescription)). Nothing was added. " + ((try? listed(offer.family)).map { manualWay($0) } ?? "")) }
+        catch { throw FontLookupError(family: offer.family, text: "The download failed (\(error.localizedDescription)). Nothing was added. " + ((try? listed(offer.family)).map { manualWay($0) } ?? ""), retryable: true) }
         return FontPayload(family: offer.family, dir: offer.dir, files: out)
     }
 }
@@ -304,5 +341,80 @@ extension ProjectStore {
                                  licenceNote: "\(FontFiles.licence) (OFL.txt kept next to the files)", scene: "", notes: FontFiles.approvalNote))
         }
         try Assets.save(rows, self)
+    }
+}
+
+// MARK: the question before a build
+
+/// What happens when a Build or an Assemble starts and a font of the Look has no file: the app asks first. Nothing is downloaded without the yes.
+public struct FontsAtBuild: Sendable {
+    public enum Choice: String, Sendable { case download, systemFont, cancel }
+    public enum Action: Equatable, Sendable { case proceed, stop }
+
+    /// The fonts of the Look that have no file and can be fetched (they are in the skill's fixed list).
+    public let families: [String]
+    /// What the repository holds for them (names and sizes), when it could be asked.
+    public let offers: [FontOffer]
+    /// Why the repository could not be asked, when it could not: the card says so and the download is tried again at the yes.
+    public let lookupProblem: String?
+    public let card: OperationCard
+
+    public var totalBytes: Int { offers.reduce(0) { $0 + $1.files.reduce(0) { $0 + $1.size } } }
+
+    /// The Look fonts that need files and that the app can fetch. Empty when every font has its files (no question is asked).
+    public static func missing(_ store: ProjectStore) -> [String] {
+        guard let f = store.loadShowreel() else { return [] }
+        var out: [String] = []
+        for role in LookFontRole.allCases {
+            let family = role.key.current(f)
+            guard !family.isEmpty, !out.contains(family), (try? FontFiles.listed(family)) != nil else { continue }
+            if case .needsFiles = FontUse.state(family, store: store) { out.append(family) }
+        }
+        return out
+    }
+
+    /// The question, or nil when nothing is missing. It looks up names and sizes only.
+    public static func prepare(_ store: ProjectStore, source: FontSource) async -> FontsAtBuild? {
+        let families = missing(store)
+        guard !families.isEmpty else { return nil }
+        var offers: [FontOffer] = [], problem: String?
+        for fam in families {
+            do { offers.append(try await FontFiles.offer(fam, store: store, source: source)) }
+            catch { problem = error.localizedDescription; break }
+        }
+        let size = offers.reduce(0) { $0 + $1.files.reduce(0) { $0 + $1.size } }
+        let card = OperationCard(title: "Fonts without files: " + families.joined(separator: ", "), changes: [
+            Change("Fonts", "no file: the built reel would use a system font", families.joined(separator: ", ")),
+            Change("Source", "none", "the open Google Fonts repository (github.com/google/fonts, ofl/), from the skill's fixed list"),
+            Change("Licence", "not recorded", FontFiles.licence + "; the licence text is kept next to the files"),
+            Change("Size", "unknown", problem == nil ? FontUse.kb(size) + " in all" : "not known: the repository could not be asked (\(problem ?? "")). It is tried again if you download"),
+            Change("Download and continue", "nothing is downloaded", "the files are downloaded and approved for the reel, then the build starts"),
+            Change("Continue with a system font", "the Fonts step stays orange", "the build starts now with a system font, and the Fonts step says so"),
+        ])
+        return FontsAtBuild(families: families, offers: offers, lookupProblem: problem, card: card)
+    }
+
+    /// Carries out the choice: the journal records it; the download is the existing typed operation (one per font, undoable). Returns whether the build goes on.
+    /// A download that fails throws a `FontLookupError`: nothing was added and the build does not start.
+    public func resolve(_ choice: Choice, store: ProjectStore, source: FontSource) async throws -> Action {
+        let names = families.joined(separator: ", ")
+        switch choice {
+        case .cancel:
+            store.noteEvent(author: "user", op: "fonts", target: names, title: "Fonts at build: cancelled", before: "no file", after: "no file", note: "the build was not started")
+            return .stop
+        case .systemFont:
+            store.noteEvent(author: "user", op: "fonts", target: names, title: "Fonts at build: continue with a system font", before: "no file", after: "no file", note: "nothing was downloaded; the Fonts step says the reel uses a system font")
+            return .proceed
+        case .download:
+            var done: [String] = []
+            for fam in families {
+                let offer = try await FontFiles.offer(fam, store: store, source: source)          // fresh: the lookup may have failed when the card was made
+                let payload = try await FontFiles.fetch(offer, source: source)
+                try store.apply(.addFontFiles(payload), author: "user", reason: "approved through the fonts card at the start of a build")
+                done.append(fam)
+            }
+            store.noteEvent(author: "user", op: "fonts", target: names, title: "Fonts at build: download and continue", before: "no file", after: "files added: " + done.joined(separator: ", "), note: "approved through the card")
+            return .proceed
+        }
     }
 }

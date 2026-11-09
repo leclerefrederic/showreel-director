@@ -8,7 +8,8 @@ final class FakeFontSource: FontSource, @unchecked Sendable {
     var failListing = false, failDownload = false
     private(set) var listed = 0, downloaded: [String] = []
     init(files: [RepoFile], data: [String: Data]) { self.files = files; self.data = data }
-    func listing(dir: String) async throws -> [RepoFile] { listed += 1; if failListing { throw URLError(.notConnectedToInternet) }; return files }
+    var listingError: Error?
+    func listing(dir: String) async throws -> [RepoFile] { listed += 1; if let e = listingError { throw e }; if failListing { throw URLError(.notConnectedToInternet) }; return files }
     func download(_ file: RepoFile) async throws -> Data { if failDownload { throw URLError(.timedOut) }; downloaded.append(file.name); return data[file.name] ?? Data("x".utf8) }
 }
 
@@ -287,5 +288,72 @@ final class FontFilesTests: XCTestCase {
         let info = try XCTUnwrap(FontUse.info(row, store))
         XCTAssertEqual(info.family, "Fredoka"); XCTAssertNotNil(info.weightRange, "a variable font")
         guard case .embedded = FontUse.state("Fredoka", store: store) else { return XCTFail("embedded") }
+    }
+
+    // MARK: C1: what the failure says
+
+    func testAnAnswerOfTheRepositoryKeepsItsCodeAndAddress() {
+        let url = "https://api.github.com/repos/google/fonts/contents/ofl/poppins"
+        let e = FontRepositoryError.judge(status: 404, headers: [:], body: Data(#"{"message":"Not Found"}"#.utf8), url: url)
+        XCTAssertFalse(e.rateLimited); XCTAssertEqual(e.status, 404)
+        XCTAssertTrue(e.localizedDescription.contains("HTTP 404") && e.localizedDescription.contains(url) && e.localizedDescription.contains("Not Found"), e.localizedDescription)
+    }
+
+    func testACallLimitIsToldApartAndSaysWhatToDo() {
+        let url = "https://api.github.com/repos/google/fonts/contents/ofl/poppins"
+        for (status, headers, body) in [(403, ["x-ratelimit-remaining": "0"] as [AnyHashable: Any], "{}"), (403, [:], #"{"message":"API rate limit exceeded for 1.2.3.4"}"#), (429, [:], "")] {
+            let e = FontRepositoryError.judge(status: status, headers: headers, body: Data(body.utf8), url: url)
+            XCTAssertTrue(e.rateLimited)
+            XCTAssertTrue(e.localizedDescription.hasPrefix("The anonymous request limit of GitHub was reached; try again later or download the font by hand"), e.localizedDescription)
+            XCTAssertTrue(e.localizedDescription.contains("HTTP \(status)") && e.localizedDescription.contains(url))
+        }
+        XCTAssertFalse(FontRepositoryError.judge(status: 403, headers: ["x-ratelimit-remaining": "12"], body: Data("{}".utf8), url: url).rateLimited, "a refusal that is not about the limit")
+    }
+
+    func testTheCardsErrorNamesTheCodeTheLimitAndTheManualWay() async {
+        let src = repo(statics)
+        src.listingError = FontRepositoryError(status: 403, url: "https://api.github.com/x", rateLimited: true)
+        do { _ = try await FontFiles.offer("Fredoka", store: store, source: src); XCTFail("refused") }
+        catch let e as FontLookupError {
+            XCTAssertTrue(e.retryable && e.family == "Fredoka")
+            XCTAssertTrue(e.text.contains("anonymous request limit") && e.text.contains("HTTP 403") && e.text.contains("https://fonts.google.com/specimen/Fredoka") && e.text.contains("Nothing was added"), e.text)
+        } catch { XCTFail("\(error)") }
+        XCTAssertTrue(src.downloaded.isEmpty)
+    }
+
+    /// Only with SHOWREEL_NETWORK_TESTS=1: every folder of fonts-free.json exists in the repository with a .ttf and the licence. The anonymous limit is 60 calls an hour
+    /// and the list has more fonts: when it is reached the test says which fonts were not checked and stops, it does not fail on them.
+    func testEveryFolderOfTheFreeListExistsWhenAsked() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SHOWREEL_NETWORK_TESTS"] == "1", "set SHOWREEL_NETWORK_TESTS=1 to try the real repository")
+        let src = GoogleFontsSource()
+        var wrong: [String] = [], unchecked: [String] = []
+        let all = Look.freeFonts()
+        for (n, f) in all.enumerated() {
+            do {
+                let files = try await src.listing(dir: f.dir)
+                if !files.contains(where: { $0.name.lowercased().hasSuffix(".ttf") }) { wrong.append("\(f.name): no .ttf in ofl/\(f.dir)") }
+                if !files.contains(where: { $0.name == "OFL.txt" }) { wrong.append("\(f.name): no OFL.txt in ofl/\(f.dir)") }
+            } catch let e as FontRepositoryError where e.rateLimited { unchecked = all[n...].map { $0.name }; break }
+            catch let e as FontRepositoryError where e.status == 404 { wrong.append("\(f.name): the folder ofl/\(f.dir) does not exist") }
+        }
+        print("fonts-free.json: \(all.count - unchecked.count) checked, \(unchecked.count) not checked (call limit)", unchecked.joined(separator: ", "))
+        XCTAssertTrue(wrong.isEmpty, wrong.joined(separator: "\n"))
+    }
+
+    func testTheRealDownloadOfAntonAndPoppinsWhenAsked() async throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SHOWREEL_NETWORK_TESTS"] == "1", "set SHOWREEL_NETWORK_TESTS=1 to try the real repository")
+        for (family, role) in [("Anton", DecisionKey.titleFont), ("Poppins", DecisionKey.textFont)] {
+            try store.apply(.decisions([DecisionChange(role, family)], title: nil))
+            do {
+                let o = try await FontFiles.offer(family, store: store, source: GoogleFontsSource())
+                let p = try await FontFiles.fetch(o, source: GoogleFontsSource())
+                XCTAssertFalse(p.fontFiles.isEmpty, family)
+                print("\(family): \(p.files.map { $0.name }.joined(separator: ", "))")
+            } catch let e as FontLookupError {
+                print("\(family): \(e.text)")
+                if e.text.contains("anonymous request limit") { throw XCTSkip("the call limit was reached: \(e.text)") }
+                XCTFail("\(family): \(e.text)")
+            }
+        }
     }
 }

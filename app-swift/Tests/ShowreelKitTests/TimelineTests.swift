@@ -110,17 +110,17 @@ final class TimelineTests: XCTestCase {
         XCTAssertEqual(m(120, true), .idAndName); XCTAssertEqual(m(400, false), .id, "no name, nothing to add"); XCTAssertEqual(m(22, false), .shortID)
         XCTAssertEqual(FrameLayout.fontSize, 11, "nothing under 11 pt")
         let wide = FrameLayout.elements(width: 300, height: 120, hasName: true, idLength: 3, nameLength: 12)
-        XCTAssertNotNil(wide.label); XCTAssertNotNil(wide.pill); XCTAssertNotNil(wide.status); XCTAssertNotNil(wide.eye)
+        XCTAssertNotNil(wide.label); XCTAssertNotNil(wide.pill); XCTAssertNotNil(wide.status)
         let narrow = FrameLayout.elements(width: 40, height: 120, hasName: true)
         XCTAssertNil(narrow.pill, "the duration pill needs width"); XCTAssertNil(narrow.status); XCTAssertNotNil(narrow.label)
         XCTAssertNil(FrameLayout.elements(width: 300, height: 40, hasName: false).pill, "nor does it fit a low frame")
     }
 
-    func testThumbnailsKeepTheirShapeAndRepeatAcrossALongFrame() {
+    func testAFrameWithOneStillShowsOneThumbnailAtItsShape() {
         let e = FrameLayout.elements(width: 640, height: 90, hasName: false)
-        XCTAssertEqual(e.thumbWidth, 160, accuracy: 1e-9, "16:9 at the lane's height"); XCTAssertEqual(e.thumbTiles, 4)
-        XCTAssertEqual(FrameLayout.elements(width: 100, height: 90, hasName: false).thumbTiles, 1, "a frame narrower than one thumbnail crops it")
-        XCTAssertEqual(FrameLayout.elements(width: 100000, height: 90, hasName: false).thumbTiles, 10, "capped")
+        XCTAssertEqual(e.thumbWidth, 160, accuracy: 1e-9, "16:9 at the lane's height"); XCTAssertEqual(e.thumbTiles, 1, "a long frame does not repeat the same still (S04)")
+        XCTAssertEqual(FrameLayout.elements(width: 100, height: 90, hasName: false).thumbTiles, 1)
+        XCTAssertEqual(FrameLayout.elements(width: 100000, height: 90, hasName: false).thumbTiles, 1, "never repeated")
         XCTAssertEqual(FrameLayout.elements(width: 100, height: 200, hasName: false).thumbWidth, 200 * 16 / 9, accuracy: 1e-9, "taller frames, bigger thumbnails")
     }
 
@@ -136,8 +136,8 @@ final class TimelineTests: XCTestCase {
                     let marker = MarkerLayout.place(cutX: 500, prevWidth: w, nextWidth: w, sizes: sizes)
                     guard marker.visible else { continue }
                     // the next frame starts at the cut; the previous one ends there
-                    let nextRects = [next.label, next.pill, next.status, next.eye].compactMap { $0 }.map { $0.offsetBy(dx: 500, dy: 0) }
-                    let prevRects = [prev.label, prev.pill, prev.status, prev.eye].compactMap { $0 }.map { $0.offsetBy(dx: 500 - w, dy: 0) }
+                    let nextRects = [next.label, next.pill, next.status].compactMap { $0 }.map { $0.offsetBy(dx: 500, dy: 0) }
+                    let prevRects = [prev.label, prev.pill, prev.status].compactMap { $0 }.map { $0.offsetBy(dx: 500 - w, dy: 0) }
                     for r in nextRects + prevRects { XCTAssertFalse(marker.rect.intersects(r), "panel \(panel), width \(w): marker \(marker.rect) covers \(r)") }
                 }
             }

@@ -162,12 +162,23 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !running else { return }
-        guard let key = settings.apiKey() else { notice("Connect an AI to talk to Clap. Everything else works without one."); return }
+        guard settings.hasKey else { notice("Connect an AI to talk to Clap. Everything else works without one."); return }       // the draft is kept
         draft = ""
+        dispatch(text, origin: nil, status: nil)
+    }
+
+    /// Sends a message to the model. An app instruction (`origin` "app") goes to the model and into the transcript like any message, but the conversation shows only
+    /// its neutral `status` line, never its text.
+    private func dispatch(_ text: String, origin: String?, status: String?) {
+        guard let key = settings.apiKey() else { notice("Connect an AI to talk to Clap. Everything else works without one."); return }
         if sessionEnded { history.startNewSession(); records = []; sessionEnded = false; project.store.sessionID = history.sessionID }      // after a long pause: a new session
         lastActivity = Date()
-        items.append(ChatItem(kind: .user, text: text))
-        remember(ChatRecord(role: "user", text: text))
+        let record = ChatRecord(role: "user", text: text, origin: origin, status: status)
+        switch ChatDisplay.line(for: record) {
+        case .bubble: items.append(ChatItem(kind: .user, text: text))
+        case .status(let t): items.append(ChatItem(kind: .notice, text: t))
+        }
+        remember(record)
         assistantIdx = nil; stepsIdx = nil
         running = true; scrollTick += 1
         stopping = false; failure = nil; lastEnd = nil
@@ -202,12 +213,11 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     /// Sends a message on the user's behalf (the wizard's "Suggest with AI"). The copilot answers with a card to accept or refuse.
     @discardableResult
-    func ask(prompt: String, onDone: (() -> Void)? = nil) -> Bool {
+    func ask(prompt: String, status: String = "Request sent to Clap", onDone: (() -> Void)? = nil) -> Bool {
         guard !running else { notice("Clap is busy: wait for it to finish."); return false }
         guard settings.hasKey else { notice("Connect an AI to talk to Clap. Everything else works without one."); return false }
-        draft = prompt
         self.onDone = onDone
-        send()
+        dispatch(prompt.trimmingCharacters(in: .whitespacesAndNewlines), origin: ChatRecord.appOrigin, status: status)
         return running
     }
 

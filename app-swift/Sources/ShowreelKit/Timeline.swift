@@ -117,8 +117,7 @@ public struct FrameElements: Equatable, Sendable {
     public let label: CGRect?
     public let pill: CGRect?              // the duration
     public let status: CGRect?            // the review state
-    public let eye: CGRect?               // switch off
-    /// How many thumbnails are laid side by side, each at the 16:9 shape of the lane's height (1: one thumbnail, cropped to the frame).
+    /// How many thumbnails are laid side by side, each at the 16:9 shape of the lane's height. Always 1 while a scene has a single still: real frames at different times (phase W4) will make more.
     public let thumbTiles: Int
     public let thumbWidth: Double
 }
@@ -144,10 +143,9 @@ public enum FrameLayout {
         }
         let pill = width >= 54 && height >= 50 ? CGRect(x: 4, y: height - 22, width: 46, height: 18) : nil
         let status = width >= 70 ? CGRect(x: width - 22, y: 4, width: 18, height: 18) : nil
-        let eye = width >= 110 && height >= 60 ? CGRect(x: width - 44, y: 4, width: 18, height: 18) : nil
+        // a scene has one still: one thumbnail, never repeated, until real frames at different times exist (phase W4)
         let tw = max(height, 1) * 16 / 9
-        let tiles = min(max(Int((width / tw).rounded(.up)), 1), 10)
-        return FrameElements(mode: m, label: label, pill: pill, status: status, eye: eye, thumbTiles: tiles, thumbWidth: tw)
+        return FrameElements(mode: m, label: label, pill: pill, status: status, thumbTiles: 1, thumbWidth: tw)
     }
 }
 

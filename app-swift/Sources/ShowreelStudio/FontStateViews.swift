@@ -45,3 +45,24 @@ struct FontOfferSheet: View {
         .padding(20).frame(width: 520)
     }
 }
+
+/// The question before a build when a font of the Look has no file: nothing is downloaded until "Download and continue".
+struct FontsAtBuildSheet: View {
+    let pending: PendingFontsAtBuild
+    @EnvironmentObject var project: ProjectModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(pending.question.card.title, systemImage: "textformat").font(.headline)
+            Text("These fonts have no file in the project, so the built reel would use a system font. It looks different and can vary between computers.").font(.callout).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) { ForEach(Array(pending.question.card.changes.prefix(4).enumerated()), id: \.offset) { _, c in ChangeRow(change: c) } }
+            HStack {
+                Button("Cancel", role: .cancel) { project.answerFonts(.cancel) }.keyboardShortcut(.cancelAction).help("Nothing is downloaded and the build does not start")
+                Spacer()
+                Button("Continue with a system font") { project.answerFonts(.systemFont) }.help("The build starts now; the Fonts step stays orange and says so")
+                Button("Download and continue") { project.answerFonts(.download) }.buttonStyle(.borderedProminent).help("Downloads the files, approves them for the reel, then starts")
+            }
+        }
+        .padding(20).frame(width: 560)
+    }
+}

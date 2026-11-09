@@ -33,9 +33,11 @@ final class DragState: ObservableObject {
     var onRefused: ((String) -> Void)?
     private var timer: Timer?
     private var idle = 0
+    /// The last item and target the pointer was valid on: the release uses it when the pointer cannot be resolved again at that instant.
+    var lastValid: (item: DragItem, target: DropTarget)?
 
     func begin(_ i: DragItem) {
-        verdicts = [:]; refusal = nil
+        verdicts = [:]; refusal = nil; lastValid = nil
         item = i; hover = nil
         idle = 0
         timer?.invalidate()
@@ -242,6 +244,7 @@ struct WorkspaceDropDelegate: DropDelegate {
         guard let target = t else { dnd.refusal = nil; return nil }
         let v = project.verdict(item, target)
         dnd.refusal = v.isValid ? nil : v.text
+        if v.isValid { dnd.lastValid = (item, target) }
         return (item, target, v)
     }
 
@@ -255,8 +258,31 @@ struct WorkspaceDropDelegate: DropDelegate {
         return DropProposal(operation: .move)
     }
 
+    /// The item of a drag from one of the app's own lists when the drag state was lost: its token travels as plain text.
+    private func recovered(_ info: DropInfo, then use: @escaping (DragItem) -> Void) -> Bool {
+        guard let p = info.itemProviders(for: [.plainText]).first else { return false }
+        _ = p.loadObject(ofClass: NSString.self) { s, _ in
+            let item = (s as? String).flatMap { DragItem(token: $0) }
+            DispatchQueue.main.async { if let i = item { use(i) } else { project.showToast("This could not be dropped: the dragged item was not recognised.", error: true) } }
+        }
+        return true
+    }
+
     func performDrop(info: DropInfo) -> Bool {
-        guard let r = sync(info), r.verdict.isValid else { dnd.end(); return false }
+        var landed = sync(info)
+        // the pointer could not be resolved again at the release (or the drag state was lost): use where it last was valid, never fail silently
+        if landed == nil, let last = dnd.lastValid {
+            let v = project.verdict(last.item, last.target)
+            if v.isValid { landed = (last.item, last.target, v) }
+        }
+        if landed == nil, dnd.item == nil { return recovered(info) { item in
+            if let t = project.dnd.regs.first(where: { $0.frame.contains(info.location) }).flatMap({ r -> DropTarget? in if case .target(let t) = r.kind { return t }; return nil }) { project.performDrop(item, on: t) }
+            else { project.showToast("Nothing here takes this: drop it on a scene.", error: true) }
+        } }
+        guard let r = landed, r.verdict.isValid else {
+            if landed == nil { project.showToast("Nothing here takes this: drop it on a scene, a frame of the reel or in the scene's tree.", error: true) }
+            dnd.end(); return false
+        }
         let project = self.project
         if case .files = r.item {
             let providers = info.itemProviders(for: [.fileURL])

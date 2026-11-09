@@ -71,7 +71,7 @@ public enum Wizard {
             p(.tone, "How should the film feel and sound?",
               .single(.tone, options: ["warm", "sober", "playful", "premium", "bold", "human"].map { .init($0, $0.capitalized) }, recommended: nil, custom: true)),
             p(.duration, "How long should the film be?",
-              .number(.duration, presets: [.init("30", "Short teaser", "about 30 s"), .init("60", "Mid-length", "about 60 s"), .init("90", "Long", "about 90 s")])),
+              .number(.duration, presets: ProjectSetup.durationChoices.map { .init(String($0), "\($0) s") })),
             p(.formats, "Which formats do you need?",
               .multi(.formats, options: [.init("16:9", "Desktop 16:9", "big screen, laptop"), .init("9:16", "Mobile 9:16", "phone feed; changes the layout"),
                                          .init("1:1", "Square 1:1"), .init("4:5", "Portrait 4:5")], recommended: ["16:9"])),
@@ -222,7 +222,7 @@ public enum WizardInterview {
             ["header": headers[0], "question": "Which language do we talk in?", "multiSelect": false, "options": langs],
             ["header": headers[1], "question": "Which language is the film in? Pick several to offer a switch; the first is the master text.", "multiSelect": true, "options": langs],
             ["header": headers[2], "question": "Which formats?", "multiSelect": true, "options": [option("Desktop 16:9", "Landscape, for screens"), option("Mobile 9:16", "Portrait, for phones: it changes the layout design")]],
-            ["header": headers[3], "question": "How long should the film be?", "multiSelect": false, "options": [option("15 s"), option("30 s"), option("45 s"), option("60 s")]],
+            ["header": headers[3], "question": "How long should the film be?", "multiSelect": false, "options": ProjectSetup.durationChoices.map { option("\($0) s") }],
             ["header": headers[4], "question": "Optional: who is it for, what should they remember, and in what tone? Skip it if you prefer; you can say it in your own words.", "multiSelect": false, "options": [option("Skip", "Decide later in the project settings")]],
         ]
     }

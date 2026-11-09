@@ -143,9 +143,12 @@ struct MemoryRow: View {
 struct SessionsList: View {
     @EnvironmentObject var project: ProjectModel
     @State private var open: String?
+    @State private var showApp = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Toggle("Show the app's instructions", isOn: $showApp).toggleStyle(.checkbox).font(.callout)
+                .help("The app sends Clap instructions of its own (the start of the wizard, a build request). They are kept in the transcript and hidden here by default.")
             if project.sessionRows.isEmpty { Text("No session yet.").font(.callout).foregroundStyle(.secondary) }
             ForEach(project.sessionRows) { s in
                 VStack(alignment: .leading, spacing: 4) {
@@ -159,9 +162,9 @@ struct SessionsList: View {
                     if s.messages > 0 {
                         DisclosureGroup("Transcript", isExpanded: Binding(get: { open == s.id }, set: { open = $0 ? s.id : nil })) {
                             VStack(alignment: .leading, spacing: 6) {
-                                ForEach(Array(project.transcript(of: s.id).enumerated()), id: \.offset) { _, r in
+                                ForEach(Array(ChatDisplay.transcript(project.transcript(of: s.id), showAppInstructions: showApp).enumerated()), id: \.offset) { _, r in
                                     VStack(alignment: .leading, spacing: 1) {
-                                        Text(r.role == "user" ? "You" : "Clap").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                                        Text(r.fromApp ? "The app (to Clap)" : r.role == "user" ? "You" : "Clap").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
                                         Text(r.text).font(.callout).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                                     }
                                 }

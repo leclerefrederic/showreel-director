@@ -349,6 +349,7 @@ struct FrameView: View {
     let height: CGFloat
     @EnvironmentObject var project: ProjectModel
     @State private var hovering = false
+    @FocusState private var focused: Bool
     @State private var dragging: (edge: Int, dx: CGFloat)?
 
     private var scene: ShowreelFile.Scene { timed.scene }
@@ -365,11 +366,6 @@ struct FrameView: View {
                     .background(.black.opacity(0.6), in: Capsule()).offset(x: r.minX, y: r.minY)
             }
             BlockMarker(ref: .scene(scene.id)).padding(4).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            if let r = e.eye {
-                Button { project.setEnabled(scene.id, false) } label: { Image(systemName: "eye.slash").font(.system(size: 11)).frame(width: r.width, height: r.height) }
-                    .buttonStyle(.plain).foregroundStyle(.white).background(.black.opacity(0.6), in: Circle()).offset(x: r.minX, y: r.minY)
-                    .help("Switch off: the scene stays in the library")
-            }
             if let r = e.pill {
                 Text(timed.length.map { ProjectDocs.seconds($0) + " s" } ?? "no length").font(.system(size: StripColor.font, weight: .medium).monospacedDigit()).foregroundStyle(.white).lineLimit(1)
                     .frame(width: r.width, height: r.height).background(.black.opacity(0.7), in: Capsule()).offset(x: r.minX, y: r.minY)
@@ -392,20 +388,22 @@ struct FrameView: View {
         .onHover { hovering = $0 }
         .animation(Motion.quick, value: hovering)
         .animation(Motion.quick, value: selected)
-        .onTapGesture { project.select(.scene(scene.id)); if let s = timed.start { project.playhead = s } }
+        .onTapGesture { project.select(.scene(scene.id)); if let s = timed.start { project.playhead = s }; focused = true }
+        .focusable().focused($focused).quietFocus()
+        .onDeleteCommand { project.setEnabled(scene.id, false) }          // the Delete key takes the selected frame out of the film (it stays as a chip under the strip)
         .dragSource(.scene(scene.id), label: scene.label, icon: "film")
         .dropTarget(.scene(scene.id))       // a resource, a background or a look dropped on a frame goes to that scene
         .contextMenu {
             Button("Rename") { project.beginRename(scene.id) }
             Button("Duplicate") { project.duplicateScene(scene.id) }
-            Button("Switch off") { project.setEnabled(scene.id, false) }
+            Button("Remove from film") { project.setEnabled(scene.id, false) }.help("The scene stays in the library and under the strip as a dimmed chip")
             Divider()
             Button("Archive", role: .destructive) { project.archiveScene(scene.id) }
         }
         .help(scene.label)
     }
 
-    /// Thumbnails at the shape of 16:9 and the height of the lane, side by side when the frame is longer than one; one, cropped, when it is shorter.
+    /// One thumbnail, as long as a scene has a single still: repeated tiles come only with real frames at different times (phase W4). Tiles fill the frame's width.
     private func thumbs(_ e: FrameElements) -> some View {
         HStack(spacing: 0) {
             ForEach(0..<e.thumbTiles, id: \.self) { _ in
@@ -592,5 +590,13 @@ struct OffRow: View {
         }
         .padding(.horizontal, 12)
         .background(StripColor.ruler)
+    }
+}
+
+
+extension View {
+    /// No focus ring on a view that is focusable only to receive the Delete key.
+    @ViewBuilder func quietFocus() -> some View {
+        if #available(macOS 14.0, *) { focusEffectDisabled() } else { self }
     }
 }
