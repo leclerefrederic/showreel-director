@@ -11,6 +11,8 @@ final class ScriptedUI: AgentUI, @unchecked Sendable {
     private(set) var cards: [OperationCard] = []
     private let cardLock = NSLock()
     private(set) var openedBlocks: [String] = []
+    private(set) var progressSeen: [(turns: Int, tokens: Int)] = []
+    func progress(turns: Int, outputTokens: Int) { progressSeen.append((turns, outputTokens)) }
     var block: String? = "project"
     /// Called when a proposal is shown, before the answer: lets a test change the file in between.
     var beforeAnswer: (() -> Void)?

@@ -2,6 +2,38 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.10.0 - 2026-11-09
+
+**What's new**
+- **"Build a new version" writes the film one scene at a time.** It used to ask Clap for all the scenes in one answer: minutes of silence, everything lost on a cut. Now one request writes the frame of the film (project.json, reel.js), then one request writes each scene, each file saved the moment it is written, then the app assembles, builds and tests the film with no AI. A confirmation card first says how many requests, which files, and a rough cost. Locked scenes keep their file from the earlier version, with no request.
+- **Each request is given what it needs**: the scene file's contract and the engine's helpers (read from the skill, so they cannot drift), the scene's content and look, the music under it, its neighbours and transitions, and a short summary of the scenes already written. Clap rarely has to read the engine again.
+- **A panel that tells the truth.** "Scene 4 of 15", one line per step (waiting, writing, done, failed) with its tokens and time, the total, and what Clap is doing: Reading, Preparing (nothing received yet) or Writing. The token count includes the scripts Clap writes as tool arguments.
+- **No more silent hangs.** If the API sends nothing for 90 seconds (Settings, Advanced, "No-answer timeout"), the request is cut and the message says "No answer from the API for 90 s" with the scene.
+- **A Build that stops can continue.** After Cancel, an error or a timeout, the scenes already written stay. The button says "Continue", picks up at the first missing scene, and the alert offers "Try again" or "Continue the build" (leaves the failed scene as an empty frame). "Start over" asks first.
+- "Generate" shows the same per-scene states.
+
+**Changed**
+- Clap no longer receives one big build message in the chat: the app runs the requests itself and says in the chat that the Build started and, if it stops, why.
+
+**What you need to do**
+- Nothing. Give the Go and press the Build button; the card shows the cost first.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.1. macOS 13 or later.
+
+## 0.9.3 - 2026-11-09
+
+**Changed**
+- **No limit on Clap while the app is a prototype.** Clap's answers, in the chat, in a Build and in "Generate", now use the most the model accepts (128 000 output tokens for the default model) instead of 8 000, and the steps of a request are bounded only by a guard of 1 000 against a loop. The size that grew with the scenes in 0.9.2 is gone: one behaviour everywhere. If a model you chose allows less, the API says how much and the app asks again once with that value; if the API still refuses, the message names the error and the value asked.
+- **The Build panel shows what the request costs as it runs**: "Step 7, about 12 400 output tokens", updated while Clap writes (an estimate between the API's exact figures). **Cancel build** stays, and is now the way to stop a loop: a Build that loops costs until you cancel it.
+- If an answer is still cut by the model's maximum, the message says so, with the number, and offers "Generate the scenes one by one".
+
+**What you need to do**
+- Watch the counter on a long Build, and cancel if it climbs without scenes appearing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.1. macOS 13 or later.
+
 ## 0.9.2 - 2026-11-09
 
 **Fixed**

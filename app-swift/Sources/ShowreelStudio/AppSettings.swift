@@ -19,6 +19,11 @@ final class AppSettings: ObservableObject {
     var modelName: String { defaults.string(forKey: "model") ?? "claude-sonnet-5-5" }
     var baseURL: String { defaults.string(forKey: "baseURL") ?? ProcessInfo.processInfo.environment["ANTHROPIC_BASE_URL"] ?? "" }
     var bearer: Bool { defaults.bool(forKey: "bearer") }
+    /// Seconds without a byte from the API before a request is cut (advanced setting; the default is `AgentLimits.idleTimeout`).
+    var idleTimeout: Double {
+        get { let v = defaults.double(forKey: "idleTimeout"); return v >= 5 ? v : AgentLimits.idleTimeout }
+        set { objectWillChange.send(); defaults.set(max(5, newValue), forKey: "idleTimeout") }
+    }
 
     init() { hasKey = keyExists() }
 

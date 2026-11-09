@@ -220,7 +220,7 @@ final class ProjectModel: ObservableObject {
     @Published private(set) var activity = ProjectActivity.Snapshot()
     /// Elements that just changed: lit for a second.
     @Published var flashed: Set<ElementRef> = []
-    var buildCancelled = false
+    var buildTask: Task<Void, Never>?
     /// The state of the film and of each scene, from fingerprints (ShowreelKit's `FilmBuild`): recomputed whenever the project is read again.
     @Published private(set) var film = FilmBuild.Status.empty
     @Published var assembling = false
@@ -231,6 +231,8 @@ final class ProjectModel: ObservableObject {
     @Published var fontFailure: FontFailure?
     /// Why a Build ended without writing its version, with the way on.
     @Published var buildFailure: BuildFailureAlert?
+    /// The card of the Build, waiting for the yes.
+    @Published var buildOffer: PendingBuild?
     @Published var fontsAtBuild: PendingFontsAtBuild?
     var checkingFonts = false
     /// The folded groups of the Resources list (remembered per project), the tag the list is filtered by, and a tag being renamed.
@@ -364,8 +366,8 @@ final class ProjectModel: ObservableObject {
     var buildBusy: Bool { generating || testing }
     private var testTask: Task<Void, Never>?
 
-    /// Cancel build: the writing stops at once (the request in flight is cancelled), what was written stays in its version folder and is not built, and the film stays at its
-    /// last working version. While the testing runs it is dropped: nothing is lost, it can be run again.
+    /// Cancel build: the request in flight is cancelled at once, the files already written stay in their version folder (the Build can be continued from the Build tab), and the
+    /// film stays at its last working version. While the testing runs it is dropped: nothing is lost, it can be run again.
     func cancelBuild() {
         guard let b = store.activity.snapshot.build else { return }
         if genTask != nil {                                  // a generation of some scenes: its request is cancelled, nothing is written
@@ -379,50 +381,78 @@ final class ProjectModel: ObservableObject {
             showToast("The test of \(b.version) was cancelled. Nothing was lost: use Test it again to run it.")
             return
         }
-        buildCancelled = true
+        buildTask?.cancel()
         store.activity.update { $0.build?.phase = .cancelling }
-        chat?.stop()
     }
 
-    /// The Go is given and nothing is running: the copilot may write the next version. Needs a key (this is the one step that does).
-    func startBuild(with chat: ChatModel, oneByOne: Bool = false) {
+    /// The Go is given and nothing is running: the card says what will be asked (the calls, a rough cost), and only a yes starts the Build. A Build that stopped is offered to
+    /// continue. Needs a key (this is the one step that does).
+    func startBuild(with chat: ChatModel) {
         guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it from the toolbar once every scene is OK."; return }
         guard !buildBusy else { return }
-        askAboutFonts { [weak self] in self?.beginBuild(with: chat, oneByOne: oneByOne) }
+        self.chat = chat
+        askAboutFonts { [weak self] in self?.offerBuild() }
     }
 
-    private func beginBuild(with chat: ChatModel, oneByOne: Bool) {
-        guard !buildBusy else { return }
-        let v = Versions.next(store)
+    /// The card of the Build: the version to continue when one stopped, else the next one.
+    private func offerBuild() {
+        guard let skill = Skill.root() else { error = "The skill folder was not found."; return }
+        let resuming = BuildJob.pending(store)
+        let v = resuming ?? Versions.next(store)
+        let plan = BuildJob.plan(version: v, store: store)
+        buildOffer = PendingBuild(version: v, plan: plan, card: BuildJob.card(plan, store: store, skill: skill, resuming: resuming != nil), resuming: resuming != nil)
+    }
+
+    /// The user said no to "Start over" is the default; yes removes what the stopped Build wrote in its version (film.json stays) and offers the Build again.
+    func startOverBuild() {
+        guard let o = buildOffer, o.resuming else { return }
+        BuildJob.startOver(version: o.version, store: store)
+        refresh(); reloadTree()
+        offerBuild()
+    }
+
+    /// Yes on the card: the files are written one request at a time, then the film is assembled, built and tested by the app with no AI.
+    func confirmBuild() { guard let o = buildOffer else { return }; buildOffer = nil; runBuild(o.version, skip: []) }
+
+    /// Continue after a stop: from the first scene missing. `skip` leaves aside a scene that failed (it stays a placeholder frame until it is generated).
+    func resumeBuild(skip: Set<String> = []) {
+        guard !buildBusy, let v = BuildJob.pending(store) else { return }
+        runBuild(v, skip: skip)
+    }
+
+    private func runBuild(_ v: String, skip: Set<String>) {
+        guard let skill = Skill.root(), let key = AppSettings.shared.apiKey() else { error = "Connect an AI first (Settings, Command-,)."; return }
         do { try Film.write(version: v, store: store) } catch { self.error = "Could not write \(v)/film.json: \(error.localizedDescription)"; return }   // the exact montage, for the build to read
-        buildVersion = v
-        generating = true
-        buildReport = nil
-        buildCancelled = false; self.chat = chat
+        let s = AppSettings.shared
+        let transport = AnthropicTransport(apiKey: key, model: s.modelName, baseURL: s.baseURL, bearer: s.bearer)
+        transport.idleTimeout = s.idleTimeout
+        buildVersion = v; generating = true; buildReport = nil
         store.activity.update { $0.build = .init(version: v, phase: .generating) }          // from here every change is refused, with its reason, until the end
-        let sent = chat.ask(prompt: BuildRunner.prompt(version: v, store: store, oneByOne: oneByOne), status: oneByOne ? "Build requested, one file per answer" : "Build requested", budget: BuildRunner.budget(store: store)) { [weak self] in self?.finishGeneration(v) }
-        if !sent { generating = false; store.activity.update { $0.build = nil } } else { inspectorTab = .copilot; centerMode = .build }       // the user sees what the copilot does
+        inspectorTab = .copilot; centerMode = .build
+        chat?.report("Build \(v): one request for the frame of the film, one for each scene, then the app assembles and tests it.")
+        buildTask = Task { @MainActor in
+            let outcome = await BuildJob.run(version: v, store: store, skill: skill, transport: transport, skip: skip)
+            buildTask = nil
+            finishJob(outcome, v)
+        }
     }
 
-    private func finishGeneration(_ v: String) {
+    private func finishJob(_ outcome: JobOutcome, _ v: String) {
         generating = false
         let kept = BuildProgress.lastWorking(store).map { "the film stays at \($0)" } ?? "the film has no working version yet"
-        if buildCancelled || chat?.stoppedByUser == true {
-            buildCancelled = false
+        switch outcome {
+        case .cancelled(let n):
             store.activity.update { $0.build = nil }
-            showToast("Build cancelled. What Clap wrote stays in \(v), not built; \(kept).", undoable: false)
-            refresh(); reloadTree(); return
+            showToast("Build cancelled. The \(n) scene\(n == 1 ? "" : "s") written stay in \(v), not built; \(kept). Continue it from the Build tab.", undoable: false)
+            refresh(); reloadTree()
+        case .stopped(let stop):
+            store.activity.update { $0.build = nil }
+            chat?.report(stop.message)
+            buildFailure = BuildFailureAlert(message: stop.message + " \(kept.prefix(1).uppercased() + kept.dropFirst()).", step: stop.step)
+            refresh(); reloadTree()
+        case .completed:
+            runChecks(v)
         }
-        guard Versions.list(store).contains(v) else {
-            // the cause is said in the chat, in the alert and in the journal; nothing stays frozen and an empty stub folder is removed
-            let why = BuildStop.conclude(version: v, store: store, stop: chat?.lastStop ?? .finished, failure: chat?.failure)
-            chat?.report(why.message)
-            buildFailure = BuildFailureAlert(message: why.message, remedy: why.remedy)
-            refresh(); reloadTree(); return
-        }
-        // what each scene file was generated from, so that a later change can tell which scenes are stale (nothing shows it yet)
-        try? SceneModules.recordGeneration(version: v, store: store)
-        runChecks(v)
     }
 
     /// Builds the version with the skill's scripts and tests it. No AI: usable on a version that already exists.
@@ -434,6 +464,7 @@ final class ProjectModel: ObservableObject {
             let report = await BuildRunner.run(version: v, store: store, skill: skill)
             guard !Task.isCancelled, store.activity.snapshot.build?.phase == .testing else { return }          // cancelled: the user was told, nothing more happens
             try? store.record(report)
+            BuildJob.finish(store)                                                                    // assembled and tested: nothing is left to continue
             buildReport = report
             testing = false
             store.activity.update { $0.build = nil }                                                      // success or problems, the project is editable again
@@ -1364,7 +1395,15 @@ extension ProjectModel {
 
 /// A font lookup or download that failed, shown with Try again.
 struct BuildFailureAlert: Identifiable {
-    let id = UUID(); let message: String; let remedy: BuildFailure.Remedy
+    let id = UUID(); let message: String
+    /// The step that failed: a scene ID, or "reel" (the film's frame, which cannot be left aside).
+    let step: String
+    var canSkip: Bool { step != BuildJob.frameStep }
+}
+
+/// The card of a Build before the yes: the version, what it will write and ask, and whether it continues one that stopped.
+struct PendingBuild: Identifiable {
+    let id = UUID(); let version: String; let plan: BuildJob.Plan; let card: OperationCard; let resuming: Bool
 }
 
 struct FontFailure: Identifiable {

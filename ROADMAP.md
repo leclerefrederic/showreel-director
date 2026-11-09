@@ -37,6 +37,7 @@
 - The decision sheet embeds one font only.
 - Look board and font picker previews show titles at regular weight only.
 - The 3D layer is not verified by the test host (no WebGL in Node): a film with 3D scenes is judged in the player, and the app has no MP4 export for it.
+- No ceiling on the agent: a Build that loops costs until Cancel build (the output is the model's maximum, the steps are guarded at 1 000).
 - An MP4 bakes the beat reaction in; a muted version needs its own export (`--silent`).
 - Text measurement is an estimate without the `@napi-rs/canvas` package.
 - Lab category tabs, counter and GIF tooltip are not translatable.

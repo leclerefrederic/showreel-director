@@ -12,13 +12,14 @@ public final class Agent {
 
     /// `transport` defaults to the real API; `history` seeds the conversation (a previous session of the project).
     public init(apiKey: String, model: String, baseURL: String = "", bearer: Bool = false, project: URL, ui: AgentUI,
-                transport: MessagesTransport? = nil, history: [[String: Any]] = []) throws {
+                transport: MessagesTransport? = nil, history: [[String: Any]] = [], idleTimeout: TimeInterval = AgentLimits.idleTimeout) throws {
         let sp = try Skill.systemPrompt(project: project, lang: nil)
-        self.transport = transport ?? AnthropicTransport(apiKey: apiKey, model: model, baseURL: baseURL, bearer: bearer)
+        let t = transport ?? { let a = AnthropicTransport(apiKey: apiKey, model: model, baseURL: baseURL, bearer: bearer); a.idleTimeout = idleTimeout; return a }()
+        self.transport = t
         self.messages = history
         self.ui = ui
         self.tools = Tools(project: project, skill: sp.root, ui: ui)
-        self.tools.sceneTransport = self.transport
+        self.tools.sceneTransport = t
         // what the project remembers, as data, from its own files: the same whichever model is used and however often the project was reopened
         var text = sp.text
         if let resume = ProjectResume.block(store: ProjectStore(root: project)) { text += "\n\n" + resume }
@@ -35,27 +36,32 @@ public final class Agent {
     private var isAborted: Bool { lock.lock(); defer { lock.unlock() }; return aborted }
     private func resetAbort() { lock.lock(); aborted = false; lock.unlock() }
 
-    /// `context` is a short line about the project's state (step, open gates, file in front of the user), sent with the message. `budget` is what this request may use
-    /// (steps and output tokens per answer); the result says how the turn ended, so that a stop that is not a normal end can be told to the user.
+    /// `context` is a short line about the project's state (step, open gates, file in front of the user), sent with the message. The only bounds are the model's own maximum output and a guard against a loop
+    /// (`AgentLimits`); the result says how the turn ended, so that a stop that is not a normal end can be told to the user.
     @discardableResult
-    public func send(_ text: String, context: String? = nil, budget: AgentBudget = .standard) async throws -> AgentStop {
+    public func send(_ text: String, context: String? = nil) async throws -> AgentStop {
         resetAbort()
         let first: String = context.map { "[Studio context] \($0)\n\n" + text } ?? text
         messages.append(["role": "user", "content": first])
         let budgeted = transport as? OutputBudgeted
-        budgeted?.maxTokens = budget.maxTokens
-        defer { budgeted?.maxTokens = AgentBudget.standard.maxTokens }
-        var turn = 0
-        while turn < budget.maxTurns && !isAborted {
+        var turn = 0, spent = 0                       // steps taken and output tokens of the finished answers, shown while the request runs
+        defer { budgeted?.onOutput = nil }
+        while turn < AgentLimits.loopGuardSteps && !isAborted {
             turn += 1
+            let before = spent
+            var live = 0
+            budgeted?.onOutput = { [ui, turn] n in live = n; ui.progress(turns: turn, outputTokens: before + n) }
+            ui.progress(turns: turn, outputTokens: before)
             pruneImages(keep: 3)
             let (content, stop) = try await transport.stream(system: system, tools: Tools.definitions, messages: messages,
                                                              onText: { [ui] in ui.text($0) })
+            spent = before + live
+            ui.progress(turns: turn, outputTokens: spent)
             // a tool call cut by the output cap is incomplete: it is neither run nor kept in the history
             let kept = stop == "max_tokens" ? content.filter { ($0["type"] as? String) != "tool_use" } : content
             if !kept.isEmpty { messages.append(["role": "assistant", "content": kept]) }
             ui.endText()
-            if stop == "max_tokens" { return .tokenLimit(budget.maxTokens) }
+            if stop == "max_tokens" { return .tokenLimit(budgeted?.maxTokens ?? AgentLimits.modelMaxOutput) }
             let uses = content.filter { ($0["type"] as? String) == "tool_use" }
             if stop != "tool_use" || uses.isEmpty {
                 if stop == "refusal" { return .refused }
@@ -83,7 +89,7 @@ public final class Agent {
         }
         if isAborted { ui.text("\n[stopped]"); ui.endText(); return .cancelled }
         ui.endText()
-        return .turnLimit(budget.maxTurns)
+        return .turnLimit(AgentLimits.loopGuardSteps)
     }
 
     /// Screenshots are heavy: keep the last few in the history and replace older ones by a short note.

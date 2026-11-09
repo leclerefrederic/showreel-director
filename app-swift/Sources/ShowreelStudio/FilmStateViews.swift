@@ -191,3 +191,30 @@ struct GenerateScenesSheet: View {
         .padding(20).frame(width: 460)
     }
 }
+
+/// The card of "Build a new version": what will be written and asked, one request at a time, with a rough cost. Nothing is asked of the AI before the yes. A Build that stopped is
+/// offered to continue, or to start over after a confirmation.
+struct BuildConfirmSheet: View {
+    let pending: PendingBuild
+    @EnvironmentObject var project: ProjectModel
+    @State private var confirmOver = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(pending.card.title, systemImage: ClapMark.symbol).font(.headline)
+            VStack(alignment: .leading, spacing: 8) { ForEach(Array(pending.card.changes.enumerated()), id: \.offset) { _, c in ChangeRow(change: c) } }
+            Text("The project is read-only while the film is written. Each file is saved as soon as it is written, so a stop loses only the scene being written. Cancel build stops it; you can continue from where it stopped.").font(.caption).foregroundStyle(.secondary)
+            HStack {
+                if pending.resuming { Button("Start over\u{2026}") { confirmOver = true }.help("Remove what this Build already wrote and begin again") }
+                Spacer()
+                Button("Cancel", role: .cancel) { project.buildOffer = nil }.keyboardShortcut(.cancelAction)
+                Button(pending.resuming ? "Continue the build" : "Build \(pending.version)") { project.confirmBuild() }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20).frame(width: 480)
+        .alert("Start \(pending.version) over?", isPresented: $confirmOver) {
+            Button("Start over", role: .destructive) { project.startOverBuild() }
+            Button("Keep what is written", role: .cancel) {}
+        } message: { Text("The scene files, project.json and reel.js already written in \(pending.version) are removed, including any scene file you edited by hand. film.json stays.") }
+    }
+}

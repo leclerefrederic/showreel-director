@@ -2,6 +2,14 @@
 
 Version of the Showreel Studio app (`app-swift/shared/app-version.json`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The skill and the project file format have their own numbers. Ship with `python3 tools/bump_app.py`, after writing the section of the new version in `RELEASE-NOTES-APP.md`.
 
+## 0.10.0 - 2026-11-09
+
+BG1: the Build writes the scenes one by one with visible states, idle timeout, continue after a stop
+
+## 0.9.3 - 2026-11-09
+
+BF2: no limit on the agent during the prototype (model maximum output, loop guard, live counter)
+
 ## 0.9.2 - 2026-11-09
 
 BF1: a Build that stops says why, gets more room for long films, and offers a way on

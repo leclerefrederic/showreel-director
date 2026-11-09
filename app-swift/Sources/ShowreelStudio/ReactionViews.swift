@@ -265,7 +265,8 @@ struct ClapActivityChip: View {
     }
 }
 
-/// While the film is being built: the step, the scene, the time and Cancel build, which says what will happen. Updated every second.
+/// While the film is being built: the step, the scene, what Clap is doing (reading, preparing, writing), the tokens and the time, and one line per step with its state.
+/// Cancel build says what will happen. Updated every second.
 struct BuildProgressPanel: View {
     var compact = false
     @EnvironmentObject var project: ProjectModel
@@ -273,14 +274,19 @@ struct BuildProgressPanel: View {
     var body: some View {
         if let b = project.activity.build {
             TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                let scenes = b.order.filter { $0 != BuildJob.frameStep }
+                let hasRuns = !scenes.isEmpty
                 let p = BuildProgress.scenes(version: b.version, store: project.store)
-                let step = b.phase == .generating ? "Clap is writing the scenes" : b.phase == .testing ? "Assembling and testing" : "Stopping the build\u{2026}"
-                let scene = b.phase == .generating ? BuildProgress.sceneLine(done: p.done, total: p.total) : nil
+                let step = b.phase == .generating ? "Clap is writing the film" : b.phase == .testing ? "Assembling and testing" : "Stopping the build\u{2026}"
+                let current = b.current ?? ""
+                let scene = b.phase == .generating ? (hasRuns ? BuildProgress.sceneLine(done: b.done, total: scenes.count) : BuildProgress.sceneLine(done: p.done, total: p.total)) : nil
+                let phase = b.phase == .generating ? b.clapPhase?.word : nil
                 let time = BuildProgress.elapsed(ctx.date.timeIntervalSince(b.started))
+                let usage = b.phase == .generating ? (hasRuns ? BuildProgress.tokensLine(b.outputTokens) : BuildProgress.usageLine(turns: b.turns, outputTokens: b.outputTokens)) : nil
                 if compact {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.mini)
-                        Text(([b.version, scene].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.caption)
+                        Text(([b.version, scene, phase, usage].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.caption)
                         Button("Cancel build") { project.cancelBuild() }.buttonStyle(.borderless).font(.caption.weight(.semibold)).help(cancelHelp(b))
                     }
                 } else {
@@ -291,8 +297,16 @@ struct BuildProgressPanel: View {
                             Spacer()
                             Button("Cancel build") { project.cancelBuild() }.disabled(b.phase == .cancelling).help(cancelHelp(b))
                         }
-                        if p.total > 0, b.phase == .generating { ProgressView(value: Double(p.done), total: Double(p.total)) }
-                        Text(([step, scene].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.callout).foregroundStyle(.secondary)
+                        if hasRuns, b.phase == .generating { ProgressView(value: Double(b.done), total: Double(max(scenes.count, 1))) }
+                        else if p.total > 0, b.phase == .generating { ProgressView(value: Double(p.done), total: Double(p.total)) }
+                        Text(([step, scene, phase, usage].compactMap { $0 } + [time]).joined(separator: " \u{00B7} ")).font(.callout).foregroundStyle(.secondary)
+                        if b.phase == .generating, hasRuns {
+                            VStack(alignment: .leading, spacing: 2) {
+                                ForEach(b.order, id: \.self) { id in
+                                    if let r = b.runs[id] { StepRow(id: id, run: r, now: ctx.date, current: id == current || (id == BuildJob.frameStep && b.current == nil && r.state == .writing), phase: phase) }
+                                }
+                            }
+                        }
                         Text("Everything is read-only while the film is built: any change now would affect it. Looking, playing a finished film and asking Clap a question still work. \(cancelHelp(b))")
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
@@ -305,6 +319,40 @@ struct BuildProgressPanel: View {
     private func cancelHelp(_ b: ProjectActivity.Build) -> String {
         let last = BuildProgress.lastWorking(project.store).map { "The film stays at \($0)." } ?? "The film has no working version yet."
         return b.phase == .testing ? "Cancel stops the test; nothing is lost. \(last)"
-            : "Cancel stops the writing now: what was written stays in \(b.version), not built. \(last) Tokens already used are not refunded."
+            : "Cancel stops the writing now: what was written stays in \(b.version), not built, and the Build can be continued. \(last) Tokens already used are not refunded."
+    }
+}
+
+/// One step of the Build: waiting, writing (with what Clap is doing), done or failed, with its tokens and time.
+struct StepRow: View {
+    let id: String
+    let run: SceneRun
+    let now: Date
+    let current: Bool
+    let phase: String?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol).foregroundStyle(tint).frame(width: 14)
+            Text(id == BuildJob.frameStep ? "Frame (project.json, reel.js)" : id).font(.caption.weight(current ? .semibold : .regular))
+            Spacer(minLength: 6)
+            Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .help(run.failure ?? "")
+    }
+
+    private var symbol: String {
+        switch run.state { case .waiting: return "circle"; case .writing: return "pencil.circle.fill"; case .done: return "checkmark.circle.fill"; case .failed: return "exclamationmark.triangle.fill" }
+    }
+    private var tint: Color {
+        switch run.state { case .waiting: return .secondary; case .writing: return .accentColor; case .done: return .green; case .failed: return .red }
+    }
+    private var detail: String {
+        switch run.state {
+        case .waiting: return "waiting"
+        case .writing: return ["writing" + (phase.map { " (\($0.lowercased()))" } ?? ""), BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now))].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        case .done: return run.kept ? "kept" : [ "done", BuildProgress.tokensLine(run.tokens), BuildProgress.elapsed(run.elapsed(now: now))].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        case .failed: return run.failure ?? "failed"
+        }
     }
 }

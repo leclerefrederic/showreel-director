@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var url = ""
     @State private var bearer = false
     @State private var modelName = ""
+    @State private var idle = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,6 +19,10 @@ struct SettingsView: View {
                     TextField("Gateway base URL", text: $url, prompt: Text("empty = api.anthropic.com"))
                     Toggle("Send the key as Authorization: Bearer (gateways)", isOn: $bearer)
                     TextField("Model", text: $modelName)
+                }
+                Section("Advanced") {
+                    TextField("No-answer timeout (seconds)", text: $idle, prompt: Text("\(Int(AgentLimits.idleTimeout))"))
+                        .help("A request is cut, and said so, when the API sends nothing for this long. At least 5.")
                 }
                 Section("Skill") {
                     LabeledContent("Version", value: (Skill.version().map { $0 + " " } ?? "") + "(" + Skill.fingerprint() + ")")
@@ -34,6 +39,7 @@ struct SettingsView: View {
                 Button("Cancel") { close() }.keyboardShortcut(.cancelAction)
                 Button("Save") {
                     model.save(key: key, url: url, bearer: bearer, modelName: modelName)
+                    if let n = Double(idle.trimmingCharacters(in: .whitespaces)) { model.idleTimeout = n } else if idle.isEmpty { model.idleTimeout = AgentLimits.idleTimeout }
                     close()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -47,6 +53,7 @@ struct SettingsView: View {
             url = model.baseURL
             bearer = model.bearer
             modelName = model.modelName
+            idle = model.idleTimeout == AgentLimits.idleTimeout ? "" : String(Int(model.idleTimeout))
         }
     }
 

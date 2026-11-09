@@ -68,6 +68,25 @@ public enum BuildPolicy: Equatable, Sendable { case refused, allowed }
 // MARK: what is going on in a project
 
 /// What is going on in one project right now, kept by root so that the window and the agent's tools (another thread, another store object) read the same thing.
+/// What Clap is doing while a request runs: the tools that read, the wait before the first token, the tokens arriving.
+public enum ClapPhase: String, Sendable { case reading, preparing, writing
+    public var word: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
+}
+
+/// One step of a Build: the frame of the film ("reel": project.json and reel.js) or one scene file.
+public struct SceneRun: Equatable, Sendable {
+    public enum State: String, Sendable { case waiting, writing, done, failed }
+    public var state: State = .waiting
+    public var tokens = 0
+    public var started: Date?
+    public var finished: Date?
+    public var failure: String?
+    /// Done without a call: the file was already there and up to date, or a locked scene's file was carried over.
+    public var kept = false
+    public init() {}
+    public func elapsed(now: Date = Date()) -> TimeInterval { started.map { (finished ?? now).timeIntervalSince($0) } ?? 0 }
+}
+
 public final class ProjectActivity: @unchecked Sendable {
     public struct Build: Equatable, Sendable {
         public enum Phase: String, Sendable { case generating, testing, cancelling }
@@ -78,6 +97,14 @@ public final class ProjectActivity: @unchecked Sendable {
         public var total: Int?
         public var done = 0
         public var current: String?
+        /// What Clap's request has used so far: its steps and its output tokens (an estimate while an answer is being written).
+        public var turns = 0
+        public var outputTokens = 0
+        /// What Clap is doing in the request in progress: reading files, preparing an answer (no token yet) or writing it.
+        public var clapPhase: ClapPhase?
+        /// A Build one scene at a time: the steps in order ("reel" first, then the scenes) and the state of each.
+        public var order: [String] = []
+        public var runs: [String: SceneRun] = [:]
         public init(version: String, phase: Phase, started: Date = Date(), total: Int? = nil) { self.version = version; self.phase = phase; self.started = started; self.total = total }
     }
     public enum ClapWork: Equatable, Sendable { case thinking, applying([ElementRef]) }
@@ -292,6 +319,20 @@ public enum BuildProgress {
     }
 
     public static func elapsed(_ s: TimeInterval) -> String { s < 60 ? "\(Int(s)) s" : "\(Int(s / 60)) min" }
+
+    /// "Step 7, about 12 400 output tokens": nil until Clap has started.
+    public static func usageLine(turns: Int, outputTokens: Int) -> String? {
+        guard turns > 0 else { return nil }
+        let f = NumberFormatter(); f.numberStyle = .decimal; f.groupingSeparator = " "; f.locale = Locale(identifier: "en_US")
+        return "Step \(turns), \(outputTokens == 0 ? "" : "about ")\(f.string(from: NSNumber(value: outputTokens)) ?? "\(outputTokens)") output tokens"
+    }
+
+    /// "12 400 output tokens" (an estimate while Clap writes); nil when none yet.
+    public static func tokensLine(_ n: Int) -> String? {
+        guard n > 0 else { return nil }
+        let f = NumberFormatter(); f.numberStyle = .decimal; f.groupingSeparator = " "; f.locale = Locale(identifier: "en_US")
+        return "\(f.string(from: NSNumber(value: n)) ?? "\(n)") tokens"
+    }
 
     /// The scene line of the panel: "Scene 3 of 6".
     public static func sceneLine(done: Int, total: Int) -> String? { total == 0 ? nil : "Scene \(min(done + 1, total)) of \(total)" }

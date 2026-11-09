@@ -4,9 +4,9 @@ import Foundation
 public enum AgentStop: Equatable, Sendable {
     /// The model ended its answer with something to say.
     case finished
-    /// The answer reached the output cap (in tokens) before it was complete: a tool call cut in the middle is never run.
+    /// The answer reached the model's maximum output (in tokens) before it was complete: a tool call cut in the middle is never run.
     case tokenLimit(Int)
-    /// The loop used its steps (the count) without the model ending.
+    /// The loop guard (the count of steps) was reached without the model ending.
     case turnLimit(Int)
     /// The model declined to answer.
     case refused
@@ -21,8 +21,8 @@ public enum AgentStop: Equatable, Sendable {
     public var line: String? {
         switch self {
         case .finished, .cancelled: return nil
-        case .tokenLimit(let n): return "Clap's answer reached the output limit (\(n) tokens) before it was complete, so its last step was not run."
-        case .turnLimit(let n): return "Clap used its \(n) steps without finishing."
+        case .tokenLimit(let n): return "Clap's answer reached the maximum output of the model (\(n) tokens) before it was complete, so its last step was not run."
+        case .turnLimit(let n): return "Clap reached the loop guard (\(n) steps) without finishing."
         case .refused: return "The model declined to answer."
         case .emptyReply: return "Clap ended its turn without writing anything or saying why."
         case .other(let r): return "The API ended the answer with the reason \u{201C}\(r)\u{201D}."
@@ -30,84 +30,43 @@ public enum AgentStop: Equatable, Sendable {
     }
 }
 
-/// How much one request of the agent may use. Never unlimited: a ceiling that is stated, so that a stop by the limit can say which one.
-public struct AgentBudget: Equatable, Sendable {
-    public var maxTurns: Int
-    public var maxTokens: Int
+/// The two numbers that bound the agent. Neither is a product limit: the first is the model's own, the second only stops a loop nobody sees.
+public enum AgentLimits {
+    /// The most output tokens one answer may have: the limit of the model, not a choice of the product (the API requires a max_tokens, so "no limit" is this value).
+    /// 128 000 is the documented maximum output of claude-sonnet-5-5, the default model (the Models API reports it as `max_tokens`). A model that allows less refuses it
+    /// with a 400 that names its own maximum: the transport then asks again once with that value (`OutputCap`).
+    public static let modelMaxOutput = 128_000
+    /// A guard against a loop, not a product limit: how many steps (answers) one request may take. The user sees the count rise and can Cancel long before it.
+    public static let loopGuardSteps = 1000
+    /// Seconds without a single byte from the stream (headers, events, even the API's pings) after which a request is cut and said so. The default of the advanced setting.
+    public static let idleTimeout: TimeInterval = 90
+}
 
-    public static let standard = AgentBudget(maxTurns: 60, maxTokens: 8000)
-    public static let ceilingTurns = 120
-    public static let ceilingTokens = 32000
+/// The request was cut because the stream said nothing for `seconds`.
+public struct IdleTimeout: Error, LocalizedError, Equatable, Sendable {
+    public let seconds: Int
+    public var errorDescription: String? { "No answer from the API for \(seconds) s" }
+}
 
-    /// A Build writes project.json, reel.js and one file per scene, and a model may put several in one answer: the room grows with the scenes, up to the ceiling.
-    public static func build(scenes n: Int) -> AgentBudget {
-        let k = max(n, 0)
-        return AgentBudget(maxTurns: min(ceilingTurns, max(standard.maxTurns, 40 + 4 * k)), maxTokens: min(ceilingTokens, max(standard.maxTokens, 8000 + 1600 * k)))
+/// What the API says when `max_tokens` is more than the model accepts, and what to do about it.
+public enum OutputCap {
+    /// The maximum the error names ("max_tokens: 128000 > 64000, which is the maximum allowed number of output tokens for ..."), when it is below what was asked.
+    public static func limit(fromError body: String, requested: Int) -> Int? {
+        guard body.contains("max_tokens") else { return nil }
+        let patterns = [#"max_tokens:\s*\d+\s*>\s*(\d+)"#, #"maximum[^0-9]{0,60}(\d[\d,_]*)"#]
+        for p in patterns {
+            guard let r = body.range(of: p, options: .regularExpression), let n = Int(body[r].split(whereSeparator: { !$0.isNumber && $0 != "," && $0 != "_" }).last.map { $0.filter { $0.isNumber } } ?? "") else { continue }
+            if n > 0, n < requested { return n }
+        }
+        return nil
     }
 }
 
-/// A transport whose output cap can be set per request (the real one; a test's may follow).
+/// A transport whose output cap can be read and set, and that reports the output tokens of an answer while it is written (the real one; a test's may follow).
 public protocol OutputBudgeted: AnyObject {
     var maxTokens: Int { get set }
-}
-
-/// What the Build says when the agent ended without writing the version.
-public struct BuildFailure: Equatable, Sendable {
-    public enum Remedy: Equatable, Sendable { case tryAgain, oneByOne }
-    /// A short key for the journal: "token-limit", "turn-limit", "refused", "empty-reply", "api-error", "no-files".
-    public let cause: String
-    public let message: String
-    public let remedy: Remedy
-    /// The files Clap did write in the version folder (kept, not built).
-    public let kept: [String]
-}
-
-public enum BuildStop {
-    /// Files the app itself puts in a version folder before Clap writes: a folder with only these holds nothing of Clap's.
-    static let appFiles: Set<String> = [Film.fileName, "fonts.json"]
-
-    /// Removes the version folder when it holds only what the app wrote (so the next Build reuses the name and no empty `vN` piles up). Returns what Clap wrote, which stays.
-    @discardableResult
-    public static func discardStub(version: String, store: ProjectStore) -> [String] {
-        let dir = store.root.appendingPathComponent(version)
-        let fm = FileManager.default
-        let base = dir.resolvingSymlinksInPath().path          // the enumerator reports resolved paths (/private/var for /var)
-        guard let e = fm.enumerator(at: dir.resolvingSymlinksInPath(), includingPropertiesForKeys: [.isRegularFileKey]) else { return [] }
-        var wrote: [String] = []
-        for case let u as URL in e {
-            guard (try? u.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
-            let rel = String(u.resolvingSymlinksInPath().path.dropFirst(base.count + 1))
-            if !appFiles.contains(rel) { wrote.append(rel) }
-        }
-        if wrote.isEmpty { try? fm.removeItem(at: dir) }
-        return wrote.sorted()
-    }
-
-    /// The agent ended and `version` has no project.json: nothing is frozen any more, an empty stub is removed, one journal line says why, and the message names the cause and a way on.
-    /// `failure` is the error the API (or the network) returned, when the request failed instead of ending.
-    @discardableResult
-    public static func conclude(version: String, store: ProjectStore, stop: AgentStop, failure: String?) -> BuildFailure {
-        store.activity.update { $0.build = nil }
-        let kept = discardStub(version: version, store: store)
-        let cause: String, why: String, remedy: BuildFailure.Remedy
-        if let f = failure {
-            cause = "api-error"; remedy = .tryAgain
-            why = "The request to the model failed: \(f)."
-        } else {
-            switch stop {
-            case .tokenLimit: cause = "token-limit"; remedy = .oneByOne
-            case .turnLimit: cause = "turn-limit"; remedy = .oneByOne
-            case .refused: cause = "refused"; remedy = .tryAgain
-            case .emptyReply: cause = "empty-reply"; remedy = .tryAgain
-            case .other: cause = "other"; remedy = .tryAgain
-            case .finished, .cancelled: cause = "no-files"; remedy = .tryAgain
-            }
-            why = stop.line ?? "Clap answered without writing the version; its answer is in the chat."
-        }
-        let tail = kept.isEmpty ? "Nothing was written in \(version)." : "\(kept.count) file\(kept.count == 1 ? "" : "s") Clap wrote stay in \(version), not built."
-        let way = remedy == .oneByOne ? "Generate the scenes one by one, or try again." : "Try again."
-        let message = "Clap did not write \(version). \(why) \(tail) \(way)"
-        store.noteEvent(author: "app", op: "build", target: version, title: "Build \(version) stopped: \(cause)", note: message)
-        return BuildFailure(cause: cause, message: message, remedy: remedy, kept: kept)
-    }
+    /// Called while an answer is written with the output tokens so far (an estimate between the exact figures the API gives).
+    var onOutput: ((Int) -> Void)? { get set }
+    /// Seconds without any byte from the stream before the request is cut with an `IdleTimeout`.
+    var idleTimeout: TimeInterval { get set }
 }

@@ -71,8 +71,6 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     /// The error the last request ended with (nil when it ended); and how the agent's turn ended.
     private(set) var failure: String?
     private(set) var lastStop: AgentStop = .finished
-    /// What the next request may use (a Build asks for more than a question).
-    private var budget = AgentBudget.standard
     var activity: ProjectActivity { project.store.activity }
     @Published var previewURL: URL?
     @Published var previewTitle = "Preview"
@@ -129,9 +127,9 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         summarisedHere.insert(id); sessionEnded = true
         let store = project.store, project = self.project
         if let key = settings.keyIfLoaded {
-            let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer
+            let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer, idle = settings.idleTimeout
             Task.detached {
-                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer)
+                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer); t.idleTimeout = idle
                 let s = await Sessions.summarize(records: recs, journal: store.journal.entries().filter { $0.session == id }, transport: t)
                 _ = try? Sessions.finish(store, id: id, summary: s, messages: recs.count)
                 DispatchQueue.main.async { project.reloadHistory() }
@@ -145,13 +143,13 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     private func catchUpSummaries(key: String) {
         guard catchUp == nil else { return }
         let store = project.store, root = project.root, current = history.sessionID, project = self.project
-        let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer
+        let model = settings.modelName, url = settings.baseURL, bearer = settings.bearer, idle = settings.idleTimeout
         catchUp = Task.detached { [weak self] in
             let have = Set(Sessions.load(store).filter { ($0.summary ?? "").isEmpty == false }.map { $0.id })
             for id in ChatStore.sessionIDs(root: root) where id != current && !have.contains(id) {
                 let recs = ChatStore.records(root: root, session: id)
                 guard recs.contains(where: { $0.role == "user" }) else { continue }
-                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer)
+                let t = AnthropicTransport(apiKey: key, model: model, baseURL: url, bearer: bearer); t.idleTimeout = idle
                 let s = await Sessions.summarize(records: recs, journal: store.journal.entries().filter { $0.session == id }, transport: t)
                 _ = try? Sessions.finish(store, id: id, summary: s, messages: recs.count)
             }
@@ -173,7 +171,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     /// Sends a message to the model. An app instruction (`origin` "app") goes to the model and into the transcript like any message, but the conversation shows only
     /// its neutral `status` line, never its text.
-    private func dispatch(_ text: String, origin: String?, status: String?, budget: AgentBudget = .standard) {
+    private func dispatch(_ text: String, origin: String?, status: String?) {
         guard let key = settings.apiKey() else { notice("Connect an AI to talk to Clap. Everything else works without one."); return }
         if sessionEnded { history.startNewSession(); records = []; sessionEnded = false; project.store.sessionID = history.sessionID }      // after a long pause: a new session
         lastActivity = Date()
@@ -185,7 +183,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         remember(record)
         assistantIdx = nil; stepsIdx = nil
         running = true; scrollTick += 1
-        stopping = false; failure = nil; lastEnd = nil; lastStop = .finished; self.budget = budget
+        stopping = false; failure = nil; lastEnd = nil; lastStop = .finished
         activity.update { $0.clap = .thinking }
         catchUpSummaries(key: key)
         let context = project.contextLine
@@ -199,7 +197,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
                     if self.agent == nil || self.agentGeneration != generation {
                         // the project's memory, what it refused and the last summaries come from its files, as data: nothing of the old conversation is replayed
                         self.agent = try Agent(apiKey: key, model: self.settings.modelName, baseURL: self.settings.baseURL, bearer: self.settings.bearer,
-                                               project: self.project.root, ui: self, history: [])
+                                               project: self.project.root, ui: self, history: [], idleTimeout: self.settings.idleTimeout)
                         self.agentGeneration = generation
                     }
                     return .success(self.agent!)
@@ -209,7 +207,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
             case .failure(let e): self.failure = e.localizedDescription; self.postNotice("Error: \(e.localizedDescription)")
             case .success(let a):
                 do {
-                    let stop = try await a.send(text, context: context, budget: budget)
+                    let stop = try await a.send(text, context: context)
                     self.lastStop = stop
                     // a request that is not a Build says here why it stopped; a Build says it in its own message
                     if let line = stop.line, !self.stopping, !asksForResult { self.postNotice("Clap stopped: " + line) }
@@ -223,11 +221,11 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     /// Sends a message on the user's behalf (the wizard's "Suggest with AI"). The copilot answers with a card to accept or refuse.
     @discardableResult
-    func ask(prompt: String, status: String = "Request sent to Clap", budget: AgentBudget = .standard, onDone: (() -> Void)? = nil) -> Bool {
+    func ask(prompt: String, status: String = "Request sent to Clap", onDone: (() -> Void)? = nil) -> Bool {
         guard !running else { notice("Clap is busy: wait for it to finish."); return false }
         guard settings.hasKey else { notice("Connect an AI to talk to Clap. Everything else works without one."); return false }
         self.onDone = onDone
-        dispatch(prompt.trimmingCharacters(in: .whitespacesAndNewlines), origin: ChatRecord.appOrigin, status: status, budget: budget)
+        dispatch(prompt.trimmingCharacters(in: .whitespacesAndNewlines), origin: ChatRecord.appOrigin, status: status)
         return running
     }
 
@@ -369,6 +367,8 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     }
 
     func endText() { DispatchQueue.main.async { self.flushAssistant() } }
+
+    func progress(turns: Int, outputTokens: Int) { activity.update { if $0.build?.phase == .generating { $0.build?.turns = turns; $0.build?.outputTokens = outputTokens } } }
 
     func toolDone(_ name: String) { activity.update { if $0.clap != nil { $0.clap = .thinking } } }
 

@@ -35,9 +35,13 @@ public protocol AgentUI: AnyObject {
     func openBlock(_ id: String) async
     /// Clap added to, changed or took something out of the project's memory: shown in the conversation in a plain word.
     func memoryNote(_ text: String) async
+    /// The steps taken and the output tokens used so far by the request in progress.
+    func progress(turns: Int, outputTokens: Int)
 }
 
 public extension AgentUI {
+    /// The request in progress: the steps taken and the output tokens used so far (an estimate while an answer is being written).
+    func progress(turns: Int, outputTokens: Int) {}
     func toolDone(_ name: String) {}
     func memoryNote(_ text: String) async {}
     func propose(_ p: Proposal) async -> Bool { false }

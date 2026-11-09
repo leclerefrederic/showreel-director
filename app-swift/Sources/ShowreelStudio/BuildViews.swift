@@ -25,7 +25,7 @@ struct BuildPanel: View {
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
             }
             HStack(spacing: 10) {
-                Button { project.startBuild(with: chat) } label: { Label("Build a new version", systemImage: "hammer") }
+                Button { project.startBuild(with: chat) } label: { Label(BuildJob.pending(project.store).map { "Continue \($0)" } ?? "Build a new version", systemImage: "hammer") }
                     .buttonStyle(.borderedProminent)
                     .disabledWithReason(Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running).reasonText,
                                         way: Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running).wayText)

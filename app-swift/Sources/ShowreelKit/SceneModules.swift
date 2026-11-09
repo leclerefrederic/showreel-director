@@ -86,6 +86,13 @@ public enum SceneModules {
         try save(book, store)
     }
 
+    /// Forgets what was recorded about the scenes of a version (after a start over).
+    public static func forget(version: String, store: ProjectStore) throws {
+        var book = loadBook(store)
+        book.versions[version] = nil; book.films?[version] = nil; book.results?[version] = nil
+        try save(book, store)
+    }
+
     static func save(_ book: Book, _ store: ProjectStore) throws {
         try FileManager.default.createDirectory(at: bookURL(store).deletingLastPathComponent(), withIntermediateDirectories: true)
         let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
