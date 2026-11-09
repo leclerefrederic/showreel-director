@@ -270,9 +270,9 @@ final class ResourceFlowTests: XCTestCase {
     // MARK: fonts
 
     func testAFontFromTheCardIsKnownAndAHandDroppedOneIsAskedAbout() async throws {
-        let src = FakeFontSource(files: [RepoFile(name: "Fredoka-Regular.ttf", size: 100, url: "https://raw.githubusercontent.com/x"), RepoFile(name: "OFL.txt", size: 10, url: "https://raw.githubusercontent.com/y")], data: [:])
+        let src = FakeFontSource()
         try store.apply(.decisions([DecisionChange(.textFont, "Fredoka")], title: nil))
-        let o = try await FontFiles.offer("Fredoka", store: store, source: src)
+        let o = try FontFiles.offer("Fredoka", store: store)
         try store.apply(.addFontFiles(try await FontFiles.fetch(o, source: src)))
         let carded = rows().first { $0.type == "font" }!
         XCTAssertEqual(carded.status, "approved"); XCTAssertTrue(carded.licenceNote.contains("SIL Open Font License")); XCTAssertEqual(carded.state(in: file), .available, "no question: the card approved it")

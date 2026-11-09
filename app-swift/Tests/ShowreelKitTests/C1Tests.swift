@@ -122,32 +122,24 @@ final class C1Tests: XCTestCase {
         try store.apply(.decisions([DecisionChange(.titleFont, "Fredoka"), DecisionChange(.textFont, "Nunito")], title: nil))
         store.activity.reset()
     }
-    func repo() -> FakeFontSource {
-        let names = ["Fredoka[wdth,wght].ttf", "OFL.txt"]
-        let preview = (try? Data(contentsOf: Skill.root()!.appendingPathComponent("engine/fonts-preview/fredoka.woff2"))) ?? Data("x".utf8)
-        return FakeFontSource(files: names.map { RepoFile(name: $0, size: $0 == "OFL.txt" ? 4400 : 120_000, url: "https://raw.githubusercontent.com/google/fonts/main/ofl/x/\($0)") },
-                              data: ["Fredoka[wdth,wght].ttf": preview, "OFL.txt": Data("OFL".utf8)])
-    }
 
-    func testTheQuestionAppearsOnlyWhenFilesAreMissing() async throws {
-        let src = repo()
+    func testTheQuestionAppearsOnlyWhenFilesAreMissingAndUsesNoNetwork() throws {
         XCTAssertTrue(FontsAtBuild.missing(store).isEmpty, "the Look chose no font: nothing to ask")
-        let none = await FontsAtBuild.prepare(store, source: src)
-        XCTAssertNil(none); XCTAssertEqual(src.listed, 0, "and the repository is not even asked")
+        XCTAssertNil(FontsAtBuild.prepare(store))
         try fontsStore()
         XCTAssertEqual(FontsAtBuild.missing(store), ["Fredoka", "Nunito"])
-        let qopt = await FontsAtBuild.prepare(store, source: src); let q = try XCTUnwrap(qopt)
+        let q = try XCTUnwrap(FontsAtBuild.prepare(store))                       // no source: nothing to call
         XCTAssertEqual(q.families, ["Fredoka", "Nunito"])
-        XCTAssertTrue(q.card.changes.contains { $0.after.contains("github.com/google/fonts") })
+        XCTAssertTrue(q.card.changes.contains { $0.after.contains("Google Fonts") })
         XCTAssertTrue(q.card.changes.contains { $0.after.contains("SIL Open Font License") })
         XCTAssertTrue(q.card.changes.contains { $0.label == "Size" && $0.after.contains("KB") }, "the size is on the card")
-        XCTAssertTrue(src.downloaded.isEmpty, "looking up is not downloading")
+        XCTAssertGreaterThan(q.totalBytes, 100_000)
     }
 
     func testEachChoiceHasItsEffectAndNothingIsDownloadedWithoutTheYes() async throws {
         try fontsStore()
-        let src = repo()
-        let qopt = await FontsAtBuild.prepare(store, source: src); let q = try XCTUnwrap(qopt)
+        let src = FakeFontSource()
+        let q = try XCTUnwrap(FontsAtBuild.prepare(store))
         let a = try await q.resolve(.cancel, store: store, source: src)
         XCTAssertEqual(a, .stop); XCTAssertTrue(src.downloaded.isEmpty); XCTAssertEqual(FontsAtBuild.missing(store), ["Fredoka", "Nunito"])
         let b = try await q.resolve(.systemFont, store: store, source: src)
@@ -158,21 +150,21 @@ final class C1Tests: XCTestCase {
         let c = try await q.resolve(.download, store: store, source: src)
         XCTAssertEqual(c, .proceed); XCTAssertFalse(src.downloaded.isEmpty)
         XCTAssertFalse(Assets.load(store).filter { $0.type == "font" }.isEmpty)
+        XCTAssertTrue(FontsAtBuild.missing(store).isEmpty)
         let lines = store.journal.entries().filter { $0.op == "fonts" }.map { $0.title }
         XCTAssertEqual(lines, ["Fonts at build: cancelled", "Fonts at build: continue with a system font", "Fonts at build: download and continue"], "every choice is in the journal")
     }
 
-    func testADownloadThatFailsStopsTheBuildAndKeepsTheManualWay() async throws {
+    func testADownloadThatFailsStopsTheBuildAndAddsNothing() async throws {
         try fontsStore()
-        let src = repo()
-        let qopt = await FontsAtBuild.prepare(store, source: src); let q = try XCTUnwrap(qopt)
-        src.listingError = FontRepositoryError(status: 403, url: "https://api.github.com/x", rateLimited: true)
+        let src = FakeFontSource()
+        let q = try XCTUnwrap(FontsAtBuild.prepare(store))
+        src.failOn = 3                                                           // the second font's first file: the first font was fetched, still nothing is added
         do { _ = try await q.resolve(.download, store: store, source: src); XCTFail("must throw") }
-        catch { XCTAssertTrue(error.localizedDescription.contains("anonymous request limit") && error.localizedDescription.contains("fonts.google.com"), error.localizedDescription) }
+        catch { XCTAssertTrue(error.localizedDescription.contains("Nothing was added") && error.localizedDescription.contains("fonts.google.com"), error.localizedDescription) }
         XCTAssertTrue(Assets.load(store).filter { $0.type == "font" }.isEmpty)
-        // a lookup that failed when the card was made still gives a card, which says so
-        let q2opt = await FontsAtBuild.prepare(store, source: src); let q2 = try XCTUnwrap(q2opt)
-        XCTAssertNotNil(q2.lookupProblem); XCTAssertTrue(q2.card.changes.contains { $0.after.contains("could not be asked") })
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dir.appendingPathComponent("assets/fonts").path))
+        XCTAssertEqual(FontsAtBuild.missing(store), ["Fredoka", "Nunito"], "the question can be asked again")
     }
 
     // MARK: 5. the app's instructions in the conversation

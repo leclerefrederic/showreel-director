@@ -32,7 +32,7 @@ Record the answers as the emotional arc in the brief: for each section of the fi
 
 ## Round 3 — Look & motion
 - **References**: ask for one or two examples to resemble (and one to avoid). Describe what you take from them (palette, rhythm, transition families), never copy their content.
-- **Visual language**: kinetic typography / geometric shapes and cells / UI-product-led (real screenshots) / illustrated / photo-led / mixed.
+- **Visual language**: kinetic typography / geometric shapes and cells / UI-product-led (real screenshots) / illustrated / photo-led / mixed / 3D scenes (WebGL: perspective, particles, shaders, bloom; optional, adds about 0.8 MB, cannot be checked by the Node harness and has no MP4 export, so offer it only when depth is the point).
 - **Brand frame**: follow brand guidelines strictly / inspired by / free. Dark or light base. Palette (give hex values if any).
 - **Typography**: brand font (licence allows embedding?) or director's choice; display vs text pairing.
 - **Visual devices**: characters that persist across scenes, crosswords/big letters, bubbles/documents/checks, procedural UI panels, maps, charts.

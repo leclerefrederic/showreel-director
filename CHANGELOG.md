@@ -2,6 +2,18 @@
 
 Version of the skill (`metadata.version` in `showreel-director/SKILL.md`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The Studio file format has its own number (`schema` in `showreel.json`). Ship with `python3 tools/bump.py`.
 
+## 0.18.1 - 2026-11-09
+
+player test no longer fails on 3D films; portability says 3D is judged in the player
+
+## 0.18.0 - 2026-11-09
+
+3D layer (engine/gl, SR3D): Three.js scenes with seeded particles, shaders and a GLSL lint drawn onto the 2D stage, inlined only when used; harness reports 3D as not rendered
+
+## 0.17.0 - 2026-11-09
+
+font list says what to download: files, weights, sizes, licence; fetch_font.py without the GitHub API
+
 ## 0.16.0 - 2026-11-09
 
 fonts.json: the host embeds the Look's approved font files (assets/fonts), checked like any asset

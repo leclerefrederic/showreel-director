@@ -127,6 +127,12 @@ public enum BuildRunner {
         return lines.joined(separator: "\n")
     }
 
+    /// What the step "3D scenes" says. The words are the skill's own promise: the logic test cannot draw WebGL, the film is judged in the player, and there is no MP4 for it here.
+    public static let threeDNote = "This film has 3D scenes. The logic test cannot draw them: play the film to look at them. No MP4 export for this film."
+
+    /// Whether the harness said that the film's 3D scenes were not rendered (its line "3D layer: no WebGL in this host, ..."). A film without 3D never prints it.
+    public static func hasThreeD(harnessOutput lines: [String]) -> Bool { lines.contains { $0.hasPrefix("3D layer: no WebGL") } }
+
     static func q(_ u: URL) -> String { "'" + u.path.replacingOccurrences(of: "'", with: "'\\''") + "'" }
 
     /// Builds the version with the skill's build.py, then runs harness.js and smoke_player.js on the result. Outputs go to
@@ -140,6 +146,7 @@ public enum BuildRunner {
             return BuildReport(version: version, steps: [r("make", "Build \(version)", .fail, "\(version) has no project.json, and neither main.js nor a scenes/ folder, yet.")])
         }
         var steps: [CheckResult] = []
+        var threeD = false
         let embeddedFonts = FontEmbedding.write(version: version, store: store)         // the Look's approved font files, for build.py to embed (only the weights used)
         func tail(_ s: String, _ n: Int = 700) -> String { let t = s.trimmingCharacters(in: .whitespacesAndNewlines); return t.count > n ? "..." + t.suffix(n) : t }
 
@@ -162,6 +169,7 @@ public enum BuildRunner {
         let html = vdir.appendingPathComponent("dist/index.html")
         if let h = await Shell.run("node \(q(scripts.appendingPathComponent("harness.js"))) \(q(html))", in: store.root, timeout: 240) {
             let lines = h.out.split(separator: "\n").map(String.init)
+            threeD = hasThreeD(harnessOutput: lines)
             let issues = lines.first { $0.hasPrefix("issues:") }.flatMap { Int($0.dropFirst(7).trimmingCharacters(in: .whitespaces)) }
             if h.status == 127 || issues == nil && h.status != 0 && h.err.contains("not found") {
                 steps.append(r("harness", "Logic test", .fail, "node is not available: run the setup check. " + tail(h.err, 200)))
@@ -172,6 +180,9 @@ public enum BuildRunner {
                 steps.append(r("harness", "Logic test", .fail, "\(issues.map { "\($0) issue(s)" } ?? "failed"): " + tail(detail.isEmpty ? h.out + h.err : detail)))
             }
         } else { steps.append(r("harness", "Logic test", .fail, "could not start node")) }
+        // A film with 3D scenes: the Node host has no WebGL, so the logic test could not draw them and says so in one line. The logic test stays green for what it checks (0 issues);
+        // this separate step says what it could not see. It is a warning: it blocks neither the build gate nor the verify gate.
+        if threeD { steps.append(r("3d", "3D scenes", .tight, threeDNote)) }
 
         if let s = await Shell.run("node \(q(scripts.appendingPathComponent("smoke_player.js"))) \(q(html))", in: store.root, timeout: 120) {
             let lines = s.out.split(separator: "\n").map(String.init)

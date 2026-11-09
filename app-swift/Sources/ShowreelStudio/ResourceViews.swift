@@ -137,31 +137,16 @@ final class AssetThumbs: ObservableObject {
     }
 }
 
-/// A row of the grouped list. It is not a Button: a button takes the press for itself and a drag never starts from it. The whole row selects on a click and drags from any
-/// point of its surface, with a handle that appears under the pointer and an open hand as the cursor.
+/// A row of the grouped list: a `DragRow` over the resource.
 struct ResourceRow: View {
     let row: AssetRow
     @EnvironmentObject var project: ProjectModel
-    @State private var hovering = false
     @ObservedObject private var thumbs = AssetThumbs.shared
 
     var body: some View {
-        let selected = project.selection == .asset(row.id)
-        HStack(spacing: 4) {
-            Image(systemName: "line.3.horizontal").font(.system(size: 10, weight: .semibold)).foregroundStyle(.tertiary).frame(width: 12).opacity(hovering ? 1 : 0)
-            AssetRowView(row: row)
-        }
-        .padding(.horizontal, 8).padding(.vertical, 5)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(selected ? Color.accentColor.opacity(0.2) : hovering ? Color.primary.opacity(0.07) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .contentShape(Rectangle())
-        .onHover { h in hovering = h; if h { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }          // set, never pushed: nothing to leave unbalanced
-        .onTapGesture { project.select(.asset(row.id)); project.libraryTab = .resources }
-        .dragSource(.resource(row.id), label: row.name, icon: row.symbolName, thumbnail: thumbs.image(row, in: project.root))
-        .animation(Motion.quick, value: hovering)
-        .help("Drag onto a scene to use it there, or right-click: Add to scene")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction(named: "Select") { project.select(.asset(row.id)) }
+        DragRow(selected: project.selection == .asset(row.id), item: .resource(row.id), label: row.name, icon: row.symbolName, thumbnail: thumbs.image(row, in: project.root),
+                help: "Drag onto a scene to use it there, or right-click: Add to scene",
+                action: { project.select(.asset(row.id)); project.libraryTab = .resources }) { AssetRowView(row: row) }
     }
 }
 

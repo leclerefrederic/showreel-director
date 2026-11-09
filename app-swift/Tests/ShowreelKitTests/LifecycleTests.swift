@@ -354,7 +354,7 @@ final class LifecycleTests: XCTestCase {
         XCTAssertFalse(row.contains("Capsule"), "the state is plain text, not a pill"); XCTAssertTrue(row.contains(".onHover")); XCTAssertTrue(row.contains(".onTapGesture { if state != .missing { actions.open(entry) } }"), "one click opens")
         XCTAssertFalse(row.contains("count: 2"), "no double click"); XCTAssertTrue(row.contains("Locate...")); XCTAssertTrue(row.contains("Move to Trash..."))
         let m = try source("ProjectModel.swift")
-        XCTAssertTrue(m.contains("case resources, scenes, checks"))
+        XCTAssertTrue(m.contains("case resources, scenes, transitions, checks"))
         XCTAssertFalse(try source("ProjectView.swift").contains("ChecksPopover"), "no second place for the checks")
         XCTAssertFalse(try source("InspectorViews.swift").contains("ChecksList") || (try source("ProjectSettingsPanel.swift")).contains("ChecksList"))
         XCTAssertTrue(try source("ProjectSettingsPanel.swift").contains("LookRow(section: s)")); XCTAssertFalse(try source("ProjectSettingsPanel.swift").contains("Picker(\"\", selection: $project.lookSection)"), "the dropdown is gone")

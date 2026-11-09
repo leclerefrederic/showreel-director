@@ -90,6 +90,7 @@ struct LibraryPane: View {
                 switch project.libraryTab {
                 case .resources: ResourcesLibrary()
                 case .scenes: ScenesLibrary()
+                case .transitions: TransitionsLibrary()
                 case .checks: ChecksLibrary()
                 }
             }
@@ -98,7 +99,7 @@ struct LibraryPane: View {
     }
 }
 
-/// The tabs of the left panel: Resources, Scenes and Checks, with a pill on Checks that counts what is red or orange.
+/// The tabs of the left panel: Resources, Scenes, Transitions and Checks, with a pill on Checks that counts what is red or orange.
 struct LibraryTabs: View {
     @EnvironmentObject var project: ProjectModel
 
@@ -493,10 +494,11 @@ struct LookLibrary: View {
 
     /// A look element can be dragged onto what takes it (a background or a look onto a scene, an effect onto an item, a transition onto a marker).
     @ViewBuilder private func row<C: View>(_ kind: LookKind, _ id: String, @ViewBuilder _ content: @escaping () -> C) -> some View {
-        let r = LibraryRow(selected: project.selection == .look(kind, id), action: { project.select(.look(kind, id)) }, content: content)
         if let item = DragItem.library(kind: kind.rawValue, id: id) {
-            r.dragSource(item, label: id.hasPrefix("pack:") ? String(id.dropFirst(5)) : id, icon: kind == .transitions ? "arrow.left.arrow.right" : kind == .effects ? "sparkles" : kind == .backgrounds ? "rectangle.on.rectangle" : "paintpalette")
-        } else { r }
+            DragRow(selected: project.selection == .look(kind, id), item: item, label: id.hasPrefix("pack:") ? String(id.dropFirst(5)) : id,
+                    icon: kind == .transitions ? "arrow.left.arrow.right" : kind == .effects ? "sparkles" : kind == .backgrounds ? "rectangle.on.rectangle" : "paintpalette",
+                    help: "Drag onto what takes it, or click to see it", action: { project.select(.look(kind, id)) }, content: content)
+        } else { LibraryRow(selected: project.selection == .look(kind, id), action: { project.select(.look(kind, id)) }, content: content) }
     }
 
     private func chip(_ t: String) -> some View {

@@ -55,6 +55,8 @@ Left, and why:
 
 ## Library, Scenes tab
 
+- **Built in T2 (2026-11-09).** The Transitions tab (between Scenes and Checks): one row per pair of consecutive scenes ("S01 to S02: Push, 0.6 s", "Cut"), with the marks "approximate render at assembly" and "instruction pending"; a click selects the marker on the reel and opens its inspector; under the list the catalogue, a drag source for the markers, the six preview-only ones marked and refused at the drop with their reason. Rows that drag (resources, the catalogue, the look's catalogues) are not buttons any more (a button takes the press and no drag starts).
+
 - The tick boxes in the scene list are ugly: use an eye icon, open when the scene is visible in the film and crossed or closed when it is not (the reel already uses an eye). A hidden scene is dimmed; the eye has a tooltip and an accessibility label ("In the film" or "Hidden").
 - Seen on the same screenshot: a duration of "0.868 s" after a drag; displayed durations should be rounded to a readable precision (0.1 s, or 0.01 s when zoomed in), and the empty blue circle before the scene ID (review state) has no visible meaning: give each state an icon and a tooltip (to review, approved, to modify).
 
@@ -143,6 +145,8 @@ Left, and why:
 ## Storyboard and scene editor
 
 ## Storyboard and music
+
+- **Built in T2 (2026-11-09).** With a track attached and analysed: a discreet grid over the frames at the snap level (beats, bars, sections, drops; bars stronger than beats; thinned so that lines stay at least 12 points apart; never over a scene's ID, duration or review state, nor over a transition marker); on the music lane the beat ticks, the bar numbers, the sections' limits with their name (Break, Return) and the drops (a distinct mark, tooltip with the instant); while an edge or a cut is dragged with snapping, the target line lights up and a label says where it falls ("Bar 5, beat 1, 0:12.4"); a Grid button in the toolbar (remembered per project); an "Analyse the track" button when the track is attached but not analysed. A frame shows one thumbnail (no repeated tiles) until W4. To judge in the rework: the weight of the lines on a busy film, and whether section names from the analysis (Break, Return) are enough.
 
 - Scene state badge (owner): the round badge on a scene is useful if it carries a clear state: a check means the scene is validated, a padlock means it is locked and cannot be modified under any pretext, and another icon means work in progress (WIP). Proposed model: three states, WIP (default; includes "to modify", with its note), Validated (the skill's OK) and Locked (new); a ditched scene is archived. Locked: every edit is refused with a reason, for the user (content, duration, look overrides, composition, drops) and for Clap's tools; the scene's place in the montage stays movable unless the owner decides otherwise; unlocking is explicit; lock and unlock are typed operations, journaled and undoable. The badge opens a small menu to change the state; each state has an icon and a tooltip; the library list, the tree, the reel and the inspector use the same icons.
 

@@ -2,6 +2,51 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.9.1 - 2026-11-09
+
+**What's new**
+- **A film with 3D scenes says what the test could not see.** The Build adds an orange step "3D scenes": "This film has 3D scenes. The logic test cannot draw them: play the film to look at them. No MP4 export for this film." The logic test stays green for what it checks, and the step is a note, not a failure: it blocks neither the build nor the verification. A film without 3D has no such step. When every check passed but a step is orange (3D, or a font with no file), the message says "Build done, with a note" instead of "finished with a problem".
+- Clap knows that such a film is not tested by the harness and has no MP4 export, never promises the MP4 for it, and offers 3D only when depth is the point of a scene.
+
+**Fixed**
+- **The player test no longer fails on a 3D film** (it reported a script error that came from the test host having no WebGL: this was fixed in the skill, 0.18.1).
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.18.1. macOS 13 or later.
+
+## 0.9.0 - 2026-11-09
+
+**What's new**
+- **The music's grid on the storyboard.** When a track is attached and analysed, a discreet grid appears over the frames at the snap level you chose: beats, bars (stronger), sections and drops. Lines thin out as you zoom out so they never crowd, and they never cross a scene's label, duration or state, or a transition marker. The music lane shows the beats, the bar numbers, the sections with their name and the drops, with the instant of a drop in its tooltip. While you drag the edge of a scene or a cut with snapping on, the target line lights up and a label tells where it will land ("Bar 5, beat 1, 0:12.4"). A **Grid** button in the storyboard bar shows or hides the grid (remembered for the project), and when music is attached but not analysed, **Analyse the track** runs the analysis (it never runs by itself).
+- **A Transitions tab in the left panel**, between Scenes and Checks. It lists the film's transitions, one row for each pair of scenes ("S01 to S02: Push, 0.6 s", or "Cut"), with a note on those drawn approximately at assembly and on a free instruction not yet read. A click selects the marker on the storyboard and opens its inspector. Under the list, the catalogue of transitions is a source to drag onto the markers; the six that only run as previews are marked and refused with their reason.
+
+**Fixed**
+- **A scene taken out of the film can be dragged back.** Its chip under the strip, like the rows of the transitions and of the look's catalogues, was a button, and a button takes the press so a drag never started. They now drag from anywhere on the row.
+- **One thumbnail per frame**, never repeated.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.17.0. macOS 13 or later.
+
+## 0.8.5 - 2026-11-09
+
+**Changed**
+- **The font cards show Google Fonts and need no network.** "Add the font files" and the question before a Build list the source (Google Fonts), the licence (the font's own), the files and the total size from the skill's list, so the card appears at once and offline. The network is used only after you accept.
+
+**Fixed**
+- **Downloading fonts no longer depends on GitHub's limit for anonymous requests.** The files come from Google Fonts' open repository by their exact path, or from Google Fonts' own download list when the repository does not hold a file by that name. Every file is checked (present, not empty, a font, and the size the list gives) and nothing is added unless all of them arrive. If it fails, the message gives the code and the address, and "Try again" and the font's page stay.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Project format revision 2. Embedded skill 0.17.0. macOS 13 or later.
+
 ## 0.8.4 - 2026-11-09
 
 **Fixed**

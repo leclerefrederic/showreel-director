@@ -66,6 +66,8 @@ public struct StudioSettings: Codable, Equatable {
     public var timeline: TimelineMemory?
     /// The groups of the Resources list that the user folded, by key ("images", "images.available"...): remembered for this project.
     public var collapsed: [String]?
+    /// Whether the music's grid is drawn over the frames of the strip; nil: shown.
+    public var gridVisible: Bool?
 
     public init(applyDirectly: Bool = false, mode: String = StudioSettings.manual, decided: [String] = [], layout: PanelLayout? = nil, setupRequired: Bool = false, timeline: TimelineMemory? = nil) {
         self.applyDirectly = applyDirectly; self.mode = mode; self.decided = decided; self.layout = layout; self.setupRequired = setupRequired; self.timeline = timeline
@@ -81,6 +83,7 @@ public struct StudioSettings: Codable, Equatable {
         setupRequired = try c.decodeIfPresent(Bool.self, forKey: .setupRequired) ?? false
         timeline = try c.decodeIfPresent(TimelineMemory.self, forKey: .timeline)
         collapsed = try c.decodeIfPresent([String].self, forKey: .collapsed)
+        gridVisible = try c.decodeIfPresent(Bool.self, forKey: .gridVisible)
     }
 }
 

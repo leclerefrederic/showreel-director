@@ -92,7 +92,7 @@ struct PendingLookChange: Identifiable {
 
 /// The library holds assets only: the resources and the scenes. The look is a project setting, and its catalogues are picked where they are used.
 enum LibraryTab: String, CaseIterable, Identifiable {
-    case resources, scenes, checks
+    case resources, scenes, transitions, checks
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
 }
@@ -144,6 +144,11 @@ final class ProjectModel: ObservableObject {
     @Published private(set) var layout: PanelLayout
     /// The playhead of the reel, in seconds.
     @Published var playhead = 0.0
+    /// Whether the music's grid is drawn over the frames (remembered per project in .studio/ui.json).
+    @Published private(set) var gridVisible = true
+    /// While an edge or a cut is dragged: where it will land and what to call that place ("Bar 5, beat 1, 0:12.4").
+    struct SnapGuide: Equatable { let time: Double; let text: String }
+    @Published var snapGuide: SnapGuide?
     /// The time scale of the strip and how far it is scrolled. `fitAll`: it shows the whole film and refits when its panel is resized.
     @Published private(set) var timeline = TimelineScale.Viewport(pps: 60, scroll: 0)
     @Published private(set) var fitAll = true
@@ -257,6 +262,7 @@ final class ProjectModel: ObservableObject {
         mode = s.mode
         workspaceOpen = !s.setupRequired
         foldMemory = s.collapsed
+        gridVisible = s.gridVisible ?? true
         showCopilot = !s.setupRequired || s.mode == StudioSettings.wizard
         decided = s.decided
         layout = s.layout ?? PanelLayout()
@@ -431,7 +437,10 @@ final class ProjectModel: ObservableObject {
             refresh(); reloadTree()
             let p = BuildProgress.scenes(version: v, store: store)
             if report.ok { showToast("Build done: \(p.done) scene\(p.done == 1 ? "" : "s") generated, film assembled (\(v)). The previous version is kept.") }
-            else {
+            else if report.built, report.harnessClean, report.smokeClean, let note = report.steps.first(where: { $0.level == .tight }) {
+                // every check passed; an orange step (a 3D film, a font with no file) is a note, not a problem
+                showToast("Build done (\(v)), with a note. \(note.title): \(note.detail)")
+            } else {
                 let bad = report.steps.first { $0.level != .ok }
                 showToast("Build \(v) finished with a problem: \(bad.map { "\($0.title): \($0.detail)" } ?? "see the checks"). The editing is open again.", error: true)
             }
@@ -518,6 +527,18 @@ final class ProjectModel: ObservableObject {
 
     @discardableResult
     func setTransition(from id: String, _ e: TransitionEdit?) -> Bool { perform(.transition(from: id, e)) }
+    func setGridVisible(_ on: Bool) {
+        gridVisible = on
+        var s = store.settings; s.gridVisible = on; store.settings = s
+    }
+
+    /// An edge or a cut is being dragged to `t`: the line where it would land and its words.
+    func updateSnapGuide(_ t: Double, bypass: Bool) {
+        let s = snapped(t, bypass: bypass)
+        let level = showreel?.snapLevel() ?? .beat
+        snapGuide = SnapGuide(time: s, text: MusicGrid.snapText(s, music: bypass ? nil : music, level: level))
+    }
+
     func setGridSettings(snap: SnapLevel? = nil, ripple: Bool? = nil) { perform(.gridSettings(snap: snap?.rawValue, ripple: ripple)) }
 
     // MARK: the music
@@ -1278,13 +1299,8 @@ extension ProjectModel {
     func askAboutFonts(_ go: @escaping () -> Void) {
         guard fontsAtBuild == nil, !checkingFonts else { return }
         guard !FontsAtBuild.missing(store).isEmpty else { go(); return }
-        checkingFonts = true
-        showToast("Looking up the fonts of the Look\u{2026}")
-        Task { @MainActor in
-            let q = await FontsAtBuild.prepare(store, source: fontSource)
-            checkingFonts = false
-            if let q = q { fontsAtBuild = PendingFontsAtBuild(question: q, then: go) } else { go() }
-        }
+        // the card is built from the skill's manifest: no network until the user says yes
+        if let q = FontsAtBuild.prepare(store) { fontsAtBuild = PendingFontsAtBuild(question: q, then: go) } else { go() }
     }
 
     func answerFonts(_ choice: FontsAtBuild.Choice) {
@@ -1366,11 +1382,8 @@ extension ProjectModel {
     /// Looks up the files of a Look font (names and sizes only) and shows the card.
     func addFontFiles(_ family: String) {
         if let u = Availability.addFontFiles(family, in: activity, store: store).why { react(StatusLine.refused(u.message)); return }
-        showToast("Looking up the files of \(family)\u{2026}")
-        Task { @MainActor in
-            do { fontOffer = PendingFontOffer(offer: try await FontFiles.offer(family, store: store, source: fontSource)) }
-            catch { fontFailed(error, family: family) }
-        }
+        do { fontOffer = PendingFontOffer(offer: try FontFiles.offer(family, store: store)) }      // from the skill's manifest: no network yet
+        catch { fontFailed(error, family: family) }
     }
 
     /// The card was accepted: download, then one typed operation (undoable, in the journal) puts the files in the project and approves them.

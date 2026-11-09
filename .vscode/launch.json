@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:showreel-director}/app-swift",
+            "name": "Debug ShowreelStudio (app-swift)",
+            "target": "ShowreelStudio",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug ShowreelStudio (app-swift)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:showreel-director}/app-swift",
+            "name": "Release ShowreelStudio (app-swift)",
+            "target": "ShowreelStudio",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release ShowreelStudio (app-swift)"
+        }
+    ]
+}

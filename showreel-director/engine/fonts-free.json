@@ -1,72 +1,1534 @@
 [
-{"name": "Poppins", "dir": "poppins", "cat": "Sans", "moods": ["friendly", "modern"], "note": "Geometric, round, very legible; the safe choice for product reels."},
-{"name": "Montserrat", "dir": "montserrat", "cat": "Sans", "moods": ["modern", "bold"], "note": "Wide geometric sans, strong headlines."},
-{"name": "Outfit", "dir": "outfit", "cat": "Sans", "moods": ["modern", "friendly"], "note": "Clean geometric, slightly softer than Montserrat."},
-{"name": "Plus Jakarta Sans", "dir": "plusjakartasans", "cat": "Sans", "moods": ["modern", "premium"], "note": "Contemporary, confident, good at small sizes."},
-{"name": "DM Sans", "dir": "dmsans", "cat": "Sans", "moods": ["modern", "friendly"], "note": "Low-contrast geometric, calm and tidy."},
-{"name": "Space Grotesk", "dir": "spacegrotesk", "cat": "Sans", "moods": ["technical", "bold"], "note": "Quirky grotesk with a techy edge."},
-{"name": "Manrope", "dir": "manrope", "cat": "Sans", "moods": ["modern", "technical"], "note": "Semi-condensed modern sans, great for interfaces."},
-{"name": "Inter", "dir": "inter", "cat": "Sans", "moods": ["neutral", "technical"], "note": "The neutral interface standard; disappears behind the message."},
-{"name": "Work Sans", "dir": "worksans", "cat": "Sans", "moods": ["neutral", "warm"], "note": "Grotesque with open shapes, solid for body text."},
-{"name": "Source Sans 3", "dir": "sourcesans3", "cat": "Sans", "moods": ["neutral", "editorial"], "note": "Humanist sans, very readable, wide language coverage."},
-{"name": "IBM Plex Sans", "dir": "ibmplexsans", "cat": "Sans", "moods": ["technical", "premium"], "note": "Engineered, corporate-credible."},
-{"name": "Nunito", "dir": "nunito", "cat": "Sans", "moods": ["friendly", "playful"], "note": "Rounded terminals, soft and approachable."},
-{"name": "Lato", "dir": "lato", "cat": "Sans", "moods": ["neutral", "warm"], "note": "Warm, stable, semi-rounded."},
-{"name": "Bebas Neue", "dir": "bebasneue", "cat": "Condensed", "moods": ["bold", "editorial"], "note": "All-caps condensed; punchy titles (capitals only)."},
-{"name": "Oswald", "dir": "oswald", "cat": "Condensed", "moods": ["bold", "editorial"], "note": "Condensed gothic, strong and compact."},
-{"name": "Anton", "dir": "anton", "cat": "Condensed", "moods": ["bold"], "note": "Heavy impact face for short, loud lines."},
-{"name": "Barlow Condensed", "dir": "barlowcondensed", "cat": "Condensed", "moods": ["technical", "bold"], "note": "Highway-sign feel, many weights."},
-{"name": "Unbounded", "dir": "unbounded", "cat": "Display", "moods": ["bold", "playful"], "note": "Wide, rounded, contemporary display."},
-{"name": "Syne", "dir": "syne", "cat": "Display", "moods": ["bold", "premium"], "note": "Art-gallery attitude; extra-bold is very wide."},
-{"name": "Fredoka", "dir": "fredoka", "cat": "Display", "moods": ["playful", "friendly"], "note": "Round and chunky, toy-like."},
-{"name": "Bungee", "dir": "bungee", "cat": "Display", "moods": ["bold", "playful"], "note": "Signage lettering, caps; loud and graphic."},
-{"name": "Righteous", "dir": "righteous", "cat": "Display", "moods": ["playful", "bold"], "note": "Retro-futuristic display."},
-{"name": "Lilita One", "dir": "lilitaone", "cat": "Display", "moods": ["playful", "bold"], "note": "Chunky and cheerful, for games and kids."},
-{"name": "Playfair Display", "dir": "playfairdisplay", "cat": "Serif", "moods": ["premium", "editorial"], "note": "High-contrast didone, elegant headlines."},
-{"name": "DM Serif Display", "dir": "dmserifdisplay", "cat": "Serif", "moods": ["premium", "editorial"], "note": "Sharp display serif, great at large sizes."},
-{"name": "Fraunces", "dir": "fraunces", "cat": "Serif", "moods": ["warm", "editorial"], "note": "Soft, characterful old-style serif."},
-{"name": "Merriweather", "dir": "merriweather", "cat": "Serif", "moods": ["warm", "editorial"], "note": "Sturdy screen serif, body text."},
-{"name": "Lora", "dir": "lora", "cat": "Serif", "moods": ["warm", "premium"], "note": "Calligraphic roots, balanced body serif."},
-{"name": "Cormorant Garamond", "dir": "cormorantgaramond", "cat": "Serif", "moods": ["premium", "editorial"], "note": "Delicate and refined; use large (thin strokes)."},
-{"name": "JetBrains Mono", "dir": "jetbrainsmono", "cat": "Mono", "moods": ["technical"], "note": "Code face, tall x-height, crisp."},
-{"name": "IBM Plex Mono", "dir": "ibmplexmono", "cat": "Mono", "moods": ["technical", "premium"], "note": "Typewriter DNA, calm."},
-{"name": "Space Mono", "dir": "spacemono", "cat": "Mono", "moods": ["technical", "playful"], "note": "Geometric mono with character."},
-{"name": "Caveat", "dir": "caveat", "cat": "Handwriting", "moods": ["warm", "playful"], "note": "Natural handwriting for annotations."},
-{"name": "Dancing Script", "dir": "dancingscript", "cat": "Script", "moods": ["romantic", "playful"], "note": "Lively connected cursive, friendly and fluid."},
-{"name": "Pacifico", "dir": "pacifico", "cat": "Script", "moods": ["playful", "friendly"], "note": "Surf-style brush script, casual and bold."},
-{"name": "Great Vibes", "dir": "greatvibes", "cat": "Script", "moods": ["elegant", "romantic"], "note": "Formal calligraphic script for invitations and signatures."},
-{"name": "Satisfy", "dir": "satisfy", "cat": "Script", "moods": ["warm", "playful"], "note": "Brush script with a relaxed, handmade feel."},
-{"name": "Sacramento", "dir": "sacramento", "cat": "Script", "moods": ["elegant", "romantic"], "note": "Thin monoline cursive, light and airy."},
-{"name": "Parisienne", "dir": "parisienne", "cat": "Script", "moods": ["elegant", "romantic"], "note": "Delicate, flowing calligraphy."},
-{"name": "Allura", "dir": "allura", "cat": "Script", "moods": ["elegant", "premium"], "note": "Polished formal script, high contrast strokes."},
-{"name": "EB Garamond", "dir": "ebgaramond", "cat": "Serif", "moods": ["elegant", "classic"], "note": "Revival of the Renaissance Garamond, book elegance."},
-{"name": "Libre Baskerville", "dir": "librebaskerville", "cat": "Serif", "moods": ["classic", "editorial"], "note": "Baskerville tuned for screens, stately and clear."},
-{"name": "Bodoni Moda", "dir": "bodonimoda", "cat": "Serif", "moods": ["elegant", "premium"], "note": "Fashion-magazine didone, razor-thin hairlines."},
-{"name": "Cinzel", "dir": "cinzel", "cat": "Serif", "moods": ["elegant", "classic"], "note": "Roman inscription capitals, cinematic and monumental."},
-{"name": "Old Standard TT", "dir": "oldstandardtt", "cat": "Serif", "moods": ["classic", "editorial"], "note": "Nineteenth-century book face, old-newspaper feel."},
-{"name": "STIX Two Text", "dir": "stixtwotext", "cat": "Serif", "moods": ["classic", "neutral"], "note": "Times-like text serif: the familiar newspaper look."},
-{"name": "Crimson Pro", "dir": "crimsonpro", "cat": "Serif", "moods": ["classic", "warm"], "note": "Compact Garamond-style text serif."},
-{"name": "UnifrakturMaguntia", "dir": "unifrakturmaguntia", "cat": "Blackletter", "moods": ["gothic", "classic"], "note": "Gutenberg-style blackletter; use for short titles only."},
-{"name": "Pirata One", "dir": "pirataone", "cat": "Blackletter", "moods": ["gothic", "bold"], "note": "Lighter, readable gothic with a pirate-poster edge."},
-{"name": "Zilla Slab", "dir": "zillaslab", "cat": "Slab", "moods": ["warm", "editorial"], "note": "Friendly slab serif, sturdy yet soft."},
-{"name": "Arvo", "dir": "arvo", "cat": "Slab", "moods": ["bold", "retro"], "note": "Geometric slab, strong and clear for headlines."},
-{"name": "Bitter", "dir": "bitter", "cat": "Slab", "moods": ["neutral", "editorial"], "note": "Slab built for reading on screens."},
-{"name": "Orbitron", "dir": "orbitron", "cat": "Futuristic", "moods": ["technical", "bold"], "note": "Square geometric sci-fi lettering."},
-{"name": "Audiowide", "dir": "audiowide", "cat": "Futuristic", "moods": ["technical", "playful"], "note": "Rounded-wide techno display."},
-{"name": "Exo 2", "dir": "exo2", "cat": "Futuristic", "moods": ["technical", "modern"], "note": "Contemporary sci-fi sans, many weights."},
-{"name": "Syncopate", "dir": "syncopate", "cat": "Futuristic", "moods": ["premium", "technical"], "note": "Very wide caps; luxury tech, short titles."},
-{"name": "Press Start 2P", "dir": "pressstart2p", "cat": "Pixel", "moods": ["retro", "playful"], "note": "8-bit arcade pixel font."},
-{"name": "VT323", "dir": "vt323", "cat": "Pixel", "moods": ["retro", "technical"], "note": "Old terminal screen monospace."},
-{"name": "Silkscreen", "dir": "silkscreen", "cat": "Pixel", "moods": ["retro", "playful"], "note": "Clean pixel capitals for small UI-like text."},
-{"name": "Poiret One", "dir": "poiretone", "cat": "Vintage", "moods": ["elegant", "retro"], "note": "Thin art deco, 1920s poster."},
-{"name": "Limelight", "dir": "limelight", "cat": "Vintage", "moods": ["elegant", "retro"], "note": "Art deco display with theatre glamour."},
-{"name": "Rye", "dir": "rye", "cat": "Vintage", "moods": ["retro", "bold"], "note": "Wild-west wanted-poster capitals."},
-{"name": "Monoton", "dir": "monoton", "cat": "Vintage", "moods": ["retro", "bold"], "note": "Neon multi-line display, use very large."},
-{"name": "Courier Prime", "dir": "courierprime", "cat": "Mono", "moods": ["retro", "editorial"], "note": "Typewriter and screenplay look."},
-{"name": "Patrick Hand", "dir": "patrickhand", "cat": "Handwriting", "moods": ["friendly", "warm"], "note": "Neat everyday handwriting."},
-{"name": "Shadows Into Light", "dir": "shadowsintolight", "cat": "Handwriting", "moods": ["playful", "warm"], "note": "Quick marker handwriting."},
-{"name": "Gochi Hand", "dir": "gochihand", "cat": "Handwriting", "moods": ["playful", "friendly"], "note": "Chunky informal hand, notebook feel."},
-{"name": "Bangers", "dir": "bangers", "cat": "Display", "moods": ["playful", "bold"], "note": "Comic-book sound-effect capitals."},
-{"name": "Comic Neue", "dir": "comicneue", "cat": "Sans", "moods": ["playful", "friendly"], "note": "A refined take on comic lettering, more readable."},
-{"name": "Black Ops One", "dir": "blackopsone", "cat": "Display", "moods": ["bold", "technical"], "note": "Military stencil lettering."}
+ {
+  "name": "Poppins",
+  "dir": "poppins",
+  "cat": "Sans",
+  "moods": [
+   "friendly",
+   "modern"
+  ],
+  "note": "Geometric, round, very legible; the safe choice for product reels.",
+  "files": [
+   {
+    "name": "Poppins-Regular.ttf",
+    "weight": 400,
+    "size": 160316
+   },
+   {
+    "name": "Poppins-Bold.ttf",
+    "weight": 700,
+    "size": 155996
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Poppins",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Montserrat",
+  "dir": "montserrat",
+  "cat": "Sans",
+  "moods": [
+   "modern",
+   "bold"
+  ],
+  "note": "Wide geometric sans, strong headlines.",
+  "files": [
+   {
+    "name": "Montserrat[wght].ttf",
+    "size": 744936,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Montserrat",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Outfit",
+  "dir": "outfit",
+  "cat": "Sans",
+  "moods": [
+   "modern",
+   "friendly"
+  ],
+  "note": "Clean geometric, slightly softer than Montserrat.",
+  "files": [
+   {
+    "name": "Outfit[wght].ttf",
+    "size": 110884,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Outfit",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Plus Jakarta Sans",
+  "dir": "plusjakartasans",
+  "cat": "Sans",
+  "moods": [
+   "modern",
+   "premium"
+  ],
+  "note": "Contemporary, confident, good at small sizes.",
+  "files": [
+   {
+    "name": "PlusJakartaSans[wght].ttf",
+    "size": 176288,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Plus+Jakarta+Sans",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "DM Sans",
+  "dir": "dmsans",
+  "cat": "Sans",
+  "moods": [
+   "modern",
+   "friendly"
+  ],
+  "note": "Low-contrast geometric, calm and tidy.",
+  "files": [
+   {
+    "name": "DMSans[opsz,wght].ttf",
+    "size": 240164,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/DM+Sans",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Space Grotesk",
+  "dir": "spacegrotesk",
+  "cat": "Sans",
+  "moods": [
+   "technical",
+   "bold"
+  ],
+  "note": "Quirky grotesk with a techy edge.",
+  "files": [
+   {
+    "name": "SpaceGrotesk[wght].ttf",
+    "size": 136676,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Space+Grotesk",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Manrope",
+  "dir": "manrope",
+  "cat": "Sans",
+  "moods": [
+   "modern",
+   "technical"
+  ],
+  "note": "Semi-condensed modern sans, great for interfaces.",
+  "files": [
+   {
+    "name": "Manrope[wght].ttf",
+    "size": 164700,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Manrope",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Inter",
+  "dir": "inter",
+  "cat": "Sans",
+  "moods": [
+   "neutral",
+   "technical"
+  ],
+  "note": "The neutral interface standard; disappears behind the message.",
+  "files": [
+   {
+    "name": "Inter[opsz,wght].ttf",
+    "size": 876576,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Inter",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Work Sans",
+  "dir": "worksans",
+  "cat": "Sans",
+  "moods": [
+   "neutral",
+   "warm"
+  ],
+  "note": "Grotesque with open shapes, solid for body text.",
+  "files": [
+   {
+    "name": "WorkSans[wght].ttf",
+    "size": 361072,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Work+Sans",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Source Sans 3",
+  "dir": "sourcesans3",
+  "cat": "Sans",
+  "moods": [
+   "neutral",
+   "editorial"
+  ],
+  "note": "Humanist sans, very readable, wide language coverage.",
+  "files": [
+   {
+    "name": "SourceSans3[wght].ttf",
+    "size": 646340,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Source+Sans+3",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "IBM Plex Sans",
+  "dir": "ibmplexsans",
+  "cat": "Sans",
+  "moods": [
+   "technical",
+   "premium"
+  ],
+  "note": "Engineered, corporate-credible.",
+  "files": [
+   {
+    "name": "IBMPlexSans[wdth,wght].ttf",
+    "size": 537244,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/IBM+Plex+Sans",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Nunito",
+  "dir": "nunito",
+  "cat": "Sans",
+  "moods": [
+   "friendly",
+   "playful"
+  ],
+  "note": "Rounded terminals, soft and approachable.",
+  "files": [
+   {
+    "name": "Nunito[wght].ttf",
+    "size": 276932,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Nunito",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Lato",
+  "dir": "lato",
+  "cat": "Sans",
+  "moods": [
+   "neutral",
+   "warm"
+  ],
+  "note": "Warm, stable, semi-rounded.",
+  "files": [
+   {
+    "name": "Lato-Regular.ttf",
+    "weight": 400,
+    "size": 656568
+   },
+   {
+    "name": "Lato-Bold.ttf",
+    "weight": 700,
+    "size": 656544
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Lato",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Bebas Neue",
+  "dir": "bebasneue",
+  "cat": "Condensed",
+  "moods": [
+   "bold",
+   "editorial"
+  ],
+  "note": "All-caps condensed; punchy titles (capitals only).",
+  "files": [
+   {
+    "name": "BebasNeue-Regular.ttf",
+    "weight": 400,
+    "size": 61400
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Bebas+Neue",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Oswald",
+  "dir": "oswald",
+  "cat": "Condensed",
+  "moods": [
+   "bold",
+   "editorial"
+  ],
+  "note": "Condensed gothic, strong and compact.",
+  "files": [
+   {
+    "name": "Oswald[wght].ttf",
+    "size": 172088,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Oswald",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Anton",
+  "dir": "anton",
+  "cat": "Condensed",
+  "moods": [
+   "bold"
+  ],
+  "note": "Heavy impact face for short, loud lines.",
+  "files": [
+   {
+    "name": "Anton-Regular.ttf",
+    "weight": 400,
+    "size": 170812
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Anton",
+  "license": "SIL Open Font License 1.1",
+  "tree": "ofl"
+ },
+ {
+  "name": "Barlow Condensed",
+  "dir": "barlowcondensed",
+  "cat": "Condensed",
+  "moods": [
+   "technical",
+   "bold"
+  ],
+  "note": "Highway-sign feel, many weights.",
+  "files": [
+   {
+    "name": "BarlowCondensed-Regular.ttf",
+    "weight": 400,
+    "size": 102480
+   },
+   {
+    "name": "BarlowCondensed-Bold.ttf",
+    "weight": 700,
+    "size": 109912
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Barlow+Condensed",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Unbounded",
+  "dir": "unbounded",
+  "cat": "Display",
+  "moods": [
+   "bold",
+   "playful"
+  ],
+  "note": "Wide, rounded, contemporary display.",
+  "files": [
+   {
+    "name": "Unbounded[wght].ttf",
+    "size": 778272,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Unbounded",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Syne",
+  "dir": "syne",
+  "cat": "Display",
+  "moods": [
+   "bold",
+   "premium"
+  ],
+  "note": "Art-gallery attitude; extra-bold is very wide.",
+  "files": [
+   {
+    "name": "Syne[wght].ttf",
+    "size": 146980,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Syne",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Fredoka",
+  "dir": "fredoka",
+  "cat": "Display",
+  "moods": [
+   "playful",
+   "friendly"
+  ],
+  "note": "Round and chunky, toy-like.",
+  "files": [
+   {
+    "name": "Fredoka[wdth,wght].ttf",
+    "size": 159184,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Fredoka",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Bungee",
+  "dir": "bungee",
+  "cat": "Display",
+  "moods": [
+   "bold",
+   "playful"
+  ],
+  "note": "Signage lettering, caps; loud and graphic.",
+  "files": [
+   {
+    "name": "Bungee-Regular.ttf",
+    "weight": 400,
+    "size": 118996
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Bungee",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Righteous",
+  "dir": "righteous",
+  "cat": "Display",
+  "moods": [
+   "playful",
+   "bold"
+  ],
+  "note": "Retro-futuristic display.",
+  "files": [
+   {
+    "name": "Righteous-Regular.ttf",
+    "weight": 400,
+    "size": 43104
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Righteous",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Lilita One",
+  "dir": "lilitaone",
+  "cat": "Display",
+  "moods": [
+   "playful",
+   "bold"
+  ],
+  "note": "Chunky and cheerful, for games and kids.",
+  "files": [
+   {
+    "name": "LilitaOne-Regular.ttf",
+    "weight": 400,
+    "size": 28092
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Lilita+One",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Playfair Display",
+  "dir": "playfairdisplay",
+  "cat": "Serif",
+  "moods": [
+   "premium",
+   "editorial"
+  ],
+  "note": "High-contrast didone, elegant headlines.",
+  "files": [
+   {
+    "name": "PlayfairDisplay[wght].ttf",
+    "size": 300724,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Playfair+Display",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "DM Serif Display",
+  "dir": "dmserifdisplay",
+  "cat": "Serif",
+  "moods": [
+   "premium",
+   "editorial"
+  ],
+  "note": "Sharp display serif, great at large sizes.",
+  "files": [
+   {
+    "name": "DMSerifDisplay-Regular.ttf",
+    "weight": 400,
+    "size": 76580
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/DM+Serif+Display",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Fraunces",
+  "dir": "fraunces",
+  "cat": "Serif",
+  "moods": [
+   "warm",
+   "editorial"
+  ],
+  "note": "Soft, characterful old-style serif.",
+  "files": [
+   {
+    "name": "Fraunces[SOFT,WONK,opsz,wght].ttf",
+    "size": 360440,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Fraunces",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Merriweather",
+  "dir": "merriweather",
+  "cat": "Serif",
+  "moods": [
+   "warm",
+   "editorial"
+  ],
+  "note": "Sturdy screen serif, body text.",
+  "files": [
+   {
+    "name": "Merriweather[opsz,wdth,wght].ttf",
+    "size": 4628080,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Merriweather",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Lora",
+  "dir": "lora",
+  "cat": "Serif",
+  "moods": [
+   "warm",
+   "premium"
+  ],
+  "note": "Calligraphic roots, balanced body serif.",
+  "files": [
+   {
+    "name": "Lora[wght].ttf",
+    "size": 212196,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Lora",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Cormorant Garamond",
+  "dir": "cormorantgaramond",
+  "cat": "Serif",
+  "moods": [
+   "premium",
+   "editorial"
+  ],
+  "note": "Delicate and refined; use large (thin strokes).",
+  "files": [
+   {
+    "name": "CormorantGaramond[wght].ttf",
+    "size": 1195560,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Cormorant+Garamond",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "JetBrains Mono",
+  "dir": "jetbrainsmono",
+  "cat": "Mono",
+  "moods": [
+   "technical"
+  ],
+  "note": "Code face, tall x-height, crisp.",
+  "files": [
+   {
+    "name": "JetBrainsMono[wght].ttf",
+    "size": 187208,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/JetBrains+Mono",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "IBM Plex Mono",
+  "dir": "ibmplexmono",
+  "cat": "Mono",
+  "moods": [
+   "technical",
+   "premium"
+  ],
+  "note": "Typewriter DNA, calm.",
+  "files": [
+   {
+    "name": "IBMPlexMono-Regular.ttf",
+    "weight": 400,
+    "size": 135580
+   },
+   {
+    "name": "IBMPlexMono-Bold.ttf",
+    "weight": 700,
+    "size": 137784
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/IBM+Plex+Mono",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Space Mono",
+  "dir": "spacemono",
+  "cat": "Mono",
+  "moods": [
+   "technical",
+   "playful"
+  ],
+  "note": "Geometric mono with character.",
+  "files": [
+   {
+    "name": "SpaceMono-Regular.ttf",
+    "weight": 400,
+    "size": 99356
+   },
+   {
+    "name": "SpaceMono-Bold.ttf",
+    "weight": 700,
+    "size": 98232
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Space+Mono",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Caveat",
+  "dir": "caveat",
+  "cat": "Handwriting",
+  "moods": [
+   "warm",
+   "playful"
+  ],
+  "note": "Natural handwriting for annotations.",
+  "files": [
+   {
+    "name": "Caveat[wght].ttf",
+    "size": 403648,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Caveat",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Dancing Script",
+  "dir": "dancingscript",
+  "cat": "Script",
+  "moods": [
+   "romantic",
+   "playful"
+  ],
+  "note": "Lively connected cursive, friendly and fluid.",
+  "files": [
+   {
+    "name": "DancingScript[wght].ttf",
+    "size": 133636,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Dancing+Script",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Pacifico",
+  "dir": "pacifico",
+  "cat": "Script",
+  "moods": [
+   "playful",
+   "friendly"
+  ],
+  "note": "Surf-style brush script, casual and bold.",
+  "files": [
+   {
+    "name": "Pacifico-Regular.ttf",
+    "weight": 400,
+    "size": 329380
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Pacifico",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Great Vibes",
+  "dir": "greatvibes",
+  "cat": "Script",
+  "moods": [
+   "elegant",
+   "romantic"
+  ],
+  "note": "Formal calligraphic script for invitations and signatures.",
+  "files": [
+   {
+    "name": "GreatVibes-Regular.ttf",
+    "weight": 400,
+    "size": 457588
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Great+Vibes",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Satisfy",
+  "dir": "satisfy",
+  "cat": "Script",
+  "moods": [
+   "warm",
+   "playful"
+  ],
+  "note": "Brush script with a relaxed, handmade feel.",
+  "files": [
+   {
+    "name": "Satisfy-Regular.ttf",
+    "weight": 400,
+    "size": 47928
+   }
+  ],
+  "licenseFile": "LICENSE.txt",
+  "specimen": "https://fonts.google.com/specimen/Satisfy",
+  "license": "Apache License 2.0",
+  "tree": "apache"
+ },
+ {
+  "name": "Sacramento",
+  "dir": "sacramento",
+  "cat": "Script",
+  "moods": [
+   "elegant",
+   "romantic"
+  ],
+  "note": "Thin monoline cursive, light and airy.",
+  "files": [
+   {
+    "name": "Sacramento-Regular.ttf",
+    "weight": 400,
+    "size": 79696
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Sacramento",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Parisienne",
+  "dir": "parisienne",
+  "cat": "Script",
+  "moods": [
+   "elegant",
+   "romantic"
+  ],
+  "note": "Delicate, flowing calligraphy.",
+  "files": [
+   {
+    "name": "Parisienne-Regular.ttf",
+    "weight": 400,
+    "size": 61248
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Parisienne",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Allura",
+  "dir": "allura",
+  "cat": "Script",
+  "moods": [
+   "elegant",
+   "premium"
+  ],
+  "note": "Polished formal script, high contrast strokes.",
+  "files": [
+   {
+    "name": "Allura-Regular.ttf",
+    "weight": 400,
+    "size": 246632
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Allura",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "EB Garamond",
+  "dir": "ebgaramond",
+  "cat": "Serif",
+  "moods": [
+   "elegant",
+   "classic"
+  ],
+  "note": "Revival of the Renaissance Garamond, book elegance.",
+  "files": [
+   {
+    "name": "EBGaramond[wght].ttf",
+    "size": 851176,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/EB+Garamond",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Libre Baskerville",
+  "dir": "librebaskerville",
+  "cat": "Serif",
+  "moods": [
+   "classic",
+   "editorial"
+  ],
+  "note": "Baskerville tuned for screens, stately and clear.",
+  "files": [
+   {
+    "name": "LibreBaskerville[wght].ttf",
+    "size": 171900,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Libre+Baskerville",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Bodoni Moda",
+  "dir": "bodonimoda",
+  "cat": "Serif",
+  "moods": [
+   "elegant",
+   "premium"
+  ],
+  "note": "Fashion-magazine didone, razor-thin hairlines.",
+  "files": [
+   {
+    "name": "BodoniModa[opsz,wght].ttf",
+    "size": 162104,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Bodoni+Moda",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Cinzel",
+  "dir": "cinzel",
+  "cat": "Serif",
+  "moods": [
+   "elegant",
+   "classic"
+  ],
+  "note": "Roman inscription capitals, cinematic and monumental.",
+  "files": [
+   {
+    "name": "Cinzel[wght].ttf",
+    "size": 125468,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Cinzel",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Old Standard TT",
+  "dir": "oldstandardtt",
+  "cat": "Serif",
+  "moods": [
+   "classic",
+   "editorial"
+  ],
+  "note": "Nineteenth-century book face, old-newspaper feel.",
+  "files": [
+   {
+    "name": "OldStandardTT-Regular.ttf",
+    "weight": 400,
+    "size": 244060,
+    "list": "OldStandardTT-Regular.ttf"
+   },
+   {
+    "name": "OldStandardTT-Bold.ttf",
+    "weight": 700,
+    "size": 261516,
+    "list": "OldStandardTT-Bold.ttf"
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Old+Standard+TT",
+  "license": "SIL Open Font License 1.1",
+  "tree": "ofl"
+ },
+ {
+  "name": "STIX Two Text",
+  "dir": "stixtwotext",
+  "cat": "Serif",
+  "moods": [
+   "classic",
+   "neutral"
+  ],
+  "note": "Times-like text serif: the familiar newspaper look.",
+  "files": [
+   {
+    "name": "STIXTwoText[wght].ttf",
+    "size": 418956,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/STIX+Two+Text",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Crimson Pro",
+  "dir": "crimsonpro",
+  "cat": "Serif",
+  "moods": [
+   "classic",
+   "warm"
+  ],
+  "note": "Compact Garamond-style text serif.",
+  "files": [
+   {
+    "name": "CrimsonPro[wght].ttf",
+    "size": 246324,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Crimson+Pro",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "UnifrakturMaguntia",
+  "dir": "unifrakturmaguntia",
+  "cat": "Blackletter",
+  "moods": [
+   "gothic",
+   "classic"
+  ],
+  "note": "Gutenberg-style blackletter; use for short titles only.",
+  "files": [
+   {
+    "name": "UnifrakturMaguntia-Regular.ttf",
+    "weight": 400,
+    "size": 82576,
+    "list": "UnifrakturMaguntia-Regular.ttf"
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/UnifrakturMaguntia",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Pirata One",
+  "dir": "pirataone",
+  "cat": "Blackletter",
+  "moods": [
+   "gothic",
+   "bold"
+  ],
+  "note": "Lighter, readable gothic with a pirate-poster edge.",
+  "files": [
+   {
+    "name": "PirataOne-Regular.ttf",
+    "weight": 400,
+    "size": 56316
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Pirata+One",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Zilla Slab",
+  "dir": "zillaslab",
+  "cat": "Slab",
+  "moods": [
+   "warm",
+   "editorial"
+  ],
+  "note": "Friendly slab serif, sturdy yet soft.",
+  "files": [
+   {
+    "name": "ZillaSlab-Regular.ttf",
+    "weight": 400,
+    "size": 270104
+   },
+   {
+    "name": "ZillaSlab-Bold.ttf",
+    "weight": 700,
+    "size": 273044
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Zilla+Slab",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Arvo",
+  "dir": "arvo",
+  "cat": "Slab",
+  "moods": [
+   "bold",
+   "retro"
+  ],
+  "note": "Geometric slab, strong and clear for headlines.",
+  "files": [
+   {
+    "name": "Arvo-Regular.ttf",
+    "weight": 400,
+    "size": 38780
+   },
+   {
+    "name": "Arvo-Bold.ttf",
+    "weight": 700,
+    "size": 37652
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Arvo",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Bitter",
+  "dir": "bitter",
+  "cat": "Slab",
+  "moods": [
+   "neutral",
+   "editorial"
+  ],
+  "note": "Slab built for reading on screens.",
+  "files": [
+   {
+    "name": "Bitter[wght].ttf",
+    "size": 328636,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Bitter",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Orbitron",
+  "dir": "orbitron",
+  "cat": "Futuristic",
+  "moods": [
+   "technical",
+   "bold"
+  ],
+  "note": "Square geometric sci-fi lettering.",
+  "files": [
+   {
+    "name": "Orbitron[wght].ttf",
+    "size": 38576,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Orbitron",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Audiowide",
+  "dir": "audiowide",
+  "cat": "Futuristic",
+  "moods": [
+   "technical",
+   "playful"
+  ],
+  "note": "Rounded-wide techno display.",
+  "files": [
+   {
+    "name": "Audiowide-Regular.ttf",
+    "weight": 400,
+    "size": 69916
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Audiowide",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Exo 2",
+  "dir": "exo2",
+  "cat": "Futuristic",
+  "moods": [
+   "technical",
+   "modern"
+  ],
+  "note": "Contemporary sci-fi sans, many weights.",
+  "files": [
+   {
+    "name": "Exo2[wght].ttf",
+    "size": 303940,
+    "variable": true
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Exo+2",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Syncopate",
+  "dir": "syncopate",
+  "cat": "Futuristic",
+  "moods": [
+   "premium",
+   "technical"
+  ],
+  "note": "Very wide caps; luxury tech, short titles.",
+  "files": [
+   {
+    "name": "Syncopate-Regular.ttf",
+    "weight": 400,
+    "size": 174132
+   },
+   {
+    "name": "Syncopate-Bold.ttf",
+    "weight": 700,
+    "size": 63964
+   }
+  ],
+  "licenseFile": "LICENSE.txt",
+  "specimen": "https://fonts.google.com/specimen/Syncopate",
+  "license": "Apache License 2.0",
+  "tree": "apache"
+ },
+ {
+  "name": "Press Start 2P",
+  "dir": "pressstart2p",
+  "cat": "Pixel",
+  "moods": [
+   "retro",
+   "playful"
+  ],
+  "note": "8-bit arcade pixel font.",
+  "files": [
+   {
+    "name": "PressStart2P-Regular.ttf",
+    "weight": 400,
+    "size": 118204
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Press+Start+2P",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "VT323",
+  "dir": "vt323",
+  "cat": "Pixel",
+  "moods": [
+   "retro",
+   "technical"
+  ],
+  "note": "Old terminal screen monospace.",
+  "files": [
+   {
+    "name": "VT323-Regular.ttf",
+    "weight": 400,
+    "size": 153116
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/VT323",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Silkscreen",
+  "dir": "silkscreen",
+  "cat": "Pixel",
+  "moods": [
+   "retro",
+   "playful"
+  ],
+  "note": "Clean pixel capitals for small UI-like text.",
+  "files": [
+   {
+    "name": "Silkscreen-Regular.ttf",
+    "weight": 400,
+    "size": 32220
+   },
+   {
+    "name": "Silkscreen-Bold.ttf",
+    "weight": 700,
+    "size": 30632
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Silkscreen",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Poiret One",
+  "dir": "poiretone",
+  "cat": "Vintage",
+  "moods": [
+   "elegant",
+   "retro"
+  ],
+  "note": "Thin art deco, 1920s poster.",
+  "files": [
+   {
+    "name": "PoiretOne-Regular.ttf",
+    "weight": 400,
+    "size": 130176
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Poiret+One",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Limelight",
+  "dir": "limelight",
+  "cat": "Vintage",
+  "moods": [
+   "elegant",
+   "retro"
+  ],
+  "note": "Art deco display with theatre glamour.",
+  "files": [
+   {
+    "name": "Limelight-Regular.ttf",
+    "weight": 400,
+    "size": 132292
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Limelight",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Rye",
+  "dir": "rye",
+  "cat": "Vintage",
+  "moods": [
+   "retro",
+   "bold"
+  ],
+  "note": "Wild-west wanted-poster capitals.",
+  "files": [
+   {
+    "name": "Rye-Regular.ttf",
+    "weight": 400,
+    "size": 183244
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Rye",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Monoton",
+  "dir": "monoton",
+  "cat": "Vintage",
+  "moods": [
+   "retro",
+   "bold"
+  ],
+  "note": "Neon multi-line display, use very large.",
+  "files": [
+   {
+    "name": "Monoton-Regular.ttf",
+    "weight": 400,
+    "size": 51604
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Monoton",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Courier Prime",
+  "dir": "courierprime",
+  "cat": "Mono",
+  "moods": [
+   "retro",
+   "editorial"
+  ],
+  "note": "Typewriter and screenplay look.",
+  "files": [
+   {
+    "name": "CourierPrime-Regular.ttf",
+    "weight": 400,
+    "size": 71188
+   },
+   {
+    "name": "CourierPrime-Bold.ttf",
+    "weight": 700,
+    "size": 72856
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Courier+Prime",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Patrick Hand",
+  "dir": "patrickhand",
+  "cat": "Handwriting",
+  "moods": [
+   "friendly",
+   "warm"
+  ],
+  "note": "Neat everyday handwriting.",
+  "files": [
+   {
+    "name": "PatrickHand-Regular.ttf",
+    "weight": 400,
+    "size": 214772
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Patrick+Hand",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Shadows Into Light",
+  "dir": "shadowsintolight",
+  "cat": "Handwriting",
+  "moods": [
+   "playful",
+   "warm"
+  ],
+  "note": "Quick marker handwriting.",
+  "files": [
+   {
+    "name": "ShadowsIntoLight-Regular.ttf",
+    "weight": 400,
+    "size": 48468,
+    "list": "ShadowsIntoLight-Regular.ttf"
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Shadows+Into+Light",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Gochi Hand",
+  "dir": "gochihand",
+  "cat": "Handwriting",
+  "moods": [
+   "playful",
+   "friendly"
+  ],
+  "note": "Chunky informal hand, notebook feel.",
+  "files": [
+   {
+    "name": "GochiHand-Regular.ttf",
+    "weight": 400,
+    "size": 37352
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Gochi+Hand",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Bangers",
+  "dir": "bangers",
+  "cat": "Display",
+  "moods": [
+   "playful",
+   "bold"
+  ],
+  "note": "Comic-book sound-effect capitals.",
+  "files": [
+   {
+    "name": "Bangers-Regular.ttf",
+    "weight": 400,
+    "size": 93148
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Bangers",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Comic Neue",
+  "dir": "comicneue",
+  "cat": "Sans",
+  "moods": [
+   "playful",
+   "friendly"
+  ],
+  "note": "A refined take on comic lettering, more readable.",
+  "files": [
+   {
+    "name": "ComicNeue-Regular.ttf",
+    "weight": 400,
+    "size": 57248
+   },
+   {
+    "name": "ComicNeue-Bold.ttf",
+    "weight": 700,
+    "size": 55716
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Comic+Neue",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ },
+ {
+  "name": "Black Ops One",
+  "dir": "blackopsone",
+  "cat": "Display",
+  "moods": [
+   "bold",
+   "technical"
+  ],
+  "note": "Military stencil lettering.",
+  "files": [
+   {
+    "name": "BlackOpsOne-Regular.ttf",
+    "weight": 400,
+    "size": 166532
+   }
+  ],
+  "licenseFile": "OFL.txt",
+  "specimen": "https://fonts.google.com/specimen/Black+Ops+One",
+  "tree": "ofl",
+  "license": "SIL Open Font License 1.1"
+ }
 ]

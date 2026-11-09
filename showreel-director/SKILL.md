@@ -2,7 +2,7 @@
 name: "showreel-director"
 description: "Produce a motion-design showreel or short animated video for a product, brand or story. Starts with an interview (conversation language and on-screen language first, English by default) that settles purpose, audience, story, voice, look, motion, music, length, formats, languages and assets before any production. Use whenever the user asks for a showreel, reel, animated video, motion graphics, kinetic typography, animated logo or intro, explainer or promo video, lyric video or product teaser, with or without a style, music, script or format in mind. Not for PowerPoint or slide decks, static graphics or editing existing footage. Also use it to iterate on an existing reel (restyle, new track, other format, translation, timing feedback) and when the user asks what this skill can do, how it works, or which text, transition or other effects it knows."
 metadata:
-  version: "0.16.0"
+  version: "0.18.1"
 ---
 
 # Showreel director
@@ -95,7 +95,7 @@ Starts only after the go. Read `references/build-guide.md`. Look test first when
 
 ## Step 4 — Extra formats and languages
 
-Portrait 9:16 needs a stated treatment per scene; cut-downs are declared under `cuts` and built with `build.py <vN> --cut <id>`; MP4 is promised only if `check_env.py` shows node, ffmpeg and `@napi-rs/canvas`; never translate literally. Details: `references/steps-3-to-6.md`.
+Portrait 9:16 needs a stated treatment per scene; cut-downs are declared under `cuts` and built with `build.py <vN> --cut <id>`; MP4 is promised only if `check_env.py` shows node, ffmpeg and `@napi-rs/canvas` and the reel has no 3D scene (the exporter has no WebGL); never translate literally. Details: `references/steps-3-to-6.md`.
 
 ## Step 5 — Verify and publish
 

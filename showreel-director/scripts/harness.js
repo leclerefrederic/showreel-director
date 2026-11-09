@@ -8,11 +8,11 @@
    skips rotated text), text collisions (two texts overlapping for 3+ consecutive samples; widths are estimated, so treat as leads),
    strings drawn per scene (spot untranslated text), near-empty frames.
    It cannot judge looks: still look at contact sheets. */
-const { makeOpt, loadReel, registerFonts, stubImage } = require('./_reel');
+const { makeOpt, loadReel, registerFonts, stubImage, report3D } = require('./_reel');
 const args = process.argv.slice(2), file = args[0], opt = makeOpt(args);
 const step = parseFloat(opt('--step', '0.25')), only = opt('--scene', null);
 const offscreen = [];   // stub canvases the film layer asked for (transitions draw two scenes into them): same stub as the main one, emptied every frame
-const { html, S, SR, DUR } = loadReel(file, stubImage, (w, h) => { const ctx = mkCtx(); const c = { width: w, height: h, getContext: () => ctx }; offscreen.push(ctx); return c; });
+const { html, S, SR, DUR, sandbox } = loadReel(file, stubImage, (w, h) => { const ctx = mkCtx(); const c = { width: w, height: h, getContext: () => ctx }; offscreen.push(ctx); return c; });
 // Text measurement: with @napi-rs/canvas available (NODE_PATH) the embedded fonts are registered and measureText is real, so wrapping
 // and collision checks run on the layout that ships; otherwise widths are estimated (0.55 em per character) and the report says so.
 let realMeasure = null;
@@ -96,5 +96,6 @@ if (only && !frames) issues.push(`scene filter: no frame belongs to a scene name
 console.log(`frames rendered: ${frames}  (modes ${modes}, langs ${langs}, step ${step}s, duration ${DUR}s)`);
 console.log(`issues: ${issues.length}`); issues.slice(0, 30).forEach(i => console.log('  ' + i));
 console.log(`near-empty frames: ${empty}`);
+report3D(sandbox, 'rendered');
 console.log('strings per scene:'); for (const [sc, set] of Object.entries(strings)) console.log(`  ${sc}: ${[...set].slice(0, 6).join(' / ')}${set.size > 6 ? ' …' : ''}`);
 process.exit(issues.length ? 1 : 0);

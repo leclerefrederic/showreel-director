@@ -78,7 +78,47 @@ public enum Look {
         public let cat: String
         public let moods: [String]
         public let note: String
+        /// What to download, listed by the maintainer (tools/refresh_font_manifest.py): the files the Look can ask for (weights 400 and 700, or one variable file), their sizes,
+        /// the licence and where it lives. The cards are built from this alone, with no network call.
+        public let files: [FileSpec]
+        public let licenseFile: String
+        public let license: String
+        /// The top folder of the open repository: "ofl" for most families, "apache" or "ufl" for a few.
+        public let tree: String
+        public let specimen: String
         public var id: String { name }
+
+        public struct FileSpec: Decodable, Equatable, Sendable {
+            public let name: String
+            public let weight: Int?
+            public let size: Int?
+            public let variable: Bool
+            /// Its name in Google Fonts' own download list, when the repository does not hold the file under `name`.
+            public let list: String?
+            public init(name: String, weight: Int? = nil, size: Int? = nil, variable: Bool = false, list: String? = nil) { self.name = name; self.weight = weight; self.size = size; self.variable = variable; self.list = list }
+            enum CodingKeys: String, CodingKey { case name, weight, size, variable, list }
+            public init(from d: Decoder) throws {
+                let c = try d.container(keyedBy: CodingKeys.self)
+                name = try c.decode(String.self, forKey: .name); weight = try c.decodeIfPresent(Int.self, forKey: .weight); size = try c.decodeIfPresent(Int.self, forKey: .size)
+                variable = try c.decodeIfPresent(Bool.self, forKey: .variable) ?? false; list = try c.decodeIfPresent(String.self, forKey: .list)
+            }
+        }
+
+        enum CodingKeys: String, CodingKey { case name, dir, cat, moods, note, files, licenseFile, license, tree, specimen }
+        public init(from d: Decoder) throws {
+            let c = try d.container(keyedBy: CodingKeys.self)
+            name = try c.decode(String.self, forKey: .name); dir = try c.decode(String.self, forKey: .dir); cat = try c.decode(String.self, forKey: .cat)
+            moods = try c.decode([String].self, forKey: .moods); note = try c.decode(String.self, forKey: .note)
+            files = try c.decodeIfPresent([FileSpec].self, forKey: .files) ?? []
+            licenseFile = try c.decodeIfPresent(String.self, forKey: .licenseFile) ?? "OFL.txt"
+            license = try c.decodeIfPresent(String.self, forKey: .license) ?? "SIL Open Font License 1.1"
+            tree = try c.decodeIfPresent(String.self, forKey: .tree) ?? "ofl"
+            specimen = try c.decodeIfPresent(String.self, forKey: .specimen) ?? "https://fonts.google.com/specimen/" + name.replacingOccurrences(of: " ", with: "+")
+        }
+        public init(name: String, dir: String, files: [FileSpec], licenseFile: String = "OFL.txt", license: String = "SIL Open Font License 1.1", tree: String = "ofl") {
+            self.name = name; self.dir = dir; self.cat = ""; self.moods = []; self.note = ""; self.files = files; self.licenseFile = licenseFile; self.license = license; self.tree = tree
+            self.specimen = "https://fonts.google.com/specimen/" + name.replacingOccurrences(of: " ", with: "+")
+        }
     }
 
     /// The curated free fonts (engine/fonts-free.json, all under open licences).

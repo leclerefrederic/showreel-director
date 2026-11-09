@@ -2,6 +2,43 @@
 
 What each version of the Showreel Director skill (`showreel-director.skill`) changes for you, newest first. The short register that the repository checks is `CHANGELOG.md`. The same skill is built into Showreel Studio; the app's own notes are in `RELEASE-NOTES-APP.md`.
 
+## 0.18.1 - 2026-11-09
+
+**Fixed**
+- The player test no longer fails on a film with 3D scenes. It runs in a host with no WebGL; it used to answer for WebGL with a stand-in, so Three.js threw and the test reported a script error that was not one. It now says that WebGL is missing, like a real host without it, and the 3D layer takes its documented path.
+
+**Changed**
+- The portability table says that a film with 3D scenes is judged in the host's player (the logic test cannot draw WebGL) and that a host without the Node exporter has no MP4 for it.
+
+**What you need to do**
+- Reinstall the `.skill`. Existing projects are not affected.
+
+## 0.18.0 - 2026-11-09
+
+**What's new**
+- A film can now have 3D scenes: real perspective, fields of particles that move on time alone, shader-lit spheres and glows, bloom, vignette and grain. They are scene files like the others, so words, shapes and transitions drawn in 2D go over or under them. The engine carries the 3D library (Three.js, MIT) only in a reel that uses it; any other reel is unchanged.
+- Particles and shaders are building blocks, not a look: a particle field can be pulled toward a point or thrown out, orbit and twinkle; the shader library has noise, a moving-noise sphere, a soft disc and ring, and your own GLSL is checked for the one mistake that compiles without an error (a `//` comment).
+- The harness now says when a reel has 3D scenes: it cannot see them (there is no WebGL in Node), so it reports "3D scenes not rendered" instead of a silent green result. A test film (`evals/gl-spike`) and a self-test of the pure parts (`scripts/test_sr3d.js`) come with it.
+
+**Changed**
+- A reel with 3D scenes weighs about 0.8 MB more and cannot be exported to MP4 with the Node exporter (no WebGL): the exporter warns, and the skill does not promise MP4 for such a reel. The 3D is judged in a browser.
+- The interview offers "3D scenes" as a visual language, with those limits stated first.
+
+**What you need to do**
+- Reinstall the `.skill`. Existing projects are not affected.
+
+## 0.17.0 - 2026-11-09
+
+**What's new**
+- The list of free fonts now says what to download for each font: the names of the files, their weights and sizes (for the weights a look asks for, 400 and 700, or the one variable file), where the licence text is and which licence it is (almost always the SIL Open Font License, a few families are under Apache). A host app can show what it is about to download without asking any service first.
+- A maintainer script, `tools/refresh_font_manifest.py`, rebuilds those lists from Google Fonts without a key or an account.
+
+**Changed**
+- `fetch_font.py` downloads from Google Fonts' open repository by those file names instead of listing a folder through the GitHub API, which refuses after 60 requests an hour for one address. A file that the repository holds under another name comes from Google Fonts' own download list.
+
+**What you need to do**
+- Reinstall the `.skill`. Existing projects are not affected.
+
 ## 0.16.0 - 2026-11-09
 
 **What's new**

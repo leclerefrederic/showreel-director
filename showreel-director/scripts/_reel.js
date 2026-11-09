@@ -18,7 +18,15 @@ function loadReel(file, imgLoader, canvasFactory) {
     if (!m) { console.error('missing script ' + id + ' (is this a built player page, not a contact sheet?)'); process.exit(2); }
     vm.runInContext(m[1], sandbox);
   }
-  return { html, sandbox, S: sandbox.SHOWREEL, SR: sandbox.SR, DUR: sandbox.SR.data.dur };
+  return { html, sandbox, S: sandbox.SHOWREEL, SR: sandbox.SR, DUR: sandbox.SR.data.dur, uses3D: !!sandbox.SR3D };
+}
+
+// The 3D layer (engine/gl, window.SR3D) needs WebGL, which a Node host does not have: its scenes draw nothing here (SR3D.stage is inert, SR3D.skipped counts the frames).
+// A host prints this line so that a green report is never read as "the 3D was checked".
+function report3D(sandbox, what) {
+  if (!sandbox.SR3D) return;
+  const n = sandbox.SR3D.skipped;
+  console.log('3D layer: no WebGL in this host, so the 3D scenes were not ' + what + (n ? ' (' + n + ' frame draw(s) skipped)' : '') + '; their 2D layers and text are still checked. Look at the 3D in a browser.');
 }
 
 // Registers every font embedded as a data URL in an @font-face rule; returns how many were registered.
@@ -37,4 +45,4 @@ function stubImage(uri) {
   return { width: w, height: h, naturalWidth: w, naturalHeight: h, complete: true };
 }
 
-module.exports = { makeOpt, loadReel, registerFonts, stubImage };
+module.exports = { makeOpt, loadReel, registerFonts, stubImage, report3D };

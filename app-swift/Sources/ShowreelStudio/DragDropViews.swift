@@ -146,6 +146,38 @@ private struct DragSource: ViewModifier {
     }
 }
 
+/// A row of a list that selects on a click and drags from any point of its surface. It is not a Button: a button takes the press for itself and a drag never starts from it.
+/// A handle appears under the pointer and the cursor is an open hand. Every list that is a drag source (resources, the catalogue of transitions, the look's catalogues) is made of these.
+struct DragRow<Content: View>: View {
+    let selected: Bool
+    let item: DragItem
+    let label: String
+    let icon: String
+    var thumbnail: NSImage?
+    var help = ""
+    let action: () -> Void
+    @ViewBuilder let content: () -> Content
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "line.3.horizontal").font(.system(size: 10, weight: .semibold)).foregroundStyle(.tertiary).frame(width: 12).opacity(hovering ? 1 : 0)
+            content()
+        }
+        .padding(.horizontal, 8).padding(.vertical, 5)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(selected ? Color.accentColor.opacity(0.2) : hovering ? Color.primary.opacity(0.07) : Color.clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .contentShape(Rectangle())
+        .onHover { h in hovering = h; if h { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }          // set, never pushed: nothing to leave unbalanced
+        .onTapGesture(perform: action)
+        .dragSource(item, label: label, icon: icon, thumbnail: thumbnail)
+        .animation(Motion.quick, value: hovering)
+        .help(help)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: "Select", action)
+    }
+}
+
 struct DragChip: View {
     let label: String
     let icon: String

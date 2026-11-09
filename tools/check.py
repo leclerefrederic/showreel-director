@@ -265,6 +265,31 @@ def main():
             else:
                 ok("scene files: the assembled film passes the harness (issues: 0) and the player test") if rb5.returncode == 0 and rh5 and "issues: 0" in rh5.stdout and sm5 and sm5.returncode == 0 and "FAIL" not in sm5.stdout \
                     else bad("scene files: assembled film failed: " + (rb5.stderr + (rh5.stdout if rh5 else "") + (sm5.stdout if sm5 else ""))[-400:])
+        # 3D layer (engine/gl, SR3D): the pure parts pass their self-test; a reel that names SR3D carries scene3d.js and the Three.js bundle (own script, end tags escaped), a reel that does not carries neither;
+        # the harness has no WebGL, so it must pass AND say the 3D scenes were not rendered
+        t3d = run(["node", os.path.join(SK, "scripts", "test_sr3d.js"), "--quiet"])
+        ok("3D layer self-test: bundle and licence, GLSL lint, seeded particles, camera maths, inert stage, graph of Three objects") if t3d.returncode == 0 else bad("3D layer self-test failed: " + (t3d.stdout + t3d.stderr)[-500:])
+        gsrc = os.path.join(SK, "evals", "gl-spike", "v1")
+        if os.path.isdir(gsrc):
+            gcopy = os.path.join(td, "gl-spike"); _sh.copytree(gsrc, gcopy, ignore=_sh.ignore_patterns("dist", "main.js", "assembly.json")); gout = os.path.join(td, "gl.html")
+            rg = run([sys.executable, os.path.join(SK, "scripts", "build.py"), gcopy, "--out", gout])
+            ghtml = open(gout, encoding="utf-8").read() if rg.returncode == 0 else ""
+            rgh = run(["node", os.path.join(SK, "scripts", "harness.js"), gout, "--step", "0.25"]) if rg.returncode == 0 else None
+            ghl = next((l for l in (rgh.stdout.splitlines() if rgh else []) if l.startswith("issues:")), "")
+            import re as _re
+            ok("3D layer: build inlines scene3d.js and the Three.js bundle (own script, balanced end tags); the harness passes and says the 3D was not rendered") if rg.returncode == 0 and 'id="sr-gl"' in ghtml and "window.T3" in ghtml and "SR3D = {" in ghtml and ghtml.count("<script") == ghtml.count("</script>") and rgh and ghl == "issues: 0" and "3D layer: no WebGL" in rgh.stdout \
+                else bad("3D layer build or harness failed: " + (rg.stdout + rg.stderr + (rgh.stdout if rgh else ""))[-400:])
+            # the player test (jsdom) has no WebGL either: it must say so to the 3D layer, not make Three.js throw, so a 3D film is not a red Player test
+            envg = locals().get("env3") or locals().get("env")
+            if rg.returncode == 0 and envg:
+                smg = run(["node", os.path.join(SK, "scripts", "smoke_player.js"), gout], env=envg, timeout=120)
+                if "Cannot find module" in smg.stderr: ok("3D layer: player test skipped (jsdom is not installed)")
+                else: ok("3D layer: the player test passes on a 3D film (no WebGL in the host is not a script error)") if smg.returncode == 0 and "FAIL" not in smg.stdout else bad("3D layer: player test failed on a 3D film: " + (smg.stdout + smg.stderr)[-300:])
+            pp3 = os.path.join(td, "plain3d"); os.makedirs(os.path.join(pp3, "v1")); _sh.copy(os.path.join(SK, "engine", "main.template.js"), os.path.join(pp3, "v1", "main.js"))
+            _json.dump({"title": "T", "main": "main.js", "duration": 6, "fonts": [], "tokens": {}}, open(os.path.join(pp3, "v1", "project.json"), "w"))
+            rp3 = run([sys.executable, os.path.join(SK, "scripts", "build.py"), os.path.join(pp3, "v1"), "--out", os.path.join(pp3, "plain.html")])
+            plain3 = open(os.path.join(pp3, "plain.html"), encoding="utf-8").read() if rp3.returncode == 0 else ""
+            ok("a reel that does not name SR3D carries neither scene3d.js nor the Three.js bundle") if plain3 and "SR3D = {" not in plain3 and "window.T3" not in plain3 and 'id="sr-gl"></script>' in plain3 else bad("the 3D layer leaked into a build that does not use it")
         # fonts of the host (fonts.json): embedded when approved and listed, refused otherwise
         fprev = os.path.join(SK, "engine", "fonts-preview", "poppins.woff2")
         if os.path.exists(fprev):

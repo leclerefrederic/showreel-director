@@ -350,7 +350,7 @@ public final class Tools {
         guard let name = input["font"] as? String else { return "font is required" }
         if let u = Availability.addFontFiles(name, in: store.activity.snapshot, store: store).why { return "refused: " + u.message }
         let offer: FontOffer
-        do { offer = try await FontFiles.offer(name, store: store, source: fontSource) } catch { return "refused: \(error.localizedDescription)" }
+        do { offer = try FontFiles.offer(name, store: store) } catch { return "refused: \(error.localizedDescription)" }
         guard await ui.proposeOperation(offer.card) else { return "refused by the user: no font file was downloaded or added. Ask what they want instead." }
         do {
             let payload = try await FontFiles.fetch(offer, source: fontSource)

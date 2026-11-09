@@ -8,7 +8,8 @@ const errors = []; const vc = new VirtualConsole(); vc.on('jsdomError', e => err
 const dom = new JSDOM(fs.readFileSync(process.argv[2], 'utf8'), { runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: vc,
   beforeParse(w) {
     const ctx = new Proxy({}, { get: (t, k) => k in t ? t[k] : (k === 'measureText' ? s => ({ width: String(s).length * 8 }) : /^create(Linear|Radial|Conic)Gradient$|^createPattern$/.test(String(k)) ? () => ({ addColorStop() {} }) : () => undefined), set: (t, k, v) => (t[k] = v, true) });
-    w.HTMLCanvasElement.prototype.getContext = () => ctx;
+    // a host with no WebGL says so: the 3D layer (SR3D) then takes its documented path (inert stage, nothing thrown); a stub that answered for WebGL would make Three.js throw
+    w.HTMLCanvasElement.prototype.getContext = kind => /webgl/i.test(String(kind)) ? null : ctx;
     w.HTMLCanvasElement.prototype.getBoundingClientRect = () => ({ width: 800, height: 450 });
     w.matchMedia = () => ({ matches: false });
   } });

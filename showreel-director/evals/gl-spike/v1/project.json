@@ -1,0 +1,13 @@
+{
+  "title": "3D layer spike",
+  "main": "main.js",
+  "fonts": [],
+  "tokens": {
+    "--page": "#000000", "--bar-bg": "#111111", "--bar-fg": "#eeeeee",
+    "--btn-bg": "#dddddd", "--btn-fg": "#111111", "--accent": "#ffffff",
+    "--ov-bg": "rgba(0,0,0,.85)", "--ov-fg": "#ffffff",
+    "--font-ui": "system-ui,sans-serif", "--font-title": "system-ui,sans-serif"
+  },
+  "duration": 8,
+  "weight_budget_mb": 5
+}
