@@ -2,6 +2,14 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.4.1 - 2026-11-09
+
+**Changed**
+- Clap now knows that generating a scene whose file you edited by hand overwrites your edit, and says so before it proposes it. The card already showed it; the assistant's instructions now match.
+
+**What you need to do**
+- Nothing.
+
 ## 0.4.0 - 2026-11-09
 
 **What's new**

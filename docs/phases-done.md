@@ -79,3 +79,63 @@ Rules in ShowreelKit: `Timeline.swift`
 phase M is built (project memory and history: `.studio/journal.jsonl` appends one line per typed operation, refusals, undos and redos included; `.studio/memory.json` is what Clap keeps through `remember`, `update_memory` and `forget`, checked by `MemoryRules` against personal data, identifiers and instructions; `.studio/sessions.json` holds a summary of each session; a project picked up again gives the model a data block built from these, `ProjectResume`; the History tab of the project settings shows them; the brief's Decisions log and Assumptions come from them; all three files are in the update backups)
 
 Rules in ShowreelKit: `Journal.swift`, `Memory.swift`, `Sessions.swift`
+
+## X
+
+phase X is built (the verification tools: `tools/verify.sh` is one command with two modes. `--fast` runs, inside a phase, the app and shared checks, the debug build and the tests without the four slow classes (BuildTests, FilmTests, InteractionTests, ChecksTests), skips the app self-test, and runs the skill's own checks and the slow classes only when their content changed since the last complete pass, a fingerprint kept outside the repository by `tools/verify_state.py`; it ends with "VERIFY FAST OK (pas un contrôle de fin de phase)". The complete mode, for the end of a phase, runs every repo check in parallel with the build, every test with `--parallel` and the app self-test, and saves the fingerprints after a pass. The stale-binary guard is decided by content, not by date: `tools/build_fresh.sh` compares the fingerprint of the Swift sources with the stamp of the last good build, so touching a file without changing it does not fail and a real change that was not built does; `make-app.sh` and `tools/rebuild-app.sh` use it, the app is closed only after the build was found valid, and `tools/test_build_guard.sh` tests these guards)
+
+Rules in ShowreelKit: none (repository tooling: `tools/verify.sh`, `tools/verify_state.py`, `tools/build_fresh.sh`, `tools/test_build_guard.sh`)
+
+## Q3
+
+phase Q3 is built (the Clap tab of the inspector is titled Ask Clap, with one icon, `ClapMark`; a selector at its top holds Conversation, Memory, Sessions and Journal, `ClapSection` and `ClapHistoryPane`, which are the history views of phase M moved out of the project settings; the project settings keep Project and Look; the words "copilot" are gone from the interface; the labels of the selector were later set in English by Q4)
+
+Rules in ShowreelKit: none (views and `ProjectModel` only; the history rules stay in `Journal.swift`, `Memory.swift`, `Sessions.swift`)
+
+## Q2
+
+phase Q2 is built (scene states WIP, Validated, Locked, Ditched, `SceneState`: the older words ok, open and modify are read as Validated, WIP and WIP with a note, and the file moves to format revision 2 through "Update project"; one check in `ProjectStore.plan` refuses any change to a locked scene, from the user, from a drop and from Clap, with the reason; only a Validated scene can be locked, by the typed operation `sceneLock`, one card, undoable; a state badge with a menu, "Lock all validated", `lock_scene` for Clap)
+
+Rules in ShowreelKit: `SceneStates.swift`
+
+## Q4
+
+phase Q4 is built (the labels of the Ask Clap selector are in English; a change of the global look that would redraw locked scenes inheriting it lists them on its card, "S02 and S05 are locked and inherit this look", and the user applies anyway or refuses, for the user's edits and for Clap's `update_decision` alike, apply-directly never skipping that card; a scene that has its own value for the changed part is not concerned; a locked scene whose inherited look changed is stale, says why through `Availability.regenerate`, and is never generated again without unlocking)
+
+Rules in ShowreelKit: `LockedLook.swift`, `SceneStates.swift`, `FilmState.swift` (`Availability.regenerate`)
+
+## V1
+
+phase V1 is built (the film as one file per scene: the skill's `scripts/assemble.py`, run by `build.py`, puts `scenes/<ID>.js` and `reel.js` into `main.js` with no AI and the same bytes for the same files, shows a placeholder frame for a scene with no file and lists it in `assembly.json`; a version with only a hand-written `main.js` builds as before; `SceneGeneration` asks the model for one or several scenes only, writes only those files, refuses a locked scene, is one card for Clap's `generate_scenes`; `.studio/build.json` records for each scene the fingerprint of its inputs and of its file, so that a scene is not generated, up to date or stale, plus a flag when the file was edited by hand)
+
+Rules in ShowreelKit: `SceneModules.swift`, `SceneGeneration.swift`
+
+## Q5
+
+phase Q5 is built (action/reaction: one model says for each element or action whether it is available, why not and how to get it back, `Availability` with `ProjectActivity`; every typed operation, undo, redo, files added, updates and file saves are refused while a build runs; elements a proposal of Clap waits on are read-only and marked, with a banner to accept or refuse all; a chip says what Clap is doing; a build has a progress panel and Cancel build; a status line says what each change did, with Undo, and a refusal says why; closing, quitting, updating or restoring with work in progress asks first, `CloseGuard`; `disabledWithReason` is the standard disabled control; the details are in `docs/q5-report.md`)
+
+Rules in ShowreelKit: `Availability.swift`
+
+## V2
+
+phase V2 is built (the state of the film and of each scene from fingerprints, never stored by hand: `FilmBuild.status`; Assemble, with no AI, writes film.json, assembles and tests on a copy and only a green result replaces the version, `FilmAssembly`; the version that is read is the last one built and tested green, never a folder a stopped build left behind; Play plays only the assembled film and assembles a stale one first; banners, a counter in the reel's header and a build mark on each scene; the old single-file format plays as it is; the free instruction of a transition is marked pending until a generation read it, `TransitionNotes`; `assemble_film` for Clap; the details are in `docs/v2-report.md`)
+
+Rules in ShowreelKit: `FilmState.swift`, `SceneModules.swift`
+
+## R
+
+phase R is built (release notes: `RELEASE-NOTES-SKILL.md` and `RELEASE-NOTES-APP.md`, one section per version, and the app's own short register `CHANGELOG-APP.md`; the app's version has one source, `app-swift/shared/app-version.json`, written into the bundle by `make-app.sh` and shown with the skill's version in About Showreel Studio, `AppInfo`; `tools/bump_app.py` ships an app version and, like `tools/bump.py`, refuses without the section of the new version; `tools/check.py` fails when versions, registers, records and notes disagree)
+
+Rules in ShowreelKit: `AppInfo.swift` (the rest is repository tooling: `tools/bump_app.py`, `tools/app_hash.py`, `tools/check.py`)
+
+## F
+
+phase F is built (fonts in the film: each font of the Look shows Needs files, Preview only or Embedded; the typed operation Add font files, with one card (the font, the open Google Fonts repository from the skill's fixed list, the licence, the files and size, the network), downloads only the weights the Look uses into `assets/fonts/<family>/` and approves them in the manifest, undoable, also proposed by Clap with `add_font_files`; the build and the assembly embed the approved files through `fonts.json`, merged by the skill's `build.py`, and show an orange Fonts step when a font has no file; adding files makes the film stale and no scene; a dropped font file shows its family and weight and needs its licence note before approval)
+
+Rules in ShowreelKit: `FontFiles.swift`, `FontInfo.swift`
+
+## Q6
+
+phase Q6 is built (the temporary marks, a proposal waiting or the build running, on the reel's frames, the tree and the resources as on the list, with one layout rule for the badges, the review state then the build state, `MarkLayout`; the remaining disabled controls say why, Undo and Redo in the Edit menu included; the offer to generate lists the scenes with no file and the stale ones, leaves out the locked ones with their reason, and asks a separate confirmation before it overwrites a file edited by hand)
+
+Rules in ShowreelKit: `Marks.swift`, `FilmState.swift` (`GenerationOffer`), `SceneGeneration.swift`
