@@ -193,6 +193,8 @@ public final class Tools {
         guard f.isInside(project), let rel = store.relativePath(of: f) else { return "refused: writes stay inside the project folder" }
         guard !store.isPrivate(rel) else { return "refused: .studio is private to the app" }
         if let why = modeledFile(rel) { return why }
+        // while the film is being built, Clap writes the version folder being built and nothing else
+        if let b = store.activity.snapshot.build, !(b.phase == .generating && rel.hasPrefix(b.version + "/")) { return "refused: " + Reasons.building.message }
         let exists = FileManager.default.fileExists(atPath: f.path)
         let reviewed = Tools.reviewedExtensions.contains((rel as NSString).pathExtension.lowercased())
         if exists && reviewed { return await proposeEdit(rel, content, "") }
@@ -273,6 +275,7 @@ public final class Tools {
     /// Writes the scene file of one or several scenes of a version, after a card the user accepts (each scene is one model call, so it costs). Nothing else is written.
     private func generateScenes(_ input: [String: Any]) async -> String {
         guard let transport = sceneTransport else { return "not available: there is no model connection for this" }
+        if let e = store.buildRefusal() { return "refused: \(e.localizedDescription)" }
         let ids = (input["scenes"] as? [String]) ?? (input["scenes"] as? String).map { ParameterKey.list($0, lowercase: false) } ?? []
         guard let version = (input["version"] as? String) ?? Versions.list(store).last else { return "refused: there is no version yet. Build one first." }
         let card: OperationCard

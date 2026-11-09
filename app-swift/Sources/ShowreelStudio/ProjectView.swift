@@ -21,6 +21,7 @@ struct ProjectWindow: View {
         .focusedSceneObject(win.project)          // the Edit menu's Undo and Redo act on the project in front
         .navigationTitle(win.project.title)
         .onAppear { win.project.start() }
+        .background(CloseGuardHook(project: win.project))
         .onDisappear { win.chat.endSession() }          // the window closed: the session ends, and Clap writes its summary (none without a key)
     }
 }
@@ -76,6 +77,9 @@ struct ProjectView: View {
                 .pickerStyle(.segmented).frame(width: 200)
                 .help("Beginner: a guided path that ends in the workspace. Expert: the workspace at once. Switching loses nothing.")
             }
+            ToolbarItem(placement: .status) {
+                HStack(spacing: 10) { BuildProgressPanel(compact: true); ClapActivityChip() }
+            }
             ToolbarItemGroup(placement: .primaryAction) {
                 if inWizard {
                     Button { project.showCopilot.toggle() } label: { Label(ClapMark.title, systemImage: "sidebar.right") }
@@ -93,7 +97,7 @@ struct ProjectView: View {
                         .help("The Catalogue: effects, transitions, backgrounds and looks to drag onto a scene, an item or a marker (Shift-Command-K)")
                     Button { project.resetLayout() } label: { Label("Reset layout", systemImage: "rectangle.3.group") }
                         .help("Reset layout: put the library, the inspector and the storyboard back to their standard sizes")
-                        .disabled(project.layout.isStandard)
+                        .disabledWithReason(project.layout.isStandard ? "The layout already is the standard one" : nil)
                     Button { project.centerMode = project.centerMode == .build ? .viewer : .build } label: { Label("Build", systemImage: "play.rectangle") }
                         .help("Build the film, test it and play it")
                 }

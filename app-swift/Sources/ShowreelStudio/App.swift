@@ -6,6 +6,7 @@ struct ShowreelStudioApp: App {
     @StateObject private var env = EnvModel()
     @StateObject private var library = LibraryModel.shared
     @StateObject private var settings = AppSettings.shared
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
         if CommandLine.arguments.contains("--selftest") { exit(SelfCheck.run()) }

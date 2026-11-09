@@ -14,6 +14,8 @@ public struct OperationCard: Equatable, Sendable {
     public let changes: [Change]
     /// Set when the change redraws locked scenes that inherit it (a change of the global look): the card says so, and the user decides.
     public let lockWarning: LockedLookWarning?
+    /// What the change touches: while a card waits for an answer, these elements are read-only and marked.
+    public var targets: [ElementRef] = []
     public init(title: String, changes: [Change], lockWarning: LockedLookWarning? = nil) { self.title = title; self.changes = changes; self.lockWarning = lockWarning }
 }
 
@@ -264,8 +266,16 @@ extension ProjectStore {
         return f
     }
 
-    /// What the operation would change, without changing anything. Throws when it is not allowed.
+    /// What the operation would change, without changing anything. Throws when it is not allowed: by what is going on (a build, a proposal waiting on the
+    /// element), by the lock, or by the rules of the operation. The one place every typed operation, the user's and Clap's, goes through.
     public func plan(_ op: ProjectOperation) throws -> OperationCard {
+        if let u = activity.snapshot.refusal(of: op) { throw AgentError.msg(u.message) }
+        var card = try planRules(op)
+        card.targets = op.targets
+        return card
+    }
+
+    private func planRules(_ op: ProjectOperation) throws -> OperationCard {
         if let why = lockRefusal(op) { throw AgentError.msg(why) }
         switch op {
         case .parameter(let key, let value):

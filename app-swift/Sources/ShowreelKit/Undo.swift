@@ -99,7 +99,7 @@ extension ProjectStore {
     }
 
     /// Several operations that the user sees as one action (duplicating a scene, dropping a file on a scene): one undo step.
-    public func transaction<T>(_ title: String, _ body: () throws -> T) throws -> T { try recording(title, body) }
+    public func transaction<T>(_ title: String, _ body: () throws -> T) throws -> T { if let e = buildRefusal() { throw e }; return try recording(title, body) }
 
     // MARK: undo and redo
 
@@ -138,6 +138,7 @@ extension ProjectStore {
     /// Puts back what the last step changed. Returns its title.
     @discardableResult
     public func undo() throws -> String {
+        if let e = buildRefusal() { throw e }
         undoLog.lock.lock(); defer { undoLog.lock.unlock() }
         guard !undoLog.undos.isEmpty else { throw AgentError.msg("nothing to undo") }
         if dropUndoIfStale() { throw AgentError.msg("undo is not available: the project's data was changed outside the app") }
@@ -154,6 +155,7 @@ extension ProjectStore {
     /// Does again what the last undo took back. Returns its title.
     @discardableResult
     public func redo() throws -> String {
+        if let e = buildRefusal() { throw e }
         undoLog.lock.lock(); defer { undoLog.lock.unlock() }
         guard !undoLog.redos.isEmpty else { throw AgentError.msg("nothing to redo") }
         if dropUndoIfStale() { throw AgentError.msg("redo is not available: the project's data was changed outside the app") }

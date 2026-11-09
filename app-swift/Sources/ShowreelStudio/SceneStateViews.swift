@@ -57,7 +57,7 @@ struct LockAllValidatedButton: View {
     var body: some View {
         let op = project.showreel.flatMap { SceneStates.lockAllValidated($0) }
         Button { if let op = op { project.perform(op) } } label: { Label("Lock all validated", systemImage: "lock") }
-            .disabled(op == nil)
+            .disabledWithReason(op == nil ? "No validated scene to lock" : nil)
             .help(op == nil ? "No validated scene to lock" : "Lock every validated scene: nothing in them can change until you unlock them. Their place in the film still moves.")
     }
 }

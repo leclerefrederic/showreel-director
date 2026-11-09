@@ -207,6 +207,12 @@ final class ProjectModel: ObservableObject {
     @Published var toast: Toast?
     @Published var renaming: String?
     @Published var pendingDrop: PendingDrop?
+    /// What is going on in the project (a build, Clap, proposals waiting): the model's snapshot, read by the views; the rules are ShowreelKit's.
+    @Published private(set) var activity = ProjectActivity.Snapshot()
+    /// Elements that just changed: lit for a second.
+    @Published var flashed: Set<ElementRef> = []
+    var buildCancelled = false
+    weak var chat: ChatModel?
     @Published var pendingLook: PendingLookChange?
     /// The base configuration of a new project is not done: the workspace stays closed. And: the file is of an older revision (nothing was written on opening).
     @Published private(set) var needsSetup = false
@@ -235,6 +241,9 @@ final class ProjectModel: ObservableObject {
         layout = s.layout ?? PanelLayout()
         if let m = s.timeline, m.fitAll == false { timeline = TimelineScale.Viewport(pps: TimelineScale.clamp(m.pps ?? 60), scroll: max(0, m.scroll ?? 0)); fitAll = false }
         dnd.onRefused = { [weak self] why in self?.showToast(why, error: true) }
+        store.activity.reset()
+        store.activity.observer = { [weak self] s in DispatchQueue.main.async { self?.activity = s } }
+        OpenProjects.shared.register(self)
     }
 
     /// The user dragged a divider: the new sizes are kept for this project (floors applied, no ceiling).
@@ -324,6 +333,22 @@ final class ProjectModel: ObservableObject {
     @Published private(set) var versions: [String] = []
 
     var buildBusy: Bool { generating || testing }
+    private var testTask: Task<Void, Never>?
+
+    /// Cancel build: the writing stops at once (the request in flight is cancelled), what was written stays in its version folder and is not built, and the film stays at its
+    /// last working version. While the testing runs it is dropped: nothing is lost, it can be run again.
+    func cancelBuild() {
+        guard let b = store.activity.snapshot.build else { return }
+        if b.phase == .testing {
+            testTask?.cancel(); testing = false
+            store.activity.update { $0.build = nil }
+            showToast("The test of \(b.version) was cancelled. Nothing was lost: use Test it again to run it.")
+            return
+        }
+        buildCancelled = true
+        store.activity.update { $0.build?.phase = .cancelling }
+        chat?.stop()
+    }
 
     /// The Go is given and nothing is running: the copilot may write the next version. Needs a key (this is the one step that does).
     func startBuild(with chat: ChatModel) {
@@ -334,14 +359,24 @@ final class ProjectModel: ObservableObject {
         buildVersion = v
         generating = true
         buildReport = nil
+        buildCancelled = false; self.chat = chat
+        store.activity.update { $0.build = .init(version: v, phase: .generating) }          // from here every change is refused, with its reason, until the end
         let sent = chat.ask(prompt: BuildRunner.prompt(version: v, store: store)) { [weak self] in self?.finishGeneration(v) }
-        if !sent { generating = false } else { inspectorTab = .copilot }       // the user sees what the copilot does
+        if !sent { generating = false; store.activity.update { $0.build = nil } } else { inspectorTab = .copilot; centerMode = .build }       // the user sees what the copilot does
     }
 
     private func finishGeneration(_ v: String) {
         generating = false
+        let kept = BuildProgress.lastWorking(store).map { "the film stays at \($0)" } ?? "the film has no working version yet"
+        if buildCancelled || chat?.stoppedByUser == true {
+            buildCancelled = false
+            store.activity.update { $0.build = nil }
+            showToast("Build cancelled. What Clap wrote stays in \(v), not built; \(kept).", undoable: false)
+            refresh(); reloadTree(); return
+        }
         guard Versions.list(store).contains(v) else {
-            error = "Clap did not write \(v) (project.json and the scene files). See what it said in the chat, then try again."
+            store.activity.update { $0.build = nil }
+            error = "Clap did not write \(v) (project.json and the scene files). See what it said in the chat, then try again. Nothing is frozen any more."
             refresh(); return
         }
         // what each scene file was generated from, so that a later change can tell which scenes are stale (nothing shows it yet)
@@ -351,15 +386,24 @@ final class ProjectModel: ObservableObject {
 
     /// Builds the version with the skill's scripts and tests it. No AI: usable on a version that already exists.
     func runChecks(_ v: String) {
-        guard !buildBusy, let skill = Skill.root() else { return }
+        guard !buildBusy || (generating == false && store.activity.snapshot.build?.phase == .generating), let skill = Skill.root() else { return }
         testing = true; buildVersion = v
-        Task { @MainActor in
+        store.activity.update { $0.build = .init(version: v, phase: .testing, started: $0.build?.started ?? Date()) }
+        testTask = Task { @MainActor in
             let report = await BuildRunner.run(version: v, store: store, skill: skill)
+            guard !Task.isCancelled, store.activity.snapshot.build?.phase == .testing else { return }          // cancelled: the user was told, nothing more happens
             try? store.record(report)
             buildReport = report
             testing = false
+            store.activity.update { $0.build = nil }                                                      // success or problems, the project is editable again
             if report.built { playVersion = v; playNonce += 1 }
             refresh(); reloadTree()
+            let p = BuildProgress.scenes(version: v, store: store)
+            if report.ok { showToast("Build done: \(p.done) scene\(p.done == 1 ? "" : "s") generated, film assembled (\(v)). The previous version is kept.") }
+            else {
+                let bad = report.steps.first { $0.level != .ok }
+                showToast("Build \(v) finished with a problem: \(bad.map { "\($0.title): \($0.detail)" } ?? "see the checks"). The editing is open again.", error: true)
+            }
         }
     }
 
@@ -730,6 +774,7 @@ final class ProjectModel: ObservableObject {
 
     /// Backs the data up, migrates and writes the current revision (the user decided: nothing is written before this).
     func updateProject() {
+        guard confirmLeaving(.updateProject) else { return }
         do {
             let r = try ProjectFormat.update(store)
             showUpdateSheet = false; updateBannerDismissed = false
@@ -739,6 +784,7 @@ final class ProjectModel: ObservableObject {
     }
 
     func restoreBackup(_ b: ProjectBackup) {
+        guard confirmLeaving(.restoreBackup) else { return }
         do { try ProjectFormat.restore(store, b); refresh(); reloadTree(); showToast("Restored the backup \(b.id)") } catch { self.error = error.localizedDescription }
     }
 
@@ -887,8 +933,51 @@ final class ProjectModel: ObservableObject {
 
     @discardableResult
     private func carryOut(_ op: ProjectOperation, expecting card: OperationCard? = nil) -> Bool {
-        do { try store.apply(op, expecting: card); refresh(); LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step); return true }
-        catch { self.error = error.localizedDescription; refresh(); return false }
+        let planned = try? store.plan(op)
+        do {
+            try store.apply(op, expecting: card); refresh(); LibraryModel.shared.touch(path: root.path, name: title, step: showreel?.step)
+            if let c = planned { react(StatusLine.applied(op, card: c)) }
+            return true
+        } catch {
+            refresh(); react(StatusLine.refused(error.localizedDescription, op: op)); return false
+        }
+    }
+
+    // MARK: action and reaction
+
+    /// The reaction to a typed change: the elements it touched light up and the line at the bottom says what happened, with Undo; a refusal says why and what to do.
+    func react(_ line: StatusLine) {
+        showToast(line.text, error: line.kind == .refused, undoable: line.undoable)
+        if line.kind == .applied { flash(line.targets) }
+    }
+
+    func flash(_ refs: [ElementRef]) {
+        guard !refs.isEmpty else { return }
+        flashed.formUnion(refs)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in self?.flashed.subtract(refs) }
+    }
+
+    /// Clap's change was accepted on its card: the same reaction, a moment later (the change is applied by the agent's own thread).
+    func reactToAccepted(_ card: OperationCard) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            guard let self = self else { return }
+            self.refresh(); self.reloadTree()
+            self.react(StatusLine.applied(card: card, targets: card.targets))
+        }
+    }
+
+    /// Why an element cannot be edited now, or nil: what the views read to mark it, disable its controls and say why.
+    func blocked(_ ref: ElementRef) -> Unavailable? { Availability.edit(ref, in: activity, file: showreel).why.flatMap { $0.cause == .locked ? nil : $0 } }
+
+    /// The way out that a reason offers: the card of a proposal, or the build's Cancel.
+    func followLink(_ u: Unavailable, chat: ChatModel?) {
+        switch u.link {
+        case .proposal(let id)?: chat?.focus(card: id)
+        case .scene(let id)?: select(.scene(id))
+        case .build?: centerMode = .build
+        case .key?: AppSettingsWindow.open()
+        default: break
+        }
     }
 
     func addAssets(_ urls: [URL]) {
@@ -1059,6 +1148,7 @@ final class ProjectModel: ObservableObject {
 
     func save(_ tab: EditorTab) {
         do {
+            if let e = store.buildRefusal() { throw e }           // a file edited during a build would change the film under construction
             try store.write(tab.path, tab.text, source: .user)
             tab.markSaved(tab.text)
             refresh(); if tab.path == ShowreelFile.fileName { refreshTab("brief.md") }
@@ -1127,5 +1217,6 @@ final class WindowModel: ObservableObject {
     init(path: String) {
         project = ProjectModel(path: path)
         chat = ChatModel(project: project)
+        project.chat = chat
     }
 }

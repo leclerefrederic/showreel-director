@@ -49,11 +49,13 @@ struct LibraryView: View {
         .sheet(isPresented: $showNew) { NewProjectSheet { open($0) } }
         .sheet(item: $updating) { e in
             UpdateSheet(store: ProjectStore(root: URL(fileURLWithPath: e.path))) {
+                if let open = OpenProjects.shared.model(forPath: e.path), !open.confirmLeaving(.updateProject) { return }      // the project is open in a window with work in progress
                 do { try ProjectFormat.update(ProjectStore(root: URL(fileURLWithPath: e.path))); library.reload() } catch { notice = error.localizedDescription }
             }
         }
         .sheet(item: $restoring) { e in
             RestoreSheet(store: ProjectStore(root: URL(fileURLWithPath: e.path))) { b in
+                if let open = OpenProjects.shared.model(forPath: e.path), !open.confirmLeaving(.restoreBackup) { return }
                 do { try ProjectFormat.restore(ProjectStore(root: URL(fileURLWithPath: e.path)), b); library.reload() } catch { notice = error.localizedDescription }
             }
         }

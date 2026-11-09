@@ -18,6 +18,8 @@ public protocol AgentUI: AnyObject {
     func text(_ t: String)
     func endText()
     func tool(_ name: String, _ input: [String: Any])
+    /// The tool call is over (its result goes back to the model).
+    func toolDone(_ name: String)
     func show(_ url: String, _ title: String)
     func screenshot(javascript: String?, waitMs: Int) async -> Data?
     func ask(_ questions: [[String: Any]]) async -> [String]
@@ -36,6 +38,7 @@ public protocol AgentUI: AnyObject {
 }
 
 public extension AgentUI {
+    func toolDone(_ name: String) {}
     func memoryNote(_ text: String) async {}
     func propose(_ p: Proposal) async -> Bool { false }
     func proposeOperation(_ card: OperationCard) async -> Bool { false }

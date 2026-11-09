@@ -58,6 +58,18 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     @Published var draft = ""
     @Published var running = false
     @Published var scrollTick = 0
+    /// How Clap's last request ended, shown for a few seconds next to the activity chip: done, an error in plain words, or stopped.
+    struct End: Equatable { let id = UUID(); let text: String; let isError: Bool }
+    @Published var lastEnd: End?
+    /// The card the user was sent to (from a blocked element or the banner): the conversation scrolls to it and it is lit for a moment.
+    @Published var focusedCard: UUID?
+    @Published var focusTick = 0
+    private var sendTask: Task<Void, Never>?
+    private var stopping = false
+    /// The request that just ended was stopped by the user (Stop, Cancel build, closing): a build in progress is then cancelled, not tested.
+    private(set) var stoppedByUser = false
+    private var failure: String?
+    var activity: ProjectActivity { project.store.activity }
     @Published var previewURL: URL?
     @Published var previewTitle = "Preview"
     @Published var previewNonce = 0
@@ -158,10 +170,12 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         remember(ChatRecord(role: "user", text: text))
         assistantIdx = nil; stepsIdx = nil
         running = true; scrollTick += 1
+        stopping = false; failure = nil; lastEnd = nil
+        activity.update { $0.clap = .thinking }
         catchUpSummaries(key: key)
         let context = project.contextLine
         let generation = settings.generation
-        Task { [weak self] in
+        sendTask = Task { [weak self] in
             guard let self = self else { return }
             await self.catchUp?.value               // the summaries of the earlier sessions are in the prompt of this one
             let built: Result<Agent, Error> = await self.onMain {
@@ -176,9 +190,11 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
                 } catch { return .failure(error) }
             }
             switch built {
-            case .failure(let e): self.postNotice("Error: \(e.localizedDescription)")
+            case .failure(let e): self.failure = e.localizedDescription; self.postNotice("Error: \(e.localizedDescription)")
             case .success(let a):
-                do { try await a.send(text, context: context) } catch { self.postNotice("Error: \(error.localizedDescription)") }
+                do { try await a.send(text, context: context) } catch {
+                    if self.stopping { self.postNotice("Stopped.") } else { self.failure = error.localizedDescription; self.postNotice("Error: \(error.localizedDescription)") }
+                }
             }
             self.finish()
         }
@@ -196,7 +212,9 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     }
 
     func stop() {
+        stopping = true
         agent?.abort()
+        sendTask?.cancel()                 // the request in flight ends now, not at the end of the answer
         resumePending([])
         resolveAllProposals(false)
     }
@@ -225,6 +243,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     func resolveProposal(_ itemID: UUID, accept: Bool) {
         if let i = items.firstIndex(where: { $0.id == itemID }) { items[i].proposal?.status = accept ? .accepted : .refused }
+        activity.removeProposal(itemID.uuidString)
         pendingProposals.removeValue(forKey: itemID)?.resume(returning: accept)
         scrollTick += 1
     }
@@ -248,14 +267,35 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         c?.resume(returning: answers)
     }
 
+    /// Accept all / Refuse all of the banner.
+    func answerAll(accept: Bool) { resolveAllProposals(accept) }
+
+    /// The app is quitting with answers still waiting: each is recorded as refused in the journal (the process ends before the agent could do it).
+    func journalUnanswered() {
+        agent?.abort()
+        for p in activity.snapshot.proposals { project.store.noteUnanswered(p) }
+        activity.update { $0.proposals = []; $0.clap = nil }
+    }
+
+    /// Scrolls the conversation to a card and lights it: the way from a blocked element to the answer it waits for.
+    func focus(card id: String) {
+        guard let u = UUID(uuidString: id) else { return }
+        project.inspectorTab = .copilot; project.clapSection = .conversation
+        focusedCard = u; focusTick += 1
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in if self?.focusedCard == u { self?.focusedCard = nil } }
+    }
+
     private func resolveAllProposals(_ accept: Bool) {
         for id in Array(pendingProposals.keys) { resolveProposal(id, accept: accept) }
         for id in Array(pendingOperations.keys) { resolveOperation(id, accept: accept) }
     }
 
     func resolveOperation(_ itemID: UUID, accept: Bool) {
-        if let i = items.firstIndex(where: { $0.id == itemID }) { items[i].operation?.status = accept ? .accepted : .refused }
+        var card: OperationCard?
+        if let i = items.firstIndex(where: { $0.id == itemID }) { items[i].operation?.status = accept ? .accepted : .refused; card = items[i].operation?.card }
+        activity.removeProposal(itemID.uuidString)               // first: the change that is accepted goes through the same checks as any other
         pendingOperations.removeValue(forKey: itemID)?.resume(returning: accept)
+        if accept, let c = card { project.reactToAccepted(c) }
         scrollTick += 1
     }
 
@@ -275,6 +315,12 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         DispatchQueue.main.async {
             self.lastActivity = Date()
             self.flushAssistant(); self.running = false
+            self.activity.update { $0.clap = nil }
+            let end = self.stopping ? End(text: "Clap was stopped", isError: false) : self.failure.map { End(text: "Clap stopped: \($0)", isError: true) } ?? End(text: "Clap is done", isError: false)
+            self.stoppedByUser = self.stopping
+            self.stopping = false; self.sendTask = nil
+            self.lastEnd = end
+            DispatchQueue.main.asyncAfter(deadline: .now() + (end.isError ? 8 : 3)) { [weak self] in if self?.lastEnd == end { self?.lastEnd = nil } }
             let done = self.onDone; self.onDone = nil
             done?()
         }
@@ -297,7 +343,11 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
 
     func endText() { DispatchQueue.main.async { self.flushAssistant() } }
 
+    func toolDone(_ name: String) { activity.update { if $0.clap != nil { $0.clap = .thinking } } }
+
     func tool(_ name: String, _ input: [String: Any]) {
+        let work = ClapActivity.work(for: name, input: input)
+        activity.update { if $0.clap != nil { $0.clap = work } }
         var d = name
         if name == "bash" { d += ": " + String((input["command"] as? String ?? "").prefix(200)) }
         else if let p = input["path"] as? String ?? input["file"] as? String { d += ": " + p }
@@ -348,7 +398,8 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
                 let item = ChatItem(kind: .operation, operation: OperationState(card: card))
                 self.items.append(item)
                 self.pendingOperations[item.id] = c
-                self.scrollTick += 1
+                self.activity.addProposal(.init(id: item.id.uuidString, title: card.title, targets: card.targets))
+                self.scrollTick += 1; self.focusedCard = nil
             }
         }
     }
@@ -361,6 +412,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
                 let item = ChatItem(kind: .proposal, proposal: ProposalState(proposal: p, rows: rows))
                 self.items.append(item)
                 self.pendingProposals[item.id] = c
+                self.activity.addProposal(.init(id: item.id.uuidString, title: "Edit \(p.file)", targets: [.file(p.file)], isFile: true))
                 self.scrollTick += 1
             }
         }

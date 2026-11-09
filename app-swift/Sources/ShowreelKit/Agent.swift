@@ -56,6 +56,7 @@ public final class Agent {
                 let input = u["input"] as? [String: Any] ?? [:]
                 ui.tool(name, input)
                 let out = await tools.run(name, input)
+                ui.toolDone(name)
                 var content: Any = out.text
                 if let img = out.image {
                     let blocks: [[String: Any]] = [

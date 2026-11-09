@@ -16,12 +16,15 @@ struct ChatView: View {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 14) {
                             ForEach(model.items) { item in
-                                ItemView(item: item)
+                                ItemView(item: item).id(item.id)
+                                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.accentColor, lineWidth: model.focusedCard == item.id ? 3 : 0).allowsHitTesting(false))
+                                    .animation(.easeOut(duration: 0.4), value: model.focusedCard)
                             }
                             Color.clear.frame(height: 1).id("end")
                         }
                         .padding(16)
                     }
+                    .onChange(of: model.focusTick) { _ in if let id = model.focusedCard { withAnimation(.easeOut(duration: 0.3)) { proxy.scrollTo(id, anchor: .center) } } }
                     .onChange(of: model.scrollTick) { _ in
                         withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("end", anchor: .bottom) }
                     }
@@ -40,6 +43,7 @@ struct CopilotHeader: View {
     var body: some View {
         HStack(spacing: 8) {
             Label(ClapMark.title, systemImage: ClapMark.symbol).font(.headline)
+            ClapActivityChip()
             Spacer()
             Toggle("Apply directly", isOn: $project.applyDirectly)
                 .toggleStyle(.checkbox)

@@ -190,6 +190,7 @@ struct InspectorPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            ProposalsBanner()
             Picker("", selection: $project.inspectorTab) {
                 ForEach(InspectorTab.allCases.filter { $0 != .files || settings.advanced }) { tab in
                     if tab == .copilot { Label(tab.title, systemImage: ClapMark.symbol).tag(tab) } else { Text(tab.title).tag(tab) }
@@ -294,8 +295,8 @@ struct ProjectInspector: View {
                     .help("The project's parameters and its global look, in one panel")
             }
             Text("Select a scene, a resource or a transition marker to see its properties here.").font(.callout).foregroundStyle(.secondary)
-            InspectorSection(title: "Music") { MusicInspector() }
-            InspectorSection(title: "Global look") { GlobalLook() }
+            InspectorSection(title: "Music") { MusicInspector() }.readOnlyWhenBlocked(.setting("music"))
+            InspectorSection(title: "Global look") { GlobalLook() }.readOnlyWhenBlocked(.setting("look"))
         }
     }
 }
@@ -372,7 +373,7 @@ struct SceneInspector: View {
                 } else {
                     Picker("", selection: $project.sceneTab) { ForEach(SceneTab.allCases) { Text($0.title).tag($0) } }
                         .pickerStyle(.segmented).labelsHidden()
-                    switch project.sceneTab {
+                    Group { switch project.sceneTab {
                     case .settings:
                         Toggle("In the film", isOn: Binding(get: { on }, set: { project.setEnabled(id, $0) })).toggleStyle(.switch)
                         SceneForm(id: id, tab: .settings)
@@ -388,7 +389,8 @@ struct SceneInspector: View {
                         SceneEffectsTab(id: id)
                     case .look:
                         SceneLookTab(id: id)
-                    }
+                    } }
+                    .readOnlyWhenBlocked(.scene(id))
                 }
             }
         }

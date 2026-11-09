@@ -107,6 +107,7 @@ public enum ProjectFormat {
     /// Backs up, migrates and writes the current revision. Throws (and has changed nothing) when the file cannot be read, is current already, or the backup fails.
     @discardableResult
     public static func update(_ store: ProjectStore, now: Date = Date()) throws -> (backup: ProjectBackup, plan: UpdatePlan) {
+        if let e = store.buildRefusal() { throw e }
         guard let text = store.read(ShowreelFile.fileName) else { throw AgentError.msg("there is no showreel.json to update") }
         guard var f = try? ShowreelFile.decode(text) else { throw AgentError.msg("showreel.json cannot be read: it was left as it is") }
         guard let plan = plan(store) else { throw AgentError.msg("this project is already at revision \(current)") }
@@ -121,6 +122,7 @@ public enum ProjectFormat {
 
     /// Puts a backup back, file by file, byte for byte; a file that did not exist then is removed. The state it replaces is backed up first.
     public static func restore(_ store: ProjectStore, _ b: ProjectBackup, now: Date = Date()) throws {
+        if let e = store.buildRefusal() { throw e }
         let fm = FileManager.default
         for rel in b.files where !fm.fileExists(atPath: b.url.appendingPathComponent(rel).path) { throw AgentError.msg("the backup is incomplete (\(rel) is missing): nothing was changed") }
         try backup(store, revision: revision(of: store) ?? 0, now: now)    // the way back from the restore

@@ -27,17 +27,11 @@ struct BuildPanel: View {
             HStack(spacing: 10) {
                 Button { project.startBuild(with: chat) } label: { Label("Build a new version", systemImage: "hammer") }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!BuildRunner.canBuild(project.store) || !settings.hasKey || project.buildBusy || chat.running)
+                    .disabledWithReason(Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running).reasonText,
+                                        way: Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running).wayText)
                     .help("Clap writes \(Versions.next(project.store)) from your storyboard and decisions, then the app builds and tests it.")
-                if project.generating {
-                    ProgressView().controlSize(.small)
-                    Text("Clap is writing \(project.buildVersion ?? "the version")...").font(.callout).foregroundStyle(.secondary)
-                    Button("Stop") { chat.stop() }
-                } else if project.testing {
-                    ProgressView().controlSize(.small)
-                    Text("Building and testing \(project.buildVersion ?? "")...").font(.callout).foregroundStyle(.secondary)
-                }
             }
+            BuildProgressPanel()
             if !BuildRunner.canBuild(project.store) {
                 Text("The Go comes first: give it in the Scene editor once every scene is Validated or ditched.").font(.caption).foregroundStyle(.secondary)
             }
@@ -59,7 +53,7 @@ struct BuildPanel: View {
             Picker("Version", selection: Binding(get: { project.playVersion ?? project.versions.last ?? "" }, set: { project.playVersion = $0; project.playNonce += 1 })) {
                 ForEach(project.versions, id: \.self) { Text($0).tag($0) }
             }.frame(maxWidth: 200)
-            Button("Test it again") { project.runChecks(project.playVersion ?? project.versions.last ?? "") }.disabled(project.buildBusy)
+            Button("Test it again") { project.runChecks(project.playVersion ?? project.versions.last ?? "") }.disabledWithReason(project.buildBusy ? "A build is running" : nil, way: "Wait for the end, or Cancel the build")
                 .help("Builds and tests this version again. Needs no AI.")
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([project.root.appendingPathComponent(project.playVersion ?? project.versions.last ?? "")]) }
             if let v = project.playVersion, Versions.hasDist(project.store, v) { Button("Open in the browser") { NSWorkspace.shared.open(Versions.distURL(project.store, v)) } }

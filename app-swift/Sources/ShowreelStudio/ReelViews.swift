@@ -36,8 +36,8 @@ struct TransitionInspector: View {
                     TextField("For a match cut: which element becomes which", text: $instruction, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
                 }
                 HStack {
-                    Button("Apply") { apply(p.item) }.buttonStyle(.borderedProminent).disabled(!dirty(p.item))
-                    Button("Revert to a cut") { project.setTransition(from: from, nil) }.disabled(p.item.isCut && p.item.instruction == nil)
+                    Button("Apply") { apply(p.item) }.buttonStyle(.borderedProminent).disabledWithReason(dirty(p.item) ? nil : "Nothing changed yet")
+                    Button("Revert to a cut") { project.setTransition(from: from, nil) }.disabledWithReason(p.item.isCut && p.item.instruction == nil ? "It already is a cut" : nil)
                 }
                 Text("A transition overlaps the end of \(from) and the start of \(p.next.id); the film's length does not change. It is data for the build today: the reel player cuts hard until the transition compositor exists.")
                     .font(.caption).foregroundStyle(.secondary)

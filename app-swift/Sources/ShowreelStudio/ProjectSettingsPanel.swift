@@ -52,8 +52,8 @@ struct ProjectSettingsPanel: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         switch project.settingsTab {
-                        case .project: ProjectSettingsForm()
-                        case .look: GlobalLookSettings()
+                        case .project: ProjectSettingsForm().readOnlyWhenBlocked(.setting("parameter"))
+                        case .look: GlobalLookSettings().readOnlyWhenBlocked(.setting("look"))
                         }
                     }
                     .padding(14).frame(maxWidth: .infinity, alignment: .leading)

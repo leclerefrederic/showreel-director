@@ -64,7 +64,7 @@ struct SceneForm: View {
                     }
                 }
                 HStack {
-                    Button("Save scene") { if let e = edit { project.perform(.scene(id: id, e)) } }.buttonStyle(.borderedProminent).disabled(edit == nil || s.isLocked)
+                    Button("Save scene") { if let e = edit { project.perform(.scene(id: id, e)) } }.buttonStyle(.borderedProminent).disabledWithReason(s.isLocked ? "\(id) is locked" : edit == nil ? "Nothing to save yet: no change" : nil, way: s.isLocked ? "Unlock it from its badge or the Review block" : nil)
                     Button("Revert") { load(force: true) }.disabled(edit == nil)
                 }
                 if s.isLocked { Label("Locked: nothing in this scene can change. Unlock it from its badge or the Review block.", systemImage: "lock.fill").font(.caption).foregroundStyle(.secondary) }
@@ -242,14 +242,14 @@ struct SceneDecision: View {
             VStack(alignment: .leading, spacing: 8) {
                 TextField("Note (what to change, or why)", text: $note, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
                 HStack {
-                    Button("OK") { decide("validated") }.buttonStyle(.borderedProminent).tint(.green).disabled(s.isLocked || (s.state == .validated && note == s.note))
-                    Button("MODIFY") { decide("wip") }.tint(.orange).disabled(s.isLocked || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("DITCH", role: .destructive) { ditching = true }.disabled(s.isLocked)
+                    Button("OK") { decide("validated") }.buttonStyle(.borderedProminent).tint(.green).disabledWithReason(s.isLocked ? "\(id) is locked" : (s.state == .validated && note == s.note) ? "Already validated with this note" : nil, way: s.isLocked ? "Unlock it first" : nil)
+                    Button("MODIFY") { decide("wip") }.tint(.orange).disabledWithReason(s.isLocked ? "\(id) is locked" : note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "MODIFY needs a note that says what to change" : nil, way: s.isLocked ? "Unlock it first" : "Write the note above")
+                    Button("DITCH", role: .destructive) { ditching = true }.disabledWithReason(s.isLocked ? "\(id) is locked" : nil, way: "Unlock it first")
                     Spacer()
                 }
                 if !s.isLocked, note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { Text("MODIFY needs a note that says what to change.").font(.caption).foregroundStyle(.secondary) }
                 Toggle(isOn: Binding(get: { s.isLocked }, set: { project.perform(.sceneLock(ids: [id], locked: $0)) })) { Label("Locked", systemImage: "lock") }
-                    .toggleStyle(.switch).disabled(!s.isLocked && s.state != .validated)
+                    .toggleStyle(.switch).disabledWithReason(!s.isLocked && s.state != .validated ? "Only a Validated scene can be locked" : nil, way: "Validate it first (OK), then lock it")
                 Text(s.isLocked ? "Locked: its content, duration and look cannot change. Unlock it to change the review. Its place in the film still moves."
                                 : "Validated is not Locked: a validated scene goes back to WIP when it changes. Lock it (once validated) to refuse any change.")
                     .font(.caption).foregroundStyle(.secondary)

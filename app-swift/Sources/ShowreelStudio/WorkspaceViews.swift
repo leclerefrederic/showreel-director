@@ -466,8 +466,10 @@ struct SceneRowView: View {
             }
             OverrideBadge(scene: scene)
             Spacer(minLength: 0)
+            BlockMarker(ref: .scene(scene.id))
         }
         .opacity(on ? 1 : 0.5)
+        .flashWhenChanged(.scene(scene.id))
     }
 }
 

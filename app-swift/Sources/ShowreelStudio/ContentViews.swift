@@ -124,7 +124,7 @@ struct ContentItemRow: View {
                     TextField("In your words", text: $instruction, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
                 }
                 HStack {
-                    Button("Apply") { apply() }.buttonStyle(.borderedProminent).disabled(!dirty)
+                    Button("Apply") { apply() }.buttonStyle(.borderedProminent).disabledWithReason(dirty ? nil : "Nothing changed yet")
                     Spacer()
                     Button("Remove", role: .destructive) { project.removeItem(scene, item.id) }
                 }
@@ -144,7 +144,9 @@ struct ContentItemRow: View {
                 Spacer(minLength: 4)
                 if item.color.isFixed { FixedBadge(fixed: true).help("Colour fixed") }
                 if item.animation.isFixed { Image(systemName: "sparkles").font(.caption).foregroundStyle(Color.accentColor).help("Animation fixed: \(item.animation.text)") }
+                BlockMarker(ref: .item(scene: scene, item: item.id))
             }
+            .flashWhenChanged(.item(scene: scene, item: item.id))
             .contentShape(Rectangle())
             .dragSource(.content(scene: scene, item: item.id), label: label, icon: icon)
         }

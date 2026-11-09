@@ -4,6 +4,22 @@ The owner's remarks while testing, one section per block, newest first. Nothing 
 
 Order of the per-block rework: Project and wizard, Resources, Look, Storyboard and scene, Build and deliver.
 
+## Guiding principle
+
+Action/reaction. The interface is alive: every action gets a visible reaction, and whenever something becomes unavailable (an element no longer editable, a feature not reachable), the interface says so, says why, and says how to get it back. Never a silent disabled control.
+
+- When Clap proposes changes, some elements are no longer editable and some features are unreachable. That is normal, but nothing says so visually.
+- While Clap builds the film, nothing may be edited, because any change would affect the film under construction. Closing the window must warn that the work in progress will be lost, and what that means.
+
+## Action/reaction: remaining
+
+Built in Q5: the state and reason model (`Availability`, `ProjectActivity`), the freeze during a build, the proposals banner, the marks on blocked elements, the activity chip, the build panel, the closing alert, the status line with Undo. The standard control (`disabledWithReason`) replaced the silent disabled controls of the storyboard review, the scene editor's Save, the reel's Apply and Revert, the content item's Apply, the Build and Test it again buttons, Reset layout and Validate storyboard. Left, with where:
+- Menu items that are disabled without a reason: Undo and Redo in the Edit menu (`App.swift`), the state choices of a scene's badge menu (`SceneStateViews.swift`: the reason is in the item's title), the "Move to the top / bottom" items of a content item's context menu (`ContentViews.swift`).
+- Form buttons that are disabled while a field is empty or unchanged, without a line saying so: the wizard (`WizardView.swift`: Back, Next, the held-file note), the new project sheet (`LibraryView.swift`), the palette editor (`LookViews.swift`, `InspectorViews.swift`), the moods picker (`LookViews.swift`), the memory form (`HistoryViews.swift`), the editor's Save (`EditorViews.swift`), the set-up form and the set-up screen (`SetupFormView.swift`, `SetupView.swift`), the Update and Restore sheets (`ProjectLifecycleViews.swift`), the preview pane's reload and open buttons (`PreviewPane.swift`), the music toggle (`PlayerViews.swift` has a tooltip only).
+- The Go button and the Validate-storyboard blocker are explained by text near them; they do not use the standard control yet (`StoryboardViews.swift`).
+- Elements are marked and made read-only in the library's scene rows, the inspector (scene, music, global look), the project settings and the content items. Not marked yet: the timeline's frames and markers, the resource rows, the scene tree on the left (their drags and drops are refused with the reason in the line at the bottom).
+- An outdated project stays editable (the banner offers Update project); nothing blocks it.
+
 ## Application (launch, library, settings)
 
 - Very important (owner): the project must keep the AI's memory so that what was decided, validated or modified is never lost, even if the user changes the model or relaunches the project: a history of the work sessions. Scheduled as phase M (journal, curated memory, session history).

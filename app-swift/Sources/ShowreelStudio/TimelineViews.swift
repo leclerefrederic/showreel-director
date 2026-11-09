@@ -204,7 +204,7 @@ struct StripPrimaryAction: View {
         HStack(spacing: 6) {
             if !validated {
                 Button { project.perform(.gate("storyboard", passed: true)) } label: { Label("Validate storyboard", systemImage: "checkmark.circle") }
-                    .buttonStyle(.borderedProminent).disabled((project.showreel?.film.isEmpty) ?? true)
+                    .buttonStyle(.borderedProminent).disabledWithReason((project.showreel?.film.isEmpty ?? true) ? "The film has no scene yet" : nil, way: "Add a scene first")
                     .help("Say the storyboard is as you want it. Then the scenes are reviewed and you give the Go.")
             } else {
                 GoButton().buttonStyle(.borderedProminent)
