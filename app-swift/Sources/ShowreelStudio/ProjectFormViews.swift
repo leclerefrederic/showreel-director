@@ -2,12 +2,15 @@ import ShowreelKit
 import SwiftUI
 
 /// The project form, in sections: the base configuration of the film (formats, duration, languages), the brief, the control level. The same form is the set-up of a Manual
-/// project and the Project tab of the settings. The rules (what is set, how far, what the duration allows) are ShowreelKit's `ProjectSetup`; typed text is recorded after a pause
+/// project (all of it, `part` nil) and the pieces of the settings panel (PT1): above the tabs the name and the compact base configuration, then the Brief and the Format. The rules (what is set, how far, what the duration allows) are ShowreelKit's `ProjectSetup`; typed text is recorded after a pause
 /// through the typed operations, like everywhere.
 struct ProjectForm: View {
+    /// The pieces of the settings panel (PT1); nil is the whole form, as the set-up of a new project shows it.
+    enum Part { case header, brief, format }
     @EnvironmentObject var theme: Theme
     /// The set-up of a new project: the look is chosen here too.
     var setup = false
+    var part: Part?
     @EnvironmentObject var project: ProjectModel
     @State private var drafts: [ParameterKey: String] = [:]
     @State private var dirty: Set<ParameterKey> = []
@@ -26,30 +29,25 @@ struct ProjectForm: View {
     var body: some View {
         let f = project.showreel
         VStack(alignment: .leading, spacing: 16) {
-            if let f = f { progress(f) }
-            if !setup { compact(.name, "Project name") }
-            section("Film", required: true) {
-                VStack(alignment: .leading, spacing: 14) {
-                    formatsRow(f)
-                    durationRow(f)
-                    languagesRow(f)
+            if part == nil || part == .header, let f = f { progress(f) }
+            if part == .header || (part == nil && !setup) { compact(.name, "Project name") }
+            if part == nil || part == .format {
+                section("Film", required: true) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        formatsRow(f)
+                        durationRow(f)
+                        languagesRow(f)
+                    }
                 }
             }
-            section("Brief", required: false) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Optional. Say it in a few words; you can come back to it.").fontSmall().foregroundStyle(.secondary)
-                    compact(.audience, "Audience"); compact(.message, "Message"); compact(.tone, "Tone"); compact(.constraints, "Constraints")
+            if part == nil || part == .brief {
+                section("Brief", required: false) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Optional. Say it in a few words; you can come back to it.").fontSmall().foregroundStyle(.secondary)
+                        compact(.audience, "Audience"); compact(.message, "Message"); compact(.tone, "Tone"); compact(.constraints, "Constraints")
+                    }
                 }
-            }
-            section("Control level", required: false) { controlCards(f) }
-            moreArea(f)
-            if !setup, let f = f {
-                let look = ProjectSetup.requirements(f).first { $0.id == "look" }?.isSet ?? false
-                HStack {
-                    Label(look ? "Look: set" : "Look: not set yet", systemImage: look ? "checkmark.circle.fill" : "circle").foregroundStyle(look ? theme.success : .secondary).font(.callout)
-                    Spacer()
-                    Button("Open the Look") { project.settingsTab = .look }.buttonStyle(.borderless)
-                }
+                section("Control level", required: false) { controlCards(f) }
             }
         }
         .onAppear { load() }
@@ -76,7 +74,11 @@ struct ProjectForm: View {
             ProgressView(value: Double(p.set), total: Double(p.total))
             HStack(spacing: 10) {
                 ForEach(ProjectSetup.requirements(f)) { r in
-                    Label(r.title, systemImage: r.isSet ? "checkmark.circle.fill" : "circle").fontSmall().foregroundStyle(r.isSet ? theme.success : .secondary)
+                    let label = Label(r.title, systemImage: r.isSet ? "checkmark.circle.fill" : "circle").fontSmall().foregroundStyle(r.isSet ? theme.success : .secondary)
+                    if part == .header {
+                        // an item goes to the tab where it is set (PT1)
+                        Button { project.settingsTab = ProjectTab.tab(forRequirement: r.id) } label: { label }.buttonStyle(.plain).help("Go to \(ProjectTab.tab(forRequirement: r.id).title)")
+                    } else { label }
                 }
             }
         }
@@ -146,26 +148,6 @@ struct ProjectForm: View {
         }
     }
 
-    /// The conversation language is settled from the Mac when the project is made: it is not a question. It stays editable here, in a collapsed area, with where it came from.
-    @State private var moreOpen = false
-    private func moreArea(_ f: ShowreelFile?) -> some View {
-        DisclosureGroup("More", isExpanded: $moreOpen) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Conversation language").font(.subheadline.weight(.medium))
-                    Picker("", selection: Binding(get: { f?.conversationLanguage ?? "" }, set: { v in if v != (f?.conversationLanguage ?? "") { project.perform(.parameter(.conversationLanguage, v)) } })) {
-                        if (f?.conversationLanguage ?? "").isEmpty || !ProjectLanguages.all.contains(where: { $0.code == f?.conversationLanguage }) { Text(f?.conversationLanguage.map { $0.isEmpty ? "Not set" : $0 } ?? "Not set").tag(f?.conversationLanguage ?? "") }
-                        ForEach(ProjectLanguages.all, id: \.code) { Text($0.name).tag($0.code) }
-                    }.labelsHidden().frame(maxWidth: 180)
-                    Text(ConversationLanguage.origin(f)).fontSmall().foregroundStyle(.secondary)
-                }
-                Text("Clap writes its first message in it, and answers in the language you write in. The film's own languages are above.").fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.top, 6)
-        }
-        .font(.callout)
-    }
-
     private func controlCards(_ f: ShowreelFile?) -> some View {
         let current = f?.parameters.controlLevel ?? "auto"
         return HStack(alignment: .top, spacing: 10) {
@@ -188,7 +170,7 @@ struct ProjectForm: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title).font(.subheadline.weight(.medium))
             TextField("", text: Binding(get: { drafts[k] ?? "" }, set: { drafts[k] = $0; dirty.insert(k); schedule() }), prompt: Text(Self.examples[k] ?? ""), axis: .vertical)
-                .lineLimit(1...3).textFieldStyle(ThemedTextFieldStyle()).onSubmit { commit() }
+                .lineLimit(1...3).textFieldStyle(ThemedTextFieldStyle()).environment(\.fieldVerticalPadding, CGFloat(FormLayout.multilinePadding)).onSubmit { commit() }
         }
     }
 

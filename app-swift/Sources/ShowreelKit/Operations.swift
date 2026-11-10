@@ -203,8 +203,8 @@ public enum ProjectOperation: Equatable, Sendable {
     case sceneLook(id: String, [DecisionChange])
     /// Add, change, remove or reorder one content item of a scene.
     case content(scene: String, ContentOp)
-    /// A scene's own length (the right edge of its frame). Without `ripple` the next scene stays where it is.
-    case resize(scene: String, duration: Double, ripple: Bool)
+    /// A scene's own length (the right edge of its frame). The scenes after it follow: scenes never overlap and leave no gap.
+    case resize(scene: String, duration: Double)
     /// The cut between two consecutive scenes moves to `at` seconds (the left edge of the second frame): their lengths trade time, nothing else moves.
     case moveCut(before: String, after: String, at: Double)
     /// The passage from a scene to the next one; nil puts the default back (a cut on the beat).
@@ -213,8 +213,8 @@ public enum ProjectOperation: Equatable, Sendable {
     case track(asset: String?)
     /// The tempo and the first beat, corrected by the user (the analysis runs again with them).
     case grid(bpm: Double?, firstBeat: Double?)
-    /// How the reel snaps and whether stretching ripples.
-    case gridSettings(snap: String?, ripple: Bool?)
+    /// How the reel snaps.
+    case gridSettings(snap: String?)
     /// Puts a resource after another one in the resources list ("start" for first). Only the order of the list changes.
     case moveAsset(id: String, after: String)
     /// Locks Ready scenes, or unlocks Locked ones (back to Ready), as one card.
@@ -326,12 +326,12 @@ extension ProjectStore {
         case .moveScene(let id, let after, let m): return try planMove(id, after: after, montage: m).card
         case .sceneLook(let id, let ch): return try planSceneLook(id, ch).card
         case .content(let id, let op): return try planContent(id, op).card
-        case .resize(let id, let d, let r): return try planResize(id, d, ripple: r).card
+        case .resize(let id, let d): return try planResize(id, d).card
         case .moveCut(let a, let b, let t): return try planCut(a, b, at: t).card
         case .transition(let id, let e): return try planTransition(id, e).card
         case .track(let a): return try planTrack(a).card
         case .grid(let b, let s): return try planGrid(bpm: b, firstBeat: s).card
-        case .gridSettings(let s, let r): return try planGridSettings(snap: s, ripple: r).card
+        case .gridSettings(let s): return try planGridSettings(snap: s).card
         case .moveAsset(let id, let after): return try planMoveAsset(id, after: after).card
         case .sceneLock(let ids, let on): return try planLock(ids, locked: on).card
         case .deleteScene(let id): return try planDelete(id).card
@@ -384,12 +384,12 @@ extension ProjectStore {
         case .moveScene(let id, let after, let m): try planMove(id, after: after, montage: m).run()
         case .sceneLook(let id, let ch): try planSceneLook(id, ch).run()
         case .content(let id, let op): try planContent(id, op).run()
-        case .resize(let id, let d, let r): try planResize(id, d, ripple: r).run()
+        case .resize(let id, let d): try planResize(id, d).run()
         case .moveCut(let a, let b, let t): try planCut(a, b, at: t).run()
         case .transition(let id, let e): try planTransition(id, e).run()
         case .track(let a): try planTrack(a).run()
         case .grid(let b, let s): try planGrid(bpm: b, firstBeat: s).run()
-        case .gridSettings(let s, let r): try planGridSettings(snap: s, ripple: r).run()
+        case .gridSettings(let s): try planGridSettings(snap: s).run()
         case .moveAsset(let id, let after): try planMoveAsset(id, after: after).run()
         case .sceneLock(let ids, let on): try planLock(ids, locked: on).run()
         case .deleteScene(let id): try planDelete(id).run()

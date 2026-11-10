@@ -281,7 +281,7 @@ final class TimelineTests: XCTestCase {
         for key in [#"keyboardShortcut("-", modifiers: .command)"#, #"keyboardShortcut("=", modifiers: .command)"#, #"keyboardShortcut("+", modifiers: .command)"#, #"keyboardShortcut("0", modifiers: .command)"#, "MagnificationGesture()", "case 49:", "case 123:", "case 124:"] {
             XCTAssertTrue(t.contains(key), key)
         }
-        for need in ["Choose music", ".dropTarget(.musicLane)", "Fit selection", "magnet", "Add scene", "StripPrimaryAction()", "backward.end.fill", "forward.end.fill"] { XCTAssertTrue(t.contains(need), need) }
+        for need in ["Choose music", ".dropTarget(.musicLane)", "Fit selection", "backward.end.fill", "forward.end.fill"] { XCTAssertTrue(t.contains(need), need) }
         XCTAssertFalse(try String(contentsOf: v.appendingPathComponent("ProjectView.swift"), encoding: .utf8).contains("GoButton()"), "the strip carries the one primary action: no second Go in the window's toolbar")
         let m = try String(contentsOf: v.appendingPathComponent("ProjectModel.swift"), encoding: .utf8)
         XCTAssertTrue(m.contains("private(set) var fitAll = true"), "the strip opens on the whole film")

@@ -162,7 +162,7 @@ final class SceneStateTests: XCTestCase {
             .sceneLook(id: "S02", [DecisionChange(.background, bg)]),
             .content(scene: "S02", .add(ContentEdit(type: "text", text: "more"), after: nil)), .content(scene: "S02", .update(item: item, ContentEdit(text: "new"))),
             .content(scene: "S02", .remove(item: item)), .content(scene: "S02", .move(item: item, after: "start")),
-            .resize(scene: "S02", duration: 7, ripple: true), .resize(scene: "S02", duration: 7, ripple: false),
+            .resize(scene: "S02", duration: 7), .resize(scene: "S02", duration: 7),
             .moveCut(before: "S01", after: "S02", at: 3), .moveCut(before: "S02", after: "S03", at: 9),
             .asset(id: logo, status: nil, note: nil, licence: nil, scenes: "S02"),
         ]
@@ -177,7 +177,7 @@ final class SceneStateTests: XCTestCase {
         let allowed: [ProjectOperation] = [
             .transition(from: "S01", TransitionEdit(type: tr)),
             // other scenes and the project's own settings are not a locked scene's business
-            .scene(id: "S01", SceneEdit(text: "free")), .resize(scene: "S03", duration: 6, ripple: false),
+            .scene(id: "S01", SceneEdit(text: "free")), .resize(scene: "S03", duration: 6),
             .parameter(.audience, "Teams"), .asset(id: logo, status: nil, note: "a note", licence: nil, scenes: nil),
         ]
         for op in allowed { XCTAssertNoThrow(try store.apply(op), "\(op)") }
@@ -192,8 +192,8 @@ final class SceneStateTests: XCTestCase {
         let one: [ProjectOperation] = [
             .parameter(.audience, "x"), .decisions([DecisionChange(.palette, "#000000")], title: nil), .asset(id: logo, status: nil, note: "n", licence: nil, scenes: nil), .gate("storyboard", passed: true),
             .scene(id: "S02", SceneEdit(text: "x")), .addScene(id: "", SceneEdit(text: "x")), .sceneEnabled(id: "S02", enabled: false, montage: nil), .moveScene(id: "S02", after: "start", montage: nil),
-            .sceneLook(id: "S02", []), .content(scene: "S02", .remove(item: item)), .resize(scene: "S02", duration: 5, ripple: true), .moveCut(before: "S01", after: "S02", at: 3),
-            .transition(from: "S02", nil), .track(asset: nil), .grid(bpm: 100, firstBeat: 0), .gridSettings(snap: nil, ripple: true), .moveAsset(id: logo, after: "start"),
+            .sceneLook(id: "S02", []), .content(scene: "S02", .remove(item: item)), .resize(scene: "S02", duration: 5), .moveCut(before: "S01", after: "S02", at: 3),
+            .transition(from: "S02", nil), .track(asset: nil), .grid(bpm: 100, firstBeat: 0), .gridSettings(snap: nil), .moveAsset(id: logo, after: "start"),
             .sceneLock(ids: ["S02"], locked: false), .deleteScene(id: "S02"), .addFontFiles(FontPayload(family: "Fredoka", dir: "fredoka", files: [])), .resource(.addTag(id: "x", tag: "t"))]
         XCTAssertEqual(Set(one.map(kind)), Self.allKinds, "an operation was added: say here what a locked scene does with it")
         // what changes a scene's insides must name that scene; the rest must not
@@ -206,7 +206,7 @@ final class SceneStateTests: XCTestCase {
         let len = scene("S02").duration, content = scene("S02").content
         let start = try XCTUnwrap(file.timeline()[1].start)
         // lengthening the scene before it would move its start: refused, naming the scene and the time
-        XCTAssertThrowsError(try store.apply(.resize(scene: "S01", duration: 7, ripple: true))) { XCTAssertEqual($0.localizedDescription, "S02 is locked at 0:0\(Int(start)): unlock it, or change a scene after it") }
+        XCTAssertThrowsError(try store.apply(.resize(scene: "S01", duration: 7))) { XCTAssertEqual($0.localizedDescription, "S02 is locked at 0:0\(Int(start)): unlock it, or change a scene after it") }
         XCTAssertEqual(scene("S02").duration, len); XCTAssertEqual(file.timeline()[1].start, start)
         // a resource linked straight into the manifest does not add an element behind the lock
         var rows = Assets.load(store); rows[0].scene = "S02"; try Assets.save(rows, store)

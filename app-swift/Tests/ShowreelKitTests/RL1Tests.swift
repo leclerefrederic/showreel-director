@@ -12,8 +12,8 @@ final class RL1Tests: XCTestCase {
     // MARK: the rail
 
     func testTwoGroupsInOrderWithASeparator() throws {
-        XCTAssertEqual(RailEntry.entries(in: .centre), [.film, .build]); XCTAssertEqual(RailEntry.entries(in: .right), [.inspector, .look, .project, .clap])
-        XCTAssertEqual(RailEntry.allCases, [.film, .build, .inspector, .look, .project, .clap])
+        XCTAssertEqual(RailEntry.entries(in: .centre), [.film, .build]); XCTAssertEqual(RailEntry.entries(in: .right), [.inspector, .project, .clap])
+        XCTAssertEqual(RailEntry.allCases, [.film, .build, .inspector, .project, .clap])
         XCTAssertEqual(RailEntry.allCases.compactMap { $0.panel }, RightPanel.allCases); XCTAssertNil(RailEntry.film.panel)
         XCTAssertTrue(try source("Theme.swift").contains("Rectangle().fill(theme.hairline).frame(width: 36, height: 1)"), "a thin line between the two groups")
     }
@@ -22,8 +22,8 @@ final class RL1Tests: XCTestCase {
         var s = RailState()
         XCTAssertEqual(s.right, .inspector, "a project with no choice opens with the Inspector")
         s.choose(.clap); XCTAssertEqual(s.right, .clap); XCTAssertEqual(RailEntry.allCases.filter { s.isSelected($0) && $0.group == .right }, [.clap])
-        s.choose(.look); XCTAssertEqual(s.right, .look); XCTAssertFalse(s.isSelected(.clap))
-        s.choose(.look); XCTAssertNil(s.right, "a second click closes the right side"); XCTAssertEqual(RailEntry.allCases.filter { s.isSelected($0) && $0.group == .right }, [])
+        s.choose(.project); XCTAssertEqual(s.right, .project); XCTAssertFalse(s.isSelected(.clap))
+        s.choose(.project); XCTAssertNil(s.right, "a second click closes the right side"); XCTAssertEqual(RailEntry.allCases.filter { s.isSelected($0) && $0.group == .right }, [])
         s.choose(.project); XCTAssertEqual(s.right, .project)
         for e in RailEntry.entries(in: .right) { var t = s; t.choose(e); XCTAssertLessThanOrEqual(RailEntry.entries(in: .right).filter { t.isSelected($0) }.count, 1) }
     }
@@ -33,7 +33,7 @@ final class RL1Tests: XCTestCase {
         s.choose(.build); XCTAssertTrue(s.build); XCTAssertEqual(s.right, .clap, "Build never closes a right panel")
         s.choose(.film); XCTAssertFalse(s.build); XCTAssertEqual(s.right, .clap)
         s.choose(.build); s.choose(.build); XCTAssertTrue(s.build, "RB1: a centre view never toggles off; Film is the way back")
-        s.choose(.look); XCTAssertEqual(s.right, .look)
+        s.choose(.project); XCTAssertEqual(s.right, .project)
         s.choose(.build); XCTAssertTrue(s.build, "opening a right panel did not change the centre")
         var t = RailState(build: true, right: nil); t.choose(.inspector); XCTAssertTrue(t.build); XCTAssertEqual(t.right, .inspector)
         XCTAssertFalse(RailState(checks: true).isSelected(.film), "the list of checks is its own centre: no entry is lit")
@@ -44,7 +44,7 @@ final class RL1Tests: XCTestCase {
         var b = RailState(right: .inspector); b.selectionHappened(); XCTAssertEqual(b.right, .inspector)
         var c = RailState(right: .clap); c.selectionHappened(); XCTAssertEqual(c.right, .clap, "the open panel stays"); XCTAssertTrue(c.inspectorMark, "and the Inspector entry gets a mark")
         c.choose(.inspector); XCTAssertEqual(c.right, .inspector); XCTAssertFalse(c.inspectorMark, "the mark goes when the Inspector opens")
-        var d = RailState(right: .look); d.selectionHappened(); XCTAssertTrue(d.inspectorMark); d.open(.clap); XCTAssertEqual(d.right, .clap)
+        var d = RailState(right: .project); d.selectionHappened(); XCTAssertTrue(d.inspectorMark); d.open(.clap); XCTAssertEqual(d.right, .clap)
         var e = RailState(right: .clap); e.open(.clap); XCTAssertEqual(e.right, .clap, "the shortcut opens, it never toggles closed")
     }
 
@@ -110,7 +110,7 @@ final class RL1Tests: XCTestCase {
 
     func testUnderThePreviewTheRailThePanelsSpanTheFullHeightAndTheStripIsAsWideAsTheCentre() {
         for w in windows {
-            for right in [RightPanel?.some(.inspector), .look, .clap, nil] {
+            for right in [RightPanel?.some(.inspector), .project, .clap, nil] {
                 let f = ShellLayout.frames(window: w, placement: .underPreview, sizes: PanelLayout(), right: right)
                 let usable = Double(w.height) - 2 * ShellLayout.gap
                 XCTAssertEqual(Double(f.rail.height), Double(w.height)); XCTAssertEqual(Double(f.left.height), usable, accuracy: 0.001)
@@ -137,7 +137,7 @@ final class RL1Tests: XCTestCase {
 
     func testTheMinimumWindowOfEachModeAndAnythingSmallerIsRefused() {
         for p in FilmPlacement.allCases {
-            for r in [RightPanel?.some(.inspector), .look, nil] {
+            for r in [RightPanel?.some(.inspector), .project, nil] {
                 let m = ShellLayout.minimumWindow(p, right: r)
                 XCTAssertTrue(ShellLayout.isAllowed(m, p, right: r)); XCTAssertFalse(ShellLayout.isAllowed(CGSize(width: m.width - 1, height: m.height), p, right: r)); XCTAssertFalse(ShellLayout.isAllowed(CGSize(width: m.width, height: m.height - 1), p, right: r))
                 let f = ShellLayout.frames(window: m, placement: p, sizes: PanelLayout(), right: r)
@@ -147,7 +147,7 @@ final class RL1Tests: XCTestCase {
         }
         XCTAssertGreaterThan(ShellLayout.minimumWindow(.fullWidth).height, ShellLayout.minimumWindow(.underPreview).height - 1)
         XCTAssertLessThan(ShellLayout.minimumWindow(.underPreview, right: nil).width, ShellLayout.minimumWindow(.underPreview, right: .inspector).width)
-        XCTAssertGreaterThan(ShellLayout.minimumWindow(.underPreview, right: .look).width, ShellLayout.minimumWindow(.underPreview, right: .inspector).width, "Look and Project need a wider panel")
+        XCTAssertGreaterThan(ShellLayout.minimumWindow(.underPreview, right: .project).width, ShellLayout.minimumWindow(.underPreview, right: .inspector).width, "Look and Project need a wider panel")
     }
 
     func testTheSizesTheOwnerChoseAreNeverChangedByThePlacementOrASmallWindow() {
@@ -162,7 +162,7 @@ final class RL1Tests: XCTestCase {
         XCTAssertLessThan(c.leftWidth + c.rightWidth, 340 + 420, "a small window clamps them for drawing")
         let again = ShellLayout.frames(window: big, placement: .underPreview, sizes: stored, right: .inspector)
         XCTAssertEqual(again, a, "and a bigger window brings the choices back"); XCTAssertEqual(stored, before, "nothing was overwritten")
-        XCTAssertEqual(ShellLayout.frames(window: big, placement: .underPreview, sizes: stored, right: .look).rightWidth, 600, "Look and Project use their own stored width")
+        XCTAssertEqual(ShellLayout.frames(window: big, placement: .underPreview, sizes: stored, right: .project).rightWidth, 600, "Look and Project use their own stored width")
     }
 
     func testTheResetRestoresTheStandardProportionsAndKeepsThePlacement() throws {
@@ -200,7 +200,7 @@ final class RL1Tests: XCTestCase {
     func testTheStripIsNamedFilmAndTheListStoryboardAndTheStripToolbarFitsTheCentreColumn() throws {
         XCTAssertTrue(try source("TimelineViews.swift").contains("Label(\"Film\", systemImage:")); XCTAssertFalse(try source("TimelineViews.swift").contains("Label(\"Storyboard\""))
         XCTAssertTrue(try source("StoryboardListViews.swift").contains("SectionHeader(title: \"Storyboard\""))
-        XCTAssertTrue(try source("TimelineViews.swift").contains("Validate storyboard"), "the gate words that do not name the strip stay")
+        XCTAssertFalse(try source("TimelineViews.swift").contains("Validate storyboard"), "the implicit Go: no validation button in the toolbar (SM1)")
         XCTAssertEqual(TimelineLayout.toolbarRows(width: 900), 1); XCTAssertEqual(TimelineLayout.toolbarRows(width: 520), 2)
         XCTAssertEqual(TimelineLayout.sizes(panelHeight: 400, hasMusic: true, toolbarRows: 2).toolbar, 2 * TimelineLayout.toolbar)
         XCTAssertLessThan(TimelineLayout.sizes(panelHeight: 400, hasMusic: true, toolbarRows: 2).frame, TimelineLayout.sizes(panelHeight: 400, hasMusic: true).frame)

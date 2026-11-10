@@ -31,7 +31,7 @@ struct WorkspaceView: View {
                 SplitHandle(vertical: true) { dx, ended in drag(.library, from: f.leftWidth, by: dx, ended: ended) }
                     .frame(width: g, height: f.left.height).offset(x: f.left.maxX, y: f.left.minY)
                 if let r = f.right {
-                    SplitHandle(vertical: true) { dx, ended in drag(project.rightPanel == .look || project.rightPanel == .project ? .settings : .inspector, from: f.rightWidth, by: -dx, ended: ended) }
+                    SplitHandle(vertical: true) { dx, ended in drag(project.rightPanel == .project ? .settings : .inspector, from: f.rightWidth, by: -dx, ended: ended) }
                         .frame(width: g, height: r.height).offset(x: r.minX - g, y: r.minY)
                 }
                 SplitHandle(vertical: false) { dy, ended in drag(.strip, from: f.filmHeight, by: -dy, ended: ended) }
@@ -74,7 +74,7 @@ struct RightPanelView: View {
     var body: some View {
         switch project.rightPanel {
         case .clap?: ClapPanel()
-        case .look?, .project?: ProjectSettingsPanel()
+        case .project?: ProjectSettingsPanel()
         default: InspectorPanel()
         }
     }

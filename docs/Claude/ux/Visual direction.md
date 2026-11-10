@@ -24,3 +24,9 @@ A dark editor look, our own identity (not a copy of any product). Mockup shown i
 **Built in RB1 (2026-11-10).** The rail's buttons follow one rule (ShowreelKit `RailState`, `RightSide`, `RailEntry.tooltip`): the centre views never toggle off, a right panel opens, replaces another and closes on a second click, a request for Clap (Build, draft, card, interview) always makes Clap visible, the Inspector's mark never shows on the open Inspector; the six buttons share hover, pressed, selected, focus ring and badges, with names and shortcuts in the tooltips, arrows that move inside a group and wrap. What remains (questions in docs/Claude/phases/RB1/report.md): whether Build may toggle off, whether Look lights a centre entry, shortcuts for the other panels; everything drawn is to be judged on screen.
 
 Phases named in this note: [[phases/RB1/report|RB1]], [[phases/UI2/report|UI2]]
+
+**Built in SM1 (2026-11-10).** The Go is implicit (every visible scene Ready; starting the Build records it); no Film status dot, Go or Validate button in the Film toolbar; Look left the rail and is the Look tab of Project (five rail entries); the empty inspector lost its Project settings button. Remains: the Catalogue stays (it holds drag actions); the Project button of the other inspectors stays (question for the owner).
+
+**Built in PT1 (2026-11-10).** The project settings panel has three tabs (Brief, Format, Look) under the project name and a compact base configuration whose items go to their tab; no conversation language control anywhere. The second tab is called "Format" (kept: it names what the tab sets best in one word). Remains: the Wizard's wording is unchanged.
+
+**Built in PL1 (2026-11-10).** The design board's contrast checks sit under their swatches (`DesignBoard.columns`, `spanning`). Remains: the palette editor's list of checks and the palette preview of the Catalogue keep their own layouts (they are not swatch columns).

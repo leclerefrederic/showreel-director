@@ -65,7 +65,7 @@ final class DS3Tests: XCTestCase {
 
     func testPaneWidthsAreWiderBetweenALeastAndAMostAndNeverOverwritten() {
         XCTAssertGreaterThan(PanelLayout.standardInspector, 390); XCTAssertGreaterThan(PanelLayout.standardSettings, 560)
-        for r in [RightPanel.inspector, .look, .project, .clap] {
+        for r in [RightPanel.inspector, .project, .clap] {
             XCTAssertGreaterThanOrEqual(PaneWidth.clamp(1, for: r), ShellLayout.rightMin(r)); XCTAssertLessThanOrEqual(PaneWidth.clamp(99999, for: r), PaneWidth.maximum(r))
         }
         let stored = PanelLayout(inspector: 5000)

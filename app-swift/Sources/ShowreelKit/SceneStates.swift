@@ -56,7 +56,7 @@ extension ProjectStore {
         case .deleteScene(let id): return [id]
         case .sceneLook(let id, _): return [id]
         case .content(let id, _): return [id]
-        case .resize(let id, _, _): return [id]             // the scene's own edge; a ripple moves the others' starts, never their lengths
+        case .resize(let id, _): return [id]             // the scene's own edge; the scenes after it move, their lengths never change
         case .moveCut(let a, let b, _): return [a, b]
         case .asset(let id, _, _, _, let scenes):
             guard let wanted = scenes else { return [] }

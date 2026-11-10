@@ -118,7 +118,7 @@ public final class Tools {
             return await operate(.content(scene: input["scene"] as? String ?? "", .move(item: input["item"] as? String ?? "", after: input["after"] as? String ?? "")))
         case "set_scene_duration":
             guard let d = (input["duration"] as? Double) ?? (input["duration"] as? Int).map(Double.init) else { return "duration must be a number of seconds" }
-            return await operate(.resize(scene: input["scene"] as? String ?? "", duration: d, ripple: input["ripple"] as? Bool ?? true))
+            return await operate(.resize(scene: input["scene"] as? String ?? "", duration: d))
         case "set_transition":
             let d = (input["duration"] as? Double) ?? (input["duration"] as? Int).map(Double.init)
             return await operate(.transition(from: input["from"] as? String ?? "", TransitionEdit(type: input["type"] as? String, duration: d, params: input["params"] as? String, instruction: input["instruction"] as? String)))
@@ -421,7 +421,7 @@ public final class Tools {
             m["breaks"] = a.breaks.map { ["start": $0.start, "end": $0.end] }
             state["music"] = m
         }
-        state["go"] = (store.loadShowreel()?.gates["review"] == "passed") ? "given by the user" : "not given: only the user can give it, with the Go button"
+        state["go"] = (store.loadShowreel()?.gates["review"] == "passed") ? "given by the user" : "implicit: the user starts the Build once every visible scene is Ready, and starting it records the Go"
         let all = Assets.load(store)
         let assets = all.filter { !$0.hiddenFromClap }          // a file that needs attention is not shown to Clap, not even by name
         let attention = all.count - assets.count

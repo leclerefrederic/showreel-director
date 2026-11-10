@@ -2,6 +2,34 @@
 
 Version of the Showreel Studio app (`app-swift/shared/app-version.json`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The skill and the project file format have their own numbers. Ship with `python3 tools/bump_app.py`, after writing the section of the new version in `RELEASE-NOTES-APP.md`.
 
+## 0.23.1 - 2026-11-10
+
+Palette contrast checks under their swatches
+
+## 0.23.0 - 2026-11-10
+
+Project settings in three tabs; no conversation language control
+
+## 0.22.0 - 2026-11-10
+
+Implicit Go, Look in Project, fewer controls
+
+## 0.21.7 - 2026-11-10
+
+Storyboard list click selects at once (no double-click delay)
+
+## 0.21.6 - 2026-11-10
+
+Music lane toolbar: Beat, Bars, Sections, Drop, Analyse, track and BPM
+
+## 0.21.5 - 2026-11-10
+
+Film toolbar simplified: zoom at the right, no Add scene, no Ripple
+
+## 0.21.4 - 2026-11-10
+
+Film frames look like film: reel perforations and caps, centred thumbnails, grid under frames
+
 ## 0.21.3 - 2026-11-10
 
 Glue hardened: capture timeout, stepper timer, font registry, thumbnail tasks

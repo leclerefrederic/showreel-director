@@ -60,8 +60,8 @@ final class RB1Tests: XCTestCase {
         XCTAssertEqual(RailEntry.film.neighbour(1), .build); XCTAssertEqual(RailEntry.build.neighbour(1), .film, "wraps inside the centre group")
         XCTAssertEqual(RailEntry.film.neighbour(-1), .build)
         let right = RailEntry.entries(in: .right)
-        XCTAssertEqual(right, [.inspector, .look, .project, .clap])
-        for (i, e) in right.enumerated() { XCTAssertEqual(e.neighbour(1), right[(i + 1) % 4]); XCTAssertEqual(e.neighbour(-1), right[(i + 3) % 4]) }
+        XCTAssertEqual(right, [.inspector, .project, .clap])
+        for (i, e) in right.enumerated() { XCTAssertEqual(e.neighbour(1), right[(i + 1) % 3]); XCTAssertEqual(e.neighbour(-1), right[(i + 2) % 3]) }
         XCTAssertEqual(RailEntry.clap.neighbour(1), .inspector, "wraps inside the right group")
         for e in RailEntry.allCases { XCTAssertEqual(e.neighbour(1).group, e.group, "an arrow never leaves its group"); XCTAssertEqual(e.neighbour(0), e) }
     }
@@ -87,10 +87,10 @@ final class RB1Tests: XCTestCase {
     // MARK: the rail and the screen agree
 
     func testRightSideWritingAPanelAlwaysMakesItTheVisibleOneFromAnyState() {
-        let states: [RightSide] = [RightSide(), RightSide(closed: true), RightSide(clap: true), RightSide(closed: true, clap: true), RightSide(settings: .look), RightSide(clap: true, settings: .project), RightSide(closed: true, settings: .look)]
+        let states: [RightSide] = [RightSide(), RightSide(closed: true), RightSide(clap: true), RightSide(closed: true, clap: true), RightSide(settings: true), RightSide(clap: true, settings: true), RightSide(closed: true, settings: true)]
         for st in states { for p in allRight { var s = st; s.show(p); XCTAssertEqual(s.panel, p, "\(st) then show(\(String(describing: p)))") } }
-        XCTAssertEqual(RightSide().panel, .inspector); XCTAssertEqual(RightSide(clap: true).panel, .clap); XCTAssertEqual(RightSide(settings: .look).panel, .look)
-        XCTAssertNil(RightSide(closed: true, clap: true, settings: .project).panel)
+        XCTAssertEqual(RightSide().panel, .inspector); XCTAssertEqual(RightSide(clap: true).panel, .clap); XCTAssertEqual(RightSide(settings: true).panel, .project)
+        XCTAssertNil(RightSide(closed: true, clap: true, settings: true).panel)
     }
 
     func testABuildStartingShowsTheBuildAndClapWhateverWasOpen() {
@@ -102,7 +102,7 @@ final class RB1Tests: XCTestCase {
 
     func testTheInspectorMarkNeverShowsOnTheOpenInspectorAndGoesWhenItOpens() {
         XCTAssertFalse(RailState(right: .inspector, inspectorMark: true).inspectorMarked, "a mark on a lit entry says nothing")
-        XCTAssertTrue(RailState(right: .look, inspectorMark: true).inspectorMarked); XCTAssertTrue(RailState(right: nil, inspectorMark: true).inspectorMarked)
+        XCTAssertTrue(RailState(right: .project, inspectorMark: true).inspectorMarked); XCTAssertTrue(RailState(right: nil, inspectorMark: true).inspectorMarked)
         for p in RightPanel.allCases { var s = RailState(right: .clap, inspectorMark: true); s.open(p); XCTAssertEqual(s.inspectorMark, p != .inspector) }
     }
 

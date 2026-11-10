@@ -40,7 +40,7 @@ extension ProjectOperation {
             case .add: return [.scene(id)]
             case .update(let i, _), .remove(let i), .move(let i, _): return [.item(scene: id, item: i)]
             }
-        case .resize(let id, _, _): return [.scene(id)]
+        case .resize(let id, _): return [.scene(id)]
         case .moveCut(let a, let b, _): return [.scene(a), .scene(b)]
         case .transition(let from, _): return [.scene(from)]
         case .track, .grid, .gridSettings: return [.setting("music")]
@@ -237,12 +237,13 @@ extension Availability {
         return .available
     }
 
-    /// Whether the Build button works: a build is not running, Clap is not busy, there is a key, and the Go is given with a scene to build.
-    public static func startBuild(in s: ProjectActivity.Snapshot, hasKey: Bool, canBuild: Bool, clapRunning: Bool) -> Availability {
+    /// Whether the Build button works: a build is not running, Clap is not busy, there is a key, and every visible scene is Ready (the implicit Go).
+    /// `notReady` is the reason the scenes are not ready to build ("2 scenes are not Ready (S01, S02)"): the implicit Go.
+    public static func startBuild(in s: ProjectActivity.Snapshot, hasKey: Bool, canBuild: Bool, clapRunning: Bool, notReady: String? = nil) -> Availability {
         if s.isBuilding { return .unavailable(Unavailable(.building, reason: "A build is already running", way: "Wait for the end, or Cancel the build", link: .build)) }
         if !hasKey { return .unavailable(Reasons.noKey) }
         if clapRunning { return .unavailable(Reasons.clapBusy) }
-        if !canBuild { return .unavailable(Unavailable(.notReady, reason: "The build waits for the Go", way: "Validate every scene, then give the Go from the Scene editor")) }
+        if !canBuild { return .unavailable(Unavailable(.notReady, reason: notReady.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? "The scenes are not ready to build", way: "Switch Ready on for every visible scene, in its inspector")) }
         return .available
     }
 

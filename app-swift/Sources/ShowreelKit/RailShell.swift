@@ -14,27 +14,27 @@ public enum FilmPlacement: String, Codable, CaseIterable, Sendable {
 }
 
 /// The panels of the right side: exactly one is open at a time, or none.
-public enum RightPanel: String, CaseIterable, Sendable { case inspector, look, project, clap }
+public enum RightPanel: String, CaseIterable, Sendable { case inspector, project, clap }
 
 public enum RailGroup: Int, Sendable { case centre, right }
 
-/// The rail at the far left of the workspace, in two groups separated by a thin line: the centre views (Film, Build) and the right panels (Inspector, Look, Project, Clap).
+/// The rail at the far left of the workspace, in two groups separated by a thin line: the centre views (Film, Build) and the right panels (Inspector, Project, Clap): five entries; Look is a tab of Project.
 /// A centre view and a right panel are independent. The rules are here; the views only draw them.
 public enum RailEntry: String, CaseIterable, Identifiable, Sendable {
-    case film, build, inspector, look, project, clap
+    case film, build, inspector, project, clap
     public var id: String { rawValue }
     public var group: RailGroup { switch self { case .film, .build: return .centre; default: return .right } }
     public var title: String {
-        switch self { case .film: return "Film"; case .build: return "Build"; case .inspector: return "Inspector"; case .look: return "Look"; case .project: return "Project"; case .clap: return "Clap" }
+        switch self { case .film: return "Film"; case .build: return "Build"; case .inspector: return "Inspector"; case .project: return "Project"; case .clap: return "Clap" }
     }
     public var role: IconRole {
-        switch self { case .film: return .railFilm; case .build: return .railBuild; case .inspector: return .railInspector; case .look: return .railLook; case .project: return .railProject; case .clap: return .railClap }
+        switch self { case .film: return .railFilm; case .build: return .railBuild; case .inspector: return .railInspector; case .project: return .railProject; case .clap: return .railClap }
     }
     /// The right panel an entry opens; nil for a centre view.
     public var panel: RightPanel? {
-        switch self { case .inspector: return .inspector; case .look: return .look; case .project: return .project; case .clap: return .clap; default: return nil }
+        switch self { case .inspector: return .inspector; case .project: return .project; case .clap: return .clap; default: return nil }
     }
-    public static func entry(for p: RightPanel) -> RailEntry { switch p { case .inspector: return .inspector; case .look: return .look; case .project: return .project; case .clap: return .clap } }
+    public static func entry(for p: RightPanel) -> RailEntry { switch p { case .inspector: return .inspector; case .project: return .project; case .clap: return .clap } }
     public static func entries(in g: RailGroup) -> [RailEntry] { allCases.filter { $0.group == g } }
 
     public var help: String {
@@ -42,8 +42,7 @@ public enum RailEntry: String, CaseIterable, Identifiable, Sendable {
         case .film: return "The film: the viewer, with what you select"
         case .build: return "Build the film, test it and play it"
         case .inspector: return "The inspector: what the selected scene or transition is made of, and its settings"
-        case .look: return "The project's global look: the design board in the centre, its settings on the right"
-        case .project: return "The project's parameters (audience, message, tone, languages, formats, duration, constraints)"
+        case .project: return "The project's settings: its parameters (audience, message, tone, languages, formats, duration, constraints) and its global look"
         case .clap: return "Ask Clap: the conversation, with what Clap knows, the sessions and the journal"
         }
     }
@@ -129,24 +128,23 @@ public struct RailState: Equatable, Sendable {
 /// The right side as the model keeps it (a closed flag, the settings panel Look or Project, Clap's tab) and the one panel it shows. Writing a panel always makes that panel the
 /// visible one, from any state: a request for Clap while a settings panel covers it, or while the side is closed, opens it.
 public struct RightSide: Equatable, Sendable {
-    public enum Settings: Sendable { case look, project }
+    /// The settings panel is open (its tab, Project or Look, is the panel's own state: the rail has one entry for it).
     public var closed = false, clap = false
-    public var settings: Settings?
-    public init(closed: Bool = false, clap: Bool = false, settings: Settings? = nil) { self.closed = closed; self.clap = clap; self.settings = settings }
+    public var settings = false
+    public init(closed: Bool = false, clap: Bool = false, settings: Bool = false) { self.closed = closed; self.clap = clap; self.settings = settings }
 
     public var panel: RightPanel? {
         if closed { return nil }
-        if let s = settings { return s == .look ? .look : .project }
+        if settings { return .project }
         return clap ? .clap : .inspector
     }
 
     public mutating func show(_ p: RightPanel?) {
         switch p {
-        case nil: closed = true; settings = nil
-        case .inspector?: closed = false; settings = nil; clap = false
-        case .clap?: closed = false; settings = nil; clap = true
-        case .look?: closed = false; settings = .look
-        case .project?: closed = false; settings = .project
+        case nil: closed = true; settings = false
+        case .inspector?: closed = false; settings = false; clap = false
+        case .clap?: closed = false; settings = false; clap = true
+        case .project?: closed = false; settings = true
         }
     }
 }
@@ -197,8 +195,8 @@ public enum ShellLayout {
     public static var standardSizes: PanelLayout { PanelLayout() }
 
     public static func minCentre(_ p: FilmPlacement) -> Double { p == .underPreview ? 420 : 360 }
-    public static func rightMin(_ r: RightPanel?) -> Double { switch r { case nil: return 0; case .look?, .project?: return minSettings; default: return minInspector } }
-    public static func rightStored(_ r: RightPanel?, _ s: PanelLayout) -> Double { switch r { case nil: return 0; case .look?, .project?: return s.settingsWidth; default: return s.inspectorWidth } }
+    public static func rightMin(_ r: RightPanel?) -> Double { switch r { case nil: return 0; case .project?: return minSettings; default: return minInspector } }
+    public static func rightStored(_ r: RightPanel?, _ s: PanelLayout) -> Double { switch r { case nil: return 0; case .project?: return s.settingsWidth; default: return s.inspectorWidth } }
 
     public struct Frames: Equatable, Sendable {
         public var rail, left, preview, film: CGRect

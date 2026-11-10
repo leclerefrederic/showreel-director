@@ -46,6 +46,8 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | A3 | 2026-11-10 | current |  |  |  |  | [[phases/early/Library, project model, wizard and first storyboard\|summary]] |
 | AS1 | 2026-11-10 | current | 0.18.0 |  | [[phases/AS1/prompt\|prompt]] | [[phases/AS1/report\|report]] |  |
 | B | 2026-11-10 | current |  |  |  |  | [[phases/early/Library, project model, wizard and first storyboard\|summary]] |
+| BATCH-C | 2026-11-10 | current |  |  | [[archive/BATCH-C/prompt\|prompt]] | [[archive/BATCH-C/report\|report]] |  |
+| BATCH-D | 2026-11-10 | current |  |  | [[archive/BATCH-D/prompt\|prompt]] | [[archive/BATCH-D/report\|report]] |  |
 | C1 | 2026-11-10 | current |  |  |  |  | [[phases/early/Corrections from the first test session\|summary]] |
 | CR1 | 2026-11-10 | current | 0.20.1 | 0.18.2 | [[phases/CR1/prompt\|prompt]] | [[phases/CR1/report\|report]] |  |
 | D1 | 2026-11-10 | current |  |  |  |  | [[phases/early/Typed payload for dropping a resource on a scene\|summary]] |
@@ -56,8 +58,11 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | F | 2026-11-10 | current |  |  |  |  | [[phases/early/Fonts in the film\|summary]] |
 | F2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Fonts downloaded from Google Fonts without the GitHub API\|summary]] |
 | FIX2 | 2026-11-10 | current | 0.17.1 |  | [[phases/FIX2/prompt\|prompt]] | [[phases/FIX2/report\|report]] |  |
+| FL1 | 2026-11-10 | current | 0.21.4 | 0.18.2 | [[phases/FL1/prompt\|prompt]] | [[phases/FL1/report\|report]] |  |
+| FT1 | 2026-11-10 | current | 0.21.5 | 0.18.2 | [[phases/FT1/prompt\|prompt]] | [[phases/FT1/report\|report]] |  |
 | L | 2026-11-10 | current |  |  |  |  | [[phases/early/The library keeps assets only\|summary]] |
 | M | 2026-11-10 | current |  |  |  |  | [[phases/early/Project memory and history\|summary]] |
+| MT1 | 2026-11-10 | current | 0.21.6 | 0.18.2 | [[phases/MT1/prompt\|prompt]] | [[phases/MT1/report\|report]] |  |
 | OBS1 | 2026-11-10 | current |  |  | [[phases/OBS1/prompt\|prompt]] | [[phases/OBS1/report\|report]] |  |
 | OBS2 | 2026-11-10 | current |  |  | [[phases/OBS2/prompt\|prompt]] | [[phases/OBS2/report\|report]] |  |
 | OBS3 | 2026-11-10 | current |  |  | [[phases/OBS3/prompt\|prompt]] | [[phases/OBS3/report\|report]] |  |
@@ -68,7 +73,10 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | P2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Look editors list and the base configuration\|summary]] |
 | P3 | 2026-11-10 | current |  |  |  |  | [[phases/early/Look editors list and the base configuration\|summary]] |
 | P5 | 2026-11-10 | current |  |  |  |  | [[phases/early/Project creation in one way and the project form\|summary]] |
+| PF1 | 2026-11-10 | current | 0.21.7 | 0.18.2 | [[phases/PF1/prompt\|prompt]] | [[phases/PF1/report\|report]] |  |
 | PK1 | 2026-11-10 | current |  |  |  |  | [[phases/early/Design packages without AI\|summary]] |
+| PL1 | 2026-11-10 | current | 0.23.1 | 0.18.2 | [[phases/PL1/prompt\|prompt]] | [[phases/PL1/report\|report]] |  |
+| PT1 | 2026-11-10 | current | 0.23.0 | 0.18.2 | [[phases/PT1/prompt\|prompt]] | [[phases/PT1/report\|report]] |  |
 | Q2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Scene states\|summary]] |
 | Q3 | 2026-11-10 | current |  |  |  |  | [[phases/early/Ask Clap tab and history\|summary]] |
 | Q4 | 2026-11-10 | current |  |  |  |  | [[phases/early/Ask Clap selector labels and locked look warning\|summary]] |
@@ -80,6 +88,7 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | RF1 | 2026-11-10 | current | 0.21.2 | 0.18.2 | [[phases/RF1/prompt\|prompt]] | [[phases/RF1/report\|report]] |  |
 | RF2 | 2026-11-10 | current | 0.21.3 | 0.18.2 | [[phases/RF2/prompt\|prompt]] | [[phases/RF2/report\|report]] |  |
 | S | 2026-11-10 | current |  |  |  |  | [[phases/early/Storyboard strip as an editing timeline\|summary]] |
+| SM1 | 2026-11-10 | current | 0.22.0 | 0.18.2 | [[phases/SM1/prompt\|prompt]] | [[phases/SM1/report\|report]] |  |
 | T | 2026-11-10 | current |  |  |  |  | [[phases/early/Library, project model, wizard and first storyboard\|summary]] |
 | T2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Music grid on the strip\|summary]] |
 | V1 | 2026-11-10 | current |  |  |  |  | [[phases/early/The film as one file per scene\|summary]] |

@@ -196,8 +196,9 @@ struct StoryboardSceneRow: View {
                     Text(row?.duration ?? "").fontSmall(digits: true).foregroundStyle(.secondary).frame(width: Self.durationWidth, alignment: .trailing)
                 }
                 .contentShape(Rectangle())
-                .onTapGesture(count: 2) { project.beginRename(scene.id) }
+                // the single click acts at once: a double-tap recognised first makes SwiftUI hold the single tap back for the double-click interval (PF1), so the rename is a simultaneous one
                 .onTapGesture { project.focusScene(scene.id) }
+                .simultaneousGesture(TapGesture(count: 2).onEnded { project.beginRename(scene.id) })
                 SceneStatusIcon(scene: scene)
                 switchButton(.eye)
                 switchButton(.lock)

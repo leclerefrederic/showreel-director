@@ -2,6 +2,96 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.23.1 - 2026-11-10
+
+**Changed**
+- On the Palette card (the design board shown while the project's look is open), each contrast check now sits under the colour it judges: Text on background under Text, Accent under Accent, Accent 2 under Accent 2. The columns follow the swatches at any width; a long text wraps in its own column and its tooltip gives it whole. The Background has no check. The colours, ratios, thresholds and wording are unchanged.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged. The skill is unchanged.
+
+## 0.23.0 - 2026-11-10
+
+**Changed**
+- **The project settings are in three tabs: Brief, Format and Look.** Brief holds the audience, message, tone, constraints and the control level (the Message field no longer sits tight against its border). Format holds the formats, the target duration and the film languages. Look is the Look editor as before. The project name and the base configuration (compact) stay above the tabs on every tab, and a click on an item of the checklist goes to the tab where it is set.
+- The panel opens on the first tab with something still unset in the base configuration, otherwise on the one you used last; the tab is remembered per project. A project that had the old Project tab opens on Brief.
+- **There is no more conversation language to choose.** Clap speaks the language and region of your Mac and follows the language you write in. A value already stored in a project is kept in the file and ignored. The film languages (the words on screen) are unchanged.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Minor version because the stored tab of the panel changes shape (an old "Project" tab is read as Brief). Projects open unchanged. The skill is unchanged.
+
+## 0.22.0 - 2026-11-10
+
+**Changed**
+- **The Go is implicit.** The Film toolbar no longer has the "Film up to date" dot or the Go button: the Build can start when every visible scene is Ready, and starting it records the Go in the project as the button did. When it cannot start, the Build button says which scenes are not Ready and what to do. The old "Validate storyboard" button is gone with it.
+- **Look is no longer in the rail.** It is the Look tab of the Project panel; every link to the Look (a font, a scene's look, a package) opens Project on that tab, and the tab you left open is remembered. The rail has five entries: Film, Build, Inspector, Project, Clap.
+- The empty inspector no longer has a Project settings button (the Project entry of the rail does that).
+
+**Not changed**
+- The Catalogue stays in the top bar: it is a palette to drag looks, effects and transitions onto a scene, an item or a marker, so it does offer an action.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged: a project that stored the Look panel opens Project on its Look tab. The skill is unchanged.
+
+## 0.21.7 - 2026-11-10
+
+**Fixed**
+- **Clicking a scene in the Storyboard list no longer lags.** The row waited out the double-click delay before it selected the scene, because double-click (rename) was recognised first. A click now selects at once, moves the playhead and scrolls the Film as before; a double-click still renames.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged. The skill is unchanged.
+
+## 0.21.6 - 2026-11-10
+
+**Changed**
+- **The music lane has its own toolbar**, pinned under the lane: Beat, Bars, Sections and Drop show or hide their marks (Sections colours the lane by musical section, with the name when you hover the top of the lane), Analyse runs the analysis again (it says when it is running or failed, and keeps the earlier result), and the track's name and tempo are at the end.
+- A button whose information does not exist (no music, not analysed, no sections or no drops in the track) is dimmed and tells you why and what to do. Analyse is dimmed during a Build.
+- The Beat menu has left the Film toolbar. Scenes now snap to the finest mark that the music toolbar shows (Beat on: beats; Beat off, Bars on: bars; and so on; all off: no snapping). A project opens showing what it used to snap to.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged. The skill is unchanged.
+
+## 0.21.5 - 2026-11-10
+
+**Changed**
+- The Film toolbar is simpler: the zoom controls (minus, slider, plus, fit menu) are now together at the far right.
+- The "Add scene" menu is gone from the toolbar. Scenes are created with New in the Storyboard list; a scene that is not in the film comes back from its "Not in the storyboard" section.
+- The Ripple switch is gone. Scenes never overlap and leave no gap: changing a scene's length always moves the scenes after it (a locked scene still refuses, with its reason). Clap's "set scene duration" no longer takes a ripple option.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged. A project that stored Ripple off now behaves like every other one; the old value stays in the file, unused. The skill is unchanged.
+
+## 0.21.4 - 2026-11-10
+
+**Changed**
+- **The scenes of the Film look like film.** Each scene's frame has perforations along its top and bottom edges and a cap at its start and at its end (the selected scene's caps are in the accent colour). Under a narrow width the perforations disappear and the caps remain.
+- The thumbnail is centred in its frame, shown whole, on a translucent black background.
+- The music's beat lines no longer cross a scene: they show between scenes, faintly through the black behind a thumbnail, and in the music lane. The playhead still crosses everything.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged. The skill is unchanged.
+
 ## 0.21.3 - 2026-11-10
 
 **Fixed**

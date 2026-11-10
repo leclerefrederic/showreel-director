@@ -43,7 +43,7 @@ final class FilmTests: XCTestCase {
         XCTAssertEqual(Film.isCurrent(version: "v1", store: store), true)
         let json = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
         XCTAssertEqual(json?["schema"] as? Int, 1)
-        try store.apply(.resize(scene: "S01", duration: 4, ripple: true))
+        try store.apply(.resize(scene: "S01", duration: 4))
         XCTAssertEqual(Film.isCurrent(version: "v1", store: store), false, "the montage changed after the build")
         XCTAssertEqual(Versions.next(store), "v2", "a folder that only holds film.json is not a version, but its name is never reused")
         XCTAssertEqual(Versions.list(store), [])

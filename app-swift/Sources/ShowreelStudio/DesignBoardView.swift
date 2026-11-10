@@ -66,21 +66,29 @@ struct DesignBoardView: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.primary.opacity(0.15)))
-                HStack(alignment: .top, spacing: 18) {
-                    ForEach(Array(b.contrasts.enumerated()), id: \.offset) { _, c in
-                        HStack(alignment: .top, spacing: 6) {
-                            Image(systemName: c.level.symbol).foregroundStyle(c.level.color)
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(c.title).font(.callout.weight(.medium))
-                                Text(c.detail).fontSmall().foregroundStyle(.secondary)
-                            }
-                        }
+                // each check sits under the swatch it judges: the same equal columns as the swatches above, so the alignment holds at any width; a long text wraps in its column (PL1)
+                HStack(alignment: .top, spacing: 0) {
+                    ForEach(Array(b.columns.enumerated()), id: \.offset) { _, col in
+                        Group { if let c = col.check { check(c) } else { Color.clear.frame(height: 0) } }
+                            .padding(.horizontal, 10).frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
+                if !b.spanning.isEmpty { HStack(alignment: .top, spacing: 18) { ForEach(Array(b.spanning.enumerated()), id: \.offset) { _, c in check(c) } } }
             }
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
         .raisedBackground()
+    }
+
+    private func check(_ c: DesignBoard.ContrastLine) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: c.level.symbol).foregroundStyle(c.level.color)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(c.title).font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                Text(c.detail).fontSmall().foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .help(c.title + ": " + c.detail)
     }
 
     private func specimen(_ role: String, _ name: String?, sample: String, size: CGFloat, f: ShowreelFile) -> some View {

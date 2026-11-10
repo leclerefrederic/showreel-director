@@ -110,18 +110,18 @@ final class InteractionTests: XCTestCase {
         try roundTrip(.content(scene: "S01", .remove(item: "c1")))
         try store.apply(.content(scene: "S01", .add(ContentEdit(type: "text", text: "Second"), after: nil))); store.undoLog.clear()
         try roundTrip(.content(scene: "S01", .move(item: "c3", after: "start")))
-        try roundTrip(.resize(scene: "S01", duration: 5, ripple: true))
+        try roundTrip(.resize(scene: "S01", duration: 5))
         try roundTrip(.moveCut(before: "S03", after: "S01", at: 2))   // S03 is first since the move above, S02 is off
         try roundTrip(.transition(from: "S03", TransitionEdit(type: Look.transitions().first { !Look.isPreviewOnly($0.name) }!.name)))
         try roundTrip(.track(asset: "audio-01"))
         try roundTrip(.grid(bpm: 120, firstBeat: 0.25))
-        try roundTrip(.gridSettings(snap: "bar", ripple: false))
+        try roundTrip(.gridSettings(snap: "bar"))
         try roundTrip(.moveAsset(id: "audio-01", after: "start"))
     }
 
     func testASeriesOfOperationsUndoesStepByStepAndRedoesInOrder() throws {
         var states = [texts()]
-        let ops: [ProjectOperation] = [.scene(id: "S01", SceneEdit(name: "A")), .moveScene(id: "S03", after: "start", montage: nil), .resize(scene: "S02", duration: 6, ripple: true),
+        let ops: [ProjectOperation] = [.scene(id: "S01", SceneEdit(name: "A")), .moveScene(id: "S03", after: "start", montage: nil), .resize(scene: "S02", duration: 6),
                                        .content(scene: "S01", .add(ContentEdit(type: "text", text: "Two"), after: nil)), .sceneEnabled(id: "S01", enabled: false, montage: nil)]
         for op in ops { try store.apply(op); states.append(texts()) }
         XCTAssertEqual(store.undoLog.undoCount, 5)
@@ -139,7 +139,7 @@ final class InteractionTests: XCTestCase {
         try store.apply(.gate("storyboard", passed: true)); try store.apply(.gate("review", passed: true))
         store.undoLog.clear()
         let given = texts()
-        try store.apply(.resize(scene: "S02", duration: 5, ripple: true))
+        try store.apply(.resize(scene: "S02", duration: 5))
         XCTAssertEqual(file.gates["review"], "open", "the change took the Go back"); XCTAssertEqual(scene("S02").status, "wip")
         try store.undo()
         XCTAssertEqual(texts(), given); XCTAssertEqual(file.gates["review"], "passed", "the Go is given again by the undo"); XCTAssertEqual(scene("S02").status, "validated")

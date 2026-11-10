@@ -67,30 +67,6 @@ struct PreviewTag: View {
     }
 }
 
-/// The reel header's counter: "Film up to date", "Film stale", "2 scenes to generate", "Old format", and the way to the next step.
-struct FilmStatusChip: View {
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        let f = project.film
-        HStack(spacing: 6) {
-            Circle().fill(color(f)).frame(width: 8, height: 8)
-            Text(f.counter).font(.system(size: 11, weight: .semibold))
-            if f.state == .stale || (f.state == .neverAssembled && f.target != nil && f.state != .legacy) {
-                Button(project.assembling ? "Assembling\u{2026}" : "Assemble") { project.assembleFilm() }
-                    .buttonStyle(.borderless).font(.system(size: 11, weight: .semibold))
-                    .disabledWithReason(project.assembling ? "Assembling" : Availability.assemble(f, in: project.activity).reasonText, way: Availability.assemble(f, in: project.activity).wayText)
-            }
-        }
-        .help(f.staleLine ?? (f.state == .legacy ? FilmBuild.legacySentence : f.ungenerated.isEmpty ? "The assembled film matches the project." : "Scenes with no file are shown as empty frames until they are generated."))
-    }
-
-    private func color(_ f: FilmBuild.Status) -> Color {
-        if f.state == .legacy || f.state == .neverAssembled { return .gray }
-        return f.isOK ? .green : .orange
-    }
-}
-
 /// The banners of the viewer: an incomplete version, the old format, a failed assembly, a film never assembled or stale (with Assemble), and scenes not generated (with the
 /// one card that offers to generate them).
 struct FilmBanners: View {

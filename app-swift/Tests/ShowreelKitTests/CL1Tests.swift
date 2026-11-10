@@ -67,10 +67,7 @@ final class CL1Tests: XCTestCase {
 
     func testTheCollapsedControlIsNotAmongTheRequiredFieldsAndChangingItIsJournalledAndUndoable() throws {
         let form = try String(contentsOf: views.appendingPathComponent("ProjectFormViews.swift"), encoding: .utf8)
-        XCTAssertTrue(form.contains("DisclosureGroup(\"More\", isExpanded: $moreOpen)") && form.contains("@State private var moreOpen = false"), "collapsed by default")
-        let more = try XCTUnwrap(form.range(of: "private func moreArea")), film = try XCTUnwrap(form.range(of: "section(\"Film\""))
-        XCTAssertTrue(form.components(separatedBy: "Conversation language").count - 1 == 1 && form[more.lowerBound...].contains("Conversation language"), "the only place of the control is in More")
-        XCTAssertLessThan(film.lowerBound, more.lowerBound); XCTAssertTrue(form.contains("ConversationLanguage.origin(f)"))
+        XCTAssertFalse(form.contains("Conversation language") || form.contains("moreArea") || form.contains("DisclosureGroup"), "PT1: the interface offers no conversation language")
         let s = ProjectStore(root: dir); try s.create(name: "P", conversationLanguage: nil, reelLanguages: [], preferredLanguages: ["fr"])
         s.undoLog.clear()
         try s.apply(.parameter(.conversationLanguage, "de"))

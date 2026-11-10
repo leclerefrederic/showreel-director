@@ -253,8 +253,6 @@ public struct ShowreelFile: Codable, Equatable {
         public var items: [MontageItem]
         /// The grid level scenes snap to when stretched: beat, bar, section, drop or off (absent: beat).
         public var snap: String?
-        /// Stretching a scene moves the following ones (absent: yes).
-        public var ripple: Bool?
         public var unknown: [String: JSONValue] = [:]
         public init(id: String = "main", name: String = "Master", format: String? = nil, items: [MontageItem] = []) {
             self.id = id; self.name = name; self.format = format; self.items = items
@@ -266,11 +264,10 @@ public struct ShowreelFile: Codable, Equatable {
             format = try c.decodeIfPresent(String.self, forKey: "format")
             items = try c.decodeIfPresent([MontageItem].self, forKey: "items") ?? []
             snap = try c.decodeIfPresent(String.self, forKey: "snap")
-            ripple = try c.decodeIfPresent(Bool.self, forKey: "ripple")
-            unknown = try Keep.unknown(decoder, known: ["id", "name", "format", "items", "snap", "ripple"])
+            unknown = try Keep.unknown(decoder, known: ["id", "name", "format", "items", "snap"])  // an old "ripple" value is kept as an unknown field and never read (FT1)
         }
         public func encode(to encoder: Encoder) throws {
-            try Keep.encode(encoder, fields: [("id", id), ("name", name), ("format", format), ("items", items), ("snap", snap), ("ripple", ripple)], unknown: unknown)
+            try Keep.encode(encoder, fields: [("id", id), ("name", name), ("format", format), ("items", items), ("snap", snap)], unknown: unknown)
         }
     }
 

@@ -40,10 +40,10 @@ final class ReelTests: XCTestCase {
 
     func testNewFieldsRoundTripAndOldFilesMigrateUntouched() throws {
         let old = try ShowreelFile.decode(##"{"schema": 1, "name": "O", "decisions": {"track": {"file": "assets/prepared/a.mp3", "bpm": 120}}, "scenes": [{"id": "S01", "duration": 3}, {"id": "S02", "duration": 3}]}"##)
-        XCTAssertNil(old.decisions.track?.firstBeat); XCTAssertNil(old.storyboards[0].snap); XCTAssertEqual(old.snapLevel(), .beat); XCTAssertTrue(old.ripple())
+        XCTAssertNil(old.decisions.track?.firstBeat); XCTAssertNil(old.storyboards[0].snap); XCTAssertEqual(old.snapLevel(), .beat)
         XCTAssertEqual(old.storyboards[0].items[0].transition.type, "cut")
         let f = try ShowreelFile.decode(##"{"schema": 1, "name": "N", "decisions": {"track": {"file": "x.mp3", "bpm": 90.5, "firstBeat": 0.3, "manual": true, "tk": 1}}, "scenes": [{"id": "S01"}, {"id": "S02"}], "storyboards": [{"id": "main", "name": "M", "snap": "bar", "ripple": false, "mk": 2, "items": [{"scene": "S01", "enabled": true, "transition": {"type": "Push", "duration": 0.5, "params": {"dir": "left"}, "instruction": "match the card", "tx": 3}}, {"scene": "S02"}]}]}"##)
-        XCTAssertEqual(f.snapLevel(), .bar); XCTAssertFalse(f.ripple())
+        XCTAssertEqual(f.snapLevel(), .bar)
         XCTAssertEqual(f.decisions.track?.firstBeat, 0.3); XCTAssertEqual(f.decisions.track?.manual, true)
         XCTAssertEqual(f.storyboards[0].items[0].transition.instruction, "match the card")
         let back = try ShowreelFile.decode(try f.encoded())
@@ -53,20 +53,20 @@ final class ReelTests: XCTestCase {
 
     // MARK: durations and cuts
 
-    func testResizeRipplesByDefaultAndCanLeaveTheNextSceneWhereItIs() throws {
+    func testResizeMovesTheFollowingScenesAndNeverLeavesAGap() throws {
         XCTAssertEqual(starts(), [0, 4, 8])
-        let card = try store.plan(.resize(scene: "S01", duration: 6, ripple: true))
+        let card = try store.plan(.resize(scene: "S01", duration: 6))
         XCTAssertEqual(card.changes, [Change("S01 duration", "4 s", "6 s")])
-        try store.apply(.resize(scene: "S01", duration: 6, ripple: true))
+        try store.apply(.resize(scene: "S01", duration: 6))
         XCTAssertEqual(starts(), [0, 6, 10], "the following scenes shift")
-        let off = try store.plan(.resize(scene: "S01", duration: 3, ripple: false))
-        XCTAssertTrue(off.changes.contains(Change("S02 start", "follows S01", "stays at 6 s")))
-        try store.apply(.resize(scene: "S01", duration: 3, ripple: false))
-        XCTAssertEqual(starts(), [0, 6, 10], "ripple off: the next scene stays, a gap opens")
-        XCTAssertEqual(file.filmEnd, 14)
-        XCTAssertThrowsError(try store.plan(.resize(scene: "S01", duration: 0.05, ripple: true)))
-        XCTAssertThrowsError(try store.plan(.resize(scene: "S01", duration: 3, ripple: true)), "no change")
-        XCTAssertThrowsError(try store.plan(.resize(scene: "S09", duration: 3, ripple: true)))
+        let shorter = try store.plan(.resize(scene: "S01", duration: 3))
+        XCTAssertEqual(shorter.changes, [Change("S01 duration", "6 s", "3 s")])
+        try store.apply(.resize(scene: "S01", duration: 3))
+        XCTAssertEqual(starts(), [0, 3, 7], "they follow back: no gap opens")
+        XCTAssertEqual(file.filmEnd, 11)
+        XCTAssertThrowsError(try store.plan(.resize(scene: "S01", duration: 0.05)))
+        XCTAssertThrowsError(try store.plan(.resize(scene: "S01", duration: 3)), "no change")
+        XCTAssertThrowsError(try store.plan(.resize(scene: "S09", duration: 3)))
     }
 
     func testMovingACutTradesTimeBetweenTwoScenes() throws {
@@ -83,10 +83,10 @@ final class ReelTests: XCTestCase {
     func testReelChangesTakeTheGoBack() throws {
         for s in file.scenes { try store.apply(.scene(id: s.id, SceneEdit(status: "ok"))) }
         try store.apply(.gate("storyboard", passed: true)); try store.apply(.gate("review", passed: true))
-        let card = try store.plan(.resize(scene: "S02", duration: 5, ripple: true))
+        let card = try store.plan(.resize(scene: "S02", duration: 5))
         XCTAssertTrue(card.changes.contains(Change("Go", "given", "to be given again")))
         XCTAssertTrue(card.changes.contains(Change("State", "Ready", "To review")))
-        try store.apply(.resize(scene: "S02", duration: 5, ripple: true))
+        try store.apply(.resize(scene: "S02", duration: 5))
         XCTAssertEqual(file.gates["review"], "open")
         try store.apply(.scene(id: "S02", SceneEdit(status: "ok"))); try store.apply(.gate("review", passed: true))
         try store.apply(.transition(from: "S01", TransitionEdit(type: "Push")))
@@ -109,7 +109,7 @@ final class ReelTests: XCTestCase {
         XCTAssertEqual(file.transition(after: "S01")?.next.id, "S03"); XCTAssertEqual(file.transition(after: "S01")?.item.type, "Push")
         try store.apply(.sceneEnabled(id: "S02", enabled: true, montage: nil))
         // a longer one is capped by the shorter scene
-        try store.apply(.resize(scene: "S02", duration: 1, ripple: true))
+        try store.apply(.resize(scene: "S02", duration: 1))
         try store.apply(.transition(from: "S02", TransitionEdit(type: "Cross dissolve")))
         XCTAssertEqual(file.storyboards[0].items[1].transition.duration, 0.5, "half of the shorter scene")
         // back to a cut
@@ -186,10 +186,10 @@ final class ReelTests: XCTestCase {
         XCTAssertEqual(a.gridKind(4.02), "bar"); XCTAssertEqual(a.gridKind(4.5), "beat"); XCTAssertNil(a.gridKind(4.25))
         XCTAssertEqual(a.barIndex(at: 8.3), 4)
         XCTAssertNil(MusicAnalysis.load(root: makeTempDir("none")))
-        try store.apply(.gridSettings(snap: "bar", ripple: false))
-        XCTAssertEqual(file.snapLevel(), .bar); XCTAssertFalse(file.ripple())
-        XCTAssertThrowsError(try store.plan(.gridSettings(snap: "never", ripple: nil)))
-        XCTAssertThrowsError(try store.plan(.gridSettings(snap: "bar", ripple: false)), "no change")
+        try store.apply(.gridSettings(snap: "bar"))
+        XCTAssertEqual(file.snapLevel(), .bar)
+        XCTAssertThrowsError(try store.plan(.gridSettings(snap: "never")))
+        XCTAssertThrowsError(try store.plan(.gridSettings(snap: "bar")), "no change")
     }
 
     // MARK: checks of the reel
@@ -200,9 +200,9 @@ final class ReelTests: XCTestCase {
         XCTAssertEqual(check("reel.music")?.level, .pending, "no analysis yet")
         try writeAnalysis()
         XCTAssertEqual(check("reel.starts")?.level, .ok, "starts at 4 and 8")
-        try store.apply(.resize(scene: "S01", duration: 4.3, ripple: true))
+        try store.apply(.resize(scene: "S01", duration: 4.3))
         XCTAssertEqual(check("reel.starts")?.level, .tight); XCTAssertTrue(check("reel.starts")?.detail.contains("S02 starts at 4.3 s") == true)
-        try store.apply(.resize(scene: "S01", duration: 4.5, ripple: true))
+        try store.apply(.resize(scene: "S01", duration: 4.5))
         XCTAssertEqual(check("reel.starts")?.level, .ok, "S02 at 4.5 and S03 at 8.5 are both on a beat")
     }
 
@@ -227,9 +227,9 @@ final class ReelTests: XCTestCase {
     func testFilmAndMusicLength() throws {
         try attachTrack(); try writeAnalysis(duration: 24)
         XCTAssertEqual(check("reel.length")?.level, .tight, "12 s of film for 24 s of music")
-        try store.apply(.resize(scene: "S03", duration: 15, ripple: true))
+        try store.apply(.resize(scene: "S03", duration: 15))
         XCTAssertEqual(check("reel.length")?.level, .ok, "ends at 23 s of 24")
-        try store.apply(.resize(scene: "S03", duration: 20, ripple: true))
+        try store.apply(.resize(scene: "S03", duration: 20))
         XCTAssertEqual(check("reel.length")?.level, .fail, "past the end of the music")
     }
 
@@ -251,7 +251,7 @@ final class ReelTests: XCTestCase {
 
     func testFlashesPerSecond() throws {
         XCTAssertEqual(check("reel.flashes")?.level, .ok)
-        for id in ["S01", "S02", "S03"] { try store.apply(.resize(scene: id, duration: 0.4, ripple: true)) }
+        for id in ["S01", "S02", "S03"] { try store.apply(.resize(scene: id, duration: 0.4)) }
         try store.apply(.addScene(id: "", SceneEdit(duration: "0.4", text: "four")))
         XCTAssertEqual(check("reel.flashes")?.level, .fail, "three scene changes within one second")
         XCTAssertTrue(check("reel.flashes")?.detail.contains("under 3 per second") == true)

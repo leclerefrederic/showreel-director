@@ -57,7 +57,7 @@ final class FilmStateTests: XCTestCase {
         try expect("music", film: true, scenes: [], { var f = self.file; f.decisions.track = ShowreelFile.Track(file: "assets/prepared/a.mp3"); try self.store.save(f) }, undo: { var f = self.file; f.decisions.track = nil; try self.store.save(f) })
         try expect("review state", film: false, scenes: [], { try self.store.apply(.scene(id: "S01", SceneEdit(status: "wip"))) }, undo: { try self.store.apply(.scene(id: "S01", SceneEdit(status: "validated"))) })
         try expect("content", film: true, scenes: ["S02"], { try self.store.apply(.scene(id: "S02", SceneEdit(text: "Two, changed"))) }, undo: { try self.store.apply(.scene(id: "S02", SceneEdit(text: "Two"))) })
-        try expect("scene length", film: true, scenes: ["S02"], { try self.store.apply(.resize(scene: "S02", duration: 6, ripple: false)) }, undo: { try self.store.apply(.resize(scene: "S02", duration: 4, ripple: false)) })
+        try expect("scene length", film: true, scenes: ["S02"], { try self.store.apply(.resize(scene: "S02", duration: 6)) }, undo: { try self.store.apply(.resize(scene: "S02", duration: 4)) })
         try expect("scene look", film: true, scenes: ["S03"], { try self.store.apply(.sceneLook(id: "S03", [DecisionChange(.palette, "#000001, #FFFFFF, #FF0000, #00FF00")])) }, undo: { try self.store.apply(.sceneLook(id: "S03", [DecisionChange(.palette, "")])) })
         // a global look change touches every scene that has no look of its own
         try store.apply(.decisions([DecisionChange(.palette, "#000002, #FFFFFF, #FF0000, #00FF00")], title: nil))

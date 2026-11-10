@@ -91,4 +91,5 @@ Ideas for Showreel Studio that are not in the current phase. Nothing here is bui
 - IDEA-048 [[ideas/A trash for scenes and resources the owner no longer wants|A trash for scenes and resources the owner no longer wants]] (app, current): A trash for every scene and resource thrown away, since the owner asks whether a hidden scene is not one he no longer wants.
 - IDEA-049 [[ideas/A short looping GIF as the thumbnail of a scene|A short looping GIF as the thumbnail of a scene]] (app, draft): A short looping GIF as the thumbnail of a scene.
 - IDEA-050 [[ideas/Each transition gets its own icon in the strip|Each transition gets its own icon in the strip]] (app, draft): Each transition gets its own icon in the strip.
+- IDEA-051 [[ideas/Mouse tracker for HTML reels|Mouse tracker for HTML reels]] (skill, draft): Optional project setting: the pointer gently moves backgrounds, 3D camera and layers in the HTML player; off by default, ignored by MP4 export.
 <!-- /generated:ideas -->

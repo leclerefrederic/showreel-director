@@ -210,8 +210,8 @@ enum SelfCheck {
         if (try? bs.create(name: "Selftest", conversationLanguage: "en", reelLanguages: ["en"])) != nil, let r = Skill.root() {
             try? bs.apply(.addScene(id: "", SceneEdit(duration: "4", text: "Hello", status: "validated")))
             try? bs.apply(.gate("storyboard", passed: true))
-            check(bs.loadShowreel()?.scenes.first?.id == "S01" && bs.loadShowreel()?.gates["review"] == nil && !BuildRunner.canBuild(bs), "scenes are added with stable IDs, and the Go is never deduced")
-            check((try? bs.apply(.gate("review", passed: true))) != nil && BuildRunner.canBuild(bs), "the Go is given by an explicit operation")
+            check(bs.loadShowreel()?.scenes.first?.id == "S01" && bs.loadShowreel()?.gates["review"] == nil && BuildRunner.canBuild(bs), "scenes are added with stable IDs, and a Ready scene is the implicit Go")
+            check((try? bs.apply(.gate("review", passed: true))) != nil && BuildRunner.canBuild(bs), "the Go is recorded by an explicit operation")
             let vd = sb.appendingPathComponent("v1")
             try? fm.createDirectory(at: vd, withIntermediateDirectories: true)
             try? "{\"title\": \"Selftest\", \"main\": \"main.js\", \"duration\": 8, \"tokens\": {\"--page\": \"#000\", \"--bar-bg\": \"#111\", \"--bar-fg\": \"#eee\", \"--btn-bg\": \"#ddd\", \"--btn-fg\": \"#111\", \"--accent\": \"#fff\", \"--ov-bg\": \"rgba(0,0,0,.85)\", \"--ov-fg\": \"#fff\", \"--font-ui\": \"sans-serif\", \"--font-title\": \"sans-serif\"}, \"weight_budget_mb\": 20}".write(to: vd.appendingPathComponent("project.json"), atomically: true, encoding: .utf8)
@@ -244,7 +244,7 @@ enum SelfCheck {
             try? bs.apply(.sceneEnabled(id: "S01", enabled: true, montage: nil))
             if let lead = bs.loadShowreel()?.film.first?.id {
                 try? bs.apply(.transition(from: lead, TransitionEdit(type: "Push", duration: 0.5)))
-                try? bs.apply(.resize(scene: lead, duration: 6, ripple: true))
+                try? bs.apply(.resize(scene: lead, duration: 6))
                 check(bs.loadShowreel()?.storyboards.first?.items.first { $0.scene == lead }?.transition.type == "Push" && bs.loadShowreel()?.scenes.first { $0.id == lead }?.duration == 6
                       && BuildJob.frame(version: "v2", store: bs, skill: Skill.root()!).contains("Push 0.5 s"), "a transition and a duration are operations, and the build message lists the transition")
             }

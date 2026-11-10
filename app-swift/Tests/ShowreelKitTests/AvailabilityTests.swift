@@ -61,7 +61,9 @@ final class AvailabilityTests: XCTestCase {
         XCTAssertEqual(Availability.startBuild(in: idle, hasKey: false, canBuild: true, clapRunning: false).why, Reasons.noKey)
         XCTAssertEqual(Availability.startBuild(in: idle, hasKey: true, canBuild: true, clapRunning: true).why, Reasons.clapBusy)
         let w = Availability.startBuild(in: idle, hasKey: true, canBuild: false, clapRunning: false).why
-        XCTAssertEqual(w?.cause, .notReady); XCTAssertTrue(w?.reason.contains("Go") == true)
+        XCTAssertEqual(w?.cause, .notReady); XCTAssertEqual(w?.reason, "The scenes are not ready to build")
+        let named = Availability.startBuild(in: idle, hasKey: true, canBuild: false, clapRunning: false, notReady: "2 scenes are not Ready (S01, S02)").why
+        XCTAssertEqual(named?.reason, "2 scenes are not Ready (S01, S02)"); XCTAssertTrue(named?.way.contains("Ready") == true, "the implicit Go says what to do")
         var b = idle; b.build = .init(version: "v1", phase: .generating)
         XCTAssertEqual(Availability.startBuild(in: b, hasKey: true, canBuild: true, clapRunning: false).why?.cause, .building)
         XCTAssertEqual(Availability.askClap(in: idle, hasKey: false, clapRunning: false).why?.link, .key)
@@ -85,12 +87,12 @@ final class AvailabilityTests: XCTestCase {
         case .moveScene: return .moveScene(id: "S03", after: "start", montage: nil)
         case .sceneLook: return .sceneLook(id: "S01", [DecisionChange(.background, Look.backgroundIDs().first!)])
         case .content: return .content(scene: "S01", .add(ContentEdit(type: "text", text: "x"), after: nil))
-        case .resize: return .resize(scene: "S01", duration: 6, ripple: false)
+        case .resize: return .resize(scene: "S01", duration: 6)
         case .moveCut: return .moveCut(before: "S01", after: "S02", at: 5)
         case .transition: return .transition(from: "S01", TransitionEdit(type: "Push", duration: 0.5))
         case .track: return .track(asset: nil)
         case .grid: return .grid(bpm: 120, firstBeat: 0)
-        case .gridSettings: return .gridSettings(snap: "bar", ripple: true)
+        case .gridSettings: return .gridSettings(snap: "bar")
         case .moveAsset: return .moveAsset(id: "logo-01", after: "start")
         case .sceneLock: return .sceneLock(ids: ["S01"], locked: true)
         case .addFontFiles: return .addFontFiles(FontPayload(family: "Fredoka", dir: "fredoka", files: [FontFile(name: "Fredoka-Bold.ttf", data: Data("x".utf8))]))
@@ -99,8 +101,8 @@ final class AvailabilityTests: XCTestCase {
     }
     var everyOperation: [ProjectOperation] {
         [.parameter(.audience, ""), .decisions([], title: nil), .asset(id: "", status: nil, note: nil, licence: nil, scenes: nil), .gate("", passed: true), .scene(id: "", SceneEdit()), .addScene(id: "", SceneEdit()),
-         .sceneEnabled(id: "", enabled: true, montage: nil), .moveScene(id: "", after: "", montage: nil), .sceneLook(id: "", []), .content(scene: "", .remove(item: "")), .resize(scene: "", duration: 1, ripple: false),
-         .moveCut(before: "", after: "", at: 1), .transition(from: "", nil), .track(asset: nil), .grid(bpm: nil, firstBeat: nil), .gridSettings(snap: nil, ripple: nil), .moveAsset(id: "", after: ""), .sceneLock(ids: [], locked: true), .addFontFiles(FontPayload(family: "", dir: "", files: [])), .resource(.renameTag(from: "a", to: "b"))].map(sample)
+         .sceneEnabled(id: "", enabled: true, montage: nil), .moveScene(id: "", after: "", montage: nil), .sceneLook(id: "", []), .content(scene: "", .remove(item: "")), .resize(scene: "", duration: 1),
+         .moveCut(before: "", after: "", at: 1), .transition(from: "", nil), .track(asset: nil), .grid(bpm: nil, firstBeat: nil), .gridSettings(snap: nil), .moveAsset(id: "", after: ""), .sceneLock(ids: [], locked: true), .addFontFiles(FontPayload(family: "", dir: "", files: [])), .resource(.renameTag(from: "a", to: "b"))].map(sample)
     }
 
     func testEveryOperationIsRefusedDuringABuildAndTheProjectStaysAsItWas() throws {
@@ -166,7 +168,7 @@ final class AvailabilityTests: XCTestCase {
     // MARK: a proposal waiting on elements
 
     func testAProposalBlocksWhatItTouchesAndOnlyThat() throws {
-        let op = ProjectOperation.resize(scene: "S02", duration: 6, ripple: false)
+        let op = ProjectOperation.resize(scene: "S02", duration: 6)
         let card = try store.plan(op)
         XCTAssertEqual(card.targets, [.scene("S02")], "the card knows what it touches")
         act.addProposal(.init(id: "p1", title: card.title, targets: card.targets))
@@ -212,8 +214,8 @@ final class AvailabilityTests: XCTestCase {
             let l = StatusLine.applied(op, card: card)
             XCTAssertTrue(l.text.hasPrefix("Applied: ") && l.text.count > 12, "\(op.kind): \(l.text)"); XCTAssertTrue(l.undoable); XCTAssertEqual(l.targets, op.targets)
         }
-        let resize = try store.plan(.resize(scene: "S01", duration: 6, ripple: false))
-        let l = StatusLine.applied(.resize(scene: "S01", duration: 6, ripple: false), card: resize)
+        let resize = try store.plan(.resize(scene: "S01", duration: 6))
+        let l = StatusLine.applied(.resize(scene: "S01", duration: 6), card: resize)
         XCTAssertTrue(l.text.contains("S01") && l.text.contains("6"), l.text)
         let multi = try store.plan(.decisions([DecisionChange(.palette, "#101010, #FFFFFF, #FF0000, #00FF00"), DecisionChange(.effectsPack, Look.packs().first!.name)], title: nil))
         XCTAssertTrue(StatusLine.applied(.parameter(.audience, "x"), card: multi).text.contains("(+1 more)"))

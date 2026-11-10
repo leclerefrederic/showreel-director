@@ -108,6 +108,13 @@ public struct DesignBoard: Equatable, Sendable {
         public let ratio: Double
         public let level: CheckLevel
         public let detail: String
+        /// The swatch (index into `swatches`) the check judges: nil for a check that spans colours, which the view puts in a row of its own (PL1).
+        public let swatch: Int?
+    }
+    /// A swatch and the check that sits under it (the Background judges nothing: its column has no check).
+    public struct Column: Equatable, Sendable {
+        public let swatch: Swatch
+        public let check: ContrastLine?
     }
     public let swatches: [Swatch]
     public let contrasts: [ContrastLine]
@@ -121,6 +128,10 @@ public struct DesignBoard: Equatable, Sendable {
     public let sampleEffect: String
     public let sampleText: String
     public var hasPalette: Bool { swatches.count >= 2 }
+    /// One column per swatch, each with the check that judges it; the grouping is expressed here once, so a palette with more or fewer colours places its checks right.
+    public var columns: [Column] { swatches.indices.map { i in Column(swatch: swatches[i], check: contrasts.first { $0.swatch == i }) } }
+    /// The checks that belong to no single swatch: a row below the columns.
+    public var spanning: [ContrastLine] { contrasts.filter { $0.swatch == nil } }
 
     public static let placeholderText = "Simple. Fast. Yours."
 
@@ -132,7 +143,7 @@ public struct DesignBoard: Equatable, Sendable {
         let swatches = pal.enumerated().map { i, hex in Swatch(role: i < PaletteRole.allCases.count ? PaletteRole.allCases[i].title : "Extra", hex: hex, on: readable(hex)) }
         // the key contrasts: text, accent and accent 2, each against the background, as the palette check words them
         let checks = valid && pal.count >= 2 ? Contrast.checks(pal) : []
-        let lines = checks.enumerated().map { n, r in ContrastLine(title: r.title, ratio: Contrast.ratio(pal[n + 1], pal[0]), level: r.level, detail: r.detail) }
+        let lines = checks.enumerated().map { n, r in ContrastLine(title: r.title, ratio: Contrast.ratio(pal[n + 1], pal[0]), level: r.level, detail: r.detail, swatch: n + 1 < pal.count ? n + 1 : nil) }
         let packName = (d.effectsPack?.isEmpty == false ? d.effectsPack : d.moods?.first) ?? ""
         let known = Set(Look.effects())
         let effect = Look.packs().first { $0.name == packName }?.effects.first { known.contains($0) } ?? "Fade"

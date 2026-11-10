@@ -219,7 +219,7 @@ final class UI2Tests: XCTestCase {
             ("a scene inserted before it", .addScene(id: "", SceneEdit(duration: "3", text: "New", after: "start"))),
             ("a scene deleted before it", .deleteScene(id: "S01")),
             ("a scene hidden before it", .sceneEnabled(id: "S01", enabled: false, montage: nil)),
-            ("an earlier scene lengthened", .resize(scene: "S01", duration: 5, ripple: true)),
+            ("an earlier scene lengthened", .resize(scene: "S01", duration: 5)),
             ("an earlier scene shortened", .scene(id: "S02", SceneEdit(duration: "2"))),
             ("an earlier scene moved after it", .moveScene(id: "S01", after: "S03", montage: nil)),
         ]
@@ -303,7 +303,7 @@ final class UI2Tests: XCTestCase {
 
     func testTheGoReadsEveryVisibleSceneAndIgnoresTheHiddenOnes() throws {
         try store.apply(.gate("storyboard", passed: true))
-        XCTAssertTrue(store.goBlocking()?.contains("every visible scene must be Ready") == true)
+        XCTAssertTrue(store.goBlocking()?.contains("not Ready") == true)
         try ready("S01", "S02", "S03")
         try store.apply(.sceneLock(ids: ["S03"], locked: true))
         XCTAssertTrue(store.goBlocking()?.contains("S04") == true, "S04 is not Ready")

@@ -242,9 +242,11 @@ struct ThemedTextFieldStyle: TextFieldStyle {
         @EnvironmentObject var theme: Theme
         @Environment(\.isEnabled) private var enabled
         @Environment(\.fieldError) private var error
+        @Environment(\.fieldVerticalPadding) private var vertical
         @FocusState private var focused: Bool
         var body: some View {
             content.textFieldStyle(.plain).fontBody().focused($focused).padding(.horizontal, 8)
+                .padding(.vertical, vertical)
                 .frame(minHeight: FormLayout.fieldHeight).frame(maxWidth: .infinity)
                 .background(theme.raised, in: RoundedRectangle(cornerRadius: FormLayout.fieldRadius, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: FormLayout.fieldRadius, style: .continuous)
@@ -253,6 +255,10 @@ struct ThemedTextFieldStyle: TextFieldStyle {
         }
     }
 }
+
+/// Inner vertical padding of a text field that can grow to several lines (PT1): the text does not sit against its top and bottom border. Zero for the single-line fields.
+private struct FieldVerticalPaddingKey: EnvironmentKey { static let defaultValue: CGFloat = 0 }
+extension EnvironmentValues { var fieldVerticalPadding: CGFloat { get { self[FieldVerticalPaddingKey.self] } set { self[FieldVerticalPaddingKey.self] = newValue } } }
 
 private struct FieldErrorKey: EnvironmentKey { static let defaultValue: String? = nil }
 extension EnvironmentValues { var fieldError: String? { get { self[FieldErrorKey.self] } set { self[FieldErrorKey.self] = newValue } } }
@@ -481,6 +487,10 @@ struct StripPalette {
     var gridBar: Color { white(s.gridBar) }
     var gridSection: Color { section(s.gridSection) }
     var chip: Color { black(s.chip) }
+    func sectionColor(_ i: Int) -> Color { let c = s.sectionColors; return c.isEmpty ? section(s.sectionTint) : theme.color(c[i % c.count]).opacity(s.sectionTint) }
+    var thumbBackdrop: Color { black(s.thumbBackdrop) }
+    var perforation: Color { white(s.perforation) }
+    var cap: Color { white(s.cap) }
     var chipHeavy: Color { black(s.chipHeavy) }
     var gradient: [Color] { [black(s.gradientTop), .clear, black(s.gradientBottom)] }
     /// The text size of the strip: nothing under the smallest size of the type scale.

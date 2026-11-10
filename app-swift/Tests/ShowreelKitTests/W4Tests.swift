@@ -62,12 +62,12 @@ final class W4Tests: XCTestCase {
 
     func testResizingASceneMovesTheItemsOfItWithTheCardLines() throws {
         try store.apply(.content(scene: "S01", .update(item: "c1", ContentEdit(times: ContentTimes(start: 1, end: 4)))))
-        try store.apply(.resize(scene: "S01", duration: 2, ripple: true))
+        try store.apply(.resize(scene: "S01", duration: 2))
         XCTAssertEqual(scene.content[0].timing, ContentTimes(start: 1, end: 2))
-        let card = try store.plan(.resize(scene: "S01", duration: 3, ripple: true))
+        let card = try store.plan(.resize(scene: "S01", duration: 3))
         XCTAssertTrue(card.changes.contains { $0.label.contains("c1 timing") && $0.after.contains("out 3 s") }, "an Out that was the end follows the scene when it grows, and the card says so")
         try store.apply(.content(scene: "S01", .update(item: "c1", ContentEdit(times: ContentTimes(start: 1, end: 1.5)))))
-        let still = try store.plan(.resize(scene: "S01", duration: 3, ripple: true))
+        let still = try store.plan(.resize(scene: "S01", duration: 3))
         XCTAssertFalse(still.changes.contains { $0.label.contains("c1 timing") }, "an Out that was not the end stays where it is")
     }
 

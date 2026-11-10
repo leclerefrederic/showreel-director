@@ -312,12 +312,6 @@ struct ProjectInspector: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(project.title).font(.title3.weight(.semibold)).lineLimit(2)
-                Spacer()
-                Button { project.openSettings() } label: { Label("Project settings", systemImage: "slider.horizontal.3") }
-                    .help("The project's parameters and its global look, in one panel")
-            }
             Text("Select a scene, a resource or a transition marker to see its properties here.").font(.callout).foregroundStyle(.secondary)
             InspectorSection(title: "Music") { MusicInspector() }.readOnlyWhenBlocked(.setting("music"))
             InspectorSection(title: "Global look") { GlobalLook() }.readOnlyWhenBlocked(.setting("look"))

@@ -7,6 +7,8 @@ struct SceneFrameImage: View {
     let scene: ShowreelFile.Scene
     /// The inspector's larger picture: the placeholder shows its reason in words.
     var large = false
+    /// The shape of every capture (`SceneCapture.size`).
+    static let aspect = 16.0 / 9
     @EnvironmentObject var project: ProjectModel
     @EnvironmentObject var theme: Theme
 
@@ -16,7 +18,7 @@ struct SceneFrameImage: View {
         let s = state
         ZStack {
             if let u = s.url, let img = SceneImageCache.image(u) {
-                Image(nsImage: img).resizable().scaledToFill()
+                Image(nsImage: img).resizable().scaledToFit()
             } else {
                 placeholder(s)
             }

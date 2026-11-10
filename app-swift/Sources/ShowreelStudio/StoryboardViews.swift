@@ -211,64 +211,6 @@ struct SceneListEditor: View {
     }
 }
 
-/// The explicit Go. It is only ever given by this button; nothing deduces it, and the copilot has no way to press it.
-struct GoPanel: View {
-    @EnvironmentObject var theme: Theme
-    @EnvironmentObject var project: ProjectModel
-    @State private var confirming = false
-
-    private var given: Bool { project.showreel?.gates["review"] == "passed" }
-    private var blocker: String? { project.store.goBlocking() }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: given ? "checkmark.seal.fill" : "flag.checkered").foregroundStyle(given ? theme.success : .secondary)
-                Text(given ? "The Go is given" : "The Go").font(.headline)
-            }
-            if given {
-                Text("The build may start. If you change a scene, the Go is taken back and must be given again.").font(.callout).foregroundStyle(.secondary)
-                Button("Take the Go back") { project.perform(.gate("review", passed: false)) }
-            } else {
-                Text(blocker.map { "Not yet: \($0)." } ?? "Every visible scene is Ready. The build never starts without your Go, and the app never gives it for you.")
-                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Button("Give the Go") { confirming = true }.buttonStyle(PrimaryButtonStyle()).disabled(blocker != nil)
-            }
-        }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .alert("Give the Go?", isPresented: $confirming) {
-            Button("Give the Go") { project.perform(.gate("review", passed: true)) }
-            Button("Not yet", role: .cancel) {}
-        } message: { Text("This is your decision to start the build. If you change a scene afterwards, the Go is taken back.") }
-    }
-}
-
-/// The Go as a button for the toolbar and the storyboard strip. Same rule as the panel: explicit, never deduced.
-struct GoButton: View {
-    @EnvironmentObject var theme: Theme
-    @EnvironmentObject var project: ProjectModel
-    @State private var confirming = false
-
-    private var given: Bool { project.showreel?.gates["review"] == "passed" }
-    private var blocker: String? { project.store.goBlocking() }
-
-    var body: some View {
-        Button {
-            if given { project.perform(.gate("review", passed: false)) } else { confirming = true }
-        } label: {
-            Label(given ? "Go given" : "Give the Go", systemImage: given ? "checkmark.seal.fill" : "flag.checkered")
-        }
-        .tint(given ? theme.success : nil)
-        .disabled(!given && blocker != nil)
-        .help(given ? "The build may start. Click to take the Go back." : (blocker.map { "Not yet: \($0)." } ?? "Your decision to start the build. The app never gives it for you."))
-        .alert("Give the Go?", isPresented: $confirming) {
-            Button("Give the Go") { project.perform(.gate("review", passed: true)) }
-            Button("Not yet", role: .cancel) {}
-        } message: { Text("This is your decision to start the build. If you change a scene afterwards, the Go is taken back.") }
-    }
-}
-
 /// The three switches of a scene, Visible, Ready and Locked, its instruction and the Delete button. Each switch is one typed operation (ShowreelKit's `SceneSwitches` decides what
 /// is allowed and why not); an unavailable switch says why and how to get out of it.
 struct SceneSwitchesView: View {

@@ -91,7 +91,7 @@ extension ProjectOperation {
             case .add: return s
             case .update(let i, _), .remove(let i), .move(let i, _): return s + " " + i
             }
-        case .resize(let s, _, _): return s
+        case .resize(let s, _): return s
         case .moveCut(let a, let b, _): return a + " " + b
         case .transition(let from, _): return from
         case .track(let a): return a ?? "none"

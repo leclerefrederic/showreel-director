@@ -340,19 +340,18 @@ extension ProjectStore {
         return try finish(title: reverts ? "Revert \(id) to the project look" : "Override the look of \(id)", changes: lines, from: f, to: g)
     }
 
-    /// Why the Go cannot be given yet, or nil when it can.
+    /// Why the Build cannot start yet, or nil when it can: the implicit Go is that every visible scene is Ready.
     public func goBlocking() -> String? {
         guard let f = loadShowreel() else { return "there is no project data yet" }
         return goBlocker(f)
     }
 
-    /// Why the Go cannot be given yet, or nil. The Go is only ever given by an explicit action of the user: nothing derives it.
+    /// Why the Build cannot start yet, or nil. The Go is implicit (SM1): every visible scene is Ready (a locked scene is, a hidden one is not counted). Starting the Build records it in the file.
     func goBlocker(_ f: ShowreelFile) -> String? {
         let live = SceneRules.live(f)
         if live.isEmpty { return "there is no scene on in the storyboard yet" }
-        if f.gates["storyboard"] != "passed" { return "the storyboard is not validated yet" }
         let notOK = live.filter { !$0.state.isReviewed }
-        if !notOK.isEmpty { return "every visible scene must be Ready first (\(notOK.map { $0.id }.joined(separator: ", ")) \(notOK.count == 1 ? "is" : "are") not)" }
+        if !notOK.isEmpty { return "\(notOK.count) scene\(notOK.count == 1 ? " is" : "s are") not Ready (\(notOK.map { $0.id }.joined(separator: ", ")))" }
         return nil
     }
 }
@@ -381,7 +380,7 @@ extension ProjectStore {
     static func clock(_ t: Double) -> String { String(format: "%d:%02d", Int(t) / 60, Int(t) % 60) }
 
     /// A locked scene is frozen in time and space, visible or hidden: a change elsewhere that would move its start (a scene inserted, deleted, shown, hidden, lengthened or
-    /// shortened before it, a ripple) is refused, and so is any move of its place. Nil when no locked scene moves.
+    /// shortened before it) is refused, and so is any move of its place. Nil when no locked scene moves.
     func lockShiftRefusal(from f: ShowreelFile, to g: ShowreelFile) -> String? {
         for s in f.scenes where s.isLocked {
             let a = f.place(of: s.id), b = g.place(of: s.id)

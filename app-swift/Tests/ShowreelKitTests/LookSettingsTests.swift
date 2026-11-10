@@ -123,9 +123,9 @@ final class LookSettingsTests: XCTestCase {
         let editors = ["LookBoardView", "PaletteEditor", "FontPickerView", "BackgroundPickerView", "MoodsPickerView", "EffectsPickerView"]
         let panel = try source("ProjectSettingsPanel.swift")
         for e in editors { XCTAssertTrue(panel.contains(e + "("), "the settings panel has \(e)") }
-        XCTAssertTrue(panel.contains("ProjectForm()"), "the parameters: audience, message, tone, languages, formats, duration, constraints, control level")
+        XCTAssertTrue(panel.contains("ProjectForm(part: .brief)") && panel.contains("ProjectForm(part: .format)") && panel.contains("ProjectForm(part: .header)"), "the parameters: audience, message, tone, languages, formats, duration, constraints, control level")
         let form = try source("ProjectFormViews.swift")
-        for k in [".audience", ".message", ".tone", ".conversationLanguage", ".reelLanguages", ".formats", ".duration", ".constraints", ".controlLevel"] { XCTAssertTrue(form.contains("compact(\(k)") || form.contains("parameter(\(k)") || form.contains("\(k)"), "the form has \(k)") }
+        for k in [".audience", ".message", ".tone", ".reelLanguages", ".formats", ".duration", ".constraints", ".controlLevel"] { XCTAssertTrue(form.contains("compact(\(k)") || form.contains("parameter(\(k)") || form.contains("\(k)"), "the form has \(k)") }
     }
 
     func testThePickersSitWhereTheCatalogueIsUsed() throws {

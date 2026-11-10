@@ -82,8 +82,12 @@ public struct StudioSettings: Codable, Equatable {
     public var collapsed: [String]?
     /// Whether the music's grid is drawn over the frames of the strip; nil: shown.
     public var gridVisible: Bool?
+    /// Which marks of the music the strip shows (the music toolbar); nil: the project's stored snap level decides (`MusicToolbarState(migrating:)`).
+    public var musicToolbar: MusicToolbarState?
     /// Which right panel was open ("inspector", "look", "project", "clap", or "none" for a closed right side); nil: the Inspector.
     public var rightPanel: String?
+    /// The tab of the Project panel that was open ("look"); nil: the Project tab. Restored with the panel.
+    public var settingsTab: String?
     /// Where the Film strip lives; nil: under the preview. Independent of the sizes the owner dragged.
     public var filmPlacement: String?
 
@@ -102,7 +106,9 @@ public struct StudioSettings: Codable, Equatable {
         timeline = try c.decodeIfPresent(TimelineMemory.self, forKey: .timeline)
         collapsed = try c.decodeIfPresent([String].self, forKey: .collapsed)
         gridVisible = try c.decodeIfPresent(Bool.self, forKey: .gridVisible)
+        musicToolbar = try c.decodeIfPresent(MusicToolbarState.self, forKey: .musicToolbar)
         rightPanel = try c.decodeIfPresent(String.self, forKey: .rightPanel)
+        settingsTab = try c.decodeIfPresent(String.self, forKey: .settingsTab)
         filmPlacement = try c.decodeIfPresent(String.self, forKey: .filmPlacement)
     }
 }

@@ -27,8 +27,8 @@ struct BuildPanel: View {
             HStack(spacing: 10) {
                 Button { project.startBuild(with: chat) } label: { Label(BuildJob.pending(project.store).map { "Continue \($0)" } ?? "Build a new version", systemImage: "hammer") }
                     .buttonStyle(PrimaryButtonStyle())
-                    .disabledWithReason(Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running).reasonText,
-                                        way: Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running).wayText)
+                    .disabledWithReason(Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running, notReady: project.store.goBlocking()).reasonText,
+                                        way: Availability.startBuild(in: project.activity, hasKey: settings.hasKey, canBuild: BuildRunner.canBuild(project.store), clapRunning: chat.running, notReady: project.store.goBlocking()).wayText)
                     .help("Clap writes \(Versions.next(project.store)) from your storyboard and decisions, then the app builds and tests it.")
             }
             BuildProgressPanel()
@@ -42,7 +42,7 @@ struct BuildPanel: View {
                 .padding(10).background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
             }
             if !BuildRunner.canBuild(project.store) {
-                Text("The Go comes first: give it in the Scene editor once every visible scene is Ready.").fontSmall().foregroundStyle(.secondary)
+                Text("The build starts once every visible scene is Ready" + (project.store.goBlocking().map { ": " + $0 } ?? "") + ".").fontSmall().foregroundStyle(.secondary)
             }
             if !project.versions.isEmpty { versionsRow }
             if let r = project.buildReport { report(r) }

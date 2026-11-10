@@ -61,7 +61,7 @@ public enum BuildRunner {
         let notOK = live.filter { !$0.state.isReviewed }
         if !live.isEmpty { out.append(notOK.isEmpty ? r("reviewed", "Scene review", .ok, "every visible scene is Ready (a locked scene is Ready, a hidden one is ignored)") : r("reviewed", "Scene review", .pending, "\(notOK.map { $0.id }.joined(separator: ", ")) not Ready yet: switch Ready on in the scene's inspector")) }
         let go = f.gates["review"] == "passed"
-        out.append(go ? r("go", "The Go", .ok, "given by you") : r("go", "The Go", .pending, "not given: the build never starts without it. Give it in the Scene editor."))
+        out.append(go ? r("go", "The Go", .ok, "recorded when you started the build") : r("go", "The Go", notOK.isEmpty && !live.isEmpty ? .ok : .pending, notOK.isEmpty && !live.isEmpty ? "implicit: every visible scene is Ready, so the build may start (it records the Go)" : "implicit: it comes when every visible scene is Ready"))
         let held = Assets.load(store).filter { $0.status == "hold" }
         if !held.isEmpty { out.append(r("held", "Held files", .tight, held.map { $0.name }.joined(separator: ", ") + ": on hold, so not used in the film")) }
         return out
@@ -69,7 +69,7 @@ public enum BuildRunner {
 
     public static func canBuild(_ store: ProjectStore) -> Bool {
         guard let f = store.loadShowreel() else { return false }
-        return f.gates["review"] == "passed" && !SceneRules.live(f).isEmpty
+        return store.goBlocking() == nil
     }
 
     /// The whole-film brief is no longer one message: the frame's request (`BuildJob.frame`) and each scene's (`SceneGeneration.prompt`) take their parts from the three helpers below.

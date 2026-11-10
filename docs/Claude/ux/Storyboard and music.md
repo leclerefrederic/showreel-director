@@ -35,3 +35,15 @@ Part of [[ux-notes]].
 ## Built in W4b (2026-11-10)
 
 A frame of the strip, and the larger picture in the scene inspector, is a PNG captured from the built film at one moment of the scene, with a placeholder that says why there is no picture, a clock mark when it is out of date and a "Refresh thumbnail" action. See [[phases/W4b/report]].
+
+## Built in FL1 (2026-11-10)
+
+Film strip scenes look like film: the grid is drawn under the frames, the thumbnail is centred whole on a translucent black token (`thumbBackdrop`), each frame has perforation bands above and below and start and end caps (accent when selected). Perforations disappear under 60 pt wide (caps stay) and under 40 pt high. Remains: the thumbnail's own aspect is taken as 16:9 (every capture is); a locked scene's mark is unchanged.
+
+## Built in FT1 (2026-11-10)
+
+The Film toolbar lost the Ripple switch and the Add scene menu; the zoom group (minus, slider, plus, fit menu) is the last control, at the far right. Resize always moves the following scenes. Remains: the Beat (snap) menu, the grid toggle and the music controls move to the music lane in MT1.
+
+## Built in MT1 (2026-11-10)
+
+The music lane has a toolbar (Beat, Bars, Sections, Drop, Analyse, track name and BPM), pinned under the lane. Snapping follows the finest mark shown. Remains: the toolbar sits under the lane, not on a header inside it; Clap's `get_state` still reports the project's stored snap level.

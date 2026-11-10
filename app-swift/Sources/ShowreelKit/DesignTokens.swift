@@ -22,6 +22,11 @@ public struct DesignTokens: Equatable, Sendable {
         /// How much of white or black a line, a text and a chip carry (0 to 1).
         public var line = 0.24, text = 0.94, dim = 0.66, chip = 0.6, chipHeavy = 0.7, gradientTop = 0.55, gradientBottom = 0.5
         public var gridBeat = 0.16, gridBar = 0.34, gridSection = 0.75, gridCut = 0.26
+        /// The film-reel frame of a scene (FL1): the black behind a thumbnail (grid reads faintly through it), the perforations and the caps, and their size in points.
+        public var thumbBackdrop = 0.55, perforation = 0.2, cap = 0.42
+        /// The small palette that colours the sections of the music, and how much of it shows behind the waveform.
+        public var sectionColors = ["#4C8DFF", "#FF9F0A", "#30D158", "#BF5AF2"], sectionTint = 0.28
+        public var perforationWidth = 6.0, perforationHeight = 3.0, perforationPitch = 11.0, reelBand = 7.0, capWidth = 3.0
     }
 
     public var surfaces: Surfaces

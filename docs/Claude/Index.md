@@ -18,8 +18,8 @@ tags:
 
 ## Status
 
-- App 0.21.3, skill 0.18.2. Last built phase: W4b. Next: PK2 (apply a package to an existing project), N (activity and notifications, in the spec).
-- 238 notes. Ideas: 50 (36 parked, 2 wanted soon, 12 built or promoted).
+- App 0.23.1, skill 0.18.2. Last built phase: Batch. Next: PK2 (apply a package to an existing project), N (activity and notifications, in the spec).
+- 257 notes. Ideas: 51 (37 parked, 2 wanted soon, 12 built or promoted).
 - Open questions (18): Which instant of a scene should its thumbnail show; What form should the timing control of an item take; Should timing be in seconds or in beats; Should the viewer play an item's timing live; Should the viewer keep its content drawing before a build; Should the strip mark every frame as fresh or only the stale ones; Should the Inspector mark show when the side is closed; Should locked scenes from before UI2 take a copy of their look when the project opens; Should an item's timing snap to the music grid; Should a lock also freeze the transitions beside a locked scene; Should Look light a centre entry; Shortcuts for the other right panels; Rework of the Wizard and Manual creation experience; May a click on the active Build leave the Build; Keep three scenes written at once as the default; Is the phase order of the spec still the one we follow; Confirm the two-thirds split of the left panel; Confirm the Checks badge after use.
 
 ## Entry notes and hubs
@@ -193,6 +193,7 @@ Cite a decision by its ID and title: DECISION-001.
 | IDEA-048 | `ideas/A trash for scenes and resources the owner no longer wants.md` | current |  | 2026-11-10 | A trash for every scene and resource thrown away, since the owner asks whether a hidden scene is not one he no longer wants. |
 | IDEA-049 | `ideas/A short looping GIF as the thumbnail of a scene.md` | draft |  | 2026-11-10 | A short looping GIF as the thumbnail of a scene. |
 | IDEA-050 | `ideas/Each transition gets its own icon in the strip.md` | draft |  | 2026-11-10 | Each transition gets its own icon in the strip. |
+| IDEA-051 | `ideas/Mouse tracker for HTML reels.md` | draft |  | 2026-11-10 | Optional project setting: the pointer gently moves backgrounds, 3D camera and layers in the HTML player; off by default, ignored by MP4 export. |
 
 ## Archive (reports that span several phases)
 
@@ -204,6 +205,10 @@ Cite a decision by its ID and title: DECISION-001.
 | `archive/BATCH-A/prompt.md` | phase-prompt | current | BATCH-A | 2026-11-09 | Runs FIX1, CL1 and RL1 in one batch, overriding the stop-after-each-phase rule for that run. |
 | `archive/BATCH-A/report.md` | phase-report | current | BATCH-A | 2026-11-09 | Report of Batch A, which ran FIX1, CL1 and RL1 in a row, with the backup and each phase's result. |
 | `archive/BATCH-B/prompt.md` | phase-prompt | superseded | BATCH-B | 2026-11-09 | Shelved batch of FIX2 and FIX3: FIX3 was dropped, so the FIX2 prompt is run alone. |
+| `archive/BATCH-C/prompt.md` | phase-prompt | current | BATCH-C | 2026-11-10 | Runs FL1, FT1, MT1 and PF1 in one batch (film look, film and music toolbars, list-selection lag), overriding the stop-after-each-phase rule. |
+| `archive/BATCH-C/report.md` | phase-report | current | BATCH-C | 2026-11-10 | Report of Batch C, which ran FL1, FT1, MT1 and PF1 in a row: all four done, app 0.21.4 to 0.21.7, skill unchanged. |
+| `archive/BATCH-D/prompt.md` | phase-prompt | current | BATCH-D | 2026-11-10 | Runs SM1, PT1 and PL1 (fewer controls, project settings in tabs, palette checks), overriding the stop-after-each-phase rule. |
+| `archive/BATCH-D/report.md` | phase-report | current | BATCH-D | 2026-11-10 | Report of Batch D, which ran SM1, PT1 and PL1 in a row: all three done, app 0.22.0 to 0.23.1, skill unchanged. |
 
 ## Phases
 
@@ -230,18 +235,25 @@ One line per phase folder `phases/<ID>/`: its files, the versions of its report 
 | `phases/FIX1/` | prompt, report, summary | 0.14.1 |  | 2026-11-09 | Report of FIX1: the cause and the fix of the Design package footer floating over the project settings form. |
 | `phases/FIX2/` | prompt, report | 0.17.1 |  | 2026-11-10 | Report of FIX2: a click on a scene moves the preview. |
 | `phases/FIX3/` | prompt |  |  | 2026-11-09 | Shelved prompt to turn the layout toggle into two icons with a sliding highlight; the owner kept the single button. |
+| `phases/FL1/` | prompt, report | 0.21.4 | 0.18.2 | 2026-11-10 | Report of FL1: Film strip frames drawn as film (grid under frames, centred thumbnail on translucent black, reel perforations and caps); app 0.21.4. |
+| `phases/FT1/` | prompt, report | 0.21.5 | 0.18.2 | 2026-11-10 | Report of FT1: Film toolbar without Ripple or Add scene, zoom group at the far right; resize always moves the following scenes; app 0.21.5. |
+| `phases/MT1/` | prompt, report | 0.21.6 | 0.18.2 | 2026-11-10 | Report of MT1: a music lane toolbar (Beat, Bars, Sections, Drop, Analyse, track name and BPM); the Beat menu leaves the Film toolbar; app 0.21.6. |
 | `phases/OBS1/` | prompt, report |  |  | 2026-11-10 | Report of OBS1: the audit of every path read under docs/, three lists, the entry notes and a proposed tree. |
 | `phases/OBS2/` | prompt, report |  |  | 2026-11-10 | Report of OBS2: docs/ migrated into phase folders and atomic notes, with decisions, dashboards, a check script and a snapshot proof. |
 | `phases/OBS3/` | prompt, report |  |  | 2026-11-10 | Report of OBS3: ideas as notes, a summary on every note, a generated agent index and generated blocks, with the step 0 lists and the proof. |
 | `phases/OBS4/` | prompt, report |  |  | 2026-11-10 | Report of OBS4: notes renamed with aliases, early phases flattened, one generated phase table, dashboards moved, graph linked, OBS3 leftovers settled. |
 | `phases/OBS5/` | prompt, report | 0.19.3 |  | 2026-11-10 | Report of OBS5: docs/ split into Home, Dashboards and Claude, stable IDs for ideas, questions and decisions, owner dashboards, app comments on the new paths. |
 | `phases/OBS6/` | prompt, report |  |  | 2026-11-10 | Report of OBS6: why the Ideas dashboard showed no idea, the four bases simplified and fixed, a static check, and the expected row count of every view. |
+| `phases/PF1/` | prompt, report | 0.21.7 | 0.18.2 | 2026-11-10 | Report of PF1: the lag on a Storyboard list click was the double-tap (rename) gesture holding the single tap back; fixed, no change of behaviour; app 0.21.7. |
+| `phases/PL1/` | prompt, report | 0.23.1 | 0.18.2 | 2026-11-10 | Report of PL1: each contrast check of the Palette card sits under the swatch it judges, from a pure column model in Kit; app 0.23.1. |
+| `phases/PT1/` | prompt, report | 0.23.0 | 0.18.2 | 2026-11-10 | Report of PT1: project settings in three tabs (Brief, Format, Look) under the name and base configuration; no conversation language control; app 0.23.0. |
 | `phases/Q5/` | report, summary |  |  | 2026-11-09 | Report of Q5: action/reaction, with what the code did before and what Q5 changed. |
 | `phases/RB1/` | prompt, report | 0.19.2 |  | 2026-11-10 | Report of RB1: the audit of the rail's buttons, one tested rule, the fixes and four questions for the owner. |
 | `phases/RF0/` | prompt, report | 0.21.0 | 0.18.2 | 2026-11-10 | Read-only health audit of the code: measured size, ProjectModel clusters, fragile glue, warnings, tests, dead code, and eight ranked refactorings. |
 | `phases/RF1/` | prompt, report | 0.21.2 | 0.18.2 | 2026-11-10 | Report of RF1: compiler warnings of the app cleaned from 21 distinct sites to 4 that need an ownership or isolation change; no behaviour change; app 0.21.2. |
 | `phases/RF2/` | prompt, report | 0.21.3 | 0.18.2 | 2026-11-10 | Report of RF2: four fragile glue spots hardened (capture load timeout, stepper repeat timer, font registry key, thumbnail tasks at close); tests; app 0.21.3. |
 | `phases/RL1/` | prompt, report, summary | 0.16.0 |  | 2026-11-09 | Report of RL1: the two-group rail with Clap, the full-height shell, the Film placement toggle and the reset icon. |
+| `phases/SM1/` | prompt, report | 0.22.0 | 0.18.2 | 2026-11-10 | Report of SM1: implicit Go, Look leaves the rail for the Project panel's tab, empty inspector without its Project button; Catalogue kept; app 0.22.0. |
 | `phases/UI1/` | prompt, report | 0.12.0 |  | 2026-11-09 | Report of UI1: the left panel as the Storyboard with the Resources below, and the decisions the owner can reverse. |
 | `phases/UI2/` | prompt, report | 0.13.0 |  | 2026-11-09 | Report of UI2: clear scene rows, three switches, Delete scene and a real lock, with the decisions taken. |
 | `phases/V2/` | report, summary |  |  | 2026-11-09 | Report of V2: the state of the build and of the reader. |

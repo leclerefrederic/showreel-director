@@ -59,9 +59,9 @@ public enum MusicGrid {
 
     /// The lines to draw over the frames between two times. Nothing without an analysed track, with the grid hidden or with snapping off. The weaker kind (beats before bars,
     /// bars before sections, sections before drops) gives way, so that no two lines are closer than `minSpacing` points.
-    public static func lines(_ m: MusicAnalysis?, level: SnapLevel, visible: Bool, pps: Double, from a: Double, to b: Double) -> [GridLine] {
+    public static func lines(_ m: MusicAnalysis?, level: SnapLevel, visible: Bool, pps: Double, from a: Double, to b: Double, only shown: Set<GridLine.Kind>? = nil) -> [GridLine] {
         guard visible, let m = m, pps > 0, b >= a else { return [] }
-        let kinds = Self.kinds(for: level)
+        let kinds = shown.map { Self.kinds(for: level).intersection($0) } ?? Self.kinds(for: level)
         var all = candidates(m, kinds: kinds)
         // thin each of the two dense kinds on its own, so that a bar line stays when beats are dropped
         let beats = thinned(all.filter { $0.kind == .beat }, pps: pps, minPoints: minSpacing)

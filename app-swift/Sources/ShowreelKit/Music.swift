@@ -92,7 +92,6 @@ public struct MusicAnalysis: Equatable, Sendable {
 
 extension ShowreelFile {
     public func snapLevel(_ montage: Int = 0) -> SnapLevel { storyboards.indices.contains(montage) ? SnapLevel(rawValue: storyboards[montage].snap ?? "") ?? .beat : .beat }
-    public func ripple(_ montage: Int = 0) -> Bool { storyboards.indices.contains(montage) ? storyboards[montage].ripple ?? true : true }
 }
 
 /// Running `scripts/analyze_audio.py` and drawing a waveform. Nothing here needs an AI; the analysis needs numpy and ffmpeg.

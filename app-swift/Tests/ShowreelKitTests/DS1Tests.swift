@@ -86,9 +86,9 @@ final class DS1Tests: XCTestCase {
 
     func testTheRailKeepsTheViewsTheTopBarOffered() {
         // the old top bar: Build toggled the Build view; Project settings toggled the settings panel with its two parts (Project and Look)
-        for e in [RailEntry.build, .look, .project, .film] { XCTAssertTrue(RailEntry.allCases.contains(e), e.title) }
-        XCTAssertEqual(RailEntry.allCases.map { $0.title }, ["Film", "Build", "Inspector", "Look", "Project", "Clap"])
-        XCTAssertEqual(Set(RailEntry.allCases.map { $0.role }).count, 6); XCTAssertTrue(RailEntry.allCases.allSatisfy { !$0.help.isEmpty })
+        for e in [RailEntry.build, .project, .film] { XCTAssertTrue(RailEntry.allCases.contains(e), e.title) }
+        XCTAssertEqual(RailEntry.allCases.map { $0.title }, ["Film", "Build", "Inspector", "Project", "Clap"], "five entries: Look is a tab of Project")
+        XCTAssertEqual(Set(RailEntry.allCases.map { $0.role }).count, 5); XCTAssertTrue(RailEntry.allCases.allSatisfy { !$0.help.isEmpty })
     }
 
     func testTheRailKeepsTheReasonTheOldButtonGave() {

@@ -8,6 +8,8 @@ public enum FormLayout {
     public static let trailingSlot = 40.0
     public static let labelGap = 8.0
     public static let fieldHeight = 28.0
+    /// Inner vertical padding of a field that can take several lines (the Brief's Message): the text keeps off its top and bottom border.
+    public static let multilinePadding = 6.0
     public static let fieldRadius = DesignTokens.graphite.radii.small
     public static let rhythm = 12.0
     public static let minFieldWidth = 96.0
@@ -104,6 +106,6 @@ public struct TabBarModel<Tab: Hashable & Sendable>: Sendable {
 /// The widths of the right panels (DS3): wider by default, resizable between a least and a most. The stored width is clamped for drawing and never overwritten.
 public enum PaneWidth {
     public static let inspectorMax = 720.0, settingsMax = 900.0
-    public static func maximum(_ r: RightPanel?) -> Double { switch r { case nil: return 0; case .look?, .project?: return settingsMax; default: return inspectorMax } }
+    public static func maximum(_ r: RightPanel?) -> Double { switch r { case nil: return 0; case .project?: return settingsMax; default: return inspectorMax } }
     public static func clamp(_ stored: Double, for r: RightPanel?) -> Double { r == nil ? 0 : max(ShellLayout.rightMin(r), min(stored, maximum(r))) }
 }

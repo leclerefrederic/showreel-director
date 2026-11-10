@@ -30,9 +30,9 @@ final class MemoryTests: XCTestCase {
             .addScene(id: "", SceneEdit(duration: "2", text: "Four")), .sceneEnabled(id: "S02", enabled: false, montage: nil), .moveScene(id: "S03", after: "start", montage: nil),
             .sceneLook(id: "S01", [DecisionChange(.background, Look.backgroundIDs()[0])]), .content(scene: "S01", .add(ContentEdit(type: "text", text: "More"), after: nil)),
             .content(scene: "S01", .update(item: "c1", ContentEdit(text: "Changed"))), .content(scene: "S01", .move(item: "c2", after: "start")), .content(scene: "S01", .remove(item: "c2")),
-            .resize(scene: "S01", duration: 5, ripple: true), .moveCut(before: "S03", after: "S01", at: 2),
+            .resize(scene: "S01", duration: 5), .moveCut(before: "S03", after: "S01", at: 2),
             .transition(from: "S03", TransitionEdit(type: Look.transitions().first { !Look.isPreviewOnly($0.name) }!.name)), .track(asset: "audio-01"),
-            .grid(bpm: 120, firstBeat: 0.25), .gridSettings(snap: "bar", ripple: false), .moveAsset(id: "audio-01", after: "start")]
+            .grid(bpm: 120, firstBeat: 0.25), .gridSettings(snap: "bar"), .moveAsset(id: "audio-01", after: "start")]
         var kinds = Set<String>()
         for op in ops {
             let n = lines.count
@@ -435,7 +435,7 @@ final class MemoryTests: XCTestCase {
         let v = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/ShowreelStudio")
         func src(_ n: String) throws -> String { try String(contentsOf: v.appendingPathComponent(n), encoding: .utf8) }
         let pm = try src("ProjectModel.swift")
-        XCTAssertTrue(pm.contains("case project, look\n"), "the project settings keep Project and Look only: the history belongs to Clap")
+        XCTAssertTrue(pm.contains("typealias SettingsTab = ProjectTab") && ProjectTab.allCases.map { $0.rawValue } == ["brief", "format", "look"], "the project settings have Brief, Format and Look only: the history belongs to Clap")
         XCTAssertFalse(pm.contains("case project, look, history"))
         XCTAssertTrue(pm.contains("case conversation = \"Conversation\", memory = \"Memory\", sessions = \"Sessions\", journal = \"Journal\""), "the Ask Clap selector")
         XCTAssertTrue(pm.contains("self == .copilot ? ClapMark.title"), "the tab is titled Ask Clap")

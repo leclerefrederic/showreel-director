@@ -43,17 +43,20 @@ struct ProjectSettingsPanel: View {
                 Button { project.closeRight() } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).help("Close")
             }
             .padding(.horizontal, 14).padding(.top, 12)
-            TabBar(tabs: SettingsTab.allCases, selection: $project.settingsTab, title: { $0.title }).padding(.top, 10)
             if project.showreel == nil {
                 Text("This project has no data yet. Confirm the import or create it with the banner above.").foregroundStyle(.secondary).padding(16)
                 Spacer()
             } else {
+                // the name and the base configuration identify the project: they stay above the tabs, on every tab (PT1)
+                ProjectForm(part: .header).readOnlyWhenBlocked(.setting("parameter")).padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 4)
+                TabBar(tabs: SettingsTab.allCases, selection: $project.settingsTab, title: { $0.title }).padding(.top, 6)
                 ScrollView {
                     // one stack: a ScrollView whose content holds several views without one overlays them (the footer used to land on the form)
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(alignment: .leading, spacing: 14) {
                             switch project.settingsTab {
-                            case .project: ProjectSettingsForm().readOnlyWhenBlocked(.setting("parameter"))
+                            case .brief: ProjectForm(part: .brief).readOnlyWhenBlocked(.setting("parameter"))
+                            case .format: ProjectForm(part: .format).readOnlyWhenBlocked(.setting("parameter"))
                             case .look: GlobalLookSettings().readOnlyWhenBlocked(.setting("look"))
                             }
                         }
@@ -66,14 +69,6 @@ struct ProjectSettingsPanel: View {
         }
         .panelBackground()
         .onExitCommand { project.closeRight() }
-    }
-}
-
-struct ProjectSettingsForm: View {
-    @EnvironmentObject var project: ProjectModel
-
-    var body: some View {
-        ProjectForm()
     }
 }
 

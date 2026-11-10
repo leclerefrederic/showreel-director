@@ -52,7 +52,7 @@ extension ProjectStore {
 
     // MARK: durations
 
-    func planResize(_ id: String, _ duration: Double, ripple: Bool) throws -> (card: OperationCard, run: () throws -> Void) {
+    func planResize(_ id: String, _ duration: Double) throws -> (card: OperationCard, run: () throws -> Void) {
         let f = try needFile()
         var g = f
         let tl = f.timeline()
@@ -64,10 +64,6 @@ extension ProjectStore {
         g.scenes[si].duration = d
         var lines = [Change("\(id) duration", old.map { ProjectDocs.seconds($0) + " s" } ?? "(none)", ProjectDocs.seconds(d) + " s")]
         lines += ContentTiming.follow(&g.scenes[si], from: f.scenes[si].duration, to: d)          // an item timed past the new end is pulled back to it
-        if !ripple, i + 1 < tl.count, let k = g.storyboards[0].items.firstIndex(where: { $0.scene == tl[i + 1].scene.id }), let at = tl[i + 1].start {
-            g.storyboards[0].items[k].start = at
-            lines.append(Change("\(tl[i + 1].scene.id) start", "follows \(id)", "stays at \(ProjectDocs.seconds(at)) s"))
-        }
         if g.scenes[si].state == .validated { g.scenes[si].status = SceneState.wip.rawValue; lines.append(Change("State", SceneState.validated.title, SceneState.wip.title)) }
         return try finish(title: "Set the duration of \(id)", changes: lines, from: f, to: g)
     }
@@ -174,7 +170,7 @@ extension ProjectStore {
         return try finish(title: "Correct the music grid", changes: lines, from: f, to: g)
     }
 
-    func planGridSettings(snap: String?, ripple: Bool?) throws -> (card: OperationCard, run: () throws -> Void) {
+    func planGridSettings(snap: String?) throws -> (card: OperationCard, run: () throws -> Void) {
         let f = try needFile()
         var g = f
         guard !g.storyboards.isEmpty else { throw AgentError.msg("no storyboard") }
@@ -183,7 +179,6 @@ extension ProjectStore {
             guard let lv = SnapLevel(rawValue: s) else { throw AgentError.msg("snap is beat, bar, section, drop or off") }
             if lv != f.snapLevel() { lines.append(Change("Snap to", f.snapLevel().title, lv.title)); g.storyboards[0].snap = lv.rawValue }
         }
-        if let r = ripple, r != f.ripple() { lines.append(Change("Ripple", f.ripple() ? "on" : "off", r ? "on" : "off")); g.storyboards[0].ripple = r }
         guard !lines.isEmpty else { throw AgentError.msg("no change") }
         return try finish(title: "Set the reel's grid", changes: lines, from: f, to: g)
     }

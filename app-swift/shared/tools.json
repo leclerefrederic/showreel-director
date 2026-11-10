@@ -959,7 +959,7 @@
   },
   {
     "name": "set_scene_duration",
-    "description": "Set a scene's own length in seconds (the right edge of its frame in the storyboard). With ripple (the default) the following scenes shift; with ripple false the next scene stays where it is. The user sees a plain card and accepts or refuses; after the Go it takes the Go back (the card says so).",
+    "description": "Set a scene's own length in seconds (the right edge of its frame in the storyboard). The following scenes shift with it: scenes never overlap and leave no gap. The user sees a plain card and accepts or refuses; after the Go it takes the Go back (the card says so).",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -970,9 +970,6 @@
         "duration": {
           "type": "number",
           "description": "seconds, at least 0.1"
-        },
-        "ripple": {
-          "type": "boolean"
         },
         "reason": {
           "type": "string",

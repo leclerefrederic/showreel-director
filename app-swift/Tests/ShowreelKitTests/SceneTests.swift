@@ -126,10 +126,10 @@ final class SceneTests: XCTestCase {
 
     func testTheGoIsNeverDeduced() throws {
         try readyToGo()
-        XCTAssertEqual(gate("review"), nil, "every scene is OK and the storyboard is validated, and still no Go")
+        XCTAssertEqual(gate("review"), nil, "nothing writes the Go until a Build starts")
         XCTAssertNil(store.goBlocking())
-        XCTAssertFalse(BuildRunner.canBuild(store), "the build does not start without the Go")
-        XCTAssertEqual(BuildRunner.readiness(store).first { $0.id == "build.go" }?.level, .pending)
+        XCTAssertTrue(BuildRunner.canBuild(store), "the Go is implicit: every visible scene is Ready")
+        XCTAssertEqual(BuildRunner.readiness(store).first { $0.id == "build.go" }?.level, .ok)
         try store.apply(.gate("review", passed: true))
         XCTAssertEqual(gate("review"), "passed")
         XCTAssertTrue(BuildRunner.canBuild(store))
@@ -145,8 +145,8 @@ final class SceneTests: XCTestCase {
         let card = try store.plan(.scene(id: "S01", SceneEdit(text: "a new line")))
         XCTAssertTrue(card.changes.contains(Change("Go", "given", "to be given again")))
         try store.apply(.scene(id: "S01", SceneEdit(text: "a new line")))
-        XCTAssertEqual(gate("review"), "open", "a fresh Go is needed")
-        XCTAssertFalse(BuildRunner.canBuild(store))
+        XCTAssertEqual(gate("review"), "open", "a fresh Go is recorded by the next Build")
+        XCTAssertEqual(BuildRunner.canBuild(store), store.goBlocking() == nil, "the Build rule is the scenes' state, not the stored Go")
         // so does ditching, adding and moving the timing
         try store.apply(.scene(id: "S01", SceneEdit(status: "ok")))
         try store.apply(.gate("review", passed: true))
@@ -292,7 +292,7 @@ final class SceneToolTests: XCTestCase {
         for b in ["library", "viewer", "inspector", "storyboard", "build"] { let r = await run("open_block", ["block": b]); XCTAssertTrue(r.hasPrefix("opened"), r) }
         let state = await run("get_state", [:])
         let o = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(state.utf8)) as? [String: Any])
-        XCTAssertTrue((o["go"] as? String ?? "").hasPrefix("not given"))
+        XCTAssertTrue((o["go"] as? String ?? "").hasPrefix("implicit"))
         XCTAssertEqual(o["versions"] as? [String], [])
     }
 

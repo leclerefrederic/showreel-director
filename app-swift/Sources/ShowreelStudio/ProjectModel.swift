@@ -90,12 +90,8 @@ struct PendingLookChange: Identifiable {
     let card: OperationCard
 }
 
-/// The two parts of the project settings panel (the history belongs to Clap: see `ClapSection`).
-enum SettingsTab: String, CaseIterable, Identifiable {
-    case project, look
-    var id: String { rawValue }
-    var title: String { rawValue.capitalized }
-}
+/// The tabs of the project settings panel (the history belongs to Clap: see `ClapSection`): ShowreelKit's `ProjectTab`.
+typealias SettingsTab = ProjectTab
 
 enum InspectorTab: String, CaseIterable, Identifiable {
     case inspector, copilot, files
@@ -141,6 +137,8 @@ final class ProjectModel: ObservableObject {
     @Published var playhead = 0.0
     /// Whether the music's grid is drawn over the frames (remembered per project in .studio/ui.json).
     @Published private(set) var gridVisible = true
+    /// Which marks of the music the strip shows (MT1); what scenes snap to follows it.
+    @Published private(set) var musicBar = MusicToolbarState()
     /// While an edge or a cut is dragged: where it will land and what to call that place ("Bar 5, beat 1, 0:12.4").
     struct SnapGuide: Equatable { let time: Double; let text: String }
     @Published var snapGuide: SnapGuide?
@@ -169,7 +167,7 @@ final class ProjectModel: ObservableObject {
     @Published private(set) var assetStatus: [String: NodeStatus] = [:]
     /// The project settings panel (project parameters and global look) and the floating Catalogue palette, both opened from the top bar.
     @Published var showProjectSettings = false { didSet { persistShell() } }
-    @Published var settingsTab: SettingsTab = .project { didSet { persistShell() } }
+    @Published var settingsTab: SettingsTab = .brief { didSet { persistShell() } }
     /// The look editor open in the project settings (nil: the list of the six).
     @Published var lookSection: LookSection?
     @Published var showCatalogue = false
@@ -275,6 +273,7 @@ final class ProjectModel: ObservableObject {
         workspaceOpen = !s.setupRequired
         foldMemory = s.collapsed
         gridVisible = s.gridVisible ?? true
+        musicBar = s.musicToolbar ?? MusicToolbarState(migrating: store.loadShowreel()?.snapLevel() ?? .beat)
         showCopilot = !s.setupRequired || s.mode == StudioSettings.wizard
         filmPlacement = s.filmPlacement.flatMap { FilmPlacement(rawValue: $0) } ?? .underPreview
         decided = s.decided
@@ -285,8 +284,10 @@ final class ProjectModel: ObservableObject {
         Versions.pruneHusks(store, keep: BuildJob.pending(store))          // the empty folders of Builds that stopped before their first file
         store.activity.observer = { [weak self] s in DispatchQueue.main.async { self?.activity = s } }
         restoringShell = true
+        settingsTab = ProjectTab.stored(s.settingsTab)          // an older "project" tab is the Brief
         if let r = s.rightPanel, !s.setupRequired {          // the right panel that was open (a project with no choice opens with the Inspector)
             if r == "none" { rightClosed = true }
+            else if r == "look" { settingsTab = .look; restoreRight(.project) }          // an older project stored the Look panel: it is the Project panel on its Look tab
             else if let p = RightPanel(rawValue: r) { restoreRight(p) }
         }
         restoringShell = false
@@ -306,15 +307,14 @@ final class ProjectModel: ObservableObject {
     /// The panel the right side shows, or nil when it is closed.
     var rightPanel: RightPanel? { rightSide.panel }
     /// The right side as the stored flags say it (ShowreelKit's rule decides which panel they show and how a panel is written back).
-    private var rightSide: RightSide { RightSide(closed: rightClosed, clap: inspectorTab == .copilot, settings: showProjectSettings ? (settingsTab == .look ? .look : .project) : nil) }
+    private var rightSide: RightSide { RightSide(closed: rightClosed, clap: inspectorTab == .copilot, settings: showProjectSettings) }
     var railState: RailState { RailState(build: centerMode == .build, checks: centerMode == .checks, right: rightPanel, inspectorMark: inspectorMark) }
 
     private func restoreRight(_ p: RightPanel) {
         switch p {
         case .inspector: break
         case .clap: inspectorTab = .copilot
-        case .look: settingsTab = .look; showProjectSettings = true
-        case .project: settingsTab = .project; showProjectSettings = true
+        case .project: showProjectSettings = true
         }
     }
 
@@ -329,10 +329,10 @@ final class ProjectModel: ObservableObject {
     func setRight(_ p: RightPanel?) {
         var r = rightSide; r.show(p)
         guard r != rightSide else { return }
-        if let s = r.settings { settingsTab = s == .look ? .look : .project }
         if r.clap { inspectorTab = .copilot } else if inspectorTab == .copilot { inspectorTab = .inspector }          // first: its observer may close the settings, the writes below settle the rest
         rightClosed = r.closed
-        showProjectSettings = r.settings != nil
+        if r.settings, !showProjectSettings, !restoringShell { settingsTab = ProjectTab.opening(showreel, last: settingsTab) }          // opened from the rail: the first tab with something unset, else the last used
+        showProjectSettings = r.settings
     }
 
     /// A click on the rail. Film and Build never touch the right side, a right panel never touches the centre (the design board shows in the centre while the Look panel is open:
@@ -365,7 +365,8 @@ final class ProjectModel: ObservableObject {
         guard !restoringShell else { return }
         let want = rightPanel?.rawValue ?? "none"
         var s = store.settings
-        if (s.rightPanel ?? "inspector") != want { s.rightPanel = want == "inspector" ? nil : want; store.settings = s }
+        let tab = settingsTab.storedValue
+        if (s.rightPanel ?? "inspector") != want || s.settingsTab != tab { s.rightPanel = want == "inspector" ? nil : want; s.settingsTab = tab; store.settings = s }
     }
 
     /// The divider of the left panel moved (the Storyboard's share of its height), or the Resources were collapsed, expanded or restored: remembered for this project.
@@ -486,11 +487,11 @@ final class ProjectModel: ObservableObject {
         store.activity.update { $0.build?.phase = .cancelling }
     }
 
-    /// The Go is given and nothing is running: the card says what will be asked (the calls, a rough cost), and only a yes starts the Build. A Build that stopped is offered to
+    /// Every visible scene is Ready and nothing is running: the card says what will be asked (the calls, a rough cost), and only a yes starts the Build. A Build that stopped is offered to
     /// continue. Needs a key (this is the one step that does).
     func startBuild(with chat: ChatModel) {
         activeAutosave?.flush()
-        guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it from the toolbar once every scene is OK."; return }
+        guard BuildRunner.canBuild(store) else { error = "The build never starts until every visible scene is Ready: " + (store.goBlocking() ?? "no scene is on") + "."; return }
         guard !buildBusy else { return }
         self.chat = chat
         Versions.pruneHusks(store, keep: BuildJob.pending(store))          // a Build that stopped before its first file leaves nothing behind
@@ -544,6 +545,7 @@ final class ProjectModel: ObservableObject {
 
     private func runBuild(_ v: String, skip: Set<String>, options: BuildJob.Options?, by: String = "button") {
         guard let skill = Skill.root(), let key = AppSettings.shared.apiKey() else { error = "Connect an AI first (Settings, Command-,)."; return }
+        if store.loadShowreel()?.gates["review"] != "passed", !perform(.gate("review", passed: true)) { return }          // starting the Build is the Go (SM1): recorded in the file as the old button did
         do { try Film.write(version: v, store: store) } catch { self.error = "Could not write \(v)/film.json: \(error.localizedDescription)"; return }   // the exact montage, for the build to read
         let s = AppSettings.shared
         let transport = AnthropicTransport(apiKey: key, model: s.modelName, baseURL: s.baseURL, bearer: s.bearer)
@@ -666,16 +668,16 @@ final class ProjectModel: ObservableObject {
 
     /// Where a time lands on the grid at the level the user chose; the modifier key (`bypass`) leaves it alone.
     func snapped(_ t: Double, bypass: Bool) -> Double {
-        guard !bypass, let m = music, let f = showreel else { return t }
-        return m.snap(t, level: f.snapLevel())
+        guard !bypass, let m = music else { return t }
+        return m.snap(t, level: snapLevel)
     }
 
-    /// The right edge of a frame was dragged to `t`: the scene's own duration changes (and the following scenes follow, with ripple).
+    /// The right edge of a frame was dragged to `t`: the scene's own duration changes (and the following scenes follow).
     func stretch(scene id: String, toEnd t: Double, bypass: Bool) {
         guard let f = showreel, let item = f.timeline().first(where: { $0.scene.id == id }), let start = item.start else { return }
         let d = ((snapped(t, bypass: bypass) - start) * 1000).rounded() / 1000
         if abs(d - (item.length ?? -1)) < 0.001 { return }
-        perform(.resize(scene: id, duration: max(d, 0.1), ripple: f.ripple()))
+        perform(.resize(scene: id, duration: max(d, 0.1)))
     }
 
     /// The left edge of a frame was dragged to `t`: the cut between it and the scene before moves.
@@ -718,11 +720,19 @@ final class ProjectModel: ObservableObject {
     /// An edge or a cut is being dragged to `t`: the line where it would land and its words.
     func updateSnapGuide(_ t: Double, bypass: Bool) {
         let s = snapped(t, bypass: bypass)
-        let level = showreel?.snapLevel() ?? .beat
+        let level = snapLevel
         snapGuide = SnapGuide(time: s, text: MusicGrid.snapText(s, music: bypass ? nil : music, level: level))
     }
 
-    func setGridSettings(snap: SnapLevel? = nil, ripple: Bool? = nil) { perform(.gridSettings(snap: snap?.rawValue, ripple: ripple)) }
+    /// What scenes snap to: the finest kind of mark the music toolbar shows (MT1).
+    var snapLevel: SnapLevel { MusicToolbar.snapLevel(musicBar, music: music) }
+    func toggleMusicMark(_ b: MusicToolbarButton) {
+        musicBar = musicBar.toggled(b)
+        var s = store.settings; s.musicToolbar = musicBar; store.settings = s
+    }
+    var musicToolbarContext: MusicToolbarContext {
+        MusicToolbarContext(hasTrack: showreel?.decisions.track?.file?.isEmpty == false, music: music, building: activity.build != nil || assembling, analysing: analysing)
+    }
 
     // MARK: the music
 
@@ -931,10 +941,12 @@ final class ProjectModel: ObservableObject {
     /// A click that means "look at this scene", wherever it is made (the list, the strip, a chip, a check): select it, show the film, put the playhead at its start when it is in the film
     /// (`TimelineNav.focus`) and let the strip follow. The film keeps playing if it was.
     func focusScene(_ id: String) {
-        select(.scene(id))
-        guard let f = showreel, let start = TimelineNav.focus(id, in: f) else { return }
-        playhead = start
-        setViewport(TimelineScale.follow(timeline, playhead: start, duration: timelineLength, viewport: viewportWidth), scroll: true)
+        DebugProbe.interval("focusScene") {
+            select(.scene(id))
+            guard let f = showreel, let start = TimelineNav.focus(id, in: f) else { return }
+            playhead = start
+            setViewport(TimelineScale.follow(timeline, playhead: start, duration: timelineLength, viewport: viewportWidth), scroll: true)
+        }
     }
 
     func stepScene(by delta: Int) {
@@ -1038,7 +1050,7 @@ final class ProjectModel: ObservableObject {
     func open(_ target: CheckTarget) {
         if centerMode == .checks { centerMode = .viewer }          // a click on a check leaves the list for what it is about
         switch target {
-        case .project: openSettings(.project)
+        case .project: openSettings(ProjectTab.opening(showreel, last: .format))          // the checks of the project are about its format, duration and languages
         case .look(let s): openSettings(.look, look: s)
         case .resource(let id): if layout.resourcesState == .collapsed { setResources(.open) }; select(.asset(id))
         case .resources: if layout.resourcesState == .collapsed { setResources(.open) }
@@ -1149,7 +1161,7 @@ final class ProjectModel: ObservableObject {
     }
 
     /// Opens the project settings on a part of the global look.
-    func openSettings(_ tab: SettingsTab = .project, look: LookSection? = nil) {
+    func openSettings(_ tab: SettingsTab = .brief, look: LookSection? = nil) {
         settingsTab = tab
         if let l = look { lookSection = l }
         rightClosed = false
@@ -1306,7 +1318,7 @@ final class ProjectModel: ObservableObject {
         switch id {
         case "library": break
         case "viewer": centerMode = .viewer
-        case "inspector": selection = .none; openSettings(.project)
+        case "inspector": selection = .none; openSettings(ProjectTab.opening(showreel, last: settingsTab))
         case "storyboard": centerMode = .viewer
         case "build": centerMode = .build
         default: break
