@@ -8,3 +8,4 @@ app/resources/
 app/dist/
 .build/
 app-swift/build/
+docs/.obsidian/
