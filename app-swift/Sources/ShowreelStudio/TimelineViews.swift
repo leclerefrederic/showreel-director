@@ -484,7 +484,7 @@ struct FrameView: View {
             Divider()
             Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(scene.id) }
         }
-        .help(scene.label)
+        .help(scene.label + ". " + SceneFrameImage.describe(scene, project.sceneThumbs[scene.id] ?? .placeholder(reason: "The picture of this scene is being prepared.")))          // the picture layer does not take the pointer: the frame says what its picture is
     }
 
     /// One picture per frame: the PNG captured from the real scene (W4b), or its placeholder. It is clipped to its own rectangle: inside the frame, between the bands when there are any.

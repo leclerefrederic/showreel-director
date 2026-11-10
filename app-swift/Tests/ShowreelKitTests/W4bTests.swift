@@ -124,6 +124,30 @@ final class W4bTests: XCTestCase {
         XCTAssertTrue(SceneThumbs.refreshAvailability(.failed(reason: "r"), activity: .init()).isAvailable)
     }
 
+    /// W4c: captures made by 0.21.0 were blank (the hidden window did not paint) but recorded as fresh. They carry no capture format, so they must be taken again.
+    func testACaptureOfAnOlderFormatIsNotTrustedAndIsTakenAgain() throws {
+        try built()
+        let j = try job("S01")
+        let u = try SceneThumbs.record(j, png: png(), store: store)
+        XCTAssertEqual(SceneThumbs.state(of: file.scenes[0], in: file, version: v, store: store), .fresh(u))
+        var book = SceneThumbs.loadBook(store); book.entries["S01"]?.format = nil; try SceneThumbs.saveBook(book, store)
+        guard case .placeholder = SceneThumbs.state(of: file.scenes[0], in: file, version: v, store: store) else { return XCTFail("an old blank picture must not show as fresh") }
+        XCTAssertTrue(SceneThumbs.capturable(in: file, version: v, store: store).contains("S01"))
+        XCTAssertEqual(SceneThumbs.capturable(in: file, version: v, store: store).count, 3)
+    }
+
+    func testTheTimecodeIsTheOneTheFilmPageWrites() {
+        XCTAssertEqual(SceneThumbs.timecode(0), "0:00"); XCTAssertEqual(SceneThumbs.timecode(4.5), "0:04"); XCTAssertEqual(SceneThumbs.timecode(75.9), "1:15")
+        XCTAssertEqual(SceneThumbs.timecode(-3), "0:00")
+    }
+
+    func testAFrameIsNeverEmpty() {
+        for (w, h) in [(1.0, 1.0), (5.0, 3.0), (20.0, 20.0)] {
+            let e = FrameLayout.elements(width: w, height: h, hasName: false)
+            XCTAssertGreaterThanOrEqual(e.thumb.height, 1); XCTAssertGreaterThan(e.thumb.width, 0); XCTAssertGreaterThan(e.thumbWidth, 0)
+        }
+    }
+
     func testTheViewsDrawTheStateAndNeverDecideIt() throws {
         let src = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/ShowreelStudio")
         let v = try String(contentsOf: src.appendingPathComponent("SceneFrameViews.swift"), encoding: .utf8)

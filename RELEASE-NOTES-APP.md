@@ -2,6 +2,19 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.21.1 - 2026-11-10
+
+**Fixed**
+- **Blank thumbnails in the Storyboard strip.** On a project that already had a built film, every frame showed a dark picture: the hidden window that takes the pictures was off screen, and in such a window the film never draws. It now sits (almost transparent, deaf to the mouse) in the corner of the screen, and a picture is taken only once the film's own clock shows the moment asked for. If the film does not draw, the frame says so with the reason instead of showing a dark picture.
+- The pictures taken by 0.21.0 are not trusted: they are taken again by themselves a moment after the project opens (or with Refresh thumbnail).
+- Hovering a frame now says what its picture is (captured from the built film, out of date and why, or why there is none).
+
+**What you need to do**
+- Nothing. Open a project that has a built film and wait a few seconds.
+
+**Compatibility**
+- Projects open unchanged. The skill is unchanged.
+
 ## 0.21.0 - 2026-11-10
 
 **What's new**

@@ -77,6 +77,8 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | R1 | 2026-11-10 | current |  |  |  |  | [[phases/early/Resources grouped by type and state\|summary]] |
 | RB1 | 2026-11-10 | current | 0.19.2 |  | [[phases/RB1/prompt\|prompt]] | [[phases/RB1/report\|report]] |  |
 | RF0 | 2026-11-10 | current | 0.21.0 | 0.18.2 | [[phases/RF0/prompt\|prompt]] | [[phases/RF0/report\|report]] |  |
+| RF1 | 2026-11-10 | current |  |  | [[phases/RF1/prompt\|prompt]] |  |  |
+| RF2 | 2026-11-10 | current |  |  | [[phases/RF2/prompt\|prompt]] |  |  |
 | S | 2026-11-10 | current |  |  |  |  | [[phases/early/Storyboard strip as an editing timeline\|summary]] |
 | T | 2026-11-10 | current |  |  |  |  | [[phases/early/Library, project model, wizard and first storyboard\|summary]] |
 | T2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Music grid on the strip\|summary]] |
@@ -89,7 +91,7 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | W3b | 2026-11-10 | current |  |  |  |  | [[phases/early/Viewer and film integration of the compositor\|summary]] |
 | W4 | 2026-11-10 | current | 0.20.0 | 0.18.2 | [[phases/W4/prompt\|prompt]] | [[phases/W4/report\|report]] |  |
 | W4b | 2026-11-10 | current | 0.21.0 | 0.18.2 | [[phases/W4b/prompt\|prompt]] | [[phases/W4b/report\|report]] |  |
-| W4c | 2026-11-10 | current |  |  | [[phases/W4c/prompt\|prompt]] |  |  |
+| W4c | 2026-11-10 | current | 0.21.1 | 0.18.2 | [[phases/W4c/prompt\|prompt]] | [[phases/W4c/report\|report]] |  |
 | W5 | 2026-11-10 | current |  |  |  |  | [[phases/early/Direct manipulation with one drag and drop system\|summary]] |
 | X | 2026-11-10 | current |  |  |  |  | [[phases/early/Verification tools with one command and two modes\|summary]] |
 <!-- /generated:phases -->

@@ -1,7 +1,6 @@
 {
   "0": "Vendored three.js bundle",
   "4": "Proposals and catalogue choices",
-  "6": "Film build and playback",
   "7": "Agent UI and blocks",
   "15": "Project library rules",
   "16": "Form system (DS3)",
@@ -10,7 +9,6 @@
   "22": "Music analysis",
   "23": "Python scripts and imports",
   "26": "Minified bundle code (B)",
-  "32": "Assets and resources",
   "34": "Revision, backups and format",
   "36": "Versions and film assembly"
 }

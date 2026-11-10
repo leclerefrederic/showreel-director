@@ -19,13 +19,15 @@ final class SceneCapture: NSObject, WKNavigationDelegate {
         let css = "var s=document.createElement('style');s.textContent='#bar,#ov{display:none!important}';document.head.appendChild(s);"
         c.userContentController.addUserScript(WKUserScript(source: css, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         web = WKWebView(frame: CGRect(origin: .zero, size: Self.size), configuration: c)
-        // a web view only draws inside a window: this one is the size of the picture, nearly transparent, behind everything, and out of the Window menu and of the cycle
-        host = NSWindow(contentRect: CGRect(origin: CGPoint(x: -4000, y: -4000), size: Self.size), styleMask: .borderless, backing: .buffered, defer: false)
+        // a web view only draws inside a window that is on a screen and ordered in (W4c: off screen or ordered back, the page's clock never runs and every picture is blank): this one is
+        // the size of the picture, nearly transparent, in the screen's lower left corner, deaf to the mouse, and out of the Window menu and of the cycle
+        let corner = NSScreen.main?.visibleFrame.origin ?? .zero
+        host = NSWindow(contentRect: CGRect(origin: corner, size: Self.size), styleMask: .borderless, backing: .buffered, defer: false)
         super.init()
         web.navigationDelegate = self
         host.contentView = web; host.alphaValue = 0.01; host.ignoresMouseEvents = true; host.isReleasedWhenClosed = false
         host.isExcludedFromWindowsMenu = true; host.collectionBehavior = [.transient, .ignoresCycle, .stationary]; host.level = .normal
-        host.orderBack(nil)
+        host.orderFrontRegardless()
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { finishLoading(true) }
@@ -52,7 +54,15 @@ final class SceneCapture: NSObject, WKNavigationDelegate {
         guard await load(page) else { return .failure(CaptureError("The film page did not load.")) }
         let js = "(function(){var s=document.getElementById('seek');if(!s)return false;s.value=Math.round(\(job.time) * 10);s.dispatchEvent(new Event('input'));return true;})()"
         guard let ok = try? await web.evaluateJavaScript(js) as? Bool, ok else { return .failure(CaptureError("The film page has no seek control.")) }
-        try? await Task.sleep(nanoseconds: 350_000_000)          // let the scene draw its frame
+        // the page draws on its own clock: wait until that clock shows the instant, so that what is snapshotted is the scene and not the page before its first frame
+        let want = SceneThumbs.timecode(job.time)
+        var drew = false
+        for _ in 0..<30 {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            if let tm = try? await web.evaluateJavaScript("document.getElementById('tm') ? document.getElementById('tm').textContent : ''") as? String, tm.hasPrefix(want) { drew = true; break }
+        }
+        guard drew else { return .failure(CaptureError("The film page did not draw the scene (its clock never reached \(want)).")) }
+        try? await Task.sleep(nanoseconds: 150_000_000)          // one more frame after the clock moved
         let cfg = WKSnapshotConfiguration(); cfg.rect = CGRect(origin: .zero, size: Self.size); cfg.snapshotWidth = NSNumber(value: Double(Self.size.width))
         let image: NSImage? = await withCheckedContinuation { c in web.takeSnapshot(with: cfg) { img, _ in c.resume(returning: img) } }
         guard let img = image, let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let png = rep.representation(using: .png, properties: [:]) else {

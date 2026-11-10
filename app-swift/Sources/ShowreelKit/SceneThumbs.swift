@@ -7,6 +7,11 @@ public enum SceneThumbs {
     public static let folder = ".studio/scene-thumbs"
     /// Seconds of quiet after a change before a capture starts: edits are coalesced.
     public static let quietDelay = 1.5
+    /// 1: app 0.21.0, whose hidden window did not paint (blank pictures recorded as fresh). 2: the film page was checked to have drawn the instant before the snapshot.
+    public static let captureFormat = 2
+
+    /// The time as the film page writes it in its clock (`#tm`): minutes, then seconds on two digits. The capture waits for it before it snapshots.
+    public static func timecode(_ t: Double) -> String { let s = Int(max(0, t).rounded(.down)); return "\(s / 60):" + String(format: "%02d", s % 60) }
 
     /// What a capture records: which scene file it shows (its hash) and what that file was generated from, so that the state is derived and never guessed.
     public struct Entry: Codable, Equatable, Sendable {
@@ -15,6 +20,8 @@ public enum SceneThumbs {
         public var inputs: String
         public var instant: Double
         public var version: String
+        /// The capture format that made it (`SceneThumbs.captureFormat`); a picture of an older format is not trusted and is taken again.
+        public var format: Int? = nil
     }
     public struct Failure: Codable, Equatable, Sendable { public var module: String; public var reason: String }
     struct Book: Codable { var entries: [String: Entry] = [:]; var failed: [String: Failure] = [:] }
@@ -96,7 +103,7 @@ public enum SceneThumbs {
             return .placeholder(reason: "This scene is not written yet. Build the film to write it and get its picture.")
         }
         if let fail = book.failed[scene.id], fail.module == module { return .failed(reason: fail.reason) }
-        guard let e = book.entries[scene.id], let u = url(e, store), FileManager.default.fileExists(atPath: u.path) else {
+        guard let e = book.entries[scene.id], e.format == captureFormat, let u = url(e, store), FileManager.default.fileExists(atPath: u.path) else {
             return .placeholder(reason: "The picture of this scene has not been captured yet. Use Refresh thumbnail.")
         }
         if e.module != module { return .stale(u, why: "The film was built again since this picture was taken.", needsBuild: false) }
@@ -113,7 +120,7 @@ public enum SceneThumbs {
         return f.film.compactMap { s in
             guard let module = SceneModules.moduleHash(version: v, scene: s.id, store: store) else { return nil }
             if let fail = book.failed[s.id], fail.module == module { return nil }
-            guard let e = book.entries[s.id], let u = url(e, store), FileManager.default.fileExists(atPath: u.path) else { return s.id }
+            guard let e = book.entries[s.id], e.format == captureFormat, let u = url(e, store), FileManager.default.fileExists(atPath: u.path) else { return s.id }
             return e.module == module && e.instant == instant(of: s) ? nil : s.id
         }
     }
@@ -143,7 +150,7 @@ public enum SceneThumbs {
     public static func record(_ job: Job, png: Data, store: ProjectStore) throws -> URL {
         var book = loadBook(store)
         let key = SHA256.hash(data: Data([job.scene, job.module, job.inputs, String(format: "%.3f", job.instant)].joined(separator: "\u{1}").utf8)).prefix(6).map { String(format: "%02x", $0) }.joined()
-        let e = Entry(file: "\(job.scene)-\(key).png", module: job.module, inputs: job.inputs, instant: job.instant, version: job.version)
+        let e = Entry(file: "\(job.scene)-\(key).png", module: job.module, inputs: job.inputs, instant: job.instant, version: job.version, format: captureFormat)
         guard let u = url(e, store) else { throw NSError(domain: "SceneThumbs", code: 1, userInfo: [NSLocalizedDescriptionKey: "A thumbnail path must stay inside \(folder)."]) }
         try FileManager.default.createDirectory(at: dir(store), withIntermediateDirectories: true)
         try png.write(to: u, options: .atomic)
