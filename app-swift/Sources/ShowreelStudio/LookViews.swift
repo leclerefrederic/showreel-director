@@ -5,17 +5,6 @@ import SwiftUI
 
 // MARK: shared pieces
 
-extension Color {
-    init(hex: String) {
-        let c = EnginePalette.rgb(EnginePalette.isHex(hex) ? hex : "#808080")
-        self.init(.sRGB, red: c[0] / 255, green: c[1] / 255, blue: c[2] / 255, opacity: 1)
-    }
-    var hexString: String {
-        let n = NSColor(self).usingColorSpace(.sRGB) ?? .gray
-        return String(format: "#%02X%02X%02X", Int((n.redComponent * 255).rounded()), Int((n.greenComponent * 255).rounded()), Int((n.blueComponent * 255).rounded()))
-    }
-}
-
 /// A thumbnail that plays the frames the engine drew.
 struct AnimatedThumb: View {
     let frames: [NSImage]
@@ -75,10 +64,11 @@ final class FontRegistry {
 
 /// What a font's licence means for the film, as a coloured line.
 struct LicenceBadge: View {
+    @EnvironmentObject var theme: Theme
     let assessment: FontLicense.Assessment
     var body: some View {
         Label(assessment.message, systemImage: assessment.level == .ok ? "checkmark.seal.fill" : assessment.level == .fail ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")
-            .fontSmall().foregroundStyle(assessment.level == .ok ? Color.green : assessment.level == .fail ? .red : .orange)
+            .fontSmall().foregroundStyle(assessment.level == .ok ? theme.success : assessment.level == .fail ? theme.danger : theme.warning)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -170,6 +160,7 @@ private func chip(_ t: String) -> some View {
 
 /// The starting looks. The look the project has chosen is the card at the top; the other looks form the library below it.
 struct LookBoardView: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
     @ObservedObject private var engine = EngineService.shared
 
@@ -191,7 +182,7 @@ struct LookBoardView: View {
     @ViewBuilder private func current(_ p: LookPackage?, _ ctx: LookContext) -> some View {
         if let p = p {
             preview(p, ctx).frame(maxWidth: 440)
-            HStack { Text(p.name).font(.title3.weight(.semibold)); Label("Chosen", systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.callout) }
+            HStack { Text(p.name).font(.title3.weight(.semibold)); Label("Chosen", systemImage: "checkmark.circle.fill").foregroundStyle(theme.success).font(.callout) }
             Text(p.why).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Swatches(colours: p.palette)
             Text("\(p.fonts.titles ?? "") + \(p.fonts.text ?? "") \u{00B7} \(p.pack) \u{00B7} \(p.background)").fontSmall().foregroundStyle(.secondary)
@@ -234,8 +225,11 @@ struct LookBoardView: View {
 struct PaletteEditor: View {
     var compact = false
     @EnvironmentObject var project: ProjectModel
+    @EnvironmentObject var theme: Theme
     @State private var draft: [String] = ["#101820", "#FFFFFF", "#F2AA4C"]
     @State private var loaded: [String]?
+    @State private var commitWork: DispatchWorkItem?
+    @State private var savedMark = false
     @State private var still: NSImage?
     private static let roles = ["Background", "Text", "Accent", "Accent 2"]
 
@@ -270,7 +264,7 @@ struct PaletteEditor: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(p.name).font(.callout.weight(.semibold))
                                 Swatches(colours: p.palette)
-                                Button("Use this palette") { project.perform(.decisions([DecisionChange(.palette, p.palette.joined(separator: ", "))], title: "Use the \(p.name) palette")) }.buttonStyle(.bordered)
+                                Button("Use this palette") { project.perform(.decisions([DecisionChange(.palette, p.palette.joined(separator: ", "))], title: "Use the \(p.name) palette")) }.buttonStyle(SecondaryButtonStyle())
                             }
                         }
                     }
@@ -278,10 +272,32 @@ struct PaletteEditor: View {
             }
         }
         .onAppear { if loaded == nil { loaded = saved; if !saved.isEmpty { draft = saved } } }
+        .onChange(of: draft) { d in scheduleCommit(d) }
+        .onDisappear { commitNow() }
         .onChange(of: project.showreel?.decisions.palette) { p in if let p = p, !dirty || draft == loaded { draft = p; loaded = p } }
         .task(id: saved.joined()) {
             let ctx = LookContext(project)
             still = await EngineService.shared.still(effect: "Pop", palette: EnginePalette(stored: saved.isEmpty ? nil : saved), font: ctx.titleFont, store: project.store, t: 0.9)
+        }
+    }
+
+    /// The palette saves itself: a pause after the last change commits it (one undo step for a run of changes, ShowreelKit's rule), and leaving the editor commits what is pending.
+    private func scheduleCommit(_ d: [String]) {
+        commitWork?.cancel()
+        guard d != saved, d.count >= 2 else { return }
+        let w = DispatchWorkItem { commitNow() }
+        commitWork = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + EditSession.textPause, execute: w)
+    }
+
+    private func commitNow() {
+        commitWork?.cancel(); commitWork = nil
+        guard draft != saved, draft.count >= 2 else { return }
+        let before = project.store.undoLog.undoCount
+        if project.perform(.decisions([DecisionChange(.palette, draft.joined(separator: ", "))], title: nil)) {
+            if project.store.undoLog.undoCount != before || project.store.undoLog.canUndo { project.store.coalesceLast(key: "look.palette") }
+            savedMark = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { savedMark = false }
         }
     }
 
@@ -290,7 +306,7 @@ struct PaletteEditor: View {
         optionBox {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Edit the colours").font(.callout.weight(.semibold))
-                Text(saved.isEmpty ? "These are starting colours: nothing is saved until you press Save." : "Change a colour, then Save.").fontSmall().foregroundStyle(.secondary)
+                Text(saved.isEmpty ? "These are starting colours: nothing is saved until you change one." : "A change is saved as you make it. Undo takes it back.").fontSmall().foregroundStyle(.secondary)
                 ForEach(draft.indices, id: \.self) { i in
                     HStack {
                         Text(i < Self.roles.count ? Self.roles[i] : "Extra").frame(width: 100, alignment: .leading)
@@ -308,11 +324,8 @@ struct PaletteEditor: View {
                         }
                     }
                 }
-                HStack {
-                    Button("Save palette") { project.perform(.decisions([DecisionChange(.palette, draft.joined(separator: ", "))], title: nil)) }
-                        .buttonStyle(PrimaryButtonStyle()).disabledWithReason(draft.count < 2 ? "A palette needs at least 2 colours" : !dirty ? "No change to save" : nil)
-                    Button("Revert") { draft = saved.isEmpty ? ["#101820", "#FFFFFF", "#F2AA4C"] : saved }.disabledWithReason(dirty ? nil : "Nothing to revert: no change yet")
-                }
+                if draft.count < 2 { Text("A palette needs at least 2 colours: nothing is saved until it has them.").fontSmall().foregroundStyle(theme.danger) }
+                if savedMark { Label("Saved", systemImage: "checkmark").fontSmall().foregroundStyle(theme.success).transition(.opacity) }
             }
         }
     }
@@ -340,7 +353,7 @@ struct FontPickerView: View {
         } options: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    TextField("Search", text: $search).textFieldStyle(.roundedBorder).frame(maxWidth: 220)
+                    TextField("Search", text: $search).textFieldStyle(ThemedTextFieldStyle()).frame(maxWidth: 220)
                     Picker("", selection: $cat) { ForEach(["All"] + Array(Set(fonts.map { $0.cat })).sorted(), id: \.self) { Text($0).tag($0) } }.labelsHidden().frame(maxWidth: 160)
                 }
                 let others = mine.filter { a in !names.contains(FontRegistry.shared.register(fontURL(a)) ?? (a.name as NSString).deletingPathExtension) }
@@ -376,7 +389,7 @@ struct FontPickerView: View {
                 Button(roles.count == 1 ? "Use this font" : (role == .titleFont ? "Use for titles" : "Use for text")) {
                     project.perform(.decisions([DecisionChange(role, name)], title: nil))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(SecondaryButtonStyle())
             }
         }
     }
@@ -449,7 +462,7 @@ struct BackgroundPickerView: View {
                                 Text(b.desc).fontSmall().foregroundStyle(.secondary).lineLimit(2)
                                 Button("Use this background") {
                                     project.perform(.decisions([DecisionChange(.background, b.id), DecisionChange(.backgroundMood, mood)], title: "Set background: \(b.name)"))
-                                }.buttonStyle(.bordered)
+                                }.buttonStyle(SecondaryButtonStyle())
                             }
                         }
                     }
@@ -464,6 +477,7 @@ struct BackgroundPickerView: View {
 
 /// The motion moods (one or two). The chosen ones are the cards at the top; the other packs are the library. A pick is a draft until "Use these moods".
 struct MoodsPickerView: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
     @ObservedObject private var engine = EngineService.shared
     @State private var selected: [String] = []
@@ -489,9 +503,9 @@ struct MoodsPickerView: View {
                 }
                 if part.current.isEmpty { CurrentCard(label: "No mood yet") { Text("Pick one or two moods below. Each is a coherent set of motion.").font(.callout).foregroundStyle(.secondary) } }
                 HStack {
-                    Button("Use these moods") { project.perform(.decisions([DecisionChange(.moods, selected.joined(separator: ", "))], title: nil)) }
+                    Button("Use these moods") { project.perform(.decisions([DecisionChange(.moods, selected.joined(separator: ", "))], title: nil)) }.buttonStyle(SecondaryButtonStyle())
                         .buttonStyle(PrimaryButtonStyle()).disabledWithReason(selected.isEmpty ? "Choose one or two moods first" : selected == saved ? "These moods already are the ones in use" : nil)
-                    if !saved.isEmpty && selected == saved { Label("Saved", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
+                    if !saved.isEmpty && selected == saved { Label("Saved", systemImage: "checkmark.circle.fill").foregroundStyle(theme.success) }
                 }
             }
         } options: {
@@ -562,7 +576,7 @@ struct EffectsPickerView: View {
                                 HStack { Text(p.name).font(.headline); if (project.showreel?.decisions.moods ?? []).contains(p.name) { chip("your mood") } }
                                 Text(p.feel).fontSmall().foregroundStyle(.secondary)
                                 Text(p.effects.joined(separator: " \u{00B7} ")).fontSmall().foregroundStyle(.tertiary).lineLimit(2)
-                                Button("Use \(p.name) as the effects pack") { project.perform(.decisions([DecisionChange(.effectsPack, p.name)], title: nil)) }.buttonStyle(.bordered)
+                                Button("Use \(p.name) as the effects pack") { project.perform(.decisions([DecisionChange(.effectsPack, p.name)], title: nil)) }.buttonStyle(SecondaryButtonStyle())
                             }
                         }
                     }
@@ -570,7 +584,7 @@ struct EffectsPickerView: View {
                 Toggle("Browse every effect of the catalogue", isOn: $all).toggleStyle(.checkbox)
                 if all {
                     HStack {
-                        TextField("Search", text: $search).textFieldStyle(.roundedBorder).frame(maxWidth: 180)
+                        TextField("Search", text: $search).textFieldStyle(ThemedTextFieldStyle()).frame(maxWidth: 180)
                         Picker("", selection: $cat) { ForEach(["All"] + Array(Set(list.map { $0.cat })).sorted(), id: \.self) { Text($0).tag($0) } }.labelsHidden().frame(maxWidth: 160)
                     }
                     LazyVGrid(columns: optionColumns, spacing: 12) {

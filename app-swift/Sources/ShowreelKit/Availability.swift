@@ -313,6 +313,9 @@ public struct StatusLine: Equatable, Sendable {
     public let undoable: Bool
     public init(kind: Kind, text: String, targets: [ElementRef], undoable: Bool) { self.kind = kind; self.text = text; self.targets = targets; self.undoable = undoable }
 
+    /// A commit of a form field sent a validated scene back to To review: said once per editing session, with Undo.
+    public static func backToReview(_ scene: String) -> StatusLine { StatusLine(kind: .applied, text: "\(scene) is back to To review", targets: [.scene(scene)], undoable: true) }
+
     /// The end of an assembly: "Film assembled: 6 scenes, 3 transitions".
     public static func assembled(_ o: AssemblyOutcome) -> StatusLine { StatusLine(kind: .applied, text: o.message, targets: [], undoable: false) }
 

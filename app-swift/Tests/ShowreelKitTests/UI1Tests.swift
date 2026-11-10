@@ -68,7 +68,7 @@ final class UI1Tests: XCTestCase {
 
     func testTheListTheStripAndTheInspectorUseTheOneSelection() throws {
         let listV = try source("StoryboardListViews.swift"), strip = try source("TimelineViews.swift"), inspector = try source("InspectorViews.swift")
-        XCTAssertTrue(listV.contains("project.select(.scene(scene.id))") && strip.contains("project.select(.scene(scene.id))"), "a click on a scene row or on a frame is the same call")
+        XCTAssertTrue(listV.contains("project.focusScene(scene.id)") && strip.contains("project.focusScene(scene.id)"), "a click on a scene row or on a frame is the same call")
         XCTAssertTrue(listV.contains("project.selectTransition(from: line.from)") && strip.contains("selectTransition(from:"), "a click on a transition line or on the marker is the same call")
         XCTAssertTrue(listV.contains("project.selection.sceneID == scene.id"), "the row is lit when the strip or an inspector node selects the scene")
         let ws = try source("WorkspaceViews.swift")

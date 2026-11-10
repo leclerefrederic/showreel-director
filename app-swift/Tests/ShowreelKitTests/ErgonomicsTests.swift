@@ -277,8 +277,8 @@ final class ErgonomicsTests: XCTestCase {
         XCTAssertEqual(tree.map { $0.group }, [.composition, .effects, .look])
         XCTAssertEqual(tree[2].nodes.map { $0.title }, ["Background", "Palette", "Fonts"])
         let m = try source("ProjectModel.swift")
-        XCTAssertTrue(m.contains("case settings, composition, effects, look"), "Settings, Composition, Effects, Look")
-        for g in ["case .composition: self = .composition", "case .effects: self = .effects", "case .look: self = .look"] { XCTAssertTrue(m.contains(g), g) }
+        XCTAssertTrue(m.contains("case settings, composition, look"), "Settings, Composition, Look (DS3: the Effects tab is gone)")
+        for g in ["case .composition: self = .composition", "case .effects: self = .composition", "case .look: self = .look"] { XCTAssertTrue(m.contains(g), g) }
         let i = try source("InspectorViews.swift")
         XCTAssertTrue(i.contains("SceneCompositionTab(id: id)")); XCTAssertFalse(i.contains("SceneContentTab")); XCTAssertFalse(i.contains(".resources:"), "no separate Resources tab")
         XCTAssertTrue(try source("WorkspaceViews.swift").contains("project.selectNode(scene, g.group, nil)"), "a click on a group opens its tab")

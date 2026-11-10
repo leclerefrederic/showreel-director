@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Bash(python3 tools/*)",
+      "Bash(python3 showreel-director/scripts/*)",
+      "Bash(node showreel-director/scripts/*)",
+      "Bash(tools/verify.sh*)",
+      "Bash(bash tools/verify.sh*)",
+      "Bash(tools/rebuild-app.sh*)",
+      "Bash(swift build*)",
+      "Bash(swift test*)",
+      "Bash(swift package clean*)",
+      "Bash(app-swift/make-app.sh*)",
+      "Bash(pgrep *)",
+      "Bash(pkill -x ShowreelStudio)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(grep *)"
+    ],
+    "deny": [
+      "Bash(git *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(security *)",
+      "Bash(osascript *)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)"
+    ]
+  }
+}

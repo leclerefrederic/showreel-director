@@ -7,6 +7,8 @@ import SwiftUI
 
 final class Theme: ObservableObject {
     @Published var tokens: DesignTokens
+    /// The motion tokens in force (a skin may change them): `Motion` reads them.
+    @Published var motion = MotionTokens.standard { didSet { Motion.tokens = motion } }
 
     init(_ tokens: DesignTokens = .graphite) { self.tokens = tokens }
 
@@ -36,6 +38,12 @@ final class Theme: ObservableObject {
     var laneScene: Color { color(tokens.lanes.scene) }
     var laneSceneBorder: Color { color(tokens.lanes.sceneBorder) }
     var laneMusic: Color { color(tokens.lanes.music) }
+
+    /// The Film strip's colours (DS2): the values it had, one for one, now read from the tokens.
+    var strip: StripPalette { StripPalette(theme: self) }
+    /// The orange of a note that needs a look and the colour of a lock that is on (the Storyboard list).
+    var mark: Color { color(tokens.mark) }
+    var lockOn: Color { color(tokens.lockOn) }
 
     /// The colour of a Status state (UI2): its meaning, from the roles of the tokens.
     func status(_ k: SceneStatusKind) -> Color { color(tokens.status(k)) }
@@ -226,17 +234,66 @@ struct ThemedToggleStyle: ToggleStyle {
     }
 }
 
-/// A text field on the raised surface with a hairline border.
+/// The one text field: it fills the width of its pane, has the height and radius of `FormLayout`, a focus ring in the accent, an error state (`.fieldError`) and a dimmed disabled state.
 struct ThemedTextFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View { Styled(content: configuration) }
     private struct Styled<C: View>: View {
         let content: C
         @EnvironmentObject var theme: Theme
+        @Environment(\.isEnabled) private var enabled
+        @Environment(\.fieldError) private var error
+        @FocusState private var focused: Bool
         var body: some View {
-            content.textFieldStyle(.plain).fontBody().padding(.horizontal, 8).padding(.vertical, 5)
-                .background(theme.raised, in: RoundedRectangle(cornerRadius: theme.rSmall, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: theme.rSmall, style: .continuous).stroke(theme.hairline, lineWidth: 1))
+            content.textFieldStyle(.plain).fontBody().focused($focused).padding(.horizontal, 8)
+                .frame(minHeight: FormLayout.fieldHeight).frame(maxWidth: .infinity)
+                .background(theme.raised, in: RoundedRectangle(cornerRadius: FormLayout.fieldRadius, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: FormLayout.fieldRadius, style: .continuous)
+                    .stroke(error != nil ? theme.danger : focused ? theme.accent : theme.hairline, lineWidth: focused || error != nil ? 2 : 1))
+                .opacity(enabled ? 1 : 0.55)
         }
+    }
+}
+
+private struct FieldErrorKey: EnvironmentKey { static let defaultValue: String? = nil }
+extension EnvironmentValues { var fieldError: String? { get { self[FieldErrorKey.self] } set { self[FieldErrorKey.self] = newValue } } }
+
+extension View {
+    /// The error state of a field: a danger border and its message next to the field.
+    func fieldError(_ message: String?) -> some View { modifier(FieldErrorModifier(message: message)) }
+}
+
+private struct FieldErrorModifier: ViewModifier {
+    let message: String?
+    @EnvironmentObject var theme: Theme
+    func body(content: Content) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            content.environment(\.fieldError, message)
+            if let m = message { Text(m).fontSmall().foregroundStyle(theme.danger) }
+        }
+    }
+}
+
+/// A multi-line field that grows with its text between `FormLayout.minLines` and `maxLines`; its scroll bar shows only past the limit (no empty track on two lines).
+struct GrowingTextEditor: View {
+    @Binding var text: String
+    var placeholder = ""
+    @EnvironmentObject var theme: Theme
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.fieldError) private var error
+    @FocusState private var focused: Bool
+    @State private var width: CGFloat = 320
+
+    var body: some View {
+        let g = FormLayout.areaLines(for: text, width: Double(width) - 16)
+        TextEditor(text: $text).font(.body).focused($focused).scrollContentBackground(.hidden)
+            .scrollIndicators(g.scrolls ? .automatic : .hidden)
+            .padding(.horizontal, 4).padding(.vertical, 2)
+            .frame(height: CGFloat(g.lines) * 18 + 12)
+            .background(theme.raised, in: RoundedRectangle(cornerRadius: FormLayout.fieldRadius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: FormLayout.fieldRadius, style: .continuous).stroke(error != nil ? theme.danger : focused ? theme.accent : theme.hairline, lineWidth: focused || error != nil ? 2 : 1))
+            .overlay(alignment: .topLeading) { if text.isEmpty && !placeholder.isEmpty { Text(placeholder).fontBody().foregroundStyle(theme.textFaint).padding(.horizontal, 9).padding(.vertical, 6).allowsHitTesting(false) } }
+            .background(GeometryReader { p in Color.clear.onAppear { width = p.size.width }.onChange(of: p.size.width) { width = $0 } })
+            .opacity(enabled ? 1 : 0.55)
     }
 }
 
@@ -291,54 +348,72 @@ struct ViewRailView: View {
         .padding(.vertical, theme.space(1)).padding(.horizontal, 4)
         .frame(width: CGFloat(ShellLayout.rail)).frame(maxHeight: .infinity)
         .background(theme.canvas)
-        .onMoveCommand { d in                                         // the arrows move between entries
-            let all = RailEntry.allCases
-            guard let i = focused.flatMap({ all.firstIndex(of: $0) }) else { focused = all.first; return }
-            if d == .down { focused = all[min(i + 1, all.count - 1)] } else if d == .up { focused = all[max(i - 1, 0)] }
+        .onMoveCommand { d in                                         // the arrows move inside the group and wrap; Tab goes from one group to the other
+            guard let f = focused else { focused = RailEntry.allCases.first; return }
+            if d == .down { focused = f.neighbour(1) } else if d == .up { focused = f.neighbour(-1) }
         }
     }
 
     private var clap: ClapIndicator { ClapIndicator(working: chat.running || project.activity.clap != nil, proposals: project.activity.proposals.count) }
 
     @ViewBuilder private func entry(_ e: RailEntry, _ state: RailState) -> some View {
-        let on = state.isSelected(e)
         let ind = clap
-        let label = e == .clap ? ind.label : e == .inspector && state.inspectorMark ? "Inspector, a new selection is waiting" : e.title
-        Button { project.openRail(e) } label: {
-            VStack(spacing: 3) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: e.role.symbol).font(.system(size: 17, weight: .regular)).frame(height: 22)
-                        .modifier(ClapPulse(active: e == .clap && ind.motion(reduceMotion: reduceMotion) == .pulse))
-                    if e == .clap, ind.motion(reduceMotion: reduceMotion) == .dot { Circle().fill(theme.accent).frame(width: 7, height: 7).offset(x: 3, y: -1) }
-                    if e == .clap, let n = ind.badge {
-                        Text("\(n)").fontSmall(weight: .medium).foregroundStyle(theme.onAccent).padding(.horizontal, 4).background(theme.warning, in: Capsule()).offset(x: 10, y: -5)
-                    }
-                    if e == .inspector, state.inspectorMark { Circle().fill(theme.accent).frame(width: 7, height: 7).offset(x: 4, y: -1) }
-                }
-                Text(e.title).fontSmall(weight: on ? .medium : .regular)
-            }
-            .foregroundStyle(on ? theme.accent : theme.textSecondary)
-            .frame(width: 52).padding(.vertical, 7)
-            .rowSurface(selected: on)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .focused($focused, equals: e)
-        .help(e == .clap ? "\(ind.label). \(e.help) (\(AppShortcuts.clapDisplay))" : e.help)
-        .accessibilityLabel(label)
-        .accessibilityHint(e.help)
-        .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+        let marked = state.inspectorMarked
+        let why = e.unavailable(workspaceOpen: project.workspaceOpen, progressLine: project.showreel.map { ProjectSetup.progress($0).line } ?? "")
+        RailButton(entry: e, selected: state.isSelected(e), marked: marked, clap: ind, ringed: focused == e, reduceMotion: reduceMotion) { project.openRail(e) }
+            .focused($focused, equals: e)
+            .help(e.tooltip(clap: ind, marked: marked, unavailable: why))
+            .accessibilityLabel(e.label(clap: ind, marked: marked))
+            .accessibilityHint(e.help)
+            .accessibilityAddTraits(state.isSelected(e) ? [.isButton, .isSelected] : .isButton)
+            .disabledWithReason(why?.reason, way: why?.way)
     }
 }
 
-/// A slow pulse on an icon while Clap works.
-private struct ClapPulse: ViewModifier {
-    let active: Bool
-    @State private var up = false
-    func body(content: Content) -> some View {
-        content.opacity(active ? (up ? 1 : 0.35) : 1)
-            .onChange(of: active) { on in if on { withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { up = true } } else { withAnimation(nil) { up = false } } }
-            .onAppear { if active { withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { up = true } } }
+/// One entry of the rail, with the same states for the six: rest, hover (the raised surface), pressed (the selected surface), selected (the selected surface, the accent and its
+/// outline), keyboard focus (a ring in the accent), and the badges that apply (Clap's pulse, dot and count, the Inspector's mark). The change of state uses the quick motion token and
+/// is static under Reduce motion (`Motion.quick` is nil then).
+private struct RailButton: View {
+    let entry: RailEntry, selected: Bool, marked: Bool, clap: ClapIndicator, ringed: Bool, reduceMotion: Bool
+    let action: () -> Void
+    @EnvironmentObject var theme: Theme
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: entry.role.symbol).font(.system(size: 17, weight: .regular)).frame(height: 22)
+                        .modifier(ClapPulse(active: entry == .clap && clap.motion(reduceMotion: reduceMotion) == .pulse))
+                    if entry == .clap, clap.motion(reduceMotion: reduceMotion) == .dot { Circle().fill(theme.accent).frame(width: 7, height: 7).offset(x: 3, y: -1) }
+                    if entry == .clap, let n = clap.badge {
+                        Text("\(n)").fontSmall(weight: .medium).foregroundStyle(theme.onAccent).padding(.horizontal, 4).background(theme.warning, in: Capsule()).offset(x: 10, y: -5)
+                    }
+                    if entry == .inspector, marked { Circle().fill(theme.accent).frame(width: 7, height: 7).offset(x: 4, y: -1) }
+                }
+                Text(entry.title).fontSmall(weight: selected ? .medium : .regular)
+            }
+            .foregroundStyle(selected ? theme.accent : theme.textSecondary)
+            .frame(width: 52).padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(RailButtonStyle(selected: selected, hovering: hovering, ringed: ringed))
+        .onHover { hovering = $0 }
+        .animation(Motion.quick, value: selected)
+        .animation(Motion.quick, value: hovering)
+    }
+}
+
+private struct RailButtonStyle: ButtonStyle {
+    let selected: Bool, hovering: Bool, ringed: Bool
+    @EnvironmentObject var theme: Theme
+
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: theme.rMedium, style: .continuous)
+        configuration.label
+            .background(selected || configuration.isPressed ? theme.selected : hovering ? theme.raised : Color.clear, in: shape)
+            .overlay(shape.stroke(selected ? theme.accent.opacity(0.55) : Color.clear, lineWidth: 1))
+            .overlay(shape.inset(by: -1).stroke(ringed ? theme.accent : Color.clear, lineWidth: 2))
     }
 }
 
@@ -386,3 +461,44 @@ struct ViewGroup: View {
         }
     }
 }
+
+
+/// What the Film strip draws with: lanes, frames, lines and the white and black it lays over a picture (with the opacity each use had). Views ask for a name, never a literal.
+struct StripPalette {
+    let theme: Theme
+    private var s: DesignTokens.Strip { theme.tokens.strip }
+    var bg: Color { theme.color(s.bg) }
+    var lane: Color { theme.color(s.lane) }
+    var ruler: Color { theme.color(s.ruler) }
+    var frame: Color { theme.color(s.frame) }
+    var wave: Color { theme.color(s.wave) }
+    var playhead: Color { theme.color(s.playhead) }
+    var cutFill: Color { theme.color(s.cutFill) }
+    var line: Color { white(s.line) }
+    var text: Color { white(s.text) }
+    var dim: Color { white(s.dim) }
+    var gridBeat: Color { white(s.gridBeat) }
+    var gridBar: Color { white(s.gridBar) }
+    var gridSection: Color { section(s.gridSection) }
+    var chip: Color { black(s.chip) }
+    var chipHeavy: Color { black(s.chipHeavy) }
+    var gradient: [Color] { [black(s.gradientTop), .clear, black(s.gradientBottom)] }
+    /// The text size of the strip: nothing under the smallest size of the type scale.
+    var font: CGFloat { CGFloat(theme.tokens.sizes.small) }
+    func white(_ a: Double = 1) -> Color { theme.color(s.white).opacity(a) }
+    func black(_ a: Double = 1) -> Color { theme.color(s.black).opacity(a) }
+    func section(_ a: Double = 1) -> Color { theme.color(s.section).opacity(a) }
+}
+
+// A colour from and to a hex value (the colour pickers store hex). Colours are made here and nowhere else.
+extension Color {
+    init(hex: String) {
+        let c = EnginePalette.rgb(EnginePalette.isHex(hex) ? hex : "#808080")
+        self.init(.sRGB, red: c[0] / 255, green: c[1] / 255, blue: c[2] / 255, opacity: 1)
+    }
+    var hexString: String {
+        let n = NSColor(self).usingColorSpace(.sRGB) ?? .gray
+        return String(format: "#%02X%02X%02X", Int((n.redComponent * 255).rounded()), Int((n.greenComponent * 255).rounded()), Int((n.blueComponent * 255).rounded()))
+    }
+}
+

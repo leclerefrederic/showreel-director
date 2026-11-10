@@ -11,6 +11,8 @@ public enum IconRole: String, CaseIterable, Sendable {
     case railInspector = "rail.inspector", railClap = "rail.clap"
     /// The two pictograms of the Film placement and the reset of the proportions: drawn by the theme (a small window with its regions), not SF Symbols; a skin can replace them.
     case layoutUnderPreview = "layout.underPreview", layoutFullWidth = "layout.fullWidth", resetLayout = "layout.reset"
+    /// The run state of a scene during a Build.
+    case runWaiting = "run.waiting", runWriting = "run.writing", runTesting = "run.testing", runRepairing = "run.repairing", runDone = "run.done", runFailed = "run.failed"
     case checks = "checks", checksAttention = "checks.attention"
 
     /// THE table: every role has one SF Symbol.
@@ -26,6 +28,7 @@ public enum IconRole: String, CaseIterable, Sendable {
         .railFilm: "film", .railLook: "paintpalette", .railBuild: "hammer", .railProject: "slider.horizontal.3",
         .railInspector: "sidebar.right", .railClap: "sparkles",
         .layoutUnderPreview: "pictogram.filmUnderPreview", .layoutFullWidth: "pictogram.filmFullWidth", .resetLayout: "arrow.counterclockwise",
+        .runWaiting: "circle.fill", .runWriting: "pencil", .runTesting: "checkmark.shield", .runRepairing: "wrench.and.screwdriver", .runDone: "checkmark", .runFailed: "xmark.octagon",
         .checks: "checkmark.seal", .checksAttention: "exclamationmark.triangle.fill",
     ]
 

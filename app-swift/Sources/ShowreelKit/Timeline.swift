@@ -124,9 +124,16 @@ public struct FrameElements: Equatable, Sendable {
     /// How many thumbnails are laid side by side, each at the 16:9 shape of the lane's height. Always 1 while a scene has a single still: real frames at different times (phase W4) will make more.
     public let thumbTiles: Int
     public let thumbWidth: Double
+    /// Where the thumbnail is drawn: always inside the frame (it is cropped from the left, never overflowing), and between the header and footer bands when the frame is tall enough.
+    public let thumb: CGRect
+    /// The bands that the thumbnail does not cover, when the frame has them: the label and the Status icon live in the header, the duration in the footer.
+    public let header: CGRect?
+    public let footer: CGRect?
 }
 
 public enum FrameLayout {
+    /// A frame at least this tall has a header and a footer band (a thumbnail that would be under 56 pt high is not worth a band); under it the chips sit on the picture as before.
+    public static let bandHeight = 24.0, bandMinHeight = 104.0
     public static let fontSize = 11.0                     // nothing is drawn under 11 pt
     static let glyph = 7.2                                // the width of a character of the 11 pt label, bold monospace
 
@@ -148,8 +155,13 @@ public enum FrameLayout {
         let pill = width >= 54 && height >= 50 ? CGRect(x: 4, y: height - 22, width: 46, height: 18) : nil
         let status = width >= 70 ? CGRect(x: width - 22, y: 4, width: 18, height: 18) : nil
         // a scene has one still: one thumbnail, never repeated, until real frames at different times exist (phase W4)
-        let tw = max(height, 1) * 16 / 9
-        return FrameElements(mode: m, label: label, pill: pill, status: status, thumbTiles: 1, thumbWidth: tw)
+        // when the frame is tall enough the label, the icon and the duration get bands of their own that the thumbnail does not cover; below that they are chips over the picture
+        let head: CGRect? = height >= bandMinHeight && (label != nil || status != nil) ? CGRect(x: 0, y: 0, width: width, height: bandHeight) : nil
+        let foot: CGRect? = height >= bandMinHeight && pill != nil ? CGRect(x: 0, y: height - bandHeight, width: width, height: bandHeight) : nil
+        let top = head?.height ?? 0, bottom = foot?.height ?? 0
+        let th = max(1, height - top - bottom), tw = th * 16 / 9
+        let thumb = CGRect(x: 0, y: top, width: min(width, tw), height: th)
+        return FrameElements(mode: m, label: label, pill: pill, status: status, thumbTiles: 1, thumbWidth: tw, thumb: thumb, header: head, footer: foot)
     }
 }
 
@@ -162,6 +174,20 @@ public struct MarkerPlacement: Equatable, Sendable {
     public let rect: CGRect
     /// A generous area to click.
     public var hit: CGRect { rect.insetBy(dx: -8, dy: -8) }
+}
+
+public extension FrameLayout {
+    /// The rectangles of a frame that must never overlap a transition's diamond (in the frame's own coordinates): the Status icon, the duration and the label. A diamond sits on the
+    /// cut, so its rectangle reaches `size / 2` into the frame on that side. Nil for the ones that are not drawn.
+    static func diamondClearances(width: Double, height: Double, hasName: Bool, marker: MarkerPlacement?, onRightCut: Bool) -> (status: Bool, label: Bool) {
+        let e = elements(width: width, height: height, hasName: hasName)
+        guard let m = marker, m.visible, !m.above else { return (true, true) }          // in its own row above the frames a diamond touches nothing
+        let half = m.size / 2
+        let d = onRightCut ? CGRect(x: width - half, y: (height - m.size) / 2, width: half, height: m.size) : CGRect(x: 0, y: (height - m.size) / 2, width: half, height: m.size)
+        let statusClear = e.status.map { !$0.intersects(d) } ?? true
+        let labelClear = e.label.map { !$0.intersects(d) } ?? true
+        return (statusClear, labelClear && (e.pill.map { !$0.intersects(d) } ?? true))
+    }
 }
 
 public enum MarkerLayout {
@@ -248,6 +274,12 @@ public enum TimelineNav {
         let i = at + delta
         guard tl.indices.contains(i), let start = tl[i].start else { return nil }
         return (tl[i].scene.id, start)
+    }
+
+    /// What a click that means "look at this scene" does to the playhead (FIX2). A scene that is in the film puts the playhead at its start, whether the film is playing (it jumps and keeps
+    /// playing) or paused; a hidden scene, or one with no start yet, is selected and leaves the playhead where it is (nil).
+    public static func focus(_ id: String, in f: ShowreelFile) -> Double? {
+        f.timeline().first { $0.scene.id == id }?.start
     }
 
     /// The span a "fit selection" shows: a scene, or the two scenes a transition joins; nil when nothing in the film is selected.

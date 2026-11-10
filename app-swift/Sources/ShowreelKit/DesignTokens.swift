@@ -16,6 +16,14 @@ public struct DesignTokens: Equatable, Sendable {
     public struct Spacing: Equatable, Sendable { public var xs, s, m, l, xl: Double }
     public struct TypeSizes: Equatable, Sendable { public var small, body, title, large: Double }
 
+    /// The Film strip: the lane stack, the frames and the lines on them. The values the strip had before the tokens existed, one for one.
+    public struct Strip: Equatable, Sendable {
+        public var bg, lane, ruler, frame, wave, playhead, white, black, section, cutFill: String
+        /// How much of white or black a line, a text and a chip carry (0 to 1).
+        public var line = 0.24, text = 0.94, dim = 0.66, chip = 0.6, chipHeavy = 0.7, gradientTop = 0.55, gradientBottom = 0.5
+        public var gridBeat = 0.16, gridBar = 0.34, gridSection = 0.75, gridCut = 0.26
+    }
+
     public var surfaces: Surfaces
     public var borders: Borders
     public var text: Text
@@ -26,6 +34,10 @@ public struct DesignTokens: Equatable, Sendable {
     public var radii: Radii
     public var spacing: Spacing
     public var sizes: TypeSizes
+    public var strip: Strip
+    /// The orange of a note that needs a look (a transition's mark, a count), and the colour of a lock that is on: the values the list had.
+    public var mark: String
+    public var lockOn: String
     /// Regular and medium only.
     public static let weights = ["regular", "medium"]
     /// The least text size, in points.
@@ -41,7 +53,9 @@ public struct DesignTokens: Equatable, Sendable {
         lanes: Lanes(scene: "#2A3550", sceneBorder: "#3B4A6A", music: "#D9A441"),
         radii: Radii(small: 6, medium: 8, large: 12),
         spacing: Spacing(xs: 4, s: 8, m: 12, l: 16, xl: 24),
-        sizes: TypeSizes(small: 11, body: 13, title: 15, large: 22))
+        sizes: TypeSizes(small: 11, body: 13, title: 15, large: 22),
+        strip: Strip(bg: "#131418", lane: "#1E1F25", ruler: "#191A20", frame: "#2B2D36", wave: "#61A8FF", playhead: "#FF544D", white: "#FFFFFF", black: "#000000", section: "#FF9500", cutFill: "#333333"),
+        mark: "#FF9F0A", lockOn: "#40C8E0")
 
     /// Every colour with its name, for the tests and for the theme (a colour that is not here does not exist).
     public var colors: [(name: String, hex: String)] {
@@ -51,6 +65,11 @@ public struct DesignTokens: Equatable, Sendable {
          ("accent", accent), ("onAccent", onAccent),
          ("warning", roles.warning), ("danger", roles.danger), ("success", roles.success), ("review", roles.review), ("outOfDate", roles.outOfDate),
          ("laneScene", lanes.scene), ("laneSceneBorder", lanes.sceneBorder), ("laneMusic", lanes.music)]
+    }
+    /// The colours added in DS2 (the strip's own and two of the list's), each with the value it had.
+    public var extras: [(name: String, hex: String)] {
+        [("stripBg", strip.bg), ("stripLane", strip.lane), ("stripRuler", strip.ruler), ("stripFrame", strip.frame), ("stripWave", strip.wave), ("stripPlayhead", strip.playhead),
+         ("stripWhite", strip.white), ("stripBlack", strip.black), ("stripSection", strip.section), ("stripCutFill", strip.cutFill), ("mark", mark), ("lockOn", lockOn)]
     }
     public var radiiScale: [Double] { [radii.small, radii.medium, radii.large] }
     public var spacingScale: [Double] { [spacing.xs, spacing.s, spacing.m, spacing.l, spacing.xl] }
@@ -82,6 +101,13 @@ public struct DesignTokens: Equatable, Sendable {
         guard let c = rgb(hex) else { return 0 }
         func lin(_ x: Double) -> Double { x <= 0.03928 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4) }
         return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
+    }
+
+    /// A colour at some opacity over another, as the colour that results (to check a text that is drawn with an alpha).
+    public static func blend(_ fg: String, alpha: Double, over bg: String) -> String {
+        guard let f = rgb(fg), let b = rgb(bg) else { return bg }
+        func mix(_ x: Double, _ y: Double) -> Int { Int(((x * alpha + y * (1 - alpha)) * 255).rounded()) }
+        return String(format: "#%02X%02X%02X", mix(f.r, b.r), mix(f.g, b.g), mix(f.b, b.b))
     }
 
     /// The WCAG contrast ratio of two colours, from 1 to 21.

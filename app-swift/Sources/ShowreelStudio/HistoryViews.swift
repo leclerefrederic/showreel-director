@@ -33,6 +33,7 @@ enum ClapMark {
 // MARK: what Clap knows
 
 struct WhatClapKnows: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
     @State private var kind = MemoryKind.decision.rawValue
     @State private var text = ""
@@ -72,13 +73,13 @@ struct WhatClapKnows: View {
             Text("Add a note").font(.headline)
             HStack {
                 Picker("", selection: $kind) { ForEach(MemoryKind.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) } }.labelsHidden().frame(width: 140)
-                TextField("One short sentence", text: $text).textFieldStyle(.roundedBorder).onSubmit { save() }
+                TextField("One short sentence", text: $text).textFieldStyle(ThemedTextFieldStyle()).onSubmit { save() }
             }
             HStack {
-                TextField("Why (optional)", text: $reason).textFieldStyle(.roundedBorder).onSubmit { save() }
+                TextField("Why (optional)", text: $reason).textFieldStyle(ThemedTextFieldStyle()).onSubmit { save() }
                 Button("Add") { save() }.buttonStyle(PrimaryButtonStyle()).disabledWithReason(text.trimmingCharacters(in: .whitespaces).isEmpty ? "Write the note first" : nil)
             }
-            if let p = problem { Label(p, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
+            if let p = problem { Label(p, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(theme.warning).fixedSize(horizontal: false, vertical: true) }
         }
         .padding(12).background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
@@ -90,6 +91,7 @@ struct WhatClapKnows: View {
 }
 
 struct MemoryRow: View {
+    @EnvironmentObject var theme: Theme
     let entry: MemoryEntry
     @EnvironmentObject var project: ProjectModel
     @State private var editing = false
@@ -103,7 +105,7 @@ struct MemoryRow: View {
                 Text(MemoryKind(rawValue: entry.kind)?.title ?? entry.kind).font(.system(size: 11, weight: .semibold)).padding(.horizontal, 7).padding(.vertical, 1)
                     .background(Color.accentColor.opacity(0.18), in: Capsule())
                 if editing {
-                    TextField("", text: $text).textFieldStyle(.roundedBorder).onSubmit { commit() }
+                    TextField("", text: $text).textFieldStyle(ThemedTextFieldStyle()).onSubmit { commit() }
                 } else {
                     Text(entry.text).font(.callout).fixedSize(horizontal: false, vertical: true).onTapGesture(count: 2) { begin() }
                 }
@@ -115,17 +117,17 @@ struct MemoryRow: View {
                     Button { project.deleteMemory(entry.id) } label: { Image(systemName: "trash") }.buttonStyle(.borderless).help("Delete: Clap will not use it again")
                 }
             }
-            if editing { TextField("Why (optional)", text: $reason).textFieldStyle(.roundedBorder) }
+            if editing { TextField("Why (optional)", text: $reason).textFieldStyle(ThemedTextFieldStyle()) }
             else if !entry.reason.isEmpty { Text("Why: " + entry.reason).fontSmall().foregroundStyle(.secondary) }
             HStack(spacing: 8) {
                 Text((entry.source == "user" ? "You" : "Clap") + ", " + ShowreelFile.dayString(entry.updated)).font(.system(size: 11)).foregroundStyle(.tertiary)
                 if !entry.links.isEmpty { Text(entry.links.joined(separator: " ")).font(.system(size: 11, design: .monospaced)).foregroundStyle(.tertiary) }
                 if !entry.confirmed {
-                    Text("not confirmed").font(.system(size: 11, weight: .semibold)).foregroundStyle(.orange)
+                    Text("not confirmed").font(.system(size: 11, weight: .semibold)).foregroundStyle(theme.warning)
                     Button("Confirm") { project.editMemory(entry.id, confirm: true) }.buttonStyle(.borderless).font(.system(size: 11))
                 }
             }
-            if let p = problem { Label(p, systemImage: "exclamationmark.triangle.fill").fontSmall().foregroundStyle(.orange) }
+            if let p = problem { Label(p, systemImage: "exclamationmark.triangle.fill").fontSmall().foregroundStyle(theme.warning) }
         }
         .padding(10).background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
@@ -203,16 +205,17 @@ struct JournalList: View {
 }
 
 struct JournalRow: View {
+    @EnvironmentObject var theme: Theme
     let entry: JournalEntry
     @EnvironmentObject var project: ProjectModel
     @State private var hovering = false
 
     private var symbol: (String, Color) {
         switch entry.state {
-        case "applied": return ("checkmark.circle.fill", .green)
-        case "refused": return ("xmark.circle.fill", .red)
-        case "undone": return ("arrow.uturn.backward.circle.fill", .orange)
-        default: return ("arrow.uturn.forward.circle.fill", .blue)
+        case "applied": return ("checkmark.circle.fill", theme.success)
+        case "refused": return ("xmark.circle.fill", theme.danger)
+        case "undone": return ("arrow.uturn.backward.circle.fill", theme.warning)
+        default: return ("arrow.uturn.forward.circle.fill", theme.accent)
         }
     }
 

@@ -8,6 +8,7 @@ import SwiftUI
 struct TransitionInspector: View {
     let from: String
     @EnvironmentObject var project: ProjectModel
+    @EnvironmentObject var theme: Theme
     @State private var duration = ""
     @State private var params = ""
     @State private var instruction = ""
@@ -23,21 +24,21 @@ struct TransitionInspector: View {
                     PickerButton(kind: .transition, current: p.item.isCut ? "cut" : p.item.type, none: ("cut", "Cut on beat (default)")) {
                         project.choose(.transition, $0, for: .marker(from: from))
                     }
-                    if Look.isPreviewOnly(p.item.type) { Label("Preview only: it does not run between two real scenes. Choose another or a cut.", systemImage: "exclamationmark.triangle.fill").fontSmall().foregroundStyle(.orange) }
+                    if Look.isPreviewOnly(p.item.type) { Label("Preview only: it does not run between two real scenes. Choose another or a cut.", systemImage: "exclamationmark.triangle.fill").fontSmall().foregroundStyle(theme.warning) }
                     if let lib = Look.transitions().first(where: { $0.name == p.item.type }) { Text(lib.desc).fontSmall().foregroundStyle(.secondary) }
                     TransitionNoteView(from: from)
                 }
                 if !p.item.isCut {
                     InspectorSection(title: "Timing and parameters") {
-                        TextField("Duration (s)", text: $duration).textFieldStyle(.roundedBorder).frame(maxWidth: 140)
-                        TextField("Parameters (key=value, key=value)", text: $params).textFieldStyle(.roundedBorder)
+                        TextField("Duration (s)", text: $duration).textFieldStyle(ThemedTextFieldStyle()).frame(maxWidth: 140)
+                        if !durationIsValid { Text("A duration is a number of seconds, such as 0.6. The saved value stays until it is one.").fontSmall().foregroundStyle(theme.danger) }
+                        TextField("Parameters (key=value, key=value)", text: $params).textFieldStyle(ThemedTextFieldStyle())
                     }
                 }
                 InspectorSection(title: "Instruction for the AI (optional)") {
-                    TextField("For a match cut: which element becomes which", text: $instruction, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
+                    TextField("For a match cut: which element becomes which", text: $instruction, axis: .vertical).lineLimit(1...4).textFieldStyle(ThemedTextFieldStyle())
                 }
                 HStack {
-                    Button("Apply") { apply(p.item) }.buttonStyle(PrimaryButtonStyle()).disabledWithReason(dirty(p.item) ? nil : "Nothing changed yet")
                     Button("Revert to a cut") { project.setTransition(from: from, nil) }.disabledWithReason(p.item.isCut && p.item.instruction == nil ? "It already is a cut" : nil)
                 }
                 Text("A transition overlaps the end of \(from) and the start of \(p.next.id); the film's length does not change. It is data for the build today: the reel player cuts hard until the transition compositor exists.")
@@ -46,9 +47,12 @@ struct TransitionInspector: View {
                 Text("\(from) is the last scene that is on: a transition sits between two scenes.").font(.callout).foregroundStyle(.secondary)
             }
         }
+        .autoCommit([duration, params, instruction], dirty: pair.map { dirty($0.item) } ?? false, ready: durationIsValid, undoKey: "transition:\(from)") { if let p = pair { apply(p.item) } }
         .onAppear { load() }
         .onChange(of: project.showreel) { _ in load() }
     }
+
+    private var durationIsValid: Bool { SceneFields.invalid(SceneFields.duration, duration) == nil }
 
     private func load() {
         guard let p = pair else { return }
@@ -75,6 +79,7 @@ struct TransitionInspector: View {
 
 /// The project's music: the track, its analysis, and the corrections of the tempo and of the first beat.
 struct MusicInspector: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
     @State private var bpm = ""
     @State private var firstBeat = ""
@@ -99,13 +104,13 @@ struct MusicInspector: View {
                     .fontSmall().foregroundStyle(.secondary)
                 if let d = m.strongestDrop { Text("Strongest drop at \(ProjectDocs.seconds(d)) s" + (m.breaks.isEmpty ? "" : ", \(m.breaks.count) break\(m.breaks.count == 1 ? "" : "s") marked")).fontSmall().foregroundStyle(.secondary) }
                 HStack {
-                    TextField("BPM", text: $bpm).textFieldStyle(.roundedBorder).frame(width: 80)
-                    TextField("First beat (s)", text: $firstBeat).textFieldStyle(.roundedBorder).frame(width: 110)
-                    Button("Recompute the grid") { project.correctGrid(bpm: Double(bpm.replacingOccurrences(of: ",", with: ".")), firstBeat: Double(firstBeat.replacingOccurrences(of: ",", with: "."))) }
+                    TextField("BPM", text: $bpm).textFieldStyle(ThemedTextFieldStyle()).frame(width: 80)
+                    TextField("First beat (s)", text: $firstBeat).textFieldStyle(ThemedTextFieldStyle()).frame(width: 110)
+                    Button("Recompute the grid") { project.correctGrid(bpm: Double(bpm.replacingOccurrences(of: ",", with: ".")), firstBeat: Double(firstBeat.replacingOccurrences(of: ",", with: "."))) }.buttonStyle(SecondaryButtonStyle())
                         .disabled(project.analysing || (Double(bpm.replacingOccurrences(of: ",", with: ".")) == nil && Double(firstBeat.replacingOccurrences(of: ",", with: ".")) == nil))
                 }
                 Text("If the grid is off, give the real tempo and/or the time of a real first beat. Check by ear: tempo changes are not followed.").fontSmall().foregroundStyle(.tertiary)
-            } else if let n = project.musicNotice { Text(n).fontSmall().foregroundStyle(.orange) }
+            } else if let n = project.musicNotice { Text(n).fontSmall().foregroundStyle(theme.warning) }
         }
         .onAppear { load() }
         .onChange(of: project.music) { _ in load() }

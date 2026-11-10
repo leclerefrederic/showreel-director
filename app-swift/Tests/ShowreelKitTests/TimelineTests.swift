@@ -121,7 +121,7 @@ final class TimelineTests: XCTestCase {
         XCTAssertEqual(e.thumbWidth, 160, accuracy: 1e-9, "16:9 at the lane's height"); XCTAssertEqual(e.thumbTiles, 1, "a long frame does not repeat the same still (S04)")
         XCTAssertEqual(FrameLayout.elements(width: 100, height: 90, hasName: false).thumbTiles, 1)
         XCTAssertEqual(FrameLayout.elements(width: 100000, height: 90, hasName: false).thumbTiles, 1, "never repeated")
-        XCTAssertEqual(FrameLayout.elements(width: 100, height: 200, hasName: false).thumbWidth, 200 * 16 / 9, accuracy: 1e-9, "taller frames, bigger thumbnails")
+        XCTAssertEqual(FrameLayout.elements(width: 100, height: 200, hasName: false).thumbWidth, (200 - 2 * FrameLayout.bandHeight) * 16 / 9, accuracy: 1e-9, "taller frames, bigger thumbnails (DS2: between the header and footer bands)")
     }
 
     // MARK: the transition markers never cover a label or a duration

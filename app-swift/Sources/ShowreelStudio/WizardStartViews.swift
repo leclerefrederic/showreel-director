@@ -40,7 +40,7 @@ struct WizardStartView: View {
                     notice("Clap could not go on: \(e.text). Your answers are kept.", symbol: "exclamationmark.triangle")
                 }
                 HStack {
-                    Button("Fill the form myself") { project.continueInManual() }
+                    Button("Fill the form myself") { project.continueInManual() }.buttonStyle(SecondaryButtonStyle())
                         .help("Your answers so far become typed changes, and the setup goes on as a form. Manual projects stay Manual.")
                     if failed || !wiz.isAvailable {
                         Spacer(minLength: 0)

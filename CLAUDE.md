@@ -43,7 +43,7 @@ During the work, run `tools/verify.sh --fast`: the app and shared checks (`check
 
 ## Open work
 
-1. Studio v2 (`docs/studio-spec.md`): built, with their details archived in `docs/phases-done.md`: A, A2, A3, B, T, W1, W1b, W1c, W2, W3a, W3b, W5, L, P1, P2, P3, S, M, X, Q3, Q2, Q4, V1, Q5, V2, R, F, Q6, P5, R1, PK1, BA1, BA2, BG2, UI1, UI2, DS1, FIX1, CL1 and RL1. Next after RL1: DS2 (the strip and the lists on the tokens) and DS3 (the inspector and the forms). Next: PK2 (apply a package to an existing project), W4 (timing inside the scene and content-driven thumbnails), N (activity and notifications, in the spec). Later: Deliver (D), the remaining notes of `docs/ux-notes.md` and the lines of `docs/ideas.md`. Stop after each phase for the owner to test.
+1. Studio v2 (`docs/studio-spec.md`): built, with their details archived in `docs/phases-done.md`: A, A2, A3, B, T, W1, W1b, W1c, W2, W3a, W3b, W5, L, P1, P2, P3, S, M, X, Q3, Q2, Q4, V1, Q5, V2, R, F, Q6, P5, R1, PK1, BA1, BA2, BG2, UI1, UI2, DS1, FIX1, CL1, RL1, DS2, FIX2, AS1, DS3 and RB1 (the rail's buttons follow one tested rule, report in `docs/rb1-report.md`; forms autosave; the project form and the other Look editors are still to convert). DS3 (the form system, real tabs, the inspector and forms on the tokens) is built; DS3b finished its leftovers (one field style, growing fields, stepper keys, button roles). Next: PK2 (apply a package to an existing project), W4 (timing inside the scene and content-driven thumbnails), N (activity and notifications, in the spec). Later: Deliver (D), the remaining notes of `docs/ux-notes.md` and the lines of `docs/ideas.md`. Stop after each phase for the owner to test.
 2. Warnings left: `isLoading` and `evaluateJavaScript` in `ChatModel`, `self` capture in `EnvModel`.
 3. Update `ROADMAP.md` when a limit is lifted.
 
@@ -58,3 +58,14 @@ Action/reaction: every user or Clap action gets a visible reaction, and anything
 ## Working style
 
 Answer the owner in French, short. Fix the first compiler error first. Keep changes small and say what was verified and what was not.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.

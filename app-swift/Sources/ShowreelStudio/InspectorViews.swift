@@ -15,7 +15,7 @@ struct CenterPane: View {
                     Label("Checks", systemImage: "checkmark.seal").font(.headline)
                     Text("no AI: the same answer every time").fontSmall().foregroundStyle(.secondary)
                     Spacer()
-                    Button("Back to the viewer") { project.centerMode = .viewer }
+                    Button("Back to the viewer") { project.centerMode = .viewer }.buttonStyle(.borderless)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 6).background(.bar)
                 Divider()
@@ -24,7 +24,7 @@ struct CenterPane: View {
                 HStack {
                     Label("Build and preview", systemImage: "play.rectangle").font(.headline)
                     Spacer()
-                    Button("Back to the viewer") { project.centerMode = .viewer }
+                    Button("Back to the viewer") { project.centerMode = .viewer }.buttonStyle(.borderless)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 6).background(.bar)
                 Divider()
@@ -244,9 +244,7 @@ struct AskClapPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $project.clapSection) { ForEach(ClapSection.allCases) { Text($0.rawValue).tag($0) } }
-                .pickerStyle(.segmented).labelsHidden().padding(.horizontal, 10).padding(.bottom, 8)
-            Divider()
+            TabBar(tabs: ClapSection.allCases, selection: $project.clapSection, title: { $0.rawValue }).padding(.top, 6)
             if project.clapSection == .conversation { ChatView() } else { ClapHistoryPane(section: project.clapSection) }
         }
     }
@@ -289,8 +287,7 @@ struct InspectorHeader: View {
                 if !subtitle.isEmpty { Text(subtitle).fontSmall().foregroundStyle(.secondary) }
             }
             Spacer()
-            Button { project.selection = .none } label: { Label("Project", systemImage: "slider.horizontal.3") }
-                .buttonStyle(.borderless).help("Back to the project parameters and the global look")
+            ProjectButton()
         }
     }
 }
@@ -390,8 +387,7 @@ struct SceneInspector: View {
                         }
                     }
                     Spacer()
-                    Button { project.selection = .none } label: { Label("Project", systemImage: "slider.horizontal.3") }
-                        .buttonStyle(.borderless).help("Back to the project parameters and the global look")
+                    ProjectButton()
                 }
                 if !s.archived {
                     // the overview of what the scene is made of (it was the tree of the left list): a click on a node opens the matching tab on that element, and a resource dropped here goes to the scene
@@ -402,17 +398,13 @@ struct SceneInspector: View {
                         .help("What the scene is made of: composition, effects, look. Click a line to open it. Drop a resource here to put it in the scene.")
                 }
                 do {
-                    Picker("", selection: $project.sceneTab) { ForEach(SceneTab.allCases) { Text($0.title).tag($0) } }
-                        .pickerStyle(.segmented).labelsHidden()
+                    TabBar(tabs: SceneTab.allCases, selection: $project.sceneTab, title: { $0.title })
                     Group { switch project.sceneTab {
                     case .settings:
                         SceneForm(id: id, tab: .settings)
                         InspectorSection(title: "State") { SceneSwitchesView(id: id) }
-                        Button("Duplicate") { project.duplicateScene(id) }
                     case .composition:
                         SceneCompositionTab(id: id)
-                    case .effects:
-                        SceneEffectsTab(id: id)
                     case .look:
                         SceneLookTab(id: id)
                     } }
@@ -426,6 +418,7 @@ struct SceneInspector: View {
 /// Background, palette and fonts of one scene. They are the project's, shown locked, until the user asks to replace them for this scene with the switch of the
 /// group; switching it off gives the project's values back. The rules (what a switch does) are ShowreelKit's `LookOverrides`.
 struct SceneLookTab: View {
+    @EnvironmentObject var theme: Theme
     let id: String
     @EnvironmentObject var project: ProjectModel
     @State private var palette: [String] = []
@@ -461,7 +454,7 @@ struct SceneLookTab: View {
                             Text(palette[i]).font(.callout.monospaced()).foregroundStyle(.secondary)
                         }
                     }
-                    Button("Apply this palette to the scene") { project.setSceneLook(id, [DecisionChange(.palette, palette.joined(separator: ", "))]) }
+                    Button("Apply this palette to the scene") { project.setSceneLook(id, [DecisionChange(.palette, palette.joined(separator: ", "))]) }.buttonStyle(SecondaryButtonStyle())
                         .disabledWithReason(palette.count < 2 ? "A palette needs at least 2 colours" : palette.map { $0.uppercased() } == eff(.palette).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).uppercased() } ? "This already is the scene's palette" : nil)
                 } else {
                     let p = eff(.palette).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -485,7 +478,7 @@ struct SceneLookTab: View {
             HStack {
                 Toggle("Replace for this scene", isOn: Binding(get: { on }, set: { flip(g, $0) })).toggleStyle(ThemedToggleStyle())
                 Spacer()
-                Text(st?.overridden == true ? "replaced" : "inherited").fontSmall(weight: .semibold).foregroundStyle(st?.overridden == true ? Color.orange : .secondary)
+                Text(st?.overridden == true ? "replaced" : "inherited").fontSmall(weight: .semibold).foregroundStyle(st?.overridden == true ? theme.warning : .secondary)
             }
             if st?.overridden == true, let proj = st?.project.sorted(by: { $0.key.rawValue < $1.key.rawValue }).map({ $0.value }).filter({ !$0.isEmpty }), !proj.isEmpty {
                 Text("project: " + proj.joined(separator: ", ")).fontSmall().foregroundStyle(.secondary).lineLimit(2)
@@ -531,6 +524,7 @@ struct SceneLookTab: View {
 // MARK: a look element
 
 struct LookInspector: View {
+    @EnvironmentObject var theme: Theme
     let kind: LookKind
     let id: String
     @EnvironmentObject var project: ProjectModel
@@ -586,7 +580,7 @@ struct LookInspector: View {
             if let e = engine.catalogue?.effects.first(where: { $0.name == id }) {
                 Text("energy \(e.energy) · \(String(format: "%.1f", e.dur)) s").fontSmall().foregroundStyle(.secondary)
             }
-            if Look.isPreviewOnly(id) { Label("Preview only: it does not run between two real scenes, so it cannot be chosen for a montage.", systemImage: "exclamationmark.triangle.fill").fontSmall().foregroundStyle(.orange) }
+            if Look.isPreviewOnly(id) { Label("Preview only: it does not run between two real scenes, so it cannot be chosen for a montage.", systemImage: "exclamationmark.triangle.fill").fontSmall().foregroundStyle(theme.warning) }
             else { Text("Drag it onto a marker of the reel, or choose it in the inspector of a transition.").fontSmall().foregroundStyle(.secondary) }
         }
     }
@@ -594,7 +588,7 @@ struct LookInspector: View {
     private func hint(_ text: String, _ section: LookSection) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(text).fontSmall().foregroundStyle(.secondary)
-            Button("Open the project settings") { project.openSettings(.look, look: section) }.buttonStyle(.bordered)
+            Button("Open the project settings") { project.openSettings(.look, look: section) }.buttonStyle(SecondaryButtonStyle())
         }
     }
 }

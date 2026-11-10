@@ -231,7 +231,6 @@ struct SceneMenu: View {
 
     var body: some View {
         Button("Rename") { project.beginRename(id) }
-        Button("Duplicate") { project.duplicateScene(id) }
         Divider()
         Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(id) }
     }
@@ -269,7 +268,7 @@ struct LookLibrary: View {
             HStack {
                 Picker("", selection: $project.lookKind) { ForEach(kinds) { Text($0.title).tag($0) } }.labelsHidden()
                 if [.fonts, .effects, .backgrounds].contains(project.lookKind) {
-                    TextField("Search", text: $search).textFieldStyle(.roundedBorder)
+                    TextField("Search", text: $search).textFieldStyle(ThemedTextFieldStyle())
                 }
             }
             .padding(10)

@@ -18,15 +18,15 @@ struct ChatView: View {
                             ForEach(model.items) { item in
                                 ItemView(item: item).id(item.id)
                                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.accentColor, lineWidth: model.focusedCard == item.id ? 3 : 0).allowsHitTesting(false))
-                                    .animation(.easeOut(duration: 0.4), value: model.focusedCard)
+                                    .animation(Motion.settle, value: model.focusedCard)
                             }
                             Color.clear.frame(height: 1).id("end")
                         }
                         .padding(16)
                     }
-                    .onChange(of: model.focusTick) { _ in if let id = model.focusedCard { withAnimation(.easeOut(duration: 0.3)) { proxy.scrollTo(id, anchor: .center) } } }
+                    .onChange(of: model.focusTick) { _ in if let id = model.focusedCard { Motion.with(.select) { proxy.scrollTo(id, anchor: .center) } } }
                     .onChange(of: model.scrollTick) { _ in
-                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("end", anchor: .bottom) }
+                        Motion.with(.settle) { proxy.scrollTo("end", anchor: .bottom) }
                     }
                 }
             }
@@ -115,6 +115,7 @@ struct Composer: View {
 }
 
 struct ItemView: View {
+    @EnvironmentObject var theme: Theme
     let item: ChatItem
 
     var body: some View {
@@ -126,7 +127,7 @@ struct ItemView: View {
                     .textSelection(.enabled)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.onAccent)
                     .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         case .assistant:
@@ -189,7 +190,7 @@ struct QuestionCard: View {
             if item.answers == nil {
                 HStack {
                     Spacer()
-                    Button("Confirm") { confirm() }
+                    Button("Confirm") { confirm() }.buttonStyle(PrimaryButtonStyle())
                         .buttonStyle(PrimaryButtonStyle())
                         .disabled(!complete)
                 }
@@ -267,8 +268,8 @@ struct ProposalCard: View {
                 case .pending:
                     HStack {
                         Spacer()
-                        Button("Refuse") { model.resolveProposal(item.id, accept: false) }
-                        Button("Accept") { model.resolveProposal(item.id, accept: true) }
+                        Button("Refuse") { model.resolveProposal(item.id, accept: false) }.buttonStyle(SecondaryButtonStyle())
+                        Button("Accept") { model.resolveProposal(item.id, accept: true) }.buttonStyle(PrimaryButtonStyle())
                             .buttonStyle(PrimaryButtonStyle())
                     }
                 case .accepted:
@@ -286,6 +287,7 @@ struct ProposalCard: View {
 
 /// Added lines in green, removed lines in red, long unchanged runs folded.
 struct DiffView: View {
+    @EnvironmentObject var theme: Theme
     let rows: [LineDiff.Row]
 
     var body: some View {
@@ -312,7 +314,7 @@ struct DiffView: View {
 
     private func prefix(_ l: DiffLine) -> String { l.kind == .added ? "+ " : l.kind == .removed ? "- " : "  " }
     private func color(_ l: DiffLine) -> Color {
-        l.kind == .added ? Color.green.opacity(0.18) : l.kind == .removed ? Color.red.opacity(0.18) : .clear
+        l.kind == .added ? theme.success.opacity(0.18) : l.kind == .removed ? theme.danger.opacity(0.18) : .clear
     }
 }
 
@@ -333,7 +335,7 @@ struct OperationCardView: View {
                 case .pending:
                     HStack {
                         Spacer()
-                        Button("Refuse") { model.resolveOperation(item.id, accept: false) }
+                        Button("Refuse") { model.resolveOperation(item.id, accept: false) }.buttonStyle(SecondaryButtonStyle())
                         Button(o.card.lockWarning == nil ? "Accept" : "Apply anyway") { model.resolveOperation(item.id, accept: true) }
                             .buttonStyle(PrimaryButtonStyle())
                     }

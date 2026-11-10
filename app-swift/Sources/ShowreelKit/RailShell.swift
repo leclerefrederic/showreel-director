@@ -48,6 +48,31 @@ public enum RailEntry: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The shortcut of an entry that has one (shown in its tooltip).
+    public var shortcut: String? { self == .clap ? AppShortcuts.clapDisplay : nil }
+
+    /// The accessibility label (VoiceOver reads it before the selected state): the name, plus what the entry carries (Clap's state, the Inspector's waiting selection).
+    public func label(clap: ClapIndicator = ClapIndicator(working: false, proposals: 0), marked: Bool = false) -> String {
+        switch self {
+        case .clap: return clap.label
+        case .inspector where marked: return "Inspector, a new selection is waiting"
+        default: return title
+        }
+    }
+
+    /// The tooltip, the same standard delay for the six: the name, what it does and its shortcut; when the entry cannot be used, the name, the reason and the way back instead.
+    public func tooltip(clap: ClapIndicator = ClapIndicator(working: false, proposals: 0), marked: Bool = false, unavailable: Unavailable? = nil) -> String {
+        let name = label(clap: clap, marked: marked)
+        if let u = unavailable { return name + ". " + u.message }
+        return name + ". " + help + (shortcut.map { " (\($0))" } ?? "")
+    }
+
+    /// The entry an arrow key reaches: the arrows move inside the group and wrap (Tab is what goes from one group to the other).
+    public func neighbour(_ step: Int) -> RailEntry {
+        let g = RailEntry.entries(in: group); guard let i = g.firstIndex(of: self) else { return self }
+        return g[((i + step) % g.count + g.count) % g.count]
+    }
+
     /// Why an entry cannot be used now, and how to get out of it; nil when it can. The workspace is closed until the base configuration is complete (the rail is not shown then).
     public func unavailable(workspaceOpen: Bool, progressLine: String) -> Unavailable? {
         workspaceOpen ? nil : Unavailable(.notReady, reason: "The base configuration is not complete: " + progressLine, way: "Finish it, then open the workspace")
@@ -65,6 +90,9 @@ public struct RailState: Equatable, Sendable {
     public var inspectorMark = false
     public init(build: Bool = false, checks: Bool = false, right: RightPanel? = .inspector, inspectorMark: Bool = false) { self.build = build; self.checks = checks; self.right = right; self.inspectorMark = inspectorMark }
 
+    /// The mark shows only while the Inspector is not the open panel (a mark on a lit entry says nothing).
+    public var inspectorMarked: Bool { inspectorMark && right != .inspector }
+
     public func isSelected(_ e: RailEntry) -> Bool {
         switch e {
         case .film: return !build && !checks
@@ -73,12 +101,12 @@ public struct RailState: Equatable, Sendable {
         }
     }
 
-    /// A click on an entry. Film and Build never touch the right side; a right panel never touches the centre. Build toggles back to the film (as its button did); a right panel
-    /// that is open closes when clicked again.
+    /// A click on an entry. Film and Build never touch the right side; a right panel never touches the centre. The centre views never toggle off (a click on the active one does
+    /// nothing; the other one is the way back); a right panel that is open closes when clicked again.
     public mutating func choose(_ e: RailEntry) {
         switch e {
         case .film: build = false; checks = false
-        case .build: checks = false; build.toggle()
+        case .build: checks = false; build = true
         default:
             guard let p = e.panel else { return }
             right = right == p ? nil : p
@@ -91,8 +119,36 @@ public struct RailState: Equatable, Sendable {
         if right == nil || right == .inspector { right = .inspector; inspectorMark = false } else { inspectorMark = true }
     }
 
+    /// A Build starts: its panel is the centre and Clap opens on the right to show the conversation, whatever was open (it is never toggled closed).
+    public mutating func buildStarted() { checks = false; build = true; open(.clap) }
+
     /// A panel is opened by something other than a click on its entry (Clap's shortcut, a link): it opens, it is never toggled closed.
     public mutating func open(_ p: RightPanel) { right = p; if p == .inspector { inspectorMark = false } }
+}
+
+/// The right side as the model keeps it (a closed flag, the settings panel Look or Project, Clap's tab) and the one panel it shows. Writing a panel always makes that panel the
+/// visible one, from any state: a request for Clap while a settings panel covers it, or while the side is closed, opens it.
+public struct RightSide: Equatable, Sendable {
+    public enum Settings: Sendable { case look, project }
+    public var closed = false, clap = false
+    public var settings: Settings?
+    public init(closed: Bool = false, clap: Bool = false, settings: Settings? = nil) { self.closed = closed; self.clap = clap; self.settings = settings }
+
+    public var panel: RightPanel? {
+        if closed { return nil }
+        if let s = settings { return s == .look ? .look : .project }
+        return clap ? .clap : .inspector
+    }
+
+    public mutating func show(_ p: RightPanel?) {
+        switch p {
+        case nil: closed = true; settings = nil
+        case .inspector?: closed = false; settings = nil; clap = false
+        case .clap?: closed = false; settings = nil; clap = true
+        case .look?: closed = false; settings = .look
+        case .project?: closed = false; settings = .project
+        }
+    }
 }
 
 /// What Clap's entry shows: whether the agent works, and how many proposals wait for the owner.
@@ -173,7 +229,7 @@ public enum ShellLayout {
         let gaps = gap + (hasRight ? gap : 0)
         let cMin = minCentre(p)
         let lw = max(minLeft, min(s.libraryWidth, avail - gaps - (hasRight ? rStored : 0) - cMin))
-        let rw = hasRight ? max(rightMin(right), min(rStored, avail - gaps - lw - cMin)) : 0
+        let rw = hasRight ? max(rightMin(right), min(PaneWidth.clamp(rStored, for: right), avail - gaps - lw - cMin)) : 0
         let cw = max(0, avail - gaps - lw - rw)
         let usable = H - 2 * gap
         let top: Double, filmH: Double

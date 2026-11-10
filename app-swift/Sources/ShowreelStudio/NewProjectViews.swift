@@ -24,7 +24,7 @@ struct NewProjectSheet: View {
                     LabeledContent("Folder") {
                         HStack {
                             Text(parent.appendingPathComponent(folderName).path).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
-                            Button("Choose...") { chooseParent() }
+                            Button("Choose...") { chooseParent() }.buttonStyle(SecondaryButtonStyle())
                         }
                     }
                 }
@@ -43,7 +43,7 @@ struct NewProjectSheet: View {
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Create") { create() }
+                Button("Create") { create() }.buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction).buttonStyle(PrimaryButtonStyle())
                     .disabledWithReason(name.trimmingCharacters(in: .whitespaces).isEmpty ? "Give the project a name" : nil)
             }

@@ -4,7 +4,7 @@
 
 2026-11-10: the owner waived these questions before the visual redesign (DS1): the defaults that exist today stand until he says otherwise (Checks badge in the top bar, the 2/3 and 1/3 split, transitions beside a locked scene stay editable, an instruction does not switch Ready off). Each line is a decision the owner has not taken yet; the recommendation is mine, not a decision. Delete a line once it is settled and recorded where it belongs (ux-notes, spec).
 
-- 2026-11-10 (UI2): when the owner writes an instruction on a scene that is Ready, should the app offer "Switch Ready off?" at that moment (recommended), or leave the scene Ready with a pending instruction (today)?
+- 2026-11-10 (UI2): SETTLED, no longer a question: the owner removed the State section's Instruction field (DS3), so nothing offers "Switch Ready off?" any more.
 - 2026-11-10 (UI2): should a lock also freeze the transitions on both sides of the locked scene? Today the transition leaving a locked scene stays editable, although it changes how the scene ends on screen.
 - 2026-11-10 (UI2): locked scenes from before UI2 have no copy of their look, so they still follow the global look until unlocked and locked again. Take the copy automatically when the project opens (recommended: at that moment it equals the current look, so nothing changes on screen)?
 - 2026-11-10 (UI1): the Checks badge in the top bar was chosen by default; confirm it after using it, or switch to a thin status row at the bottom of the left panel.
@@ -13,6 +13,10 @@
 - 2026-11-10 (P5, from the backlog): rework of the Wizard and Manual creation experience: ask the owner first what bothers him in each, independently.
 
 ## Ideas
+
+- 2026-11-10 (owner): an icon per transition type, so the effect is visible at a glance (on the Film strip's markers, the Storyboard list between scenes, the transition inspector header and the type picker). Proposed: one icon per family (cut, dissolve, wipe or slide, shape reveal, zoom or morph, glitch or distortion, and so on) rather than per transition, the exact name in the tooltip; the family comes from the catalogue (a field read, never typed), the icons are `IconRole` entries (`transition.<family>`) so skins can override them; SF Symbols may not cover every family (custom artwork is SK2). Measure the catalogue size first. Not a brief yet.
+
+- 2026-11-10 (RL1): alternative to the layout button, written and shelved as docs/prompts/FIX3.md: two pictogram icons side by side as a toggle with a surround that slides to the active one. The owner kept the current single animated button; reopen only if he asks. The reusable sliding selection (also for the Storyboard list highlight) stays an idea.
 
 - 2026-11-10 (RL1): show and hide controls for the left and right panels in the view group at the top right of the top bar (focus on the preview and the Film strip).
 
@@ -60,3 +64,4 @@ Ideas for Showreel Studio that are not in the current phase. Nothing here is bui
 - 2026-11-10 (DS1): a light theme (the tokens are swappable at run time, the app forces the dark appearance for now); loading, importing and exporting skins and a picker, on top of the theme object and the icon roles.
 - 2026-11-10 (RL1): show and hide controls for the side panels (the left panels and the right side), beyond the rail's click on the open panel.
 - 2026-11-10 (RL1): Clap as a drawer beside the Inspector, both visible at once.
+- 2026-11-10 (DS2): a selected-row and selected-frame highlight that slides (one matched shape per list) instead of fading; a skin may then set the motion speed through `Theme.motion`.

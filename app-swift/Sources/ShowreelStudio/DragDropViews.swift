@@ -7,15 +7,6 @@ import UniformTypeIdentifiers
 /// declares where it is (`dropTarget`, `dropSlots`), and the workspace resolves the pointer to a target, lights the valid ones, opens a gap
 /// in a list and relays the drop to ShowreelKit (`Drops`), which owns every rule. Nothing here decides what is allowed.
 
-/// Motion that respects the system's "Reduce motion".
-enum Motion {
-    static var reduced: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
-    static var spring: Animation? { reduced ? nil : .spring(response: 0.32, dampingFraction: 0.82) }
-    static var quick: Animation? { reduced ? nil : .easeOut(duration: 0.14) }
-    static var appear: AnyTransition { reduced ? .opacity : .opacity.combined(with: .scale(scale: 0.96, anchor: .top)) }
-    static func go<R>(_ body: () -> R) -> R { withAnimation(spring, body) }
-}
-
 enum Workspace { static let space = "workspace" }
 
 // MARK: state
@@ -414,7 +405,7 @@ struct InlineEdit<Display: View>: View {
     var body: some View {
         if editing {
             TextField(placeholder, text: $draft)
-                .textFieldStyle(.roundedBorder).font(.callout)
+                .textFieldStyle(ThemedTextFieldStyle()).font(.callout)
                 .focused($focused)
                 .onSubmit { finish(save: true) }
                 .onExitCommand { finish(save: false) }

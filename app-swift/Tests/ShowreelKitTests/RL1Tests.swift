@@ -32,7 +32,7 @@ final class RL1Tests: XCTestCase {
         var s = RailState(right: .clap)
         s.choose(.build); XCTAssertTrue(s.build); XCTAssertEqual(s.right, .clap, "Build never closes a right panel")
         s.choose(.film); XCTAssertFalse(s.build); XCTAssertEqual(s.right, .clap)
-        s.choose(.build); s.choose(.build); XCTAssertFalse(s.build, "Build toggles back to the film, as its button did")
+        s.choose(.build); s.choose(.build); XCTAssertTrue(s.build, "RB1: a centre view never toggles off; Film is the way back")
         s.choose(.look); XCTAssertEqual(s.right, .look)
         s.choose(.build); XCTAssertTrue(s.build, "opening a right panel did not change the centre")
         var t = RailState(build: true, right: nil); t.choose(.inspector); XCTAssertTrue(t.build); XCTAssertEqual(t.right, .inspector)
@@ -84,7 +84,7 @@ final class RL1Tests: XCTestCase {
             }
         }
         let shell = try source("WorkspaceViews.swift"); XCTAssertTrue(shell.contains("keyboardShortcut(\"a\", modifiers: [.command, .shift])") && shell.contains("project.openClap()"))
-        XCTAssertTrue(try source("Theme.swift").contains("AppShortcuts.clapDisplay"), "the tooltip shows it")
+        XCTAssertTrue(RailEntry.clap.tooltip().contains(AppShortcuts.clapDisplay), "the tooltip shows it (RB1: the rule is ShowreelKit's `RailEntry.tooltip`)")
         XCTAssertTrue(try source("ChatView.swift").contains("inputFocused = true"), "and the cursor goes to the input")
     }
 

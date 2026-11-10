@@ -16,6 +16,7 @@ struct LockAllValidatedButton: View {
 
 /// The warning a card carries when a change of the global look would redraw locked scenes. The words are ShowreelKit's.
 struct LockedLookNotice: View {
+    @EnvironmentObject var theme: Theme
     let warning: LockedLookWarning
 
     var body: some View {
@@ -24,7 +25,7 @@ struct LockedLookNotice: View {
             Text(warning.advice).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(theme.warning.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 

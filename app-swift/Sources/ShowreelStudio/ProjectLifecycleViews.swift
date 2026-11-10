@@ -13,7 +13,7 @@ struct OutdatedBanner: View {
                 Text("Nothing was changed by opening it. Update it to the current format when you are ready: a backup is made first.").fontSmall().foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Not now") { project.updateBannerDismissed = true }
+            Button("Not now") { project.updateBannerDismissed = true }.buttonStyle(.borderless)
             Button("Update project...") { project.showUpdateSheet = true }.buttonStyle(PrimaryButtonStyle())
         }
         .padding(.horizontal, 14).padding(.vertical, 8).background(Color.blue.opacity(0.12))

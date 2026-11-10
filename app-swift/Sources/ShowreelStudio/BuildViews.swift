@@ -19,7 +19,7 @@ struct BuildPanel: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Writing the film needs an AI").font(.callout.weight(.semibold))
                         Text("Connect one to build a new version. Everything else in the app stays usable, and you can still test and play a version that already exists.").fontSmall().foregroundStyle(.secondary)
-                        Button("Connect AI") { AppSettingsWindow.open() }
+                        Button("Connect AI") { AppSettingsWindow.open() }.buttonStyle(PrimaryButtonStyle())
                     }
                 }
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
@@ -37,7 +37,7 @@ struct BuildPanel: View {
                     Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
                     Text("\(project.layoutWarnings.count) scene\(project.layoutWarnings.count == 1 ? " has" : "s have") layout warnings").font(.callout.weight(.semibold))
                     Spacer()
-                    Button("Show them") { project.showLayoutWarnings = true }
+                    Button("Show them") { project.showLayoutWarnings = true }.buttonStyle(SecondaryButtonStyle())
                 }
                 .padding(10).background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
             }
@@ -64,7 +64,7 @@ struct BuildPanel: View {
             }.frame(maxWidth: 200)
             Button("Test it again") { project.runChecks(project.playVersion ?? project.versions.last ?? "") }.disabledWithReason(project.buildBusy ? "A build is running" : nil, way: "Wait for the end, or Cancel the build")
                 .help("Builds and tests this version again. Needs no AI.")
-            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([project.root.appendingPathComponent(project.playVersion ?? project.versions.last ?? "")]) }
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([project.root.appendingPathComponent(project.playVersion ?? project.versions.last ?? "")]) }.buttonStyle(SecondaryButtonStyle())
             if let v = project.playVersion, Versions.hasDist(project.store, v) { Button("Open in the browser") { NSWorkspace.shared.open(Versions.distURL(project.store, v)) } }
         }
     }

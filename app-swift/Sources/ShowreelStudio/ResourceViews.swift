@@ -248,7 +248,7 @@ struct AssetInspector: View {
         HStack(spacing: 6) {
             Text("Used in").fontSmall().foregroundStyle(.secondary)
             ForEach(scenes, id: \.self) { s in
-                Button { project.select(.scene(s)) } label: { Text(s).fontSmall(weight: .semibold, mono: true).padding(.horizontal, 8).padding(.vertical, 3).background(Color.accentColor.opacity(0.16), in: Capsule()) }
+                Button { project.focusScene(s) } label: { Text(s).fontSmall(weight: .semibold, mono: true).padding(.horizontal, 8).padding(.vertical, 3).background(Color.accentColor.opacity(0.16), in: Capsule()) }
                     .buttonStyle(.plain).help("Select \(s)")
             }
             Text("Linking is done from the scene.").fontSmall().foregroundStyle(.tertiary)
@@ -267,7 +267,7 @@ struct AssetInspector: View {
                     }
                     .padding(.horizontal, 7).padding(.vertical, 3).background(Color.primary.opacity(0.08), in: Capsule())
                 }
-                TextField("", text: $tag, prompt: Text("Add a tag, for example logo")).textFieldStyle(.roundedBorder).frame(maxWidth: 200)
+                TextField("", text: $tag, prompt: Text("Add a tag, for example logo")).textFieldStyle(ThemedTextFieldStyle()).frame(maxWidth: 200)
                     .onSubmit { let t = tag; tag = ""; if !t.trimmingCharacters(in: .whitespaces).isEmpty { project.addTag(row.id, t) } }
             }
             Text("\u{201C}placeholder\u{201D} marks a stand-in: the release gate lists it.").fontSmall().foregroundStyle(.tertiary)
@@ -281,7 +281,7 @@ struct AssetInspector: View {
             Label("Clap suggests using this resource", systemImage: ClapMark.symbol).font(.callout.weight(.semibold))
             Text(row.notes.isEmpty ? "No reason was given." : row.notes).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
             HStack {
-                Button("Decline") { project.setAssetStatus(row.id, .excluded) }
+                Button("Decline") { project.setAssetStatus(row.id, .excluded) }.buttonStyle(SecondaryButtonStyle())
                 Button("Approve") { project.setAssetStatus(row.id, .approved) }.buttonStyle(PrimaryButtonStyle())
             }
             Text("Approving makes it available (and links it to the scene it was proposed for). Declining puts it away so that it is not proposed again.").fontSmall().foregroundStyle(.secondary)
@@ -322,18 +322,18 @@ struct AttentionBox: View {
                     }.buttonStyle(.plain)
                 }
                 if let r = answer {
-                    TextField("", text: $detail, prompt: Text(r.detailHint), axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
+                    TextField("", text: $detail, prompt: Text(r.detailHint), axis: .vertical).lineLimit(1...3).textFieldStyle(ThemedTextFieldStyle())
                     if r == .unknown { Text("With unknown rights the file stays here.").fontSmall().foregroundStyle(.secondary) }
                     Button(r == .unknown ? "Keep it here" : "Confirm") { project.perform(r.operation(id: row.id, detail: detail)); answer = nil; detail = "" }.buttonStyle(PrimaryButtonStyle())
                 }
             }
             if a.canAcceptRisk && !a.mustReplace {
-                TextField("", text: $reason, prompt: Text("Why is it fine to use it anyway?"), axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
-                Button("Accept the risk") { project.perform(.asset(id: row.id, status: .approved, note: "accepted: " + reason.trimmingCharacters(in: .whitespacesAndNewlines), licence: nil, scenes: nil)); reason = "" }
+                TextField("", text: $reason, prompt: Text("Why is it fine to use it anyway?"), axis: .vertical).lineLimit(1...3).textFieldStyle(ThemedTextFieldStyle())
+                Button("Accept the risk") { project.perform(.asset(id: row.id, status: .approved, note: "accepted: " + reason.trimmingCharacters(in: .whitespacesAndNewlines), licence: nil, scenes: nil)); reason = "" }.buttonStyle(SecondaryButtonStyle())
                     .disabledWithReason(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Say why first" : nil, way: "A short reason is kept with the file")
             }
             HStack {
-                Button("Replace the file...") { replace() }
+                Button("Replace the file...") { replace() }.buttonStyle(SecondaryButtonStyle())
                 Button("Leave it out", role: .destructive) { project.setAssetStatus(row.id, .excluded) }
             }
         }

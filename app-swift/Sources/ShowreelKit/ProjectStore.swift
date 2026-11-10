@@ -4,7 +4,7 @@ import Foundation
 /// content stays usable, and no ceiling: the window is the only limit. Absent sizes mean the standard layout.
 public struct PanelLayout: Codable, Equatable, Sendable {
     public static let minLibrary = 200.0, minInspector = 280.0, minStrip = 200.0, minSettings = 380.0
-    public static let standardLibrary = 290.0, standardInspector = 390.0, standardStrip = 300.0, standardSettings = 560.0
+    public static let standardLibrary = 290.0, standardInspector = 440.0, standardStrip = 300.0, standardSettings = 620.0
 
     public var library: Double?
     public var inspector: Double?

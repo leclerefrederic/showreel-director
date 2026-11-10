@@ -196,7 +196,7 @@ struct ProjectRow: View {
                 Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: entry.path)]) }
             }
             Divider()
-            Button("Remove from Library") { actions.remove(entry) }
+            Button("Remove from Library") { actions.remove(entry) }.buttonStyle(.borderless)
             if state != .missing { Button("Move to Trash...", role: .destructive) { actions.trash(entry) } }
         }
         .help(state == .missing ? "The folder is not where it was: Locate it, or Remove the entry" : "Open this project")

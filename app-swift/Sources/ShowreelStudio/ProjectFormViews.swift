@@ -5,6 +5,7 @@ import SwiftUI
 /// project and the Project tab of the settings. The rules (what is set, how far, what the duration allows) are ShowreelKit's `ProjectSetup`; typed text is recorded after a pause
 /// through the typed operations, like everywhere.
 struct ProjectForm: View {
+    @EnvironmentObject var theme: Theme
     /// The set-up of a new project: the look is chosen here too.
     var setup = false
     @EnvironmentObject var project: ProjectModel
@@ -45,7 +46,7 @@ struct ProjectForm: View {
             if !setup, let f = f {
                 let look = ProjectSetup.requirements(f).first { $0.id == "look" }?.isSet ?? false
                 HStack {
-                    Label(look ? "Look: set" : "Look: not set yet", systemImage: look ? "checkmark.circle.fill" : "circle").foregroundStyle(look ? Color.green : .secondary).font(.callout)
+                    Label(look ? "Look: set" : "Look: not set yet", systemImage: look ? "checkmark.circle.fill" : "circle").foregroundStyle(look ? theme.success : .secondary).font(.callout)
                     Spacer()
                     Button("Open the Look") { project.settingsTab = .look }.buttonStyle(.borderless)
                 }
@@ -60,7 +61,7 @@ struct ProjectForm: View {
 
     private func section<C: View>(_ title: String, required: Bool, @ViewBuilder _ content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack { Text(title).font(.headline); if required { Text("Required").fontSmall(weight: .semibold).foregroundStyle(.orange).padding(.horizontal, 6).padding(.vertical, 1).background(Color.orange.opacity(0.14), in: Capsule()) } }
+            HStack { Text(title).font(.headline); if required { Text("Required").fontSmall(weight: .semibold).foregroundStyle(theme.warning).padding(.horizontal, 6).padding(.vertical, 1).background(theme.warning.opacity(0.14), in: Capsule()) } }
             content()
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
@@ -71,11 +72,11 @@ struct ProjectForm: View {
     private func progress(_ f: ShowreelFile) -> some View {
         let p = ProjectSetup.progress(f)
         return VStack(alignment: .leading, spacing: 6) {
-            HStack { Text("Base configuration").font(.headline); Spacer(); Text(p.line).font(.callout.weight(.semibold)).foregroundStyle(p.set == p.total ? Color.green : .orange) }
+            HStack { Text("Base configuration").font(.headline); Spacer(); Text(p.line).font(.callout.weight(.semibold)).foregroundStyle(p.set == p.total ? theme.success : theme.warning) }
             ProgressView(value: Double(p.set), total: Double(p.total))
             HStack(spacing: 10) {
                 ForEach(ProjectSetup.requirements(f)) { r in
-                    Label(r.title, systemImage: r.isSet ? "checkmark.circle.fill" : "circle").fontSmall().foregroundStyle(r.isSet ? Color.green : .secondary)
+                    Label(r.title, systemImage: r.isSet ? "checkmark.circle.fill" : "circle").fontSmall().foregroundStyle(r.isSet ? theme.success : .secondary)
                 }
             }
         }
@@ -112,14 +113,13 @@ struct ProjectForm: View {
                 ForEach(Self.presets, id: \.self) { n in
                     let on = f?.decisions.duration == Double(n)
                     Button("\(n) s") { drafts[.duration] = String(n); dirty.insert(.duration); commit() }
-                        .buttonStyle(.bordered).tint(on ? .accentColor : .secondary)
+                        .buttonStyle(ChipStyle(selected: on)).accessibilityAddTraits(on ? .isSelected : [])
                 }
-                TextField("", text: Binding(get: { drafts[.duration] ?? "" }, set: { drafts[.duration] = $0; dirty.insert(.duration); schedule() }), prompt: Text("seconds"))
-                    .textFieldStyle(.roundedBorder).frame(width: 90).onSubmit { commit() }
+                StepperField(text: Binding(get: { drafts[.duration] ?? "" }, set: { drafts[.duration] = $0; dirty.insert(.duration); schedule() }), rule: NumericField(minimum: 5, maximum: 600), onStep: { schedule() }, onCommit: { commit() }, width: 96)
             }
             if let f = f, let h = ProjectSetup.durationHint(f) {
                 Label(h.text, systemImage: h.level == .ok ? "checkmark.circle" : h.level == .fail ? "xmark.octagon" : "exclamationmark.triangle")
-                    .fontSmall().foregroundStyle(h.level == .ok ? Color.green : h.level == .fail ? Color.red : Color.orange).fixedSize(horizontal: false, vertical: true)
+                    .fontSmall().foregroundStyle(h.level == .ok ? theme.success : h.level == .fail ? theme.danger : theme.warning).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -188,7 +188,7 @@ struct ProjectForm: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title).font(.subheadline.weight(.medium))
             TextField("", text: Binding(get: { drafts[k] ?? "" }, set: { drafts[k] = $0; dirty.insert(k); schedule() }), prompt: Text(Self.examples[k] ?? ""), axis: .vertical)
-                .lineLimit(1...3).textFieldStyle(.roundedBorder).onSubmit { commit() }
+                .lineLimit(1...3).textFieldStyle(ThemedTextFieldStyle()).onSubmit { commit() }
         }
     }
 

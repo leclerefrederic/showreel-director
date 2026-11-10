@@ -7,25 +7,13 @@ import UniformTypeIdentifiers
 /// a toolbar with the transport. Every number it draws from (scale, sizes, ticks, what a frame shows, where a marker sits) is ShowreelKit's `Timeline.swift`;
 /// the views only draw it and relay the gestures to typed operations.
 
-enum StripColor {
-    static let bg = Color(red: 0.075, green: 0.078, blue: 0.095)
-    static let lane = Color(red: 0.118, green: 0.122, blue: 0.145)
-    static let ruler = Color(red: 0.098, green: 0.102, blue: 0.125)
-    static let frame = Color(red: 0.17, green: 0.176, blue: 0.21)
-    static let line = Color.white.opacity(0.24)
-    static let text = Color.white.opacity(0.94)
-    static let dim = Color.white.opacity(0.66)
-    static let wave = Color(red: 0.38, green: 0.66, blue: 1.0)
-    static let playhead = Color(red: 1.0, green: 0.33, blue: 0.30)
-    static let font = 11.0     // nothing under 11 pt
-}
-
 struct StripScrollKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 struct FilmStrip: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
 
     var body: some View {
@@ -41,7 +29,7 @@ struct FilmStrip: View {
                 if let f = f, f.storyboards.first != nil {
                     if f.library.isEmpty {
                         Text("The film has no scene yet. Create scenes in the Storyboard: each one you switch on appears here, in order.")
-                            .font(.system(size: 13)).foregroundStyle(StripColor.dim).padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                            .font(.system(size: 13)).foregroundStyle(theme.strip.dim).padding(16).frame(maxWidth: .infinity, alignment: .leading)
                         Spacer()
                     } else {
                         TimelineBody(f: f, sizes: sizes)
@@ -52,7 +40,7 @@ struct FilmStrip: View {
             .onAppear { project.setViewportWidth(Double(geo.size.width)) }
             .onChange(of: geo.size.width) { project.setViewportWidth(Double($0)) }
         }
-        .background(StripColor.bg)
+        .background(theme.strip.bg)
         .environment(\.colorScheme, .dark)
         .onHover { project.stripHovered = $0 }
         .background(StripKeys(project: project))
@@ -90,6 +78,7 @@ struct StripKeys: NSViewRepresentable {
 // MARK: toolbar
 
 struct StripToolbar: View {
+    @EnvironmentObject var theme: Theme
     @ObservedObject var player: ReelPlayer
     var rows = 1
     @EnvironmentObject var project: ProjectModel
@@ -111,15 +100,15 @@ struct StripToolbar: View {
             }
         }
         .padding(.horizontal, 12)
-        .background(StripColor.ruler)
-        .overlay(alignment: .bottom) { Rectangle().fill(StripColor.line).frame(height: 1) }
+        .background(theme.strip.ruler)
+        .overlay(alignment: .bottom) { Rectangle().fill(theme.strip.line).frame(height: 1) }
     }
 
     private var left: some View {
         HStack(spacing: 10) {
-            Label("Film", systemImage: "film.stack").font(.system(size: 13, weight: .semibold)).foregroundStyle(StripColor.text)
+            Label("Film", systemImage: "film.stack").font(.system(size: 13, weight: .semibold)).foregroundStyle(theme.strip.text)
             if let f = project.showreel {
-                Text(summary(f)).font(.system(size: 12)).foregroundStyle(StripColor.dim).lineLimit(1)
+                Text(summary(f)).font(.system(size: 12)).foregroundStyle(theme.strip.dim).lineLimit(1)
             }
         }
     }
@@ -137,16 +126,16 @@ struct StripToolbar: View {
             Button { project.stepScene(by: -1) } label: { Image(systemName: "backward.end.fill") }.buttonStyle(.borderless).help("Previous scene (left arrow)")
             Button { project.togglePlay() } label: {
                 Image(systemName: project.isPlaying ? "pause.fill" : "play.fill").font(.system(size: 13)).frame(width: 30, height: 24)
-                    .background(Color.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .background(theme.strip.white(0.14), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
             .buttonStyle(.plain).help(project.isPlaying ? "Pause (space)" : "Play the assembled film from the playhead (space, while the pointer is over the strip)")
             .disabledWithReason(project.filmPlayAvailability.reasonText, way: project.filmPlayAvailability.wayText)
             Button { project.stepScene(by: 1) } label: { Image(systemName: "forward.end.fill") }.buttonStyle(.borderless).help("Next scene (right arrow)")
-            Text(TimelineNav.timecode(project.playhead)).font(.system(size: 13, weight: .semibold, design: .monospaced)).foregroundStyle(StripColor.text)
+            Text(TimelineNav.timecode(project.playhead)).font(.system(size: 13, weight: .semibold, design: .monospaced)).foregroundStyle(theme.strip.text)
                 .frame(minWidth: 52, alignment: .trailing)
-            Text("/ " + TimelineNav.timecode(total)).font(.system(size: 12, design: .monospaced)).foregroundStyle(StripColor.dim)
+            Text("/ " + TimelineNav.timecode(total)).font(.system(size: 12, design: .monospaced)).foregroundStyle(theme.strip.dim)
         }
-        .foregroundStyle(StripColor.text)
+        .foregroundStyle(theme.strip.text)
     }
 
     private var right: some View {
@@ -181,7 +170,7 @@ struct StripToolbar: View {
             } label: { Image(systemName: "arrow.up.left.and.down.right.magnifyingglass") }
             .menuStyle(.borderlessButton).fixedSize().help("Fit the film (Command-0) or the selection")
         }
-        .foregroundStyle(StripColor.text)
+        .foregroundStyle(theme.strip.text)
     }
 
     private func snap(_ f: ShowreelFile) -> some View {
@@ -246,6 +235,7 @@ struct StripPrimaryAction: View {
 // MARK: the lanes
 
 struct TimelineBody: View {
+    @EnvironmentObject var theme: Theme
     let f: ShowreelFile
     let sizes: TimelineSizes
     @EnvironmentObject var project: ProjectModel
@@ -263,6 +253,7 @@ struct TimelineBody: View {
     var body: some View {
         let vp = project.timeline
         let tl = f.timeline()
+        let order = tl.map { $0.scene.id }          // only the frames whose place changes with it are animated
         let pps = vp.pps
         let width = project.viewportWidth
         let contentW = CGFloat(TimelineScale.contentWidth(duration: project.timelineLength, pps: pps, viewport: width))
@@ -290,6 +281,8 @@ struct TimelineBody: View {
                                 FrameView(timed: t, previous: i > 0 ? tl[i - 1].scene.id : nil, pps: CGFloat(pps), width: w, height: CGFloat(sizes.frame))
                                     .dropSlots(before: .reelSlot(before: t.scene.id), after: .reelSlot(before: next), vertical: false)
                                     .offset(x: CGFloat(TimelineScale.x(t.start ?? 0, pps: pps)) + ((gap ?? Int.max) <= i ? gapW : 0))
+                                    .animation(Motion.settle, value: order)
+                                    .arrives()
                             }
                             GridOverlay(f: f, tl: tl, sizes: sizes, vp: vp, viewport: width, gap: gap, gapW: gapW)
                                 .frame(width: contentW, height: sizes.frame).allowsHitTesting(false)
@@ -313,12 +306,12 @@ struct TimelineBody: View {
                     if let g = project.snapGuide {
                         let x = CGFloat(TimelineScale.x(g.time, pps: pps))
                         Rectangle().fill(Color.accentColor).frame(width: 2.5, height: CGFloat(laneTop + sizes.frame + sizes.gap + sizes.music)).offset(x: x - 1.25).allowsHitTesting(false)
-                        Text(g.text).font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundStyle(.white).padding(.horizontal, 6).padding(.vertical, 3)
+                        Text(g.text).font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundStyle(theme.strip.white()).padding(.horizontal, 6).padding(.vertical, 3)
                             .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 4)).fixedSize().offset(x: x + 6, y: CGFloat(sizes.ruler) + 2).allowsHitTesting(false)
                     }
-                    Rectangle().fill(StripColor.playhead).frame(width: 2, height: CGFloat(laneTop + sizes.frame + sizes.gap + sizes.music))
+                    Rectangle().fill(theme.strip.playhead).frame(width: 2, height: CGFloat(laneTop + sizes.frame + sizes.gap + sizes.music))
                         .offset(x: CGFloat(TimelineScale.x(project.playhead, pps: pps)) - 1).allowsHitTesting(false)
-                    Image(systemName: "arrowtriangle.down.fill").font(.system(size: 11)).foregroundStyle(StripColor.playhead)
+                    Image(systemName: "arrowtriangle.down.fill").font(.system(size: 11)).foregroundStyle(theme.strip.playhead)
                         .offset(x: CGFloat(TimelineScale.x(project.playhead, pps: pps)) - 5.5, y: CGFloat(sizes.ruler) - 12).allowsHitTesting(false)
                     Color.clear.frame(width: 1, height: 1).padding(.leading, CGFloat(vp.scroll)).id("anchor")
                 }
@@ -339,6 +332,7 @@ struct TimelineBody: View {
 /// The grid of the music drawn over the frames at the snap level, with the weaker lines given way as the zoom goes out. A line is drawn only where it does not cover a scene's
 /// ID, duration or review state, or a transition marker (ShowreelKit's `MusicGrid.segments`). It takes no click.
 struct GridOverlay: View {
+    @EnvironmentObject var theme: Theme
     let f: ShowreelFile
     let tl: [TimedScene]
     let sizes: TimelineSizes
@@ -370,10 +364,10 @@ struct GridOverlay: View {
                 let x = TimelineScale.x(l.time, pps: pps)
                 let color: Color, width: CGFloat
                 switch l.kind {
-                case .beat: color = .white.opacity(0.16); width = 1
-                case .bar: color = .white.opacity(0.34); width = 1.5
-                case .section: color = .orange.opacity(0.75); width = 1.5
-                case .drop: color = StripColor.playhead.opacity(0.9); width = 2
+                case .beat: color = theme.strip.gridBeat; width = 1
+                case .bar: color = theme.strip.gridBar; width = 1.5
+                case .section: color = theme.strip.gridSection; width = 1.5
+                case .drop: color = theme.strip.playhead.opacity(0.9); width = 2
                 }
                 for seg in MusicGrid.segments(x: x, height: h, avoiding: occupied) {
                     ctx.fill(Path(CGRect(x: CGFloat(x) - width / 2, y: CGFloat(seg.lowerBound), width: width, height: CGFloat(seg.upperBound - seg.lowerBound))), with: .color(color))
@@ -386,6 +380,7 @@ struct GridOverlay: View {
 // MARK: ruler
 
 struct TimelineRulerView: View {
+    @EnvironmentObject var theme: Theme
     let vp: TimelineScale.Viewport
     let viewport: Double
     let height: Double
@@ -395,7 +390,7 @@ struct TimelineRulerView: View {
     var body: some View {
         let pps = vp.pps
         Canvas { ctx, size in
-            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(StripColor.ruler))
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(theme.strip.ruler))
             let a = max(0, TimelineScale.time(atX: vp.scroll - 40, pps: pps)), b = TimelineScale.time(atX: vp.scroll + viewport + 40, pps: pps)
             let ticks = TimelineRuler.ticks(pps: pps, from: a, to: b, bars: music?.bars ?? [], beats: music?.beats ?? [])
             for t in ticks {
@@ -403,16 +398,16 @@ struct TimelineRulerView: View {
                 switch t.kind {
                 case .time:
                     let h: CGFloat = t.major ? 12 : 6
-                    ctx.fill(Path(CGRect(x: x, y: size.height - h, width: 1, height: h)), with: .color(t.major ? StripColor.dim : StripColor.line))
-                    if let l = t.label { ctx.draw(Text(l).font(.system(size: StripColor.font, weight: .medium, design: .monospaced)).foregroundColor(StripColor.text), at: CGPoint(x: x + 4, y: 8), anchor: .leading) }
+                    ctx.fill(Path(CGRect(x: x, y: size.height - h, width: 1, height: h)), with: .color(t.major ? theme.strip.dim : theme.strip.line))
+                    if let l = t.label { ctx.draw(Text(l).font(.system(size: theme.strip.font, weight: .medium, design: .monospaced)).foregroundColor(theme.strip.text), at: CGPoint(x: x + 4, y: 8), anchor: .leading) }
                 case .bar:
-                    ctx.fill(Path(CGRect(x: x, y: size.height - 10, width: 1.5, height: 10)), with: .color(StripColor.wave))
-                    if let l = t.label { ctx.draw(Text(l).font(.system(size: StripColor.font, weight: .semibold)).foregroundColor(StripColor.wave), at: CGPoint(x: x + 4, y: size.height - 8), anchor: .leading) }
+                    ctx.fill(Path(CGRect(x: x, y: size.height - 10, width: 1.5, height: 10)), with: .color(theme.strip.wave))
+                    if let l = t.label { ctx.draw(Text(l).font(.system(size: theme.strip.font, weight: .semibold)).foregroundColor(theme.strip.wave), at: CGPoint(x: x + 4, y: size.height - 8), anchor: .leading) }
                 case .beat:
-                    ctx.fill(Path(CGRect(x: x, y: size.height - 5, width: 1, height: 5)), with: .color(StripColor.wave.opacity(0.7)))
+                    ctx.fill(Path(CGRect(x: x, y: size.height - 5, width: 1, height: 5)), with: .color(theme.strip.wave.opacity(0.7)))
                 }
             }
-            ctx.fill(Path(CGRect(x: 0, y: size.height - 1, width: size.width, height: 1)), with: .color(StripColor.line))
+            ctx.fill(Path(CGRect(x: 0, y: size.height - 1, width: size.width, height: 1)), with: .color(theme.strip.line))
         }
         .contentShape(Rectangle())
         .gesture(DragGesture(minimumDistance: 0).onChanged { project.playhead = max(0, TimelineScale.time(atX: Double($0.location.x), pps: pps)) })
@@ -424,6 +419,7 @@ struct TimelineRulerView: View {
 
 /// One scene of the film: thumbnails at the height of the lane, its ID (and name when there is room), review state, duration, two edges to drag.
 struct FrameView: View {
+    @EnvironmentObject var theme: Theme
     let timed: TimedScene
     let previous: String?
     let pps: CGFloat
@@ -441,16 +437,22 @@ struct FrameView: View {
         let e = FrameLayout.elements(width: Double(width), height: Double(height), hasName: scene.name != nil, idLength: scene.id.count, nameLength: scene.name?.count ?? 0)
         ZStack(alignment: .topLeading) {
             thumbs(e)
-            LinearGradient(colors: [.black.opacity(0.55), .clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom).allowsHitTesting(false)
+            // a tall frame keeps its label, Status icon and duration in bands the picture does not cover; a short one lays them over the picture, under a gradient, as before
+            if e.header == nil && e.footer == nil {
+                LinearGradient(colors: theme.strip.gradient, startPoint: .top, endPoint: .bottom).allowsHitTesting(false)
+            } else {
+                if let h = e.header { Rectangle().fill(theme.strip.chipHeavy).frame(width: h.width, height: h.height).offset(x: h.minX, y: h.minY).allowsHitTesting(false) }
+                if let t = e.footer { Rectangle().fill(theme.strip.chipHeavy).frame(width: t.width, height: t.height).offset(x: t.minX, y: t.minY).allowsHitTesting(false) }
+            }
             if let r = e.label { label(e.mode).frame(maxWidth: r.width, alignment: .leading).offset(x: r.minX, y: r.minY) }
             if let r = e.status {
                 SceneStatusIcon(scene: scene, size: 12).padding(2).frame(minWidth: r.width, minHeight: r.height)
-                    .background(.black.opacity(0.6), in: Capsule()).offset(x: r.minX, y: r.minY)
+                    .background(theme.strip.black(0.6), in: Capsule()).offset(x: r.minX, y: r.minY)
             }
             BlockMarker(ref: .scene(scene.id)).padding(4).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             if let r = e.pill {
-                Text(timed.length.map { ProjectDocs.seconds($0) + " s" } ?? "no length").font(.system(size: StripColor.font, weight: .medium).monospacedDigit()).foregroundStyle(.white).lineLimit(1)
-                    .frame(width: r.width, height: r.height).background(.black.opacity(0.7), in: Capsule()).offset(x: r.minX, y: r.minY)
+                Text(timed.length.map { ProjectDocs.seconds($0) + " s" } ?? "no length").font(.system(size: theme.strip.font, weight: .medium).monospacedDigit()).foregroundStyle(theme.strip.white()).lineLimit(1)
+                    .frame(width: r.width, height: r.height).background(theme.strip.black(0.7), in: Capsule()).offset(x: r.minX, y: r.minY)
             }
             HStack(spacing: 0) {
                 edge(0).opacity(previous == nil ? 0 : 1).allowsHitTesting(previous != nil)
@@ -460,23 +462,22 @@ struct FrameView: View {
             .frame(width: width, height: height)
         }
         .frame(width: width, height: height)
-        .background(StripColor.frame)
+        .background(theme.strip.frame)
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .temporaryVeil(.scene(scene.id), radius: 6)
-        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(selected ? Color.accentColor : hovering ? Color.white.opacity(0.65) : Color.white.opacity(0.28), lineWidth: selected ? 3 : hovering ? 2 : 1))
+        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(selected ? Color.accentColor : hovering ? theme.strip.white(0.65) : theme.strip.white(0.28), lineWidth: selected ? 3 : hovering ? 2 : 1))
         .shadow(color: selected ? Color.accentColor.opacity(0.55) : .clear, radius: 6)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .animation(Motion.quick, value: hovering)
         .animation(Motion.quick, value: selected)
-        .onTapGesture { project.select(.scene(scene.id)); if let s = timed.start { project.playhead = s }; focused = true }
+        .onTapGesture { project.focusScene(scene.id); focused = true }
         .focusable().focused($focused).quietFocus()
         .onDeleteCommand { project.setEnabled(scene.id, false) }          // the Delete key takes the selected frame out of the film (it stays as a chip under the strip)
         .dragSource(.scene(scene.id), label: scene.label, icon: "film")
         .dropTarget(.scene(scene.id))       // a resource, a background or a look dropped on a frame goes to that scene
         .contextMenu {
             Button("Rename") { project.beginRename(scene.id) }
-            Button("Duplicate") { project.duplicateScene(scene.id) }
             Button("Hide") { project.setEnabled(scene.id, false) }.help("The scene stays in the project, under Not in the storyboard")
             Divider()
             Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(scene.id) }
@@ -486,27 +487,25 @@ struct FrameView: View {
 
     /// One thumbnail, as long as a scene has a single still: repeated tiles come only with real frames at different times (phase W4). Tiles fill the frame's width.
     private func thumbs(_ e: FrameElements) -> some View {
-        HStack(spacing: 0) {
-            ForEach(0..<e.thumbTiles, id: \.self) { _ in
-                SceneThumb(scene: scene, still: true).frame(width: CGFloat(e.thumbWidth), height: height).clipped()
-            }
-        }
-        .frame(width: width, height: height, alignment: .leading).clipped()
+        // the picture is clipped to its own rectangle (inside the frame, cropped from the left, between the bands when there are any): it never reaches the next frame or a label
+        SceneThumb(scene: scene, still: true).frame(width: CGFloat(e.thumbWidth), height: CGFloat(e.thumb.height), alignment: .leading)
+            .frame(width: CGFloat(e.thumb.width), height: CGFloat(e.thumb.height), alignment: .leading).clipped()
+            .offset(x: CGFloat(e.thumb.minX), y: CGFloat(e.thumb.minY)).allowsHitTesting(false)
     }
 
     @ViewBuilder private func label(_ m: LabelMode) -> some View {
         let id = m == .shortID ? String(scene.id.drop { !$0.isNumber }) : scene.id
         HStack(spacing: 4) {
-            Text(id).font(.system(size: StripColor.font, weight: .bold, design: .monospaced)).foregroundStyle(.white).lineLimit(1)
-            if m == .idAndName, let n = scene.name { Text(n).font(.system(size: StripColor.font, weight: .medium)).foregroundStyle(.white.opacity(0.92)).lineLimit(1) }
+            Text(id).font(.system(size: theme.strip.font, weight: .bold, design: .monospaced)).foregroundStyle(theme.strip.white()).lineLimit(1)
+            if m == .idAndName, let n = scene.name { Text(n).font(.system(size: theme.strip.font, weight: .medium)).foregroundStyle(theme.strip.white(0.92)).lineLimit(1) }
             OverrideBadge(scene: scene)
         }
-        .padding(.horizontal, 5).frame(height: 18).background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 4)).fixedSize(horizontal: m != .idAndName, vertical: true)
+        .padding(.horizontal, 5).frame(height: 18).background(theme.strip.black(0.7), in: RoundedRectangle(cornerRadius: 4)).fixedSize(horizontal: m != .idAndName, vertical: true)
     }
 
     /// An edge: the left one moves the cut with the scene before, the right one changes this scene's duration.
     private func edge(_ side: Int) -> some View {
-        Rectangle().fill(Color.white.opacity(dragging?.edge == side ? 0.55 : hovering ? 0.28 : 0.0)).frame(width: 7)
+        Rectangle().fill(theme.strip.white(dragging?.edge == side ? 0.55 : hovering ? 0.28 : 0.0)).frame(width: 7)
             .contentShape(Rectangle())
             .onHover { $0 ? NSCursor.resizeLeftRight.set() : NSCursor.arrow.set() }
             .gesture(DragGesture(minimumDistance: 1)
@@ -530,6 +529,7 @@ struct FrameView: View {
 
 /// The passage to the next scene: a diamond on the cut with the icon of its type, a generous area to click. A transition dropped from the library lands here.
 struct TransitionMarker: View {
+    @EnvironmentObject var theme: Theme
     let from: String
     let transition: ShowreelFile.Transition
     let place: MarkerPlacement
@@ -549,15 +549,16 @@ struct TransitionMarker: View {
         let selected = project.selection == .transition(from)
         let side = place.size * 0.72
         ZStack {
-            RoundedRectangle(cornerRadius: 3, style: .continuous).fill(transition.isCut ? Color(white: 0.2) : Color.accentColor)
+            RoundedRectangle(cornerRadius: 3, style: .continuous).fill(transition.isCut ? theme.strip.cutFill : Color.accentColor)
                 .frame(width: side, height: side).rotationEffect(.degrees(45))
-                .overlay(RoundedRectangle(cornerRadius: 3, style: .continuous).stroke(selected ? Color.white : Color.white.opacity(0.55), lineWidth: selected ? 2.5 : 1).frame(width: side, height: side).rotationEffect(.degrees(45)))
-            Image(systemName: symbol).font(.system(size: place.size > 20 ? 11 : 9, weight: .bold)).foregroundStyle(.white)
+                .overlay(RoundedRectangle(cornerRadius: 3, style: .continuous).stroke(selected ? theme.strip.white() : theme.strip.white(0.55), lineWidth: selected ? 2.5 : 1).frame(width: side, height: side).rotationEffect(.degrees(45)))
+            Image(systemName: symbol).font(.system(size: place.size > 20 ? 11 : 9, weight: .bold)).foregroundStyle(theme.strip.white())
         }
+        .pop(selected)
         .frame(width: place.hit.width, height: place.hit.height)
         .contentShape(Rectangle())
         .help(project.transitionHelp(from: from, base: transition.text))
-        .overlay(alignment: .topTrailing) { if TransitionNotes.note(after: from, in: project.showreel ?? ShowreelFile(name: ""), store: project.store) != nil { Image(systemName: "exclamationmark.circle.fill").font(.system(size: 11)).foregroundStyle(.orange).allowsHitTesting(false) } }
+        .overlay(alignment: .topTrailing) { if TransitionNotes.note(after: from, in: project.showreel ?? ShowreelFile(name: ""), store: project.store) != nil { Image(systemName: "exclamationmark.circle.fill").font(.system(size: 11)).foregroundStyle(theme.strip.section()).allowsHitTesting(false) } }
         .onTapGesture { project.selectTransition(from: from) }
         .dropTarget(.marker(from: from))     // a transition dropped from the library lands here
         .contextMenu {
@@ -572,13 +573,14 @@ struct TransitionMarker: View {
 
 /// The project's music directly under the frames: a filled waveform on the time scale, the grid of the analysis; empty, a large place to drop an audio file.
 struct MusicLane: View {
+    @EnvironmentObject var theme: Theme
     let contentW: CGFloat
     let vp: TimelineScale.Viewport
     @EnvironmentObject var project: ProjectModel
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(StripColor.lane)
+            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(theme.strip.lane)
             if project.showreel?.decisions.track?.file == nil { emptyState } else { lane }
         }
         .dropTarget(.musicLane)
@@ -586,17 +588,17 @@ struct MusicLane: View {
 
     private var emptyState: some View {
         HStack(spacing: 14) {
-            Image(systemName: "waveform.badge.plus").font(.system(size: 26)).foregroundStyle(StripColor.wave)
+            Image(systemName: "waveform.badge.plus").font(.system(size: 26)).foregroundStyle(theme.strip.wave)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Drop an audio file here to time the film on its beat").font(.system(size: 14, weight: .semibold)).foregroundStyle(StripColor.text)
-                Text("Or drag one from the Resources tab. The grid of the music then appears in the ruler, and scenes snap to it.").font(.system(size: 12)).foregroundStyle(StripColor.dim)
+                Text("Drop an audio file here to time the film on its beat").font(.system(size: 14, weight: .semibold)).foregroundStyle(theme.strip.text)
+                Text("Or drag one from the Resources tab. The grid of the music then appears in the ruler, and scenes snap to it.").font(.system(size: 12)).foregroundStyle(theme.strip.dim)
             }
             Button("Choose music") { choose() }.buttonStyle(PrimaryButtonStyle())
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 18)
         .frame(width: min(contentW, max(project.viewportWidth, 600)), alignment: .leading)
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(StripColor.line, style: StrokeStyle(lineWidth: 1.5, dash: [7, 5])).frame(width: min(contentW, max(project.viewportWidth, 600))), alignment: .leading)
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(theme.strip.line, style: StrokeStyle(lineWidth: 1.5, dash: [7, 5])).frame(width: min(contentW, max(project.viewportWidth, 600))), alignment: .leading)
     }
 
     private func choose() {
@@ -610,7 +612,7 @@ struct MusicLane: View {
         return ZStack(alignment: .topLeading) {
             Canvas { ctx, size in
                 let mid = size.height / 2
-                if let m = project.music { for b in m.breaks { ctx.fill(Path(CGRect(x: CGFloat(TimelineScale.x(b.start, pps: pps)), y: 0, width: CGFloat((b.end - b.start) * pps), height: size.height)), with: .color(.orange.opacity(0.2))) } }
+                if let m = project.music { for b in m.breaks { ctx.fill(Path(CGRect(x: CGFloat(TimelineScale.x(b.start, pps: pps)), y: 0, width: CGFloat((b.end - b.start) * pps), height: size.height)), with: .color(theme.strip.section(0.2))) } }
                 let dur = max(project.trackDuration, project.music?.duration ?? 0)
                 let n = project.waveform.count
                 if n > 0, dur > 0 {
@@ -627,26 +629,26 @@ struct MusicLane: View {
                     }
                     if top.count > 1 {
                         var p = Path(); p.move(to: top[0]); top.dropFirst().forEach { p.addLine(to: $0) }; bottom.reversed().forEach { p.addLine(to: $0) }; p.closeSubpath()
-                        ctx.fill(p, with: .linearGradient(Gradient(colors: [StripColor.wave, StripColor.wave.opacity(0.6)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
+                        ctx.fill(p, with: .linearGradient(Gradient(colors: [theme.strip.wave, theme.strip.wave.opacity(0.6)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
                     }
                 }
                 if let m = project.music {
                     let marks = MusicGrid.laneMarks(m, pps: pps, from: TimelineScale.time(atX: vp.scroll - 40, pps: pps), to: TimelineScale.time(atX: vp.scroll + project.viewportWidth + 40, pps: pps))
-                    for t in marks.beats { ctx.fill(Path(CGRect(x: CGFloat(TimelineScale.x(t, pps: pps)), y: size.height - 7, width: 1, height: 7)), with: .color(.white.opacity(0.4))) }
+                    for t in marks.beats { ctx.fill(Path(CGRect(x: CGFloat(TimelineScale.x(t, pps: pps)), y: size.height - 7, width: 1, height: 7)), with: .color(theme.strip.white(0.4))) }
                     for b in marks.bars {
                         let x = CGFloat(TimelineScale.x(b.time, pps: pps))
-                        ctx.fill(Path(CGRect(x: x, y: 0, width: 1, height: size.height)), with: .color(.white.opacity(0.26)))
-                        if let l = b.label { ctx.draw(Text(l).font(.system(size: StripColor.font, weight: .semibold)).foregroundColor(StripColor.text), at: CGPoint(x: x + 4, y: size.height - 11), anchor: .leading) }
+                        ctx.fill(Path(CGRect(x: x, y: 0, width: 1, height: size.height)), with: .color(theme.strip.white(theme.tokens.strip.gridCut)))
+                        if let l = b.label { ctx.draw(Text(l).font(.system(size: theme.strip.font, weight: .semibold)).foregroundColor(theme.strip.text), at: CGPoint(x: x + 4, y: size.height - 11), anchor: .leading) }
                     }
                     for s in marks.sections {
                         let x = CGFloat(TimelineScale.x(s.time, pps: pps))
-                        ctx.fill(Path(CGRect(x: x - 0.75, y: 0, width: 1.5, height: size.height)), with: .color(.orange))
-                        if let l = s.label { ctx.draw(Text(l).font(.system(size: StripColor.font, weight: .bold)).foregroundColor(.orange), at: CGPoint(x: x + 5, y: 10), anchor: .leading) }
+                        ctx.fill(Path(CGRect(x: x - 0.75, y: 0, width: 1.5, height: size.height)), with: .color(theme.strip.section()))
+                        if let l = s.label { ctx.draw(Text(l).font(.system(size: theme.strip.font, weight: .bold)).foregroundColor(theme.strip.section()), at: CGPoint(x: x + 5, y: 10), anchor: .leading) }
                     }
                     for d in marks.drops {
                         let x = CGFloat(TimelineScale.x(d.time, pps: pps))
-                        ctx.fill(Path(CGRect(x: x - 1.25, y: 0, width: 2.5, height: size.height)), with: .color(StripColor.playhead))
-                        ctx.draw(Text(abs(d.time - (m.strongestDrop ?? -1)) < 0.001 ? "Strongest drop" : "Drop").font(.system(size: StripColor.font, weight: .bold)).foregroundColor(StripColor.playhead), at: CGPoint(x: x + 6, y: 10), anchor: .leading)
+                        ctx.fill(Path(CGRect(x: x - 1.25, y: 0, width: 2.5, height: size.height)), with: .color(theme.strip.playhead))
+                        ctx.draw(Text(abs(d.time - (m.strongestDrop ?? -1)) < 0.001 ? "Strongest drop" : "Drop").font(.system(size: theme.strip.font, weight: .bold)).foregroundColor(theme.strip.playhead), at: CGPoint(x: x + 6, y: 10), anchor: .leading)
                     }
                 }
             }
@@ -660,7 +662,7 @@ struct MusicLane: View {
             if project.analysing { ProgressView().controlSize(.small).padding(8) }
             else if project.music == nil {
                 HStack(spacing: 10) {
-                    Text(project.musicNotice ?? "Not analysed: the ruler shows plain time, and there is no grid.").font(.system(size: 12)).foregroundStyle(.orange).lineLimit(2)
+                    Text(project.musicNotice ?? "Not analysed: the ruler shows plain time, and there is no grid.").font(.system(size: 12)).foregroundStyle(theme.strip.section()).lineLimit(2)
                     Button("Analyse the track") { project.analyseTrack() }.controlSize(.small)
                         .help("Finds the beats, bars, sections and drops of the music. It needs numpy and ffmpeg (the setup check says if they are missing). Nothing runs until you press this.")
                 }.padding(8)
@@ -673,17 +675,18 @@ struct MusicLane: View {
 
 /// Scenes of the library that are not in the film: dimmed chips, one click puts one at the end, or drag it into the frames.
 struct OffRow: View {
+    @EnvironmentObject var theme: Theme
     let off: [ShowreelFile.Scene]
     @EnvironmentObject var project: ProjectModel
 
     var body: some View {
         HStack(spacing: 6) {
-            Text("Off:").font(.system(size: 12)).foregroundStyle(StripColor.dim)
+            Text("Off:").font(.system(size: 12)).foregroundStyle(theme.strip.dim)
             ForEach(off) { s in
                 // not a Button: a button takes the press and the chip could never be dragged back into the frames
-                Label(s.id, systemImage: "eye").font(.system(size: StripColor.font)).padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(Color.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .foregroundStyle(StripColor.text).opacity(0.6).contentShape(Rectangle())
+                Label(s.id, systemImage: "eye").font(.system(size: theme.strip.font)).padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(theme.strip.white(0.14), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .foregroundStyle(theme.strip.text).opacity(0.6).contentShape(Rectangle())
                     .onTapGesture { project.place(s.id, before: nil) }
                     .dragSource(.scene(s.id), label: s.label, icon: "film")
                     .accessibilityAddTraits(.isButton)
@@ -692,7 +695,7 @@ struct OffRow: View {
             Spacer()
         }
         .padding(.horizontal, 12)
-        .background(StripColor.ruler)
+        .background(theme.strip.ruler)
     }
 }
 

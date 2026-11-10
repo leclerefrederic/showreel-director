@@ -5,6 +5,7 @@ import SwiftUI
 /// editor, here; the scenes override the look in their own inspector, and the Catalogue palette is only a source of drags. The application's own
 /// settings (key, gateway, model, environment) are not here: they are in the application menu.
 struct SettingsDock: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
     @State private var live: Double?
     @State private var startWidth: Double?
@@ -26,7 +27,7 @@ struct SettingsDock: View {
                 }
                 ProjectSettingsPanel().frame(width: w)
             }
-            .shadow(color: .black.opacity(0.2), radius: 10, x: -2)
+            .shadow(color: theme.strip.black(0.2), radius: 10, x: -2)
         }
     }
 }
@@ -42,9 +43,7 @@ struct ProjectSettingsPanel: View {
                 Button { project.closeRight() } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).help("Close")
             }
             .padding(.horizontal, 14).padding(.top, 12)
-            Picker("", selection: $project.settingsTab) { ForEach(SettingsTab.allCases) { Text($0.title).tag($0) } }
-                .pickerStyle(.segmented).labelsHidden().padding(14)
-            Divider()
+            TabBar(tabs: SettingsTab.allCases, selection: $project.settingsTab, title: { $0.title }).padding(.top, 10)
             if project.showreel == nil {
                 Text("This project has no data yet. Confirm the import or create it with the banner above.").foregroundStyle(.secondary).padding(16)
                 Spacer()
@@ -120,6 +119,7 @@ struct GlobalLookSettings: View {
 
 /// One row of the list of look editors.
 struct LookRow: View {
+    @EnvironmentObject var theme: Theme
     let section: LookSection
     @EnvironmentObject var project: ProjectModel
     @State private var hovering = false
@@ -128,7 +128,7 @@ struct LookRow: View {
         let summary = project.showreel.map { section.summary($0) } ?? LookSection.Summary(text: "", swatches: [], isSet: false)
         Button { project.lookSection = section } label: {
             HStack(spacing: 12) {
-                Image(systemName: section.symbol).font(.system(size: 15)).foregroundStyle(.white).frame(width: 30, height: 30)
+                Image(systemName: section.symbol).font(.system(size: 15)).foregroundStyle(theme.onAccent).frame(width: 30, height: 30)
                     .background(Color.accentColor.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                 Text(section.title).font(.callout.weight(.medium))
                 Spacer(minLength: 8)

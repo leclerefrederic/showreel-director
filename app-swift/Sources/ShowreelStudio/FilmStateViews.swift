@@ -14,9 +14,15 @@ struct SceneStatusIcon: View {
 
     var body: some View {
         let st = project.sceneStatus(for: scene)
-        Image(systemName: st.kind.symbol).font(.system(size: size)).foregroundStyle(theme.status(st.kind)).frame(width: size + 4, height: size + 4)
-            .help(st.tooltip)
-            .accessibilityLabel("Status: " + st.kind.title)
+        // while a Build works on the scene its run state shows (waiting, writing, testing, repairing); a finished scene settles into its Status icon
+        if let run = project.activity.build?.runs[scene.id], run.state != .done {
+            RunMark(state: run.state, size: size)
+        } else {
+            Image(systemName: st.kind.symbol).font(.system(size: size)).foregroundStyle(theme.status(st.kind)).frame(width: size + 4, height: size + 4)
+                .stateChange(st.kind)
+                .help(st.tooltip)
+                .accessibilityLabel("Status: " + st.kind.title)
+        }
     }
 }
 
@@ -238,7 +244,7 @@ struct LayoutWarningsSheet: View {
                             HStack {
                                 Text("\(id): \(list.count) warning\(list.count == 1 ? "" : "s")").font(.callout.weight(.semibold))
                                 Spacer()
-                                Button("Fix this scene") { project.fixLayout(id) }
+                                Button("Fix this scene") { project.fixLayout(id) }.buttonStyle(SecondaryButtonStyle())
                                     .disabledWithReason(locked ? "\(id) is locked" : nil, way: "Unlock the scene first")
                             }
                             ForEach(Array(list.prefix(4).enumerated()), id: \.offset) { _, w in Text(w).fontSmall().foregroundStyle(.secondary).textSelection(.enabled) }

@@ -45,8 +45,8 @@ struct EditorView: View {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             Text("This file changed on disk while you were editing it.").font(.callout)
             Spacer()
-            Button("Load the disk version") { project.reloadFromDisk(tab) }
-            Button("Keep mine") { tab.diskChanged = false }
+            Button("Load the disk version") { project.reloadFromDisk(tab) }.buttonStyle(SecondaryButtonStyle())
+            Button("Keep mine") { tab.diskChanged = false }.buttonStyle(SecondaryButtonStyle())
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -146,7 +146,7 @@ struct CSVTable: View {
                         GridRow {
                             ForEach(columns.indices, id: \.self) { c in
                                 TextField("", text: cell(r, c))
-                                    .textFieldStyle(.roundedBorder)
+                                    .textFieldStyle(ThemedTextFieldStyle())
                                     .font(r == 0 ? .callout.bold() : .callout)
                                     .frame(minWidth: 110, idealWidth: 160)
                             }
@@ -226,7 +226,7 @@ struct HistoryView: View {
                             HStack {
                                 Text("Red: in the old version. Green: in the file now.").fontSmall().foregroundStyle(.secondary)
                                 Spacer()
-                                Button("Restore this version") { project.restore(tab, s); dismiss() }
+                                Button("Restore this version") { project.restore(tab, s); dismiss() }.buttonStyle(SecondaryButtonStyle())
                                     .buttonStyle(PrimaryButtonStyle())
                             }
                             .padding(10)

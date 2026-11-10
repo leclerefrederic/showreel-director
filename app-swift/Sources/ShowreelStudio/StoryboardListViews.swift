@@ -108,7 +108,11 @@ struct StoryboardSection: View {
                     Text("No scene yet. Create one, or draft with the AI.").font(.callout).foregroundStyle(.secondary).padding(16)
                     Spacer()
                 } else {
-                    ScrollView { entries(l) }
+                    ScrollViewReader { proxy in
+                        ScrollView { entries(l) }
+                            // a selection made on the strip or anywhere else brings its row into view
+                            .onChange(of: project.selection.sceneID) { id in if let id { Motion.with(.select) { proxy.scrollTo("scene:" + id) } } }
+                    }
                 }
             } else if !expanded { Spacer() }
         }
@@ -153,7 +157,7 @@ struct StoryboardSection: View {
 
     private func draft() {
         guard settings.hasKey else { project.error = "Drafting needs an AI. Connect one in Settings, or write the scenes by hand: everything else works without it."; return }
-        project.inspectorTab = .copilot
+        project.showClap()
         chat.ask(prompt: Wizard.draftScenesPrompt, status: "Scene draft requested")
     }
 }
@@ -161,10 +165,12 @@ struct StoryboardSection: View {
 /// One scene of the storyboard, in fixed columns: the handle, the ID, the name with the first words under it, the duration, then Status (read-only), Visible (the eye) and Locked
 /// (the lock). A click on the scene selects it everywhere (the strip, the inspector). The columns and the rules behind them are ShowreelKit's (`StoryboardList.row`, `SceneStatuses`, `SceneSwitches`).
 struct StoryboardSceneRow: View {
+    @EnvironmentObject var theme: Theme
     let scene: ShowreelFile.Scene
     let next: String?
     @EnvironmentObject var project: ProjectModel
     @State private var hovering = false
+    @State private var refused = 0
 
     static let idWidth: CGFloat = 34, durationWidth: CGFloat = 42, iconWidth: CGFloat = 20
 
@@ -191,7 +197,7 @@ struct StoryboardSceneRow: View {
                 }
                 .contentShape(Rectangle())
                 .onTapGesture(count: 2) { project.beginRename(scene.id) }
-                .onTapGesture { project.select(.scene(scene.id)) }
+                .onTapGesture { project.focusScene(scene.id) }
                 SceneStatusIcon(scene: scene)
                 switchButton(.eye)
                 switchButton(.lock)
@@ -207,7 +213,7 @@ struct StoryboardSceneRow: View {
             .dropSlots(before: .reelSlot(before: scene.id), after: .reelSlot(before: next))
             .contextMenu { SceneMenu(id: scene.id) }
         }
-        .transition(Motion.appear)
+        .arrives()
     }
 
     private enum Column { case eye, lock }
@@ -220,12 +226,13 @@ struct StoryboardSceneRow: View {
             let symbol = c == .eye ? (sw.on ? "eye" : "eye.slash") : (sw.on ? "lock.fill" : "lock.open")
             let what = c == .eye ? (sw.on ? "In the film. Click to hide it." : "Hidden: not in the film. Click to show it.")
                                  : (sw.on ? "Locked: frozen in time and space. Click to unlock it (Undo brings the lock back)." : "Not locked. Click to lock it: nothing in it or before it can change.")
-            Button { project.flip(sw) } label: {
-                Image(systemName: symbol).font(.system(size: 12)).frame(width: Self.iconWidth, height: Self.iconWidth)
-                    .foregroundStyle(sw.on ? (c == .lock ? Color.teal : Color.primary) : Color.secondary.opacity(c == .lock ? 0.45 : 0.9))
+            Button { if sw.unavailable != nil { refused += 1 }; project.flip(sw) } label: {
+                ToggleIcon(symbol: symbol, size: 12).frame(width: Self.iconWidth, height: Self.iconWidth)
+                    .foregroundStyle(sw.on ? (c == .lock ? theme.lockOn : Color.primary) : Color.secondary.opacity(c == .lock ? 0.45 : 0.9))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .nudge(trigger: refused)
             .opacity(sw.unavailable != nil ? 0.5 : 1)
             .help(sw.unavailable.map { "\(name): " + $0.message } ?? what)
             .accessibilityLabel(name + ": " + (sw.on ? "on" : "off"))
@@ -236,6 +243,7 @@ struct StoryboardSceneRow: View {
 /// The thin line between two scenes, indented under the scene it leaves and joined to both by a vertical connector: a glyph, "Flip card \u{00B7} 0.55 s" or "Cut", and what the
 /// marker says about itself. A click selects the marker on the strip and opens its inspector.
 struct TransitionLine: View {
+    @EnvironmentObject var theme: Theme
     let line: StoryboardList.TransitionLine
     @EnvironmentObject var project: ProjectModel
     @State private var hovering = false
@@ -249,7 +257,7 @@ struct TransitionLine: View {
                     Image(systemName: line.glyph).font(.system(size: 11)).foregroundStyle(line.isCut ? Color.secondary : Color.accentColor).frame(width: 14)
                     Text(line.text).fontSmall().foregroundStyle(.secondary).lineLimit(1)
                 }
-                ForEach(line.marks, id: \.self) { Text($0).fontSmall().foregroundStyle(.orange).padding(.leading, 19).lineLimit(2) }
+                ForEach(line.marks, id: \.self) { Text($0).fontSmall().foregroundStyle(theme.mark).padding(.leading, 19).lineLimit(2) }
             }
             .padding(.leading, 8).padding(.vertical, 2).padding(.trailing, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -315,6 +323,7 @@ struct ListKeys: NSViewRepresentable {
 
 /// The badge of the top bar: how many checks are red or orange; a click opens the list in the centre.
 struct ChecksBadge: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
 
     var body: some View {
@@ -324,7 +333,7 @@ struct ChecksBadge: View {
                 Image(systemName: v.tone == .clear ? "checkmark.seal" : "exclamationmark.triangle.fill")
                 Text(v.label)
             }
-            .foregroundStyle(v.tone == .problem ? Color.red : v.tone == .attention ? .orange : .primary)
+            .foregroundStyle(v.tone == .problem ? theme.danger : v.tone == .attention ? theme.mark : Color.primary)
         }
         .help(v.help)
     }

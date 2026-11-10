@@ -14,6 +14,9 @@ struct UndoEntry {
     var kept: [String: Data] = [:]
     /// The journal lines of the operations this step holds: an undo or a redo of the step is journalled against each of them.
     var journal: [JournalEntry] = []
+    /// What the step edited and when (AS1): two steps of the same key closer than `EditSession.undoWindow` are one.
+    var key: String? = nil
+    var at = Date.distantPast
 }
 
 /// The undo and redo stacks of one project. In memory only: closing the project forgets them.
@@ -107,6 +110,22 @@ extension ProjectStore {
 
     /// Several operations that the user sees as one action (duplicating a scene, dropping a file on a scene): one undo step.
     public func transaction<T>(_ title: String, _ body: () throws -> T) throws -> T { if let e = buildRefusal() { throw e }; return try recording(title, body) }
+
+    /// After a form field committed: marks the step just recorded as an edit of `key`, and folds it into the step before when that one edited the same key a moment ago, so Undo takes
+    /// back what was typed in the field and not each commit. Nothing happens when the commit recorded no step.
+    public func coalesceLast(key: String, now: Date = Date(), window: TimeInterval = EditSession.undoWindow) {
+        undoLog.lock.lock(); defer { undoLog.lock.unlock() }
+        var u = undoLog.undos
+        guard var last = u.last else { return }
+        guard last.key == nil else { return }            // already marked: the same step, not a new one
+        last.key = key; last.at = now
+        if u.count >= 2, let prev = Optional(u[u.count - 2]), prev.key == key, now.timeIntervalSince(prev.at) <= window {
+            var merged = UndoEntry(title: prev.title, before: prev.before, after: last.after, created: prev.created, removed: prev.removed)
+            merged.kept = prev.kept; merged.journal = prev.journal + last.journal; merged.key = key; merged.at = now
+            u.removeLast(2); u.append(merged)
+        } else { u[u.count - 1] = last }
+        undoLog.undos = u
+    }
 
     // MARK: undo and redo
 

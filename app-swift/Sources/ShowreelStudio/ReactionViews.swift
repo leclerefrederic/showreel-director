@@ -28,6 +28,7 @@ extension ProjectModel {
     /// The warning before closing, quitting, updating or restoring while work is in progress. true: go on (the work was stopped as the alert said); false: keep working.
     /// The window only shows what the rules say.
     func confirmLeaving(_ c: CloseGuard.Context) -> Bool {
+        activeAutosave?.flush()
         guard let a = closeAlert(c) else { return true }
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -162,7 +163,7 @@ struct FlashWhenChanged: ViewModifier {
     func body(content: Content) -> some View {
         let on = project.flashed.contains { $0.overlaps(ref) }
         content.overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.accentColor.opacity(on ? 0.25 : 0)).allowsHitTesting(false))
-            .animation(.easeOut(duration: 0.6), value: on)
+            .animation(Motion.settle, value: on)
     }
 }
 
@@ -229,7 +230,7 @@ struct ProposalsBanner: View {
                 HStack {
                     Label("Waiting for your answer: \(list.count) proposal\(list.count == 1 ? "" : "s") from Clap", systemImage: ClapMark.symbol).font(.callout.weight(.semibold))
                     Spacer()
-                    Button("Refuse all") { chat.answerAll(accept: false) }
+                    Button("Refuse all") { chat.answerAll(accept: false) }.buttonStyle(SecondaryButtonStyle())
                     Button("Accept all") { chat.answerAll(accept: true) }.buttonStyle(PrimaryButtonStyle())
                 }
                 ForEach(list) { p in

@@ -5,100 +5,139 @@ extension ShowreelFile.Scene {
     var durationLabel: String { duration.map { "\(ProjectDocs.seconds($0)) s" } ?? "no duration" }
 }
 
-/// The form of one scene of the library, one tab at a time (all of it when `tab` is nil, as in the wizard). Typed here, recorded with Save as
-/// one typed operation (one card in the history, not one per keystroke). The drafts live in this view, so they stay when the tab changes.
+/// The form of one scene of the library, one tab at a time (all of it when `tab` is nil, as in the wizard). There is no Save: each field commits through the one typed operation when it
+/// loses focus, on Return, or after a pause in typing (ShowreelKit's `EditSession`), and Undo is the way back. The drafts live in `SceneAutosave`.
 struct SceneForm: View {
     let id: String
     var tab: SceneTab?
     @EnvironmentObject var project: ProjectModel
-    @State private var duration = ""
-    @State private var text = ""
-    @State private var visual = ""
-    @State private var feeling = ""
-    @State private var handoff = ""
-    @State private var linked: Set<String> = []
-    @State private var loadedFor = ""
+    @EnvironmentObject var theme: Theme
+    @StateObject private var auto = SceneAutosave()
+    @FocusState private var focus: String?
+    @State private var lastFocus: String?
 
     private var scene: ShowreelFile.Scene? { project.showreel?.scenes.first { $0.id == id } }
     private func shows(_ t: SceneTab) -> Bool { tab == nil || tab == t }
+    private var linkedNow: Set<String> { Set(project.assets.filter { $0.sceneIDs.contains(id) }.map { $0.id }) }
 
-    private var edit: SceneEdit? {
-        guard let s = scene else { return nil }
-        func secs(_ x: Double?) -> String { x.map { ProjectDocs.seconds($0) } ?? "" }
-        let current = Set(project.assets.filter { $0.sceneIDs.contains(id) }.map { $0.id })
-        var e = SceneEdit()
-        if duration != secs(s.duration) { e.duration = duration }
-        if text != s.text { e.text = text }
-        if visual != s.visual { e.visual = visual }
-        if feeling != s.feeling { e.feeling = feeling }
-        if handoff != s.handoff { e.handoff = handoff }
-        if linked != current { e.assets = linked.sorted().joined(separator: ", ") }
-        return e == SceneEdit() ? nil : e
+    /// Why the fields cannot be edited now (a locked scene, a Build in progress), or nil.
+    private var blockedReason: String? {
+        if scene?.isLocked == true { return "\(id) is locked" }
+        return project.blocked(.scene(id))?.reason
     }
 
     var body: some View {
         if let s = scene {
             VStack(alignment: .leading, spacing: 10) {
-                if shows(.settings) {
-                    field("Duration (s)", $duration, width: 110)
-                    area("Feeling and tension", $feeling, 2)
-                    area("Passage to the next scene", $handoff, 2)
-                }
-                if shows(.composition) {
-                    if tab == nil { area("On-screen text", $text, 3) }
-                    area(tab == nil ? "Image and motion" : "Scene note (image and motion)", $visual, 2)
-                }
-                if tab == nil {            // in the workspace the composition holds the resources, as elements; the guided path links them here
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Linked resources").fontSmall(weight: .semibold).foregroundStyle(.secondary)
-                        let usable = project.assets.filter { $0.type != "doc" && $0.type != "data" && $0.type != "note" && $0.type != "misc" }
-                        if usable.isEmpty { Text("No resource yet: add files in the Resources tab of the library.").fontSmall().foregroundStyle(.secondary) }
-                        ForEach(usable) { a in
-                            Toggle(isOn: Binding(get: { linked.contains(a.id) }, set: { on in if on { linked.insert(a.id) } else { linked.remove(a.id) } })) {
-                                HStack {
-                                    Text(a.name).lineLimit(1)
-                                    if let st = project.assetStatus[a.id] { Text(st.rawValue).fontSmall().foregroundStyle(st.color) }
-                                }
-                            }.toggleStyle(.checkbox)
+                Group {
+                    if shows(.settings) {
+                        durationField
+                        area("Feeling and tension", SceneFields.feeling, 2)
+                        area("Passage to the next scene", SceneFields.handoff, 2)
+                    }
+                    if shows(.composition) {
+                        if tab == nil { area("On-screen text", SceneFields.text, 3) }
+                        area(tab == nil ? "Image and motion" : "Scene note (image and motion)", SceneFields.visual, 2)
+                    }
+                    if tab == nil {            // in the workspace the composition holds the resources, as elements; the guided path links them here
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack { Text("Linked resources").fontSmall(weight: .semibold).foregroundStyle(.secondary); SavedMark(auto: auto, key: SceneFields.assets) }
+                            let usable = project.assets.filter { $0.type != "doc" && $0.type != "data" && $0.type != "note" && $0.type != "misc" }
+                            if usable.isEmpty { Text("No resource yet: add files in the Resources tab of the library.").fontSmall().foregroundStyle(.secondary) }
+                            ForEach(usable) { a in
+                                Toggle(isOn: Binding(get: { linkedDraft.contains(a.id) }, set: { on in
+                                    var l = linkedDraft; if on { l.insert(a.id) } else { l.remove(a.id) }
+                                    auto.edit(SceneFields.assets, l.sorted().joined(separator: ", "))
+                                })) {
+                                    HStack {
+                                        Text(a.name).lineLimit(1)
+                                        if let st = project.assetStatus[a.id] { Text(st.rawValue).fontSmall().foregroundStyle(st.color) }
+                                    }
+                                }.toggleStyle(.checkbox)
+                            }
                         }
                     }
                 }
-                HStack {
-                    Button("Save scene") { if let e = edit { project.perform(.scene(id: id, e)) } }.buttonStyle(PrimaryButtonStyle()).disabledWithReason(s.isLocked ? "\(id) is locked" : edit == nil ? "Nothing to save yet: no change" : nil, way: s.isLocked ? "Unlock it from its badge or the Review block" : nil)
-                    Button("Revert") { load(force: true) }.disabled(edit == nil)
-                }
+                .disabledWithReason(blockedReason, way: s.isLocked ? "Unlock it from its badge or the Review block" : nil)
                 if s.isLocked { Label("Locked: nothing in this scene can change. Unlock it from its badge or the Review block.", systemImage: "lock.fill").fontSmall().foregroundStyle(.secondary) }
-                else if s.state == .validated, shows(.settings) || shows(.composition) { Text("Changing the text or the duration sends this scene back to To review.").fontSmall().foregroundStyle(.secondary) }
             }
-            .onAppear { load(force: false) }
-            .onChange(of: project.showreel) { _ in load(force: false) }
+            .onAppear { auto.project = project; project.activeAutosave = auto; auto.bind(s, linked: linkedNow.sorted().joined(separator: ", ")) }
+            .onDisappear { auto.flush(); if project.activeAutosave === auto { project.activeAutosave = nil } }
+            .onChange(of: project.showreel) { _ in if let s = scene { auto.bind(s, linked: linkedNow.sorted().joined(separator: ", ")) } }
+            .onChange(of: id) { _ in auto.flush() }
+            .onChange(of: focus) { now in
+                if let was = lastFocus, was != now { auto.blur(was) }
+                lastFocus = now
+            }
         }
     }
 
-    private func field(_ label: String, _ b: Binding<String>, width: CGFloat?) -> some View {
+    private var linkedDraft: Set<String> { Set(auto.draft(SceneFields.assets).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }) }
+
+    private func binding(_ key: String) -> Binding<String> { Binding(get: { auto.draft(key) }, set: { auto.edit(key, $0, stepped: false) }) }
+
+    private func label(_ text: String, _ key: String) -> some View {
+        HStack(spacing: 6) { Text(text).fontSmall(weight: .semibold).foregroundStyle(.secondary); SavedMark(auto: auto, key: key) }
+    }
+
+    /// The reason a draft was not saved, next to the field, with the way out.
+    @ViewBuilder private func problem(_ key: String) -> some View {
+        if let why = auto.invalid(key) {
+            HStack(spacing: 6) {
+                Text(why).fontSmall().foregroundStyle(theme.danger)
+                Button("Restore the saved value") { auto.restore(key) }.buttonStyle(.borderless).fontSmall()
+            }
+        }
+    }
+
+    private var durationField: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).fontSmall(weight: .semibold).foregroundStyle(.secondary)
-            TextField("", text: b).textFieldStyle(.roundedBorder).frame(maxWidth: width ?? .infinity)
+            label("Duration (s)", SceneFields.duration)
+            StepperField(text: binding(SceneFields.duration), onStep: { auto.step(SceneFields.duration) }, onCommit: { auto.returnKey(SceneFields.duration) })
+                .focused($focus, equals: SceneFields.duration)
+            problem(SceneFields.duration)
         }
     }
 
-    private func area(_ label: String, _ b: Binding<String>, _ lines: Int) -> some View {
+    private func field(_ title: String, _ key: String, width: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).fontSmall(weight: .semibold).foregroundStyle(.secondary)
-            TextEditor(text: b).font(.body).frame(height: CGFloat(lines) * 20 + 10).padding(2)
-                .raisedBackground()
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15)))
+            label(title, key)
+            TextField("", text: binding(key)).textFieldStyle(ThemedTextFieldStyle()).frame(maxWidth: width ?? .infinity)
+                .focused($focus, equals: key).onSubmit { auto.returnKey(key) }
+            problem(key)
         }
     }
 
-    /// Loads the saved values, unless the user has unsaved edits in this form.
-    private func load(force: Bool) {
-        guard let s = scene else { return }
-        if !force, loadedFor == id, edit != nil { return }
-        duration = s.duration.map { ProjectDocs.seconds($0) } ?? ""
-        text = s.text; visual = s.visual; feeling = s.feeling; handoff = s.handoff
-        linked = Set(project.assets.filter { $0.sceneIDs.contains(id) }.map { $0.id })
-        loadedFor = id
+    /// A placeholder that is a real example of what the field holds.
+    private let placeholders = [SceneFields.feeling: "For example: calm, then a sudden lift", SceneFields.handoff: "For example: the title slides out as the next scene's background rises",
+                                SceneFields.text: "For example: One tool for every launch", SceneFields.visual: "For example: a slow push-in on the product, soft light"]
+
+    private func area(_ title: String, _ key: String, _ lines: Int) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            label(title, key)
+            GrowingTextEditor(text: binding(key), placeholder: placeholders[key] ?? "")
+                .environment(\.fieldError, auto.invalid(key))
+                .focused($focus, equals: key)
+            problem(key)
+        }
+    }
+}
+
+/// The small mark next to a field's label after a commit: "Saved" (a check) or "Updated" (a change made elsewhere); it fades after about 1.5 s, and is static under Reduce motion.
+struct SavedMark: View {
+    @ObservedObject var auto: SceneAutosave
+    let key: String
+    @EnvironmentObject var theme: Theme
+
+    var body: some View {
+        Group {
+            switch auto.marks[key] {
+            case .saved?: Label("Saved", systemImage: "checkmark").fontSmall().foregroundStyle(theme.success).transition(.opacity)
+            case .updated?: Label("Updated", systemImage: "arrow.triangle.2.circlepath").fontSmall().foregroundStyle(theme.textSecondary).transition(.opacity)
+            case nil: EmptyView()
+            }
+        }
+        .animation(Motion.settle, value: auto.marks[key] == nil)
     }
 }
 
@@ -159,6 +198,7 @@ struct SceneListEditor: View {
                     Divider()
                     SceneForm(id: id).id(id)
                     Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(id) }
+                    .buttonStyle(DestructiveButtonStyle())
                 }
             }
         }
@@ -173,6 +213,7 @@ struct SceneListEditor: View {
 
 /// The explicit Go. It is only ever given by this button; nothing deduces it, and the copilot has no way to press it.
 struct GoPanel: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
     @State private var confirming = false
 
@@ -182,7 +223,7 @@ struct GoPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: given ? "checkmark.seal.fill" : "flag.checkered").foregroundStyle(given ? Color.green : .secondary)
+                Image(systemName: given ? "checkmark.seal.fill" : "flag.checkered").foregroundStyle(given ? theme.success : .secondary)
                 Text(given ? "The Go is given" : "The Go").font(.headline)
             }
             if given {
@@ -205,6 +246,7 @@ struct GoPanel: View {
 
 /// The Go as a button for the toolbar and the storyboard strip. Same rule as the panel: explicit, never deduced.
 struct GoButton: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
     @State private var confirming = false
 
@@ -217,7 +259,7 @@ struct GoButton: View {
         } label: {
             Label(given ? "Go given" : "Give the Go", systemImage: given ? "checkmark.seal.fill" : "flag.checkered")
         }
-        .tint(given ? .green : nil)
+        .tint(given ? theme.success : nil)
         .disabled(!given && blocker != nil)
         .help(given ? "The build may start. Click to take the Go back." : (blocker.map { "Not yet: \($0)." } ?? "Your decision to start the build. The app never gives it for you."))
         .alert("Give the Go?", isPresented: $confirming) {
@@ -232,8 +274,6 @@ struct GoButton: View {
 struct SceneSwitchesView: View {
     let id: String
     @EnvironmentObject var project: ProjectModel
-    @State private var note = ""
-    @State private var loadedFor = ""
 
     private var scene: ShowreelFile.Scene? { project.showreel?.scenes.first { $0.id == id } }
 
@@ -245,29 +285,19 @@ struct SceneSwitchesView: View {
                 switchRow("Visible", systemImage: visible.on ? "eye" : "eye.slash", visible, help: "In the film. Off: hidden, listed under \u{201C}Not in the storyboard\u{201D}.")
                 switchRow("Ready", systemImage: "checkmark.circle", ready, help: "You are satisfied with the scene. Off: To review.")
                 switchRow("Locked", systemImage: "lock", locked, help: "Frozen in time and space: nothing in it or before it can change, and a Build never rewrites it. Only a Ready scene can be locked.")
-                TextField("Instruction (what to change, or why)", text: $note, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
-                    .onSubmit { commitNote() }
-                    .disabledWithReason(s.isLocked ? "\(id) is locked" : project.activity.isBuilding ? Reasons.building.reason : nil, way: s.isLocked ? "Unlock it first" : "Wait for the end, or Cancel the build")
-                Text(s.toModify ? "To review, with an instruction: it is shown in the Status tooltip." : "To ask for a change: switch Ready off and write the instruction. Press Return to keep it.")
-                    .fontSmall().foregroundStyle(.secondary)
+                if s.toModify { Text("Earlier note: \(s.note)").fontSmall().foregroundStyle(.secondary).lineLimit(3).help("A note kept from an earlier change request. It is read-only here; the Status tooltip shows it too.") }
                 Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(id) }
                     .disabledWithReason(delete.unavailable?.reason, way: delete.unavailable?.way)
                     .help("Deletes the scene for good, with a confirmation. Undo brings it back.")
             }
-            .onAppear { if loadedFor != id { note = s.note; loadedFor = id } }
-            .onChange(of: project.showreel) { _ in if loadedFor != id { note = s.note; loadedFor = id } }
         }
     }
 
     private func switchRow(_ title: String, systemImage: String, _ sw: SceneSwitches.Switch, help: String) -> some View {
-        Toggle(isOn: Binding(get: { sw.on }, set: { _ in project.flip(sw) })) { Label(title, systemImage: systemImage) }
-            .toggleStyle(ThemedToggleStyle())
+        IconRow(symbol: systemImage, title: title) {
+            Toggle("", isOn: Binding(get: { sw.on }, set: { _ in project.flip(sw) })).labelsHidden().toggleStyle(ThemedToggleStyle())
+        }
             .disabledWithReason(sw.unavailable?.reason, way: sw.unavailable?.way)
             .help(sw.unavailable.map { $0.message } ?? help)
-    }
-
-    private func commitNote() {
-        guard let s = scene, note != s.note else { return }
-        project.perform(.scene(id: id, SceneEdit(note: note)))
     }
 }

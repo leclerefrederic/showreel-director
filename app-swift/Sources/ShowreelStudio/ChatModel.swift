@@ -304,7 +304,7 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
     /// Scrolls the conversation to a card and lights it: the way from a blocked element to the answer it waits for.
     func focus(card id: String) {
         guard let u = UUID(uuidString: id) else { return }
-        project.inspectorTab = .copilot; project.clapSection = .conversation
+        project.showClap(); project.clapSection = .conversation
         focusedCard = u; focusTick += 1
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in if self?.focusedCard == u { self?.focusedCard = nil } }
     }

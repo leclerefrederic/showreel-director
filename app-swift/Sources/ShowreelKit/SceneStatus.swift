@@ -26,7 +26,7 @@ public enum SceneStatusKind: Int, CaseIterable, Sendable {
         case .notWritten: return "No scene file yet: the film shows an empty frame with its ID."
         case .outOfDate: return "The scene changed since its file was written."
         case .layoutWarning: return "Text overlaps or runs off the screen (found by the scene's own test)."
-        case .toReview: return "Not Ready yet, or Ready was switched off to ask for a change: the instruction is in the tooltip."
+        case .toReview: return "Not Ready yet, or a change was asked for: an earlier note, if there is one, is in the tooltip."
         case .ready: return "Ready, and its file is up to date."
         }
     }

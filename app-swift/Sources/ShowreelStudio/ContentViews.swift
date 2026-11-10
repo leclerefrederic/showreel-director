@@ -121,15 +121,15 @@ struct ContentItemRow: View {
                 if item.type != "audio" { animation }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Instruction for the AI (optional)").fontSmall(weight: .semibold).foregroundStyle(.secondary)
-                    TextField("In your words", text: $instruction, axis: .vertical).lineLimit(1...3).textFieldStyle(.roundedBorder)
+                    TextField("In your words", text: $instruction, axis: .vertical).lineLimit(1...3).textFieldStyle(ThemedTextFieldStyle())
                 }
                 HStack {
-                    Button("Apply") { apply() }.buttonStyle(PrimaryButtonStyle()).disabledWithReason(dirty ? nil : "Nothing changed yet")
                     Spacer()
                     Button("Remove", role: .destructive) { project.removeItem(scene, item.id) }
                 }
             }
             .padding(.top, 6)
+            .autoCommit([words, params, instruction], dirty: dirty, undoKey: "item:\(scene):\(item.id)") { apply() }
         } label: {
             HStack(spacing: 6) {
                 Handle()
@@ -182,7 +182,7 @@ struct ContentItemRow: View {
         if item.type == "text" {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Words").fontSmall(weight: .semibold).foregroundStyle(.secondary)
-                TextField("", text: $words, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
+                TextField("", text: $words, axis: .vertical).lineLimit(1...4).textFieldStyle(ThemedTextFieldStyle())
             }
         } else {
             let fit = project.assets.filter { ContentRules.accepts(item.type, asset: $0.type) && $0.status != "excluded" }
@@ -220,47 +220,10 @@ struct ContentItemRow: View {
             PickerButton(kind: .effect, current: item.animation.mode == "effect" ? (item.animation.effect ?? "auto") : "auto", none: ("auto", "Auto (the AI decides)")) {
                 project.choose(.effect, $0, for: .item(scene: scene, item: item.id))
             }
+            .help("An animation you pick is fixed; auto leaves it to the AI, from the project's effects pack.")
             if item.animation.mode == "effect" {
-                TextField("Parameters (key=value, key=value)", text: $params).textFieldStyle(.roundedBorder).fontSmall().onSubmit { apply() }
+                TextField("Parameters (key=value, key=value)", text: $params).textFieldStyle(ThemedTextFieldStyle()).fontSmall().onSubmit { apply() }
             }
         }
-    }
-}
-
-/// The Effects tab of a scene: the animation of each item, picked from the catalogue with the engine's previews. Auto leaves it to the AI.
-struct SceneEffectsTab: View {
-    let id: String
-    @EnvironmentObject var project: ProjectModel
-
-    private var scene: ShowreelFile.Scene? { project.showreel?.scenes.first { $0.id == id } }
-
-    var body: some View {
-        if let s = scene {
-            InspectorSection(title: "Animation of each item") {
-                let items = s.content.filter { $0.type != "audio" }
-                if items.isEmpty { Text("This scene has no item to animate yet: add the words or an image in the Content tab.").font(.callout).foregroundStyle(.secondary) }
-                ForEach(items) { item in
-                    HStack(spacing: 8) {
-                        Image(systemName: item.type == "text" ? "textformat" : "photo").foregroundStyle(.secondary)
-                        Text(label(item)).lineLimit(1).font(.callout)
-                        Spacer(minLength: 4)
-                        PickerButton(kind: .effect, current: Catalogue.current(.effect, target: .item(scene: id, item: item.id), in: project.showreel!), none: ("auto", "Auto (the AI decides)")) {
-                            project.choose(.effect, $0, for: .item(scene: id, item: item.id))
-                        }
-                    }
-                }
-                Text("An animation you pick is fixed; auto leaves it to the AI, from the project's effects pack.").fontSmall().foregroundStyle(.secondary)
-            }
-            InspectorSection(title: "Project effects pack") {
-                if let p = project.showreel?.decisions.effectsPack, !p.isEmpty { Label(p, systemImage: "sparkles").font(.callout) }
-                else { Text("None chosen yet.").font(.callout).foregroundStyle(.secondary) }
-                Button("Change in the project settings") { project.openSettings(.look, look: .effects) }.buttonStyle(.borderless)
-            }
-        }
-    }
-
-    private func label(_ i: ShowreelFile.ContentItem) -> String {
-        if i.type == "text" { return (i.text ?? "").isEmpty ? "(no words)" : i.text! }
-        return project.assets.first { $0.id == i.resource }?.name ?? i.resource ?? "(no resource)"
     }
 }

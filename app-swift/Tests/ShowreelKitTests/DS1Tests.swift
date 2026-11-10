@@ -111,7 +111,7 @@ final class DS1Tests: XCTestCase {
 
     /// What each view file still picks by itself, at the end of DS1: named palette colours and colour literals (the figure is what exists today, and may only go down). DS2 (the strip and the
     /// lists) and DS3 (the inspector and the forms) take them to the theme. Theme.swift is the one place allowed to hold them.
-    static let allowedColours: [String: Int] = ["BlockViews.swift": 1, "BuildViews.swift": 6, "ChatView.swift": 3, "ChecksView.swift": 4, "ContentViews.swift": 1, "DesignBoardView.swift": 2, "DragDropViews.swift": 7, "EditorViews.swift": 5, "FilmStateViews.swift": 11, "FontStateViews.swift": 3, "HistoryViews.swift": 7, "InspectorViews.swift": 3, "LibraryView.swift": 3, "LookViews.swift": 10, "NewProjectViews.swift": 1, "PackageViews.swift": 13, "PickerViews.swift": 3, "ProjectFormViews.swift": 9, "ProjectLifecycleViews.swift": 2, "ProjectSettingsPanel.swift": 2, "ProjectView.swift": 2, "ReactionViews.swift": 13, "ReelViews.swift": 2, "ResourceViews.swift": 12, "SceneStateViews.swift": 1, "SetupFormView.swift": 2, "SetupView.swift": 2, "StoryboardListViews.swift": 4, "StoryboardViews.swift": 2, "TimelineViews.swift": 37, "WizardStartViews.swift": 3, "WorkspaceViews.swift": 13]
+    static let allowedColours: [String: Int] = ["BuildViews.swift": 6, "ChecksView.swift": 4, "ContentViews.swift": 1, "DesignBoardView.swift": 2, "DragDropViews.swift": 7, "EditorViews.swift": 5, "FilmStateViews.swift": 11, "FontStateViews.swift": 3, "InspectorViews.swift": 1, "LibraryView.swift": 3, "LookViews.swift": 3, "NewProjectViews.swift": 1, "PackageViews.swift": 13, "ProjectLifecycleViews.swift": 2, "ProjectView.swift": 2, "ReactionViews.swift": 13, "ResourceViews.swift": 12, "SetupFormView.swift": 2, "SetupView.swift": 2, "WizardStartViews.swift": 3, "WorkspaceViews.swift": 13]
 
     func scan(_ text: String) -> (colours: Int, small: Int, oldStyles: Int) {
         func count(_ p: String) -> Int { (try? NSRegularExpression(pattern: p))?.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text)) ?? 0 }
@@ -133,7 +133,7 @@ final class DS1Tests: XCTestCase {
             XCTAssertEqual(r.small, 0, "\(f): a font size below 11"); XCTAssertEqual(r.oldStyles, 0, "\(f): .caption, .caption2 and .footnote are 10 pt on macOS: use fontSmall")
             total += r.colours
         }
-        XCTAssertLessThanOrEqual(total, Self.allowedColours.values.reduce(0, +)); XCTAssertEqual(Self.allowedColours.values.reduce(0, +), 189, "the allow-list may only go down (DS2 and DS3)")
+        XCTAssertLessThanOrEqual(total, Self.allowedColours.values.reduce(0, +)); XCTAssertEqual(Self.allowedColours.values.reduce(0, +), 109, "the allow-list may only go down (DS4 and the owner's decisions)")
         XCTAssertGreaterThan(scan(try source("Theme.swift")).colours + 1, 0)
     }
 

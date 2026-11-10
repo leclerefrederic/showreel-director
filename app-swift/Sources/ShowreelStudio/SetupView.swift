@@ -23,12 +23,12 @@ struct SetupView: View {
             .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             hints
             HStack(spacing: 10) {
-                Button("Install missing") { env.install() }
+                Button("Install missing") { env.install() }.buttonStyle(PrimaryButtonStyle())
                     .buttonStyle(PrimaryButtonStyle())
                     .disabledWithReason(env.installing ? "Installing\u{2026}" : env.checking ? "Checking\u{2026}" : env.passed ? "Nothing is missing" : nil)
-                Button("Check again") { env.check() }
+                Button("Check again") { env.check() }.buttonStyle(SecondaryButtonStyle())
                     .disabledWithReason(env.installing ? "Installing\u{2026}" : env.checking ? "Checking\u{2026}" : nil)
-                Button("Continue without (reduced mode)") { env.skipped = true }
+                Button("Continue without (reduced mode)") { env.skipped = true }.buttonStyle(.borderless)
                     .buttonStyle(.link)
                     .disabledWithReason(env.installing ? "Installing\u{2026}" : env.isMissing("python3") ? "Python 3 is missing" : nil, way: env.isMissing("python3") ? "Without it no script runs: install it first, then check again" : nil) // without Python 3 no script runs: not a reduced mode
             }

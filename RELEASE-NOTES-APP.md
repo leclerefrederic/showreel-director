@@ -2,6 +2,99 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.19.2 - 2026-11-10
+
+**What's new**
+- **The rail's buttons behave the same way.** Film and Build never switch off: clicking the active one does nothing, and the other one is the way back (Build used to return to the Film, Film did not). Inspector, Look, Project and Clap open on a click, replace each other, and close when you click the open one again.
+- **Clap opens when something asks for it.** Starting a Build, "Draft scenes" and the link from a blocked element to its card now show Clap's conversation even when Look or Project covered the right side or the side was closed. Before, nothing visible happened in that case.
+- **The Inspector's dot** (a selection is waiting) no longer stays on the Inspector when it is open.
+- **Every rail button has the same states:** hover, pressed, selected, a focus ring for the keyboard, and the badges that apply. The change is instant when Reduce motion is on.
+- **Tooltips** show the name, what the entry does and its shortcut (Shift-Command-A for Clap). Tab reaches the six buttons, the arrow keys move inside a group and wrap, Space and Return activate.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects and skill are unchanged.
+
+## 0.19.1 - 2026-11-10
+
+**What's new**
+- **One text field style.** The text fields of the inspector, the project form, the Look editors, the resources, the history and the file editor fill the width of their pane and share one height and one corner radius, with an accent ring when focused, a red ring and a message when a value is wrong, and a dimmed look when disabled.
+- **Multi-line fields grow with their text** (from two lines up to eight) and show a scroll bar only when there is more to scroll. They show an example of what to write when empty.
+- **Up and Down work in the Duration fields** while they have focus, as the chevrons do: Option steps by 0.1 s and Shift by 5 s.
+- **Buttons have roles.** Seven buttons that used the default grey look and about thirty action buttons in the build view, the resources, the Look editors, the packages, the set-up screen, the Clap cards and the library are now primary (the main action), secondary, destructive (Cancel build) or quiet (links such as Not now and Back to the viewer).
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects and skill are unchanged.
+
+## 0.19.0 - 2026-11-10
+
+**What's new**
+- **Real tabs.** The scene inspector (Settings, Composition, Look), the settings pane (Project, Look) and the Clap panel (Conversation, Memory, Sessions, Journal) use underline tabs: the active tab in primary text with an accent underline that moves between tabs, a hairline under the bar, a hover state, the arrow keys, and VoiceOver announcing the selected tab. Under Reduce motion the underline changes without moving. Segmented controls stay for real choices of a mode (Edit and Preview of a file).
+- **The Effects tab is gone.** The animation of each item is chosen in the Composition tab, in the item's own row (with its help as a tooltip on the control). Nothing in your projects changes.
+- **Numeric fields have a stepper.** The scene's Duration and the project's custom target duration have up and down chevrons at the right end of the field: click, hold to repeat; Option steps by 0.1 s and Shift by 5 s. Values are rounded to a tenth of a second, and a typed value out of range is clamped with a message, never silently.
+- **The State section is simpler.** Visible, Ready and Locked share one left edge for the icons and labels and one right edge for the switches, and there is no Instruction field any more: ask for a change by editing the scene's fields or by talking to Clap. A note already stored on a scene stays, shown read-only under the switches ("Earlier note: ..."). "Delete scene..." has the destructive style.
+- **No Duplicate button for a scene** in the inspector, the context menus, the Storyboard list or the Film strip. Duplicating a content item stays.
+- **Project button.** The header of every inspector (scene, transition, resource, look element) has the same quiet "Project" button, which opens the Project panel exactly as the rail does.
+- **Wider panes.** The Inspector opens at 440 pt and the Project and Look panes at 620 pt by default, and can be dragged up to 720 and 900 pt. The reset icon puts the standard widths back.
+- **Chips and colours.** The 30 s to 90 s choices are chips with selected, hover and disabled states. The inspector, the forms, the Clap panel and the Settings window take their colours from the design tokens.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects and skill are unchanged. Clap can still set a scene's note and duplicate a scene with its tools.
+
+## 0.18.0 - 2026-11-10
+
+**What's new**
+- **No Save button: what you type is saved.** The scene inspector's Settings and Composition fields (Duration, Feeling and tension, Passage to the next scene, the scene note, the on-screen text and the linked resources), the palette editor, a scene's content items and a transition's timing and parameters save themselves. A text field saves when you leave it, on Return, or when you stop typing for a moment; a duration saves when you leave it or press Return; a switch or a resource link saves at once. The **Save scene**, **Revert**, **Save palette** and **Apply** buttons are gone.
+- **Undo is the way back.** Several saves to the same field within two seconds are one Undo step, so Command-Z takes back what you typed in that field, in one press, and Shift-Command-Z puts it back. While you are still typing (before the save) Command-Z undoes your typing in the field as before.
+- **You see every save.** A small "Saved" mark with a check appears next to the field and fades after a moment. When a save sends a validated scene back to To review, the status line says so once, with Undo, and the Status icon changes. If a change is refused (a locked scene, a Build in progress, an invalid duration) the field shows why next to it, keeps what you typed, and nothing is lost; a locked scene's fields are disabled with the reason.
+- **Changes made elsewhere.** If Clap or Undo changes a field you are not editing, it updates and shows a quiet "Updated". A field you are typing in keeps your text, and your save wins.
+- Selecting another scene, switching a tab, closing the pane or the window, or starting a Build saves what is pending first.
+
+**Kept explicit**
+- Creating a project, the confirmation cards (Build, Generate, a look change on locked scenes), Clap's proposals, saving or importing a package, the rights question, deleting a scene, and the API key in Settings still ask you to confirm.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects and skill are unchanged.
+
+## 0.17.1 - 2026-11-10
+
+**Fixed**
+- Clicking a scene in the Storyboard list now also moves the preview to it, as a click on a frame of the Film strip does. The same goes for a "Used in" scene chip in the Resources and a check or a reason that names a scene. A scene that is hidden from the film is selected and the preview stays where it is; while the film plays, it jumps to the scene and keeps playing. A new scene is shown as well as selected. Selecting on the strip scrolls the Storyboard list to the row.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects and skill are unchanged.
+
+## 0.17.0 - 2026-11-10
+
+**What's new**
+- **The interface answers.** One motion language, defined once: three durations (about 120, 200 and 300 ms), a decelerating curve for what arrives, an accelerating one for what leaves, a small overshoot for confirmations, and the spring of the sliding panes (Look, Project, Clap) as a named value they all use, with the same bounce as before. Nothing you do lasts more than about 300 ms, and nothing blocks your input while it moves.
+- **Where it shows.** A scene's Status icon pulses once when it changes; the eye and the lock cross-fade; a control that refuses (a locked scene) gives a small nudge, with the reason in the status line as before; a new scene arrives into its place in the Film strip and a deleted one leaves it; a selected transition diamond pops a little; during a Build each scene's row and frame show its step by a different icon and label (waiting, writing, testing, repairing, failed) and settle into the usual Status icon when the scene is done.
+- **Reduce motion** (System Settings, Accessibility, Display) turns every movement into a short fade or nothing; the icons and labels still say what happens.
+- **The Film strip is less cluttered.** The picture of a scene stays inside its own frame, cropped from the left, and never draws into the next frame. A frame tall enough has a header band (label and Status icon) and a footer band (duration) that the picture does not cover, so large text in a scene picture no longer sits under them. Short frames look as before.
+
+**Changed**
+- The Film strip and the Storyboard list take their colours from the design tokens (same values, nothing looks different apart from the bands above).
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects and skill are unchanged.
+
 ## 0.16.0 - 2026-11-10
 
 **What's new**

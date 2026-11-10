@@ -161,7 +161,7 @@ struct SavePackageSheet: View {
                 Button("Export a .studiopack file\u{2026}") {
                     do { if let u = try PackageFormat.export(s.package) { exported = u; project.react(StatusLine.packageSaved(name: s.package.manifest.name, version: s.package.manifest.version, exported: true)) } } catch { self.error = error.localizedDescription }
                 }
-                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([exported ?? s.entry.archive]) }
+                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([exported ?? s.entry.archive]) }.buttonStyle(SecondaryButtonStyle())
             }
             if let e = error { Text(e).foregroundStyle(.red).fontSmall() }
             Spacer()
@@ -266,7 +266,7 @@ struct PackageImportSheet: View {
             HStack {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("Add to the library") { add(r, start: false) }
+                Button("Add to the library") { add(r, start: false) }.buttonStyle(PrimaryButtonStyle())
                     .disabledWithReason(needs ? "Decide about the warning above first" : r.needsNewerApp ? "This package needs a newer version of the app" : nil)
                 if offersStart {
                     Button("Add and start a project") { add(r, start: true) }.buttonStyle(PrimaryButtonStyle()).keyboardShortcut(.defaultAction)
@@ -338,7 +338,7 @@ struct PackagePickerSection: View {
                 Text(p.isConfirmed ? "Rights confirmed: its resources will be available." : "Rights not confirmed: its resources will enter the project on Needs attention.")
                     .fontSmall().foregroundStyle(p.isConfirmed ? Color.secondary : .orange)
             }
-            Button("Open a .studiopack\u{2026}") { choose() }
+            Button("Open a .studiopack\u{2026}") { choose() }.buttonStyle(SecondaryButtonStyle())
             if let e = error { Text(e).foregroundStyle(.red).fontSmall() }
         }
         .sheet(item: Binding(get: { importing.map { ImportTicket(url: $0) } }, set: { importing = $0?.url })) { t in

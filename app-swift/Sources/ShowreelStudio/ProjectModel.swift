@@ -63,13 +63,13 @@ enum Selection: Hashable {
 
 /// The tabs of a scene's inspector, one per group of its tree (plus Settings, which the scene's row sums up).
 enum SceneTab: String, CaseIterable, Identifiable {
-    case settings, composition, effects, look
+    case settings, composition, look
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
     init(_ g: SceneGroup) {
         switch g {
         case .composition: self = .composition
-        case .effects: self = .effects
+        case .effects: self = .composition
         case .look: self = .look
         }
     }
@@ -116,6 +116,8 @@ enum CenterMode { case viewer, build, checks }
 final class ProjectModel: ObservableObject {
     let root: URL
     let store: ProjectStore
+    /// The scene form that is open, if any: what is pending in it is committed before the selection moves, a Build starts or the window closes (AS1).
+    weak var activeAutosave: SceneAutosave?
     @Published var tree: [FileNode] = []
     @Published var tabs: [EditorTab] = []
     @Published var selection: Selection = .none {
@@ -302,11 +304,9 @@ final class ProjectModel: ObservableObject {
     // MARK: the right side (one panel at a time) and the Film placement
 
     /// The panel the right side shows, or nil when it is closed.
-    var rightPanel: RightPanel? {
-        if rightClosed { return nil }
-        if showProjectSettings { return settingsTab == .look ? .look : .project }
-        return inspectorTab == .copilot ? .clap : .inspector
-    }
+    var rightPanel: RightPanel? { rightSide.panel }
+    /// The right side as the stored flags say it (ShowreelKit's rule decides which panel they show and how a panel is written back).
+    private var rightSide: RightSide { RightSide(closed: rightClosed, clap: inspectorTab == .copilot, settings: showProjectSettings ? (settingsTab == .look ? .look : .project) : nil) }
     var railState: RailState { RailState(build: centerMode == .build, checks: centerMode == .checks, right: rightPanel, inspectorMark: inspectorMark) }
 
     private func restoreRight(_ p: RightPanel) {
@@ -327,14 +327,12 @@ final class ProjectModel: ObservableObject {
     }
 
     func setRight(_ p: RightPanel?) {
-        guard p != rightPanel else { return }
-        switch p {
-        case nil: rightClosed = true; showProjectSettings = false
-        case .inspector?: rightClosed = false; showProjectSettings = false; if inspectorTab == .copilot { inspectorTab = .inspector }
-        case .clap?: rightClosed = false; showProjectSettings = false; inspectorTab = .copilot
-        case .look?: rightClosed = false; settingsTab = .look; showProjectSettings = true
-        case .project?: rightClosed = false; settingsTab = .project; showProjectSettings = true
-        }
+        var r = rightSide; r.show(p)
+        guard r != rightSide else { return }
+        if let s = r.settings { settingsTab = s == .look ? .look : .project }
+        if r.clap { inspectorTab = .copilot } else if inspectorTab == .copilot { inspectorTab = .inspector }          // first: its observer may close the settings, the writes below settle the rest
+        rightClosed = r.closed
+        showProjectSettings = r.settings != nil
     }
 
     /// A click on the rail. Film and Build never touch the right side, a right panel never touches the centre (the design board shows in the centre while the Look panel is open:
@@ -346,9 +344,12 @@ final class ProjectModel: ObservableObject {
 
     func closeRight() { setRight(nil) }
 
+    /// Something asks for Clap (a draft, a Build, a card to answer, the interview): its panel opens whatever covers it or whether the right side is closed.
+    func showClap() { var s = railState; s.open(.clap); applyRail(s) }
+
     /// The shortcut: opens Clap and puts the cursor in its input.
     func openClap() {
-        var s = railState; s.open(.clap); applyRail(s)
+        showClap()
         clapSection = .conversation
         chat?.focusInput += 1
     }
@@ -360,6 +361,7 @@ final class ProjectModel: ObservableObject {
     }
 
     private func persistShell() {
+        if inspectorMark, rightPanel == .inspector { inspectorMark = false }          // the mark means "the Inspector is not open": it goes whichever way the Inspector came back
         guard !restoringShell else { return }
         let want = rightPanel?.rawValue ?? "none"
         var s = store.settings
@@ -481,6 +483,7 @@ final class ProjectModel: ObservableObject {
     /// The Go is given and nothing is running: the card says what will be asked (the calls, a rough cost), and only a yes starts the Build. A Build that stopped is offered to
     /// continue. Needs a key (this is the one step that does).
     func startBuild(with chat: ChatModel) {
+        activeAutosave?.flush()
         guard BuildRunner.canBuild(store) else { error = "The build never starts without the Go. Give it from the toolbar once every scene is OK."; return }
         guard !buildBusy else { return }
         self.chat = chat
@@ -541,7 +544,7 @@ final class ProjectModel: ObservableObject {
         s.configure(transport)
         buildVersion = v; generating = true; buildReport = nil
         store.activity.update { $0.build = .init(version: v, phase: .generating) }          // from here every change is refused, with its reason, until the end
-        inspectorTab = .copilot; centerMode = .build
+        var rail = railState; rail.buildStarted(); applyRail(rail)          // the Build is the centre and Clap's conversation opens on the right, whatever was open
         store.logBuild(v, "Build asked by \(by)")
         chat?.report("Build \(v): one request for the frame of the film, one for each scene, then the app assembles and tests it.")
         buildTask = Task { @MainActor in
@@ -642,7 +645,7 @@ final class ProjectModel: ObservableObject {
         if let last = showreel?.storyboards.first?.items.last { e.after = last.scene }
         let before = Set(showreel?.scenes.map { $0.id } ?? [])
         guard perform(.addScene(id: "", e)) else { return false }
-        if let n = showreel?.scenes.first(where: { !before.contains($0.id) }) { select(.scene(n.id)) }
+        if let n = showreel?.scenes.first(where: { !before.contains($0.id) }) { focusScene(n.id) }          // a new scene is shown as well as selected
         return true
     }
 
@@ -917,10 +920,18 @@ final class ProjectModel: ObservableObject {
     var sceneUnderPlayhead: ShowreelFile.Scene? { showreel.flatMap { TimelineNav.scene(at: playhead, in: $0) } }
 
     /// Arrow keys: the previous or next scene of the film becomes the selection and the playhead goes to its start.
+    /// A click that means "look at this scene", wherever it is made (the list, the strip, a chip, a check): select it, show the film, put the playhead at its start when it is in the film
+    /// (`TimelineNav.focus`) and let the strip follow. The film keeps playing if it was.
+    func focusScene(_ id: String) {
+        select(.scene(id))
+        guard let f = showreel, let start = TimelineNav.focus(id, in: f) else { return }
+        playhead = start
+        setViewport(TimelineScale.follow(timeline, playhead: start, duration: timelineLength, viewport: viewportWidth), scroll: true)
+    }
+
     func stepScene(by delta: Int) {
         guard let f = showreel, let n = TimelineNav.step(from: selection.sceneID, by: delta, playhead: playhead, in: f) else { return }
-        select(.scene(n.id)); playhead = n.start
-        setViewport(TimelineScale.follow(timeline, playhead: n.start, duration: timelineLength, viewport: viewportWidth), scroll: true)
+        focusScene(n.id)
     }
 
     // MARK: the transport of the strip
@@ -1024,7 +1035,7 @@ final class ProjectModel: ObservableObject {
         case .resource(let id): if layout.resourcesState == .collapsed { setResources(.open) }; select(.asset(id))
         case .resources: if layout.resourcesState == .collapsed { setResources(.open) }
         case .scene(let id, let tab):
-            select(.scene(id))
+            focusScene(id)
             sceneTab = SceneTab(rawValue: tab) ?? .settings
         case .transition(let from): selectTransition(from: from)
         case .music: showProjectSettings = false; selection = .none; inspectorTab = .inspector; centerMode = .viewer
@@ -1202,7 +1213,7 @@ final class ProjectModel: ObservableObject {
     func followLink(_ u: Unavailable, chat: ChatModel?) {
         switch u.link {
         case .proposal(let id)?: chat?.focus(card: id)
-        case .scene(let id)?: select(.scene(id))
+        case .scene(let id)?: focusScene(id)
         case .build?: centerMode = .build
         case .key?: AppSettingsWindow.open()
         default: break
@@ -1259,6 +1270,7 @@ final class ProjectModel: ObservableObject {
     // MARK: selection and zones
 
     func select(_ x: Selection) {
+        if x.sceneID != selection.sceneID { activeAutosave?.flush() }
         selection = x
         centerMode = .viewer
         switch x {
@@ -1635,7 +1647,7 @@ extension ProjectModel {
     func startWizardIfNeeded(chat: ChatModel) {
         guard mode == StudioSettings.wizard, needsSetup, !wizardStarted, showreel != nil, AppSettings.shared.hasKey else { return }
         wizardStarted = true
-        showCopilot = true; inspectorTab = .copilot
+        showCopilot = true; showClap()
         chat.ask(prompt: WizardInterview.prompt(projectName: title, conversationLanguage: showreel?.conversationLanguage, file: showreel), status: "Wizard started")
     }
 

@@ -19,7 +19,7 @@ struct PickerButton: View {
         Button { open = true } label: {
             HStack(spacing: 4) { Text(label).lineLimit(1); Image(systemName: "chevron.up.chevron.down").font(.system(size: 11)) }
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(SecondaryButtonStyle())
         .popover(isPresented: $open, arrowEdge: .bottom) {
             CataloguePicker(kind: kind, current: current, none: none) { open = false; onPick($0) }
         }
@@ -27,6 +27,7 @@ struct PickerButton: View {
 }
 
 struct CataloguePicker: View {
+    @EnvironmentObject var theme: Theme
     let kind: CatalogueKind
     let current: String
     var none: (id: String, label: String)?
@@ -45,7 +46,7 @@ struct CataloguePicker: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(kind.title).font(.headline)
-                TextField("Search", text: $search).textFieldStyle(.roundedBorder)
+                TextField("Search", text: $search).textFieldStyle(ThemedTextFieldStyle())
                 if groups.count > 2 { Picker("", selection: $group) { ForEach(groups, id: \.self) { Text($0).tag($0) } }.labelsHidden().frame(maxWidth: 150) }
             }
             if kind == .background, !ctx.hasPalette { Text("Drawn in a neutral palette until you choose yours.").fontSmall().foregroundStyle(.secondary) }
@@ -76,9 +77,9 @@ struct CataloguePicker: View {
                 }
                 HStack(spacing: 4) {
                     Text(title).font(.callout.weight(.semibold)).lineLimit(1)
-                    if let c = chip { Text(c).fontSmall().padding(.horizontal, 5).background((enabled ? Color.primary : Color.orange).opacity(0.12), in: Capsule()).lineLimit(1) }
+                    if let c = chip { Text(c).fontSmall().padding(.horizontal, 5).background((enabled ? Color.primary : theme.warning).opacity(0.12), in: Capsule()).lineLimit(1) }
                     Spacer(minLength: 0)
-                    if chosen { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
+                    if chosen { Image(systemName: "checkmark.circle.fill").foregroundStyle(theme.success) }
                 }
             }
             .padding(6).frame(maxWidth: .infinity, alignment: .leading)
@@ -104,6 +105,7 @@ struct CataloguePicker: View {
 /// The floating Catalogue: a small card over the workspace, optional, that keeps every look element as something to drag onto a scene, an
 /// item or a marker. It holds no setting: choosing for the whole project is in the project settings.
 struct CataloguePalette: View {
+    @EnvironmentObject var theme: Theme
     @EnvironmentObject var project: ProjectModel
     @State private var offset = CGSize(width: 24, height: 24)
     @State private var start: CGSize?
@@ -128,7 +130,7 @@ struct CataloguePalette: View {
         .frame(width: 310, height: 440)
         .raisedBackground()
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.primary.opacity(0.18)))
-        .shadow(color: .black.opacity(0.25), radius: 14, y: 4)
+        .shadow(color: theme.strip.black(0.25), radius: 14, y: 4)
         .offset(offset)
         .onExitCommand { project.showCatalogue = false }
     }
