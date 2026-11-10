@@ -13,7 +13,7 @@ since: 2026-11-10
 outcome: built
 outcome_link:
   - "[[phases/BA1/report]]"
-phase: 
+phase: ""
 tags:
   - idea
   - app

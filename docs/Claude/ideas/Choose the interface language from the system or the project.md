@@ -10,7 +10,7 @@ id: IDEA-014
 aliases:
   - "IDEA-014"
 since: 2026-11-09
-phase: 
+phase: ""
 outcome: merged
 merged_into:
   - "[[ideas/Interface language, voice for the Wizard and re-running the starting pack]]"

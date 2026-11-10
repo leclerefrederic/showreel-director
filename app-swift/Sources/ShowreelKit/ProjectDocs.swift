@@ -89,7 +89,7 @@ public enum ProjectDocs {
         guard s.content.contains(where: { $0.type != "text" || !$0.allAuto }) else { return s.visual }
         let parts = s.content.enumerated().map { n, i -> String in
             var d = i.type == "text" ? "text \u{201C}\(i.text ?? "")\u{201D}" : "\(i.type) \(i.resource ?? "?")"
-            let fixed = [i.color.isFixed ? "colour \(i.color.text)" : nil, i.animation.isFixed ? i.animation.text : nil, i.hasInstruction ? "\u{201C}\(i.instruction!)\u{201D}" : nil].compactMap { $0 }
+            let fixed = [i.color.isFixed ? "colour \(i.color.text)" : nil, i.animation.isFixed ? i.animation.text : nil, i.timing.isFixed ? i.timing.text : nil, i.hasInstruction ? "\u{201C}\(i.instruction!)\u{201D}" : nil].compactMap { $0 }
             if !fixed.isEmpty { d += " [" + fixed.joined(separator: ", ") + "]" }
             return "\(n + 1). " + d
         }

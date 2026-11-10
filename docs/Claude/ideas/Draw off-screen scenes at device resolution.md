@@ -10,7 +10,7 @@ id: IDEA-011
 aliases:
   - "IDEA-011"
 since: 2026-11-10
-phase: 
+phase: ""
 tags:
   - idea
   - skill

@@ -1,5 +1,5 @@
 ---
-type: idea
+type: reference
 status: current
 phase: 
 date: 2026-11-10
@@ -27,6 +27,13 @@ The notes of `docs/Claude/questions/` are the source: `status: current` is open,
 - QUESTION-009 [[questions/Should a lock also freeze the transitions beside a locked scene|Should a lock also freeze the transitions beside a locked scene]] (UI2, 2026-11-10): Whether a lock should also freeze the transitions on both sides of a locked scene, which stay editable today.
 - QUESTION-010 [[questions/Should locked scenes from before UI2 take a copy of their look when the project opens|Should locked scenes from before UI2 take a copy of their look when the project opens]] (UI2, 2026-11-10): Whether to give locked scenes from before UI2 a copy of their look automatically when the project opens.
 - QUESTION-011 [[questions/Should the Inspector mark show when the side is closed|Should the Inspector mark show when the side is closed]] (RB1, 2026-11-10): A selection with the right side closed opens the Inspector, so the mark shows only while another panel is open; show it when closed?
+- QUESTION-013 [[questions/What form should the timing control of an item take|What form should the timing control of an item take]] (W4, 2026-11-10): What form should the in and out of an item take in the inspector: two steppers behind an Auto or Fixed switch, as built, or a strip under the rows?
+- QUESTION-014 [[questions/Should an item's timing snap to the music grid|Should an item's timing snap to the music grid]] (W4, 2026-11-10): When a track is analysed, should the in and out of an item snap to the beats and bars of the music grid, or stay free to the tenth of a second?
+- QUESTION-015 [[questions/Should timing be in seconds or in beats|Should timing be in seconds or in beats]] (W4, 2026-11-10): Should the in and out of an item be written in seconds from the start of the scene, as built, or in beats when the music has a tempo?
+- QUESTION-016 [[questions/Should the viewer play an item's timing live|Should the viewer play an item's timing live]] (W4, 2026-11-10): Should the viewer play a scene with its items coming and going in time, or keep showing a still at a chosen time, as built?
+- QUESTION-017 [[questions/Which instant of a scene should its thumbnail show|Which instant of a scene should its thumbnail show]] (W4b, 2026-11-10): Which instant represents a scene in its PNG thumbnail: the W4 still time, the middle, the busiest moment or the last moment before the exit.
+- QUESTION-018 [[questions/Should the viewer keep its content drawing before a build|Should the viewer keep its content drawing before a build]] (W4b, 2026-11-10): Before a build has a film to play, should the viewer keep drawing the scene from its content (W4), or show a plain placeholder like the strip.
+- QUESTION-019 [[questions/Should the strip mark every frame as fresh or only the stale ones|Should the strip mark every frame as fresh or only the stale ones]] (W4b, 2026-11-10): Whether each strip frame shows a freshness mark all the time, or only the out-of-date frames, which carry a clock mark.
 <!-- /generated:questions -->
 
 ## Ideas
@@ -80,4 +87,8 @@ Ideas for Showreel Studio that are not in the current phase. Nothing here is bui
 - IDEA-044 [[ideas/Clap as a drawer beside the Inspector|Clap as a drawer beside the Inspector]] (app, draft): Show Clap as a drawer beside the Inspector, both visible at once.
 - IDEA-045 [[ideas/A selected highlight that slides|A selected highlight that slides]] (app, draft): A sliding highlight for the selected row and frame, and the shelved two-pictogram layout toggle with a surround that slides.
 - IDEA-046 [[ideas/Fix the comment of ShowreelFile.swift line 140 that names the wrong file|Fix the comment of ShowreelFile.swift line 140 that names the wrong file]] (app, superseded): Fix the comment at ShowreelFile.swift line 140, which names the spec for Scene content, a block of the UX notes.
+- IDEA-047 [[ideas/Drag a scene between the storyboard and the Not in the storyboard group|Drag a scene between the storyboard and the Not in the storyboard group]] (app, current): A scene cannot be dragged from the storyboard into the Not in the storyboard group, nor back out of it; the owner noted it during the W4 hand test.
+- IDEA-048 [[ideas/A trash for scenes and resources the owner no longer wants|A trash for scenes and resources the owner no longer wants]] (app, current): A trash for every scene and resource thrown away, since the owner asks whether a hidden scene is not one he no longer wants.
+- IDEA-049 [[ideas/A short looping GIF as the thumbnail of a scene|A short looping GIF as the thumbnail of a scene]] (app, draft): A short looping GIF as the thumbnail of a scene.
+- IDEA-050 [[ideas/Each transition gets its own icon in the strip|Each transition gets its own icon in the strip]] (app, draft): Each transition gets its own icon in the strip.
 <!-- /generated:ideas -->

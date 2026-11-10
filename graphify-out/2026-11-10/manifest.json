@@ -372,10 +372,10 @@
     "semantic_hash": "f9e36252c68488e45f81c75dcb6f2e60"
   },
   "app-swift/Sources/ShowreelKit/RailShell.swift": {
-    "mtime": 1794290579.1663663,
-    "seen": 1794294493.1482859,
-    "ast_hash": "48c13fe740f2883db1250813792ba08a",
-    "semantic_hash": "48c13fe740f2883db1250813792ba08a"
+    "mtime": 1794295295.189311,
+    "seen": 1794295498.452039,
+    "ast_hash": "c6bc26f22b157dc55b1a245cb7279f40",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/Reel.swift": {
     "mtime": 1794258173.7461934,
@@ -558,10 +558,10 @@
     "semantic_hash": "aec822693ebb6a8de2e55cec53a16807"
   },
   "app-swift/Sources/ShowreelStudio/ChatModel.swift": {
-    "mtime": 1794291864.8760378,
-    "seen": 1794294493.1483,
-    "ast_hash": "3223e145a4646811f9869e71209ec6dc",
-    "semantic_hash": "3223e145a4646811f9869e71209ec6dc"
+    "mtime": 1794295314.3604934,
+    "seen": 1794295498.452055,
+    "ast_hash": "e85595988fc31a96d04ed144f953b498",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/ChatView.swift": {
     "mtime": 1794291909.0308444,
@@ -708,10 +708,10 @@
     "semantic_hash": "dcc2aac678db48844f5993c466219028"
   },
   "app-swift/Sources/ShowreelStudio/ProjectModel.swift": {
-    "mtime": 1794291864.892513,
-    "seen": 1794294493.1483111,
-    "ast_hash": "96098dee589f0e64e665e618ec9fb58d",
-    "semantic_hash": "96098dee589f0e64e665e618ec9fb58d"
+    "mtime": 1794295314.3603714,
+    "seen": 1794295498.452068,
+    "ast_hash": "d1fcbed8c6f46ab89db860ae26d14f48",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/ProjectSettingsPanel.swift": {
     "mtime": 1794291864.8930151,
@@ -780,10 +780,10 @@
     "semantic_hash": "fb2eb54e53b9eddb49ac4c828f26d1cb"
   },
   "app-swift/Sources/ShowreelStudio/StoryboardListViews.swift": {
-    "mtime": 1794291864.9000704,
-    "seen": 1794294493.148316,
-    "ast_hash": "c7a81f5be9d8079ba5830c7e1e77acb3",
-    "semantic_hash": "c7a81f5be9d8079ba5830c7e1e77acb3"
+    "mtime": 1794295314.3608425,
+    "seen": 1794295498.452074,
+    "ast_hash": "61d86117313fb95e3a9cee5be80081e9",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/StoryboardViews.swift": {
     "mtime": 1794291893.164023,
@@ -792,10 +792,10 @@
     "semantic_hash": "33a6145b9ef6101c571a08cda5071e0e"
   },
   "app-swift/Sources/ShowreelStudio/Theme.swift": {
-    "mtime": 1794291864.9014564,
-    "seen": 1794294493.1483169,
-    "ast_hash": "a011ac16ad1f60e3f335a05883315139",
-    "semantic_hash": "a011ac16ad1f60e3f335a05883315139"
+    "mtime": 1794295330.9175258,
+    "seen": 1794295498.452075,
+    "ast_hash": "115c08d0cdb568ba794ae1ff8983918e",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/TimelineViews.swift": {
     "mtime": 1794291864.9024746,
@@ -1062,10 +1062,10 @@
     "semantic_hash": "3949312956739fd75f6de0e54bbf5007"
   },
   "app-swift/Tests/ShowreelKitTests/RL1Tests.swift": {
-    "mtime": 1794262743.6965077,
-    "seen": 1794294493.148337,
-    "ast_hash": "7c722cc3886b7d5616124c2ad323a2b0",
-    "semantic_hash": "7c722cc3886b7d5616124c2ad323a2b0"
+    "mtime": 1794295382.627286,
+    "seen": 1794295498.452099,
+    "ast_hash": "d7ff03302834c01cfb52c296d19dd7db",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/ReelTests.swift": {
     "mtime": 1794258687.1520333,
@@ -1176,10 +1176,10 @@
     "semantic_hash": "4a306ee12c1b041e732021253154ce93"
   },
   "app-swift/shared/app-version.json": {
-    "mtime": 1794291938.6882548,
-    "seen": 1794294493.148351,
-    "ast_hash": "b5d28f37b3819761174926beba9a08d2",
-    "semantic_hash": "b5d28f37b3819761174926beba9a08d2"
+    "mtime": 1794295487.6945992,
+    "seen": 1794295498.452109,
+    "ast_hash": "1e7bc27be0200f099e0a21fb82cb00c2",
+    "semantic_hash": ""
   },
   "app-swift/shared/capabilities.json": {
     "mtime": 1794290643.1064687,
@@ -1800,10 +1800,10 @@
     "semantic_hash": "071eeb209985b24d04b3fd2f89067939"
   },
   "tools/released-app.json": {
-    "mtime": 1794291938.701197,
-    "seen": 1794294493.1484008,
-    "ast_hash": "d7b112b755eb01bc0995eeb94db3c126",
-    "semantic_hash": "d7b112b755eb01bc0995eeb94db3c126"
+    "mtime": 1794295487.7089624,
+    "seen": 1794295498.4521642,
+    "ast_hash": "fbc7e85b8e07f921fec62da64f14b457",
+    "semantic_hash": ""
   },
   "tools/released.json": {
     "mtime": 1794247430.8374958,
@@ -1866,10 +1866,10 @@
     "semantic_hash": "9c7377b95093cb654f403881bea61c58"
   },
   "CHANGELOG-APP.md": {
-    "mtime": 1794291938.6883745,
-    "seen": 1794294493.148406,
-    "ast_hash": "fbcafa72a678deb3815bd49b0dc74b72",
-    "semantic_hash": "fbcafa72a678deb3815bd49b0dc74b72"
+    "mtime": 1794295487.6948109,
+    "seen": 1794295498.45217,
+    "ast_hash": "3497b24e9cc47ad29c75d17dc11bf2e7",
+    "semantic_hash": ""
   },
   "CHANGELOG.md": {
     "mtime": 1794247430.8170545,
@@ -1878,10 +1878,10 @@
     "semantic_hash": "a745c08b103fb0b6f2b4ac1ea3ed110f"
   },
   "CLAUDE.md": {
-    "mtime": 1794294066.1491046,
-    "seen": 1794294493.148407,
-    "ast_hash": "59d61a3bf2994cea422871b6a70bfac9",
-    "semantic_hash": "59d61a3bf2994cea422871b6a70bfac9"
+    "mtime": 1794295487.6114953,
+    "seen": 1794295498.452172,
+    "ast_hash": "f38156452059c513cd9e6c72964a7e97",
+    "semantic_hash": ""
   },
   "README.md": {
     "mtime": 1794210880.977039,
@@ -1890,10 +1890,10 @@
     "semantic_hash": "07dabff2f07a7a5db58f75887f203d77"
   },
   "RELEASE-NOTES-APP.md": {
-    "mtime": 1794291938.6007893,
-    "seen": 1794294493.1484082,
-    "ast_hash": "80488593edad866ae86447f831dce08b",
-    "semantic_hash": "80488593edad866ae86447f831dce08b"
+    "mtime": 1794295487.6102662,
+    "seen": 1794295498.452173,
+    "ast_hash": "14333edf7b1764edd8ffd9908b651256",
+    "semantic_hash": ""
   },
   "RELEASE-NOTES-SKILL.md": {
     "mtime": 1794247430.7303467,
@@ -1902,10 +1902,10 @@
     "semantic_hash": "080570538fb97f6dab0d1926d41a6fb0"
   },
   "ROADMAP.md": {
-    "mtime": 1794291024.2967105,
-    "seen": 1794294493.1484091,
-    "ast_hash": "b3721d7f70a0660a3fd08e85d1d7138d",
-    "semantic_hash": "b3721d7f70a0660a3fd08e85d1d7138d"
+    "mtime": 1794295487.6113074,
+    "seen": 1794295498.4521742,
+    "ast_hash": "74889d473878212d1ccf305ba72f5c87",
+    "semantic_hash": ""
   },
   "app-swift/README.md": {
     "mtime": 1794163721.947203,
@@ -2238,10 +2238,10 @@
     "semantic_hash": "58024dd589971788a7077b73b760d162"
   },
   "docs/ux-notes.md": {
-    "mtime": 1794291938.601083,
-    "seen": 1794294493.148444,
-    "ast_hash": "1a82488b26d9e8e3236ade60afb43733",
-    "semantic_hash": "1a82488b26d9e8e3236ade60afb43733"
+    "mtime": 1794295487.6109023,
+    "seen": 1794295498.452204,
+    "ast_hash": "4b76531177345647d3d37ad1a8e1018d",
+    "semantic_hash": ""
   },
   "docs/v2-report.md": {
     "mtime": 1794207582.2442343,
@@ -3022,5 +3022,17 @@
     "seen": 1794294796.436434,
     "ast_hash": "129da1b1ebdccaf639bc39c096f64984",
     "semantic_hash": "129da1b1ebdccaf639bc39c096f64984"
+  },
+  "app-swift/Tests/ShowreelKitTests/RB1Tests.swift": {
+    "mtime": 1794295413.3036447,
+    "seen": 1794295498.452099,
+    "ast_hash": "bd1782e37200f8c12c034ea86bcd4ccc",
+    "semantic_hash": ""
+  },
+  "docs/rb1-report.md": {
+    "mtime": 1794295487.6100385,
+    "seen": 1794295498.452201,
+    "ast_hash": "915018201bf32c7eb63f3a17bb14758f",
+    "semantic_hash": ""
   }
 }

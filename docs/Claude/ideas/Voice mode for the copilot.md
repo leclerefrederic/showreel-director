@@ -10,7 +10,7 @@ id: IDEA-005
 aliases:
   - "IDEA-005"
 since: 2026-11-10
-phase: 
+phase: ""
 tags:
   - idea
   - app

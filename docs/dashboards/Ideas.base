@@ -1,9 +1,6 @@
 filters:
   and:
-    - 'type == "idea"'
-    - 'file.inFolder("Claude/ideas")'
-formulas:
-  stage: 'if(status == "superseded", "Done or dropped", if(phase, "Planned in " + phase, if(status == "current", "Wanted soon", "Parked")))'
+    - type == "idea"
 properties:
   id:
     displayName: ID
@@ -15,6 +12,8 @@ properties:
     displayName: Area
   source:
     displayName: Source
+  status:
+    displayName: Status
   phase:
     displayName: Phase
   since:
@@ -23,55 +22,17 @@ properties:
     displayName: Outcome
   outcome_link:
     displayName: Went to
-  formula.stage:
-    displayName: Stage
 views:
   - type: table
-    name: "Wanted soon"
+    name: All open ideas
     filters:
       and:
-        - 'formula.stage == "Wanted soon"'
+        - status != "superseded"
     order:
       - id
       - file.name
       - area
-      - formula.stage
-      - phase
-      - since
-      - summary
-    sort:
-      - property: since
-        direction: DESC
-  - type: table
-    name: "Planned or in progress"
-    filters:
-      and:
-        - 'formula.stage != "Wanted soon"'
-        - 'formula.stage != "Parked"'
-        - 'formula.stage != "Done or dropped"'
-    order:
-      - id
-      - file.name
-      - area
-      - formula.stage
-      - phase
-      - since
-      - summary
-    sort:
-      - property: since
-        direction: DESC
-  - type: table
-    name: "Parked"
-    filters:
-      and:
-        - 'formula.stage == "Parked"'
-    groupBy:
-      property: area
-      direction: ASC
-    order:
-      - id
-      - file.name
-      - formula.stage
+      - status
       - phase
       - since
       - summary
@@ -79,10 +40,60 @@ views:
       - property: id
         direction: ASC
   - type: table
-    name: "Done or dropped"
+    name: Wanted soon
     filters:
       and:
-        - 'formula.stage == "Done or dropped"'
+        - status == "current"
+        - phase == ""
+    order:
+      - id
+      - file.name
+      - area
+      - since
+      - summary
+    sort:
+      - property: id
+        direction: ASC
+  - type: table
+    name: Planned or in progress
+    filters:
+      and:
+        - status != "superseded"
+        - phase != ""
+    order:
+      - id
+      - file.name
+      - area
+      - status
+      - phase
+      - since
+      - summary
+    sort:
+      - property: id
+        direction: ASC
+  - type: table
+    name: Parked
+    filters:
+      and:
+        - status == "draft"
+        - phase == ""
+    groupBy:
+      property: area
+      direction: ASC
+    order:
+      - id
+      - file.name
+      - status
+      - since
+      - summary
+    sort:
+      - property: id
+        direction: ASC
+  - type: table
+    name: Done or dropped
+    filters:
+      and:
+        - status == "superseded"
     order:
       - id
       - file.name

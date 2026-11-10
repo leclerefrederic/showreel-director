@@ -31,3 +31,7 @@ Part of [[ux-notes]].
 - The storyboard strip panel resizes but its content does not follow, so a taller panel is useless. The reel must zoom: frames, thumbnails and the music track scale with the panel height, and the time scale can be changed to focus on a portion instead of the whole film (zoom in and out, fit to the whole film, fit to the selection, horizontal scroll, the playhead stays in view).
 
 - The project's music should show under the storyboard with its waveform and analysis. Stretching a scene to the left or right snaps to the track's grid (stick to grid), so scenes are timed on the music.
+
+## Built in W4b (2026-11-10)
+
+A frame of the strip, and the larger picture in the scene inspector, is a PNG captured from the built film at one moment of the scene, with a placeholder that says why there is no picture, a clock mark when it is out of date and a "Refresh thumbnail" action. See [[phases/W4b/report]].

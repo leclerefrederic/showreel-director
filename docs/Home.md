@@ -16,22 +16,18 @@ Your cockpit: what to answer, what is moving, what was decided. Answer in the ch
 ## Where we are
 
 <!-- generated:where-we-are -->
-- App version: **0.19.3**. Skill version: **0.18.2**.
-- Last built phase: **RB1**, report in [[phases/RB1/report]].
-- Next, in the order of `CLAUDE.md`: PK2 (apply a package to an existing project), W4 (timing inside the scene and content-driven thumbnails), N (activity and notifications, in the spec).
+- App version: **0.21.0**. Skill version: **0.18.2**.
+- Last built phase: **W4b**, report in [[phases/W4b/report]].
+- Next, in the order of `CLAUDE.md`: PK2 (apply a package to an existing project), N (activity and notifications, in the spec).
 <!-- /generated:where-we-are -->
 
 ## To answer
 
 ![[Questions.base#To answer]]
 
-## Ideas wanted soon
+## Ideas
 
-![[Ideas.base#Wanted soon]]
-
-## Ideas planned or in progress
-
-![[Ideas.base#Planned or in progress]]
+![[Ideas.base#All open ideas]]
 
 ## Decisions
 

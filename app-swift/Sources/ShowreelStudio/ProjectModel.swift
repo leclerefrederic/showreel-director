@@ -421,6 +421,7 @@ final class ProjectModel: ObservableObject {
         needsSetup = store.needsSetup
         if fitAll, viewportWidth > 1 { fitFilm(remember: false) }          // the film got longer or shorter: the strip still shows all of it
         if inspectorTab == .copilot && clapSection != .conversation { reloadHistory() }
+        refreshThumbStates()
     }
 
     /// Reads the journal, the memory and the sessions again (when a history part of the Ask Clap tab is in front, and when Clap writes to the memory).
@@ -454,6 +455,11 @@ final class ProjectModel: ObservableObject {
     @Published var playVersion: String?      // the version shown in the player
     @Published var playNonce = 0
     @Published private(set) var versions: [String] = []
+    /// The state of each scene's thumbnail (W4b), derived from the files; the capture queue and its quiet delay are in `SceneThumbModel.swift`.
+    @Published var sceneThumbs: [String: SceneThumbs.State] = [:]
+    var thumbQueue = SceneThumbQueue()
+    var thumbTask: Task<Void, Never>?
+    var thumbDelay: Task<Void, Never>?
 
     var buildBusy: Bool { generating || testing }
     private var testTask: Task<Void, Never>?
@@ -918,6 +924,8 @@ final class ProjectModel: ObservableObject {
 
     /// The scene under the playhead.
     var sceneUnderPlayhead: ShowreelFile.Scene? { showreel.flatMap { TimelineNav.scene(at: playhead, in: $0) } }
+    /// The scene under the playhead and how far into it the playhead is: what the viewer draws when nothing is selected and no build exists.
+    var sceneAtPlayhead: (scene: ShowreelFile.Scene, time: Double)? { showreel.flatMap { TimelineNav.sceneAndTime(at: playhead, in: $0) } }
 
     /// Arrow keys: the previous or next scene of the film becomes the selection and the playhead goes to its start.
     /// A click that means "look at this scene", wherever it is made (the list, the strip, a chip, a check): select it, show the film, put the playhead at its start when it is in the film

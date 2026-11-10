@@ -18,9 +18,9 @@ tags:
 
 ## Status
 
-- App 0.19.3, skill 0.18.2. Last built phase: RB1. Next: PK2 (apply a package to an existing project), W4 (timing inside the scene and content-driven thumbnails), N (activity and notifications, in the spec).
-- 208 notes. Ideas: 46 (34 parked, 0 wanted soon, 12 built or promoted).
-- Open questions (11): Should the Inspector mark show when the side is closed; Should locked scenes from before UI2 take a copy of their look when the project opens; Should a lock also freeze the transitions beside a locked scene; Should Look light a centre entry; Shortcuts for the other right panels; Rework of the Wizard and Manual creation experience; May a click on the active Build leave the Build; Keep three scenes written at once as the default; Is the phase order of the spec still the one we follow; Confirm the two-thirds split of the left panel; Confirm the Checks badge after use.
+- App 0.21.0, skill 0.18.2. Last built phase: W4b. Next: PK2 (apply a package to an existing project), N (activity and notifications, in the spec).
+- 232 notes. Ideas: 50 (36 parked, 2 wanted soon, 12 built or promoted).
+- Open questions (18): Which instant of a scene should its thumbnail show; What form should the timing control of an item take; Should timing be in seconds or in beats; Should the viewer play an item's timing live; Should the viewer keep its content drawing before a build; Should the strip mark every frame as fresh or only the stale ones; Should the Inspector mark show when the side is closed; Should locked scenes from before UI2 take a copy of their look when the project opens; Should an item's timing snap to the music grid; Should a lock also freeze the transitions beside a locked scene; Should Look light a centre entry; Shortcuts for the other right panels; Rework of the Wizard and Manual creation experience; May a click on the active Build leave the Build; Keep three scenes written at once as the default; Is the phase order of the spec still the one we follow; Confirm the two-thirds split of the left panel; Confirm the Checks badge after use.
 
 ## Entry notes and hubs
 
@@ -31,7 +31,7 @@ Hubs keep their old paths: `studio-spec.md`, `ux-notes.md`, `phases-done.md`, `i
 | `Home.md` | reference | current |  | 2026-11-10 | The owner's cockpit: where we are, the questions to answer, the ideas wanted soon or in progress, and the decisions. |
 | `Conventions.md` | reference | current | OBS1 | 2026-11-10 | The rules of the vault: properties, naming, links, one fact in one place, what never goes in a note and the paths that stay valid. |
 | `Workflow.md` | reference | current | OBS1 | 2026-11-10 | How the owner and the agents work: the Cowork and Claude Code sides, the phase cycle, the owner's hand test and where things go. |
-| `ideas.md` | idea | current |  | 2026-11-10 | The parking lot: the open questions for the owner, generated from docs/Claude/questions/, and the list of ideas, generated from docs/Claude/ideas/. |
+| `ideas.md` | reference | current |  | 2026-11-10 | The parking lot: the open questions for the owner, generated from docs/Claude/questions/, and the list of ideas, generated from docs/Claude/ideas/. |
 | `phases-done.md` | reference | current |  | 2026-11-10 | The one table of every phase with its summary, prompt, report and versions. |
 | `studio-spec.md` | spec | current |  | 2026-11-09 | The design of Showreel Studio v2, as a hub: its numbered sections are the notes of docs/Claude/spec/. |
 | `ux-notes.md` | ux | current |  | 2026-11-10 | The owner's UX remarks per block, as a hub: its blocks are the notes of docs/Claude/ux/. |
@@ -107,6 +107,9 @@ Cite a decision by its ID and title: DECISION-001.
 | DECISION-017 | `decisions/The AI may read design decisions and corrections, never the content.md` | current | PK1 | 2026-11-10 | To improve a package the AI may read design decisions, the user's corrections and the journal of a reel, never the content of texts or files. |
 | DECISION-018 | `decisions/The open questions are waived during the redesign.md` | current | DS1 | 2026-11-10 | The owner waived the open questions before DS1: today's defaults stand until the owner says otherwise. |
 | DECISION-019 | `decisions/The sizes the owner drags never change with the Film placement.md` | current | RL1 | 2026-11-10 | The sizes the owner drags are never changed by the Film placement; a small window only clamps them for drawing. |
+| DECISION-020 | `decisions/A scene enters and leaves the storyboard by the eye and by drag and drop.md` | current |  | 2026-11-10 | A scene enters and leaves the storyboard by the eye and by drag and drop. |
+| DECISION-021 | `decisions/Parked scenes and thrown-away items are two different places.md` | current |  | 2026-11-10 | A scene parked outside the film and an item thrown away are two different places: the group Not in the storyboard, and a trash. |
+| DECISION-022 | `decisions/Scene thumbnails are a PNG capture of the real scene.md` | current | W4b | 2026-11-10 | A scene's thumbnail is a PNG captured from the real rendering of the scene, not the schematic drawing of W4; owner choice of 2026-11-10. |
 
 ## Questions
 
@@ -126,6 +129,13 @@ Cite a decision by its ID and title: DECISION-001.
 | QUESTION-010 | `questions/Should locked scenes from before UI2 take a copy of their look when the project opens.md` | current | UI2 | 2026-11-10 | Whether to give locked scenes from before UI2 a copy of their look automatically when the project opens. |
 | QUESTION-011 | `questions/Should the Inspector mark show when the side is closed.md` | current | RB1 | 2026-11-10 | A selection with the right side closed opens the Inspector, so the mark shows only while another panel is open; show it when closed? |
 | QUESTION-012 | `questions/Should the instruction switch Ready off.md` | superseded | UI2 | 2026-11-10 | Settled: the owner removed the Instruction field, so nothing offers to switch Ready off any more. |
+| QUESTION-013 | `questions/What form should the timing control of an item take.md` | current | W4 | 2026-11-10 | What form should the in and out of an item take in the inspector: two steppers behind an Auto or Fixed switch, as built, or a strip under the rows? |
+| QUESTION-014 | `questions/Should an item's timing snap to the music grid.md` | current | W4 | 2026-11-10 | When a track is analysed, should the in and out of an item snap to the beats and bars of the music grid, or stay free to the tenth of a second? |
+| QUESTION-015 | `questions/Should timing be in seconds or in beats.md` | current | W4 | 2026-11-10 | Should the in and out of an item be written in seconds from the start of the scene, as built, or in beats when the music has a tempo? |
+| QUESTION-016 | `questions/Should the viewer play an item's timing live.md` | current | W4 | 2026-11-10 | Should the viewer play a scene with its items coming and going in time, or keep showing a still at a chosen time, as built? |
+| QUESTION-017 | `questions/Which instant of a scene should its thumbnail show.md` | current | W4b | 2026-11-10 | Which instant represents a scene in its PNG thumbnail: the W4 still time, the middle, the busiest moment or the last moment before the exit. |
+| QUESTION-018 | `questions/Should the viewer keep its content drawing before a build.md` | current | W4b | 2026-11-10 | Before a build has a film to play, should the viewer keep drawing the scene from its content (W4), or show a plain placeholder like the strip. |
+| QUESTION-019 | `questions/Should the strip mark every frame as fresh or only the stale ones.md` | current | W4b | 2026-11-10 | Whether each strip frame shows a freshness mark all the time, or only the out-of-date frames, which carry a clock mark. |
 
 ## Ideas
 
@@ -179,6 +189,10 @@ Cite a decision by its ID and title: DECISION-001.
 | IDEA-044 | `ideas/Clap as a drawer beside the Inspector.md` | draft |  | 2026-11-10 | Show Clap as a drawer beside the Inspector, both visible at once. |
 | IDEA-045 | `ideas/A selected highlight that slides.md` | draft |  | 2026-11-10 | A sliding highlight for the selected row and frame, and the shelved two-pictogram layout toggle with a surround that slides. |
 | IDEA-046 | `ideas/Fix the comment of ShowreelFile.swift line 140 that names the wrong file.md` | superseded | OBS5 | 2026-11-10 | Fix the comment at ShowreelFile.swift line 140, which names the spec for Scene content, a block of the UX notes. |
+| IDEA-047 | `ideas/Drag a scene between the storyboard and the Not in the storyboard group.md` | current |  | 2026-11-10 | A scene cannot be dragged from the storyboard into the Not in the storyboard group, nor back out of it; the owner noted it during the W4 hand test. |
+| IDEA-048 | `ideas/A trash for scenes and resources the owner no longer wants.md` | current |  | 2026-11-10 | A trash for every scene and resource thrown away, since the owner asks whether a hidden scene is not one he no longer wants. |
+| IDEA-049 | `ideas/A short looping GIF as the thumbnail of a scene.md` | draft |  | 2026-11-10 | A short looping GIF as the thumbnail of a scene. |
+| IDEA-050 | `ideas/Each transition gets its own icon in the strip.md` | draft |  | 2026-11-10 | Each transition gets its own icon in the strip. |
 
 ## Archive (reports that span several phases)
 
@@ -208,6 +222,7 @@ One line per phase folder `phases/<ID>/`: its files, the versions of its report 
 | `phases/BG1d/` | report |  |  | 2026-11-09 | Report of BG1d: a Build rewrites only the scenes that changed. |
 | `phases/BG2/` | prompt, report | 0.11.0 | 0.18.2 | 2026-11-09 | Report of BG2: retries on 429 and 529, then scenes written at the same time. |
 | `phases/CL1/` | prompt, report, summary | 0.15.0 |  | 2026-11-09 | Report of CL1: the conversation language comes from the Mac and is stored with its origin. |
+| `phases/CR1/` | prompt, report | 0.20.1 | 0.18.2 | 2026-11-10 | Report of CR1: the close guard kept the window's delegate weakly and could leave windowDidResize: unanswered; now strong, single, restored; app 0.20.1. |
 | `phases/DS1/` | prompt, report | 0.14.0 |  | 2026-11-09 | Report of DS1: design tokens, the dark theme, the rail of views, shared styles and icons by role. |
 | `phases/DS2/` | prompt, report | 0.17.0 |  | 2026-11-09 | Report of DS2: the Film strip and the Storyboard list on the tokens, plus the motion language. |
 | `phases/DS3/` | prompt, report | 0.19.0 |  | 2026-11-10 | Report of DS3: the form system, real tabs, and the inspector and forms on the design tokens. |
@@ -220,12 +235,17 @@ One line per phase folder `phases/<ID>/`: its files, the versions of its report 
 | `phases/OBS3/` | prompt, report |  |  | 2026-11-10 | Report of OBS3: ideas as notes, a summary on every note, a generated agent index and generated blocks, with the step 0 lists and the proof. |
 | `phases/OBS4/` | prompt, report |  |  | 2026-11-10 | Report of OBS4: notes renamed with aliases, early phases flattened, one generated phase table, dashboards moved, graph linked, OBS3 leftovers settled. |
 | `phases/OBS5/` | prompt, report | 0.19.3 |  | 2026-11-10 | Report of OBS5: docs/ split into Home, Dashboards and Claude, stable IDs for ideas, questions and decisions, owner dashboards, app comments on the new paths. |
+| `phases/OBS6/` | prompt, report |  |  | 2026-11-10 | Report of OBS6: why the Ideas dashboard showed no idea, the four bases simplified and fixed, a static check, and the expected row count of every view. |
 | `phases/Q5/` | report, summary |  |  | 2026-11-09 | Report of Q5: action/reaction, with what the code did before and what Q5 changed. |
 | `phases/RB1/` | prompt, report | 0.19.2 |  | 2026-11-10 | Report of RB1: the audit of the rail's buttons, one tested rule, the fixes and four questions for the owner. |
+| `phases/RF0/` | prompt |  |  | 2026-11-10 | Asks for a read-only health audit of the code (size, boundaries, fragile glue, tests, dead code) ending in a ranked list of targeted refactorings. |
 | `phases/RL1/` | prompt, report, summary | 0.16.0 |  | 2026-11-09 | Report of RL1: the two-group rail with Clap, the full-height shell, the Film placement toggle and the reset icon. |
 | `phases/UI1/` | prompt, report | 0.12.0 |  | 2026-11-09 | Report of UI1: the left panel as the Storyboard with the Resources below, and the decisions the owner can reverse. |
 | `phases/UI2/` | prompt, report | 0.13.0 |  | 2026-11-09 | Report of UI2: clear scene rows, three switches, Delete scene and a real lock, with the decisions taken. |
 | `phases/V2/` | report, summary |  |  | 2026-11-09 | Report of V2: the state of the build and of the reader. |
+| `phases/W4/` | prompt, report | 0.20.0 | 0.18.2 | 2026-11-10 | Report of W4: timing of each item inside its scene, pictures and viewer drawn from the content, one thumbnail per scene; app 0.20.0, skill unchanged. |
+| `phases/W4b/` | prompt, report | 0.21.0 | 0.18.2 | 2026-11-10 | Report of W4b: scene thumbnails are a PNG captured from the real built scene, with placeholder, stale mark and refresh; app 0.21.0, skill unchanged. |
+| `phases/W4c/` | prompt |  |  | 2026-11-10 | Fixes W4b: on an existing project the strip frames are empty, with no placeholder and no tooltip, even after a rebuild of app 0.21.0. |
 
 ## Early phases (flat notes in phases/early/)
 

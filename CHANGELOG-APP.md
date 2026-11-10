@@ -2,6 +2,18 @@
 
 Version of the Showreel Studio app (`app-swift/shared/app-version.json`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The skill and the project file format have their own numbers. Ship with `python3 tools/bump_app.py`, after writing the section of the new version in `RELEASE-NOTES-APP.md`.
 
+## 0.21.0 - 2026-11-10
+
+W4b: scene thumbnails are a PNG captured from the real scene
+
+## 0.20.1 - 2026-11-10
+
+CR1: fix the crash windowDidResize (close guard kept its delegate weakly)
+
+## 0.20.0 - 2026-11-10
+
+W4: timing of each item inside its scene, pictures and viewer drawn from the content, one thumbnail per scene
+
 ## 0.19.3 - 2026-11-10
 
 OBS5: comments and docs paths only (the spec moved to docs/Claude/studio-spec.md), no behaviour change

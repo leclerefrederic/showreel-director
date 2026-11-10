@@ -47,6 +47,7 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | AS1 | 2026-11-10 | current | 0.18.0 |  | [[phases/AS1/prompt\|prompt]] | [[phases/AS1/report\|report]] |  |
 | B | 2026-11-10 | current |  |  |  |  | [[phases/early/Library, project model, wizard and first storyboard\|summary]] |
 | C1 | 2026-11-10 | current |  |  |  |  | [[phases/early/Corrections from the first test session\|summary]] |
+| CR1 | 2026-11-10 | current | 0.20.1 | 0.18.2 | [[phases/CR1/prompt\|prompt]] | [[phases/CR1/report\|report]] |  |
 | D1 | 2026-11-10 | current |  |  |  |  | [[phases/early/Typed payload for dropping a resource on a scene\|summary]] |
 | D2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Resource drag fixed after its row was a button\|summary]] |
 | D3 | 2026-11-10 | current |  |  |  |  | [[phases/early/Resource drag no longer blocks the panel\|summary]] |
@@ -62,6 +63,7 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | OBS3 | 2026-11-10 | current |  |  | [[phases/OBS3/prompt\|prompt]] | [[phases/OBS3/report\|report]] |  |
 | OBS4 | 2026-11-10 | current |  |  | [[phases/OBS4/prompt\|prompt]] | [[phases/OBS4/report\|report]] |  |
 | OBS5 | 2026-11-10 | current | 0.19.3 |  | [[phases/OBS5/prompt\|prompt]] | [[phases/OBS5/report\|report]] |  |
+| OBS6 | 2026-11-10 | current |  |  | [[phases/OBS6/prompt\|prompt]] | [[phases/OBS6/report\|report]] |  |
 | P1 | 2026-11-10 | current |  |  |  |  | [[phases/early/Scene and look ergonomics\|summary]] |
 | P2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Look editors list and the base configuration\|summary]] |
 | P3 | 2026-11-10 | current |  |  |  |  | [[phases/early/Look editors list and the base configuration\|summary]] |
@@ -74,6 +76,7 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | R | 2026-11-10 | current |  |  |  |  | [[phases/early/Release notes for the skill and the app\|summary]] |
 | R1 | 2026-11-10 | current |  |  |  |  | [[phases/early/Resources grouped by type and state\|summary]] |
 | RB1 | 2026-11-10 | current | 0.19.2 |  | [[phases/RB1/prompt\|prompt]] | [[phases/RB1/report\|report]] |  |
+| RF0 | 2026-11-10 | current |  |  | [[phases/RF0/prompt\|prompt]] |  |  |
 | S | 2026-11-10 | current |  |  |  |  | [[phases/early/Storyboard strip as an editing timeline\|summary]] |
 | T | 2026-11-10 | current |  |  |  |  | [[phases/early/Library, project model, wizard and first storyboard\|summary]] |
 | T2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Music grid on the strip\|summary]] |
@@ -84,6 +87,9 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | W2 | 2026-11-10 | current |  |  |  |  | [[phases/early/The film reel with transitions and music grid\|summary]] |
 | W3a | 2026-11-10 | current |  |  |  |  | [[phases/early/Scene modules and transition compositor spike\|summary]] |
 | W3b | 2026-11-10 | current |  |  |  |  | [[phases/early/Viewer and film integration of the compositor\|summary]] |
+| W4 | 2026-11-10 | current | 0.20.0 | 0.18.2 | [[phases/W4/prompt\|prompt]] | [[phases/W4/report\|report]] |  |
+| W4b | 2026-11-10 | current | 0.21.0 | 0.18.2 | [[phases/W4b/prompt\|prompt]] | [[phases/W4b/report\|report]] |  |
+| W4c | 2026-11-10 | current |  |  | [[phases/W4c/prompt\|prompt]] |  |  |
 | W5 | 2026-11-10 | current |  |  |  |  | [[phases/early/Direct manipulation with one drag and drop system\|summary]] |
 | X | 2026-11-10 | current |  |  |  |  | [[phases/early/Verification tools with one command and two modes\|summary]] |
 <!-- /generated:phases -->

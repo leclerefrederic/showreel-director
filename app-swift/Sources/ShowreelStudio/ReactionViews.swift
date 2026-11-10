@@ -56,22 +56,18 @@ struct CloseGuardHook: NSViewRepresentable {
         return v
     }
     func updateNSView(_ v: NSView, context: Context) { DispatchQueue.main.async { context.coordinator.attach(v.window) } }
+    static func dismantleNSView(_ v: NSView, coordinator: Coordinator) { coordinator.windowGuard?.detach() }
     func makeCoordinator() -> Coordinator { Coordinator(project) }
 
-    final class Coordinator: NSObject, NSWindowDelegate {
+    /// The guard itself is ShowreelKit's `WindowGuard` (one per window, original delegate held and restored).
+    final class Coordinator {
         let project: ProjectModel
-        weak var original: NSWindowDelegate?
+        var windowGuard: WindowGuard?
         init(_ p: ProjectModel) { project = p }
         func attach(_ w: NSWindow?) {
-            guard let w = w, w.delegate !== self else { return }
-            original = w.delegate; w.delegate = self
+            guard let w = w else { return }
+            windowGuard = WindowGuard.install(on: w) { [project] in project.confirmLeaving(.closeWindow) }
         }
-        func windowShouldClose(_ sender: NSWindow) -> Bool {
-            guard project.confirmLeaving(.closeWindow) else { return false }
-            return original?.windowShouldClose?(sender) ?? true
-        }
-        override func responds(to s: Selector!) -> Bool { super.responds(to: s) || (original?.responds(to: s) ?? false) }
-        override func forwardingTarget(for s: Selector!) -> Any? { (original?.responds(to: s) ?? false) ? original : super.forwardingTarget(for: s) }
     }
 }
 

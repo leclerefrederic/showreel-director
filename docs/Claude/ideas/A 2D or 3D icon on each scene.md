@@ -10,7 +10,7 @@ id: IDEA-032
 aliases:
   - "IDEA-032"
 since: 2026-11-10
-phase: 
+phase: ""
 tags:
   - idea
   - skill

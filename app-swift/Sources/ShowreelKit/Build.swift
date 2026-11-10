@@ -83,7 +83,8 @@ public enum BuildRunner {
                 let color = i.type == "text" ? "; colour: " + (i.color.isFixed ? "FIXED \(i.color.text)" + (i.color.mode == "role" ? " (\(f.paletteHex(i.color.role, for: s) ?? "role not in the palette"))" : "") : "AUTO") : ""
                 let anim = i.type == "audio" ? "" : "; animation: " + (i.animation.isFixed ? "FIXED \(i.animation.text)" : "AUTO")
                 let ins = i.hasInstruction ? "; instruction: \u{201C}\(i.instruction!)\u{201D}" : ""
-                return "   \(n + 1). \(subject)\(color)\(anim)\(ins)"
+                let when = "; timing in the scene: " + (i.timing.isFixed ? "FIXED \(i.timing.text) (seconds from the scene's start)" : "AUTO")
+                return "   \(n + 1). \(subject)\(color)\(anim)\(when)\(ins)"
             }
             return ([head] + items).joined(separator: "\n")
         }.joined(separator: "\n")

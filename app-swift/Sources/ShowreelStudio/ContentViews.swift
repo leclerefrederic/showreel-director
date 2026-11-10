@@ -100,6 +100,10 @@ struct ContentItemRow: View {
     let priority: Int
     let count: Int
     @EnvironmentObject var project: ProjectModel
+    @EnvironmentObject var theme: Theme
+    @State private var inText = ""
+    @State private var outText = ""
+    @State private var timingMessage: String?
     @State private var words = ""
     @State private var params = ""
     @State private var instruction = ""
@@ -119,6 +123,7 @@ struct ContentItemRow: View {
                 subject
                 if item.type == "text" { colour }
                 if item.type != "audio" { animation }
+                timing
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Instruction for the AI (optional)").fontSmall(weight: .semibold).foregroundStyle(.secondary)
                     TextField("In your words", text: $instruction, axis: .vertical).lineLimit(1...3).textFieldStyle(ThemedTextFieldStyle())
@@ -144,6 +149,7 @@ struct ContentItemRow: View {
                 Spacer(minLength: 4)
                 if item.color.isFixed { FixedBadge(fixed: true).help("Colour fixed") }
                 if item.animation.isFixed { Image(systemName: "sparkles").fontSmall().foregroundStyle(Color.accentColor).help("Animation fixed: \(item.animation.text)") }
+                if item.timing.isFixed { Image(systemName: "clock").fontSmall().foregroundStyle(Color.accentColor).help("Timing fixed: \(item.timing.text)") }
                 BlockMarker(ref: .item(scene: scene, item: item.id))
             }
             .flashWhenChanged(.item(scene: scene, item: item.id))
@@ -168,7 +174,14 @@ struct ContentItemRow: View {
         return project.assets.first { $0.id == item.resource }?.name ?? item.resource ?? "(no resource)"
     }
 
-    private func load() { words = item.text ?? ""; params = item.animation.paramsText; instruction = item.instruction ?? ""; hex = item.color.hex ?? "#FFFFFF" }
+    private func load() {
+        words = item.text ?? ""; params = item.animation.paramsText; instruction = item.instruction ?? ""; hex = item.color.hex ?? "#FFFFFF"
+        inText = timingRule.display(item.timeIn ?? 0); outText = timingRule.display(item.timeOut ?? sceneDuration ?? timingRule.maximum)
+    }
+
+    private var sceneDuration: Double? { project.showreel?.scenes.first { $0.id == scene }?.duration }
+    private var timingRule: NumericField { NumericField(minimum: 0, maximum: sceneDuration ?? 600) }
+    private var timingDirty: Bool { item.timing.isFixed && (inText != timingRule.display(item.timeIn ?? 0) || outText != timingRule.display(item.timeOut ?? sceneDuration ?? timingRule.maximum)) }
 
     private func apply() {
         var e = ContentEdit()
@@ -212,6 +225,50 @@ struct ContentItemRow: View {
                 }
             }
         }
+    }
+
+    /// When the item is on screen, in seconds from the start of the scene: auto (the AI decides) or fixed. A value outside the scene is refused with its reason, and nothing is written.
+    private var timing: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack { Text("Timing in the scene").fontSmall(weight: .semibold).foregroundStyle(.secondary); FixedBadge(fixed: item.timing.isFixed) }
+            Picker("", selection: Binding(get: { item.timing.isFixed }, set: { setTimingFixed($0) })) {
+                Text("Auto (the AI decides)").tag(false)
+                Text("Fixed").tag(true)
+            }
+            .pickerStyle(.segmented).labelsHidden()
+            .disabledWithReason(sceneDuration == nil && !item.timing.isFixed ? "The scene has no duration yet" : nil, way: "Set the scene's duration, then fix the timing")
+            if item.timing.isFixed {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("In (s)").fontSmall().foregroundStyle(.secondary)
+                        StepperField(text: $inText, rule: timingRule, onCommit: { applyTiming() }, width: 100)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Out (s)").fontSmall().foregroundStyle(.secondary)
+                        StepperField(text: $outText, rule: timingRule, onCommit: { applyTiming() }, width: 100)
+                    }
+                }
+                Text("Seconds from the start of the scene" + (sceneDuration.map { " (\(ProjectDocs.seconds($0)) s long)" } ?? "") + ". The item is on screen from In up to Out.").fontSmall().foregroundStyle(.secondary)
+            }
+            if let why = timingMessage { Text(why).fontSmall().foregroundStyle(theme.warning) }
+        }
+        .autoCommit([inText, outText], dirty: timingDirty, undoKey: "item:\(scene):\(item.id):times") { applyTiming() }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func setTimingFixed(_ fixed: Bool) {
+        timingMessage = nil
+        // fixing starts from "there all along" (the start to the end of the scene); going back to auto clears both bounds
+        project.updateItem(scene, item.id, ContentEdit(times: fixed ? ContentTimes(start: 0, end: sceneDuration) : ContentTimes()))
+    }
+
+    private func applyTiming() {
+        guard item.timing.isFixed else { return }
+        guard let a = timingRule.typed(inText).result?.value, let b = timingRule.typed(outText).result?.value else { timingMessage = "In and Out are numbers of seconds, such as 1 or 2.5."; return }
+        let t = ContentTimes(start: a, end: b)
+        if let why = ContentTiming.validate(t, duration: sceneDuration) { timingMessage = why; return }          // refused with its reason: nothing is written
+        timingMessage = nil
+        if t != item.timing { project.updateItem(scene, item.id, ContentEdit(times: t)) }
     }
 
     private var animation: some View {

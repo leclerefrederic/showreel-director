@@ -479,16 +479,17 @@ struct FrameView: View {
         .contextMenu {
             Button("Rename") { project.beginRename(scene.id) }
             Button("Hide") { project.setEnabled(scene.id, false) }.help("The scene stays in the project, under Not in the storyboard")
+            Button("Refresh thumbnail") { project.refreshThumbnail(scene.id) }
+                .disabledWithReason(SceneThumbs.refreshAvailability(project.sceneThumbs[scene.id], activity: project.activity).why?.message)
             Divider()
             Button("Delete scene\u{2026}", role: .destructive) { project.askDelete(scene.id) }
         }
         .help(scene.label)
     }
 
-    /// One thumbnail, as long as a scene has a single still: repeated tiles come only with real frames at different times (phase W4). Tiles fill the frame's width.
+    /// One picture per frame: the PNG captured from the real scene (W4b), or its placeholder. It is clipped to its own rectangle: inside the frame, between the bands when there are any.
     private func thumbs(_ e: FrameElements) -> some View {
-        // the picture is clipped to its own rectangle (inside the frame, cropped from the left, between the bands when there are any): it never reaches the next frame or a label
-        SceneThumb(scene: scene, still: true).frame(width: CGFloat(e.thumbWidth), height: CGFloat(e.thumb.height), alignment: .leading)
+        SceneFrameImage(scene: scene).frame(width: CGFloat(e.thumbWidth), height: CGFloat(e.thumb.height), alignment: .leading)
             .frame(width: CGFloat(e.thumb.width), height: CGFloat(e.thumb.height), alignment: .leading).clipped()
             .offset(x: CGFloat(e.thumb.minX), y: CGFloat(e.thumb.minY)).allowsHitTesting(false)
     }

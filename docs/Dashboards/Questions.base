@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'type == "question"'
+    - type == "question"
 properties:
   id:
     displayName: ID
@@ -20,10 +20,10 @@ properties:
     displayName: Decision
 views:
   - type: table
-    name: "To answer"
+    name: To answer
     filters:
       and:
-        - 'status == "current"'
+        - status == "current"
     order:
       - id
       - file.name
@@ -37,10 +37,10 @@ views:
       - property: since
         direction: ASC
   - type: table
-    name: "Answered"
+    name: Answered
     filters:
       and:
-        - 'status == "superseded"'
+        - status == "superseded"
     order:
       - id
       - file.name

@@ -143,7 +143,7 @@ public enum FrameLayout {
         return hasName && width >= 120 ? .idAndName : .id
     }
 
-    public static func elements(width: Double, height: Double, hasName: Bool, idLength: Int = 3, nameLength: Int = 0) -> FrameElements {
+    public static func elements(width: Double, height: Double, hasName: Bool, idLength: Int = 3, nameLength: Int = 0, stills: Int = 1) -> FrameElements {
         let m = mode(width: width, hasName: hasName)
         var label: CGRect?
         switch m {
@@ -160,8 +160,10 @@ public enum FrameLayout {
         let foot: CGRect? = height >= bandMinHeight && pill != nil ? CGRect(x: 0, y: height - bandHeight, width: width, height: bandHeight) : nil
         let top = head?.height ?? 0, bottom = foot?.height ?? 0
         let th = max(1, height - top - bottom), tw = th * 16 / 9
-        let thumb = CGRect(x: 0, y: top, width: min(width, tw), height: th)
-        return FrameElements(mode: m, label: label, pill: pill, status: status, thumbTiles: 1, thumbWidth: tw, thumb: thumb, header: head, footer: foot)
+        // one thumbnail, never repeated, unless the scene has several stills that differ (W4) and the frame is wide enough for each at the 16:9 shape
+        let tiles = max(1, min(stills, Int(width / tw)))
+        let thumb = CGRect(x: 0, y: top, width: min(width, tw * Double(tiles)), height: th)
+        return FrameElements(mode: m, label: label, pill: pill, status: status, thumbTiles: tiles, thumbWidth: tw, thumb: thumb, header: head, footer: foot)
     }
 }
 
@@ -256,6 +258,16 @@ public enum TimelineRuler {
 
 public enum TimelineNav {
     /// The scene on screen at a time of the film: the first whose span holds it; the last scene also holds the very end.
+    /// The scene on screen at a time of the film and how far into it that is (what the viewer draws when it follows the playhead).
+    public static func sceneAndTime(at t: Double, in f: ShowreelFile) -> (scene: ShowreelFile.Scene, time: Double)? {
+        let tl = f.timeline()
+        for (i, s) in tl.enumerated() {
+            guard let a = s.start, let b = s.end else { continue }
+            if t >= a && (t < b || (i == tl.count - 1 && t <= b)) { return (s.scene, min(max(0, t - a), b - a)) }
+        }
+        return nil
+    }
+
     public static func scene(at t: Double, in f: ShowreelFile) -> ShowreelFile.Scene? {
         let tl = f.timeline()
         for (i, s) in tl.enumerated() {

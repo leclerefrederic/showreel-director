@@ -2,6 +2,53 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.21.0 - 2026-11-10
+
+**What's new**
+- **Thumbnails are the real scene.** In the Storyboard strip and in the scene's inspector, a scene's picture is now a PNG captured from the built film itself, at one representative moment of that scene, instead of a drawing made from its content. Pictures are kept in the project's hidden `.studio/scene-thumbs/` folder and never change the film.
+- **Always says what it is.** Before a film is built, or while a scene is not written yet, the frame shows a plain placeholder with the scene's ID, length and first words, and why there is no picture and how to get one (Build). A picture that no longer matches the scene wears a clock mark and a tooltip that says what changed. If a capture fails, the placeholder shows the reason.
+- **Refresh thumbnail**, in the frame's menu and in the scene's inspector. It says why it cannot run (a build is on, nothing is built yet, the picture is already up to date, or the scene changed after the last build and only a build can update it).
+- Pictures refresh by themselves after a build and after a short quiet moment (1.5 s), one scene at a time, never while a build runs. A scene that is deleted takes its picture with it.
+
+**Changed**
+- A frame no longer shows several small pictures of a scene, nor the "AI decides" mark. The viewer keeps drawing a scene from its content when no film is built.
+
+**What you need to do**
+- Nothing. Build the film once to get the pictures.
+
+**Compatibility**
+- Projects open unchanged; older ones have no `.studio/scene-thumbs/` until a capture. The skill is unchanged.
+
+## 0.20.1 - 2026-11-10
+
+**Fixed**
+- **Crash while resizing the window** (`unrecognized selector windowDidResize:`, seen with the green zoom button, a double-click on the title bar or tiling). The guard that asks before closing a window with work in progress could lose the window's own delegate and then fail on the next resize. It now keeps it, never stacks a second guard on the same window, and gives the window's delegate back when its view goes away. Closing still asks as before.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- No change to projects. The skill is unchanged.
+
+## 0.20.0 - 2026-11-10
+
+**What's new**
+- **Timing inside a scene.** Each element of a scene (words, image, sound) has a timing: in the Composition tab, "Timing in the scene" is Auto (the AI decides, as before) or Fixed, with In and Out in seconds from the start of the scene. A value outside the scene is refused with its reason and nothing is written; a locked scene refuses with the reason of the lock; Undo takes the edits of one field in two seconds back as one step.
+- **Elements follow the scene's duration.** When a scene gets shorter, an Out past the new end is pulled back to it; when it gets longer, an Out that was the end follows. The card of the change lists the elements that moved.
+- **Pictures drawn from the content.** The picture of a scene, in the Storyboard strip and in the viewer, shows what the content says at a time: the words, the colours of your palette, the images of your resources, only the elements on screen at that moment. A colour or an animation left to the AI is drawn neutral and marked "AI decides": the app never invents what the AI has not produced.
+- **One thumbnail per scene**, and several only when the scene's elements really come and go at different times and the frame is wide enough.
+- **With nothing selected**, the viewer follows the playhead and shows the scene under it at the right moment of that scene.
+- `storyboard.md` and the message sent to the AI at Build carry each element's timing.
+
+**Changed**
+- A scene that has content is no longer drawn with the engine's stand-in effect: the viewer shows a picture at a time, not an animation. A scene with no content keeps the stand-in.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged: `in` and `out` are optional fields of an element, written only when you fix a timing. An older version of the app keeps them without reading them. The skill is unchanged.
+
 ## 0.19.3 - 2026-11-10
 
 **What's new**

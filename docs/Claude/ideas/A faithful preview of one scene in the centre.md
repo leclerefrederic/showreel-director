@@ -10,7 +10,7 @@ id: IDEA-038
 aliases:
   - "IDEA-038"
 since: 2026-11-09
-phase: 
+phase: ""
 tags:
   - idea
   - app

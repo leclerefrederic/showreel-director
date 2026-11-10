@@ -379,10 +379,23 @@ enum AssetFonts {
     }
 }
 
-/// A scene drawn by the engine (see EngineService.sceneFrames): a still for the strip, an animation in the viewer.
+/// A scene's picture in the viewer, before a build has one to play (the strip's frames show the captured PNG instead, W4b). A scene with content is drawn from what the content says
+/// (`StageThumb`, W4), at `time`; a scene with no content yet is the engine's stand-in (see `EngineSceneThumb`).
 struct SceneThumb: View {
     let scene: ShowreelFile.Scene
-    var still = false
+    var size: CGSize = EngineService.frameSize
+    /// Seconds from the scene's start; nil is the scene's own still time.
+    var time: Double?
+
+    var body: some View {
+        if scene.content.isEmpty { EngineSceneThumb(scene: scene, size: size) }
+        else { StageThumb(scene: scene, time: time ?? ContentTiming.stillTime(of: scene), size: size) }
+    }
+}
+
+/// A scene with no content, drawn by the engine (see EngineService.sceneFrames): an animation in the viewer.
+struct EngineSceneThumb: View {
+    let scene: ShowreelFile.Scene
     var size: CGSize = EngineService.frameSize
     @EnvironmentObject var project: ProjectModel
     @ObservedObject private var engine = EngineService.shared
@@ -399,8 +412,6 @@ struct SceneThumb: View {
             Rectangle().fill(Color.primary.opacity(0.06))
             if frames.isEmpty {
                 if let f = engine.failure { Text(f).fontSmall().foregroundStyle(.secondary).padding(4) } else { ProgressView().controlSize(.small) }
-            } else if still {
-                Image(nsImage: frames[min(frames.count - 1, frames.count * 3 / 4)]).resizable().scaledToFill()
             } else {
                 TimelineView(.periodic(from: .now, by: 0.12)) { ctx in
                     Image(nsImage: frames[Int(ctx.date.timeIntervalSinceReferenceDate / 0.12) % frames.count]).resizable().scaledToFit()

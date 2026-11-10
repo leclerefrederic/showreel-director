@@ -56,7 +56,7 @@ views:
     name: Early phases
     filters:
       and:
-        - file.folder == "phases/early"
+        - file.folder == "Claude/phases/early"
     order:
       - file.name
       - phases

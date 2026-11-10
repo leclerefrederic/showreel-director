@@ -10,7 +10,7 @@ id: IDEA-043
 aliases:
   - "IDEA-043"
 since: 2026-11-10
-phase: 
+phase: ""
 outcome: merged
 merged_into:
   - "[[ideas/Show and hide controls for the side panels in the view group]]"

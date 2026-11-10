@@ -18,7 +18,7 @@ def create(root, kind, title, summary=None, area="app", source="assistant", toda
     n = int(reg.get(kind, 0)) + 1; ident = f"{prefix}-{n:03d}"; d = today or datetime.date.today().isoformat()
     summary = (summary or title.rstrip("?.") + ("?" if kind == "question" else ".")).strip()
     if len(summary) > 160: raise SystemExit(f"docs_new: the summary has {len(summary)} characters (at most 160)")
-    fm = ["---", f"type: {kind}", f"status: {'draft' if kind == 'idea' else 'current'}", "phase: ", f"date: {d}", f"summary: {json.dumps(summary, ensure_ascii=False)}", f"id: {ident}", "aliases:", f'  - "{ident}"', f"since: {d}"]
+    fm = ["---", f"type: {kind}", f"status: {'draft' if kind == 'idea' else 'current'}", 'phase: ""' if kind == "idea" else "phase: ", f"date: {d}", f"summary: {json.dumps(summary, ensure_ascii=False)}", f"id: {ident}", "aliases:", f'  - "{ident}"', f"since: {d}"]
     if kind == "idea": fm += [f"area: {area}", f"source: {source}", 'origin: "docs_new.py"']
     if kind == "question": fm += ["blocks: []", 'recommendation: "none yet"']
     if kind == "decision": fm += ["affects: []"]

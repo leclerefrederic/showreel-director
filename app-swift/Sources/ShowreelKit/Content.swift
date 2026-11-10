@@ -76,11 +76,15 @@ extension ShowreelFile {
         public var color: ContentColor
         public var animation: ContentAnimation
         public var instruction: String?
+        /// When the item appears and leaves, in seconds from the scene's start (the keys `in` and `out`): absent is auto, the AI decides; an item with no timing is there all along.
+        public var timeIn: Double?
+        public var timeOut: Double?
         public var unknown: [String: JSONValue] = [:]
 
         public init(id: String, type: String, text: String? = nil, resource: String? = nil, color: ContentColor = ContentColor(),
-                    animation: ContentAnimation = ContentAnimation(), instruction: String? = nil) {
+                    animation: ContentAnimation = ContentAnimation(), instruction: String? = nil, timeIn: Double? = nil, timeOut: Double? = nil) {
             self.id = id; self.type = type; self.text = text; self.resource = resource; self.color = color; self.animation = animation; self.instruction = instruction
+            self.timeIn = timeIn; self.timeOut = timeOut
         }
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: DynamicKey.self)
@@ -91,19 +95,24 @@ extension ShowreelFile {
             color = try c.decodeIfPresent(ContentColor.self, forKey: "color") ?? ContentColor()
             animation = try c.decodeIfPresent(ContentAnimation.self, forKey: "animation") ?? ContentAnimation()
             instruction = try c.decodeIfPresent(String.self, forKey: "instruction")
-            unknown = try Keep.unknown(decoder, known: ["id", "type", "text", "resource", "color", "animation", "instruction"])
+            timeIn = try c.decodeIfPresent(Double.self, forKey: "in")
+            timeOut = try c.decodeIfPresent(Double.self, forKey: "out")
+            unknown = try Keep.unknown(decoder, known: ["id", "type", "text", "resource", "color", "animation", "instruction", "in", "out"])
         }
         public func encode(to encoder: Encoder) throws {
             try Keep.encode(encoder, fields: [("id", id), ("type", type), ("text", text), ("resource", resource), ("color", color),
-                                              ("animation", animation), ("instruction", instruction)], unknown: unknown)
+                                              ("animation", animation), ("instruction", instruction), ("in", timeIn), ("out", timeOut)], unknown: unknown)
         }
+        /// The timing as one value: auto when neither bound is set.
+        public var timing: ContentTimes { ContentTimes(start: timeIn, end: timeOut) }
         /// The item as an edit, to make the same one again (duplicating a scene).
         public var edit: ContentEdit {
             ContentEdit(type: type, text: text, resource: resource, color: type == "text" ? (color.mode == "role" ? color.role : color.mode == "custom" ? color.hex : "auto") : nil,
-                        animation: type == "audio" ? nil : (animation.mode == "effect" ? animation.effect : "auto"), params: animation.mode == "effect" && !animation.paramsText.isEmpty ? animation.paramsText : nil, instruction: instruction)
+                        animation: type == "audio" ? nil : (animation.mode == "effect" ? animation.effect : "auto"), params: animation.mode == "effect" && !animation.paramsText.isEmpty ? animation.paramsText : nil, instruction: instruction,
+                        times: timing.isFixed ? timing : nil)
         }
         public var hasInstruction: Bool { !(instruction ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
-        public var allAuto: Bool { !color.isFixed && !animation.isFixed && !hasInstruction }
+        public var allAuto: Bool { !color.isFixed && !animation.isFixed && !hasInstruction && !timing.isFixed }
     }
 }
 
@@ -191,8 +200,10 @@ public struct ContentEdit: Equatable, Sendable {
     /// Parameters of the effect, "key=value, key=value".
     public var params: String?
     public var instruction: String?
-    public init(type: String? = nil, text: String? = nil, resource: String? = nil, color: String? = nil, animation: String? = nil, params: String? = nil, instruction: String? = nil) {
-        self.type = type; self.text = text; self.resource = resource; self.color = color; self.animation = animation; self.params = params; self.instruction = instruction
+    /// When the item is on screen: both bounds replace the item's timing (a bound left nil is not fixed; both nil is auto). nil leaves the timing as it is.
+    public var times: ContentTimes?
+    public init(type: String? = nil, text: String? = nil, resource: String? = nil, color: String? = nil, animation: String? = nil, params: String? = nil, instruction: String? = nil, times: ContentTimes? = nil) {
+        self.type = type; self.text = text; self.resource = resource; self.color = color; self.animation = animation; self.params = params; self.instruction = instruction; self.times = times
     }
 }
 
@@ -240,7 +251,7 @@ extension ProjectStore {
 
     private func describe(_ i: ShowreelFile.ContentItem, _ rows: [AssetRow]) -> String {
         var s = i.type == "text" ? "\u{201C}\(i.text ?? "")\u{201D}" : (rows.first { $0.id == i.resource }?.name ?? i.resource ?? "(no resource)")
-        s += " · colour \(i.color.text) · animation \(i.animation.text)"
+        s += " · colour \(i.color.text) · animation \(i.animation.text)" + (i.timing.isFixed ? " · timing \(i.timing.text)" : "")
         if i.hasInstruction { s += " · \u{201C}\(i.instruction!)\u{201D}" }
         return s
     }
@@ -284,6 +295,10 @@ extension ProjectStore {
                 }
             }
             if let i = e.instruction { let v = i.trimmingCharacters(in: .whitespacesAndNewlines); item.instruction = v.isEmpty ? nil : v }
+            if let t = e.times {
+                if let why = ContentTiming.validate(t, duration: s.duration) { throw AgentError.msg(why) }
+                item.timeIn = t.start.map(ContentTiming.round3); item.timeOut = t.end.map(ContentTiming.round3)
+            }
             if item.type == "text", (item.text ?? "").isEmpty, adding { throw AgentError.msg("a text item needs its words") }
             if item.type != "text", item.resource == nil, adding { throw AgentError.msg("an \(item.type) item needs a resource (an asset id from get_state)") }
         }
@@ -318,6 +333,7 @@ extension ProjectStore {
             line("colour", before.color.text + (before.color.isFixed ? " (fixed)" : ""), item.color.text + (item.color.isFixed ? " (fixed)" : ""))
             line("animation", before.animation.text + (before.animation.isFixed ? " (fixed)" : ""), item.animation.text + (item.animation.isFixed ? " (fixed)" : ""))
             line("instruction", before.instruction ?? "(none)", item.instruction ?? "(none)")
+            line("timing", before.timing.text + (before.timing.isFixed ? " (fixed)" : ""), item.timing.text + (item.timing.isFixed ? " (fixed)" : ""))
             if changes.isEmpty { changes.append(Change(tag(item), describe(before, rows), describe(item, rows))) }
             title = "Edit \(item.type) item \(id) of \(sceneID)"
         case .remove(let id):

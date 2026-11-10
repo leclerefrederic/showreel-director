@@ -89,7 +89,7 @@ struct ViewerPane: View {
         case .none where project.sceneUnderPlayhead != nil:
             // nothing selected and nothing built: the viewer follows the playhead of the strip and shows the scene under it
             let s = project.sceneUnderPlayhead!
-            SceneThumb(scene: s, size: EngineService.viewerSize).frame(maxWidth: 760).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            SceneThumb(scene: s, size: EngineService.viewerSize, time: project.sceneAtPlayhead?.time).frame(maxWidth: 760).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             caption("\(s.label) \u{00B7} \(TimelineNav.timecode(project.playhead))", s.text.isEmpty ? "The scene under the playhead of the strip." : s.text)
         default:
             VStack(spacing: 8) {
@@ -389,6 +389,7 @@ struct SceneInspector: View {
                     Spacer()
                     ProjectButton()
                 }
+                if on { SceneFramePanel(scene: s).frame(maxWidth: 360) }
                 if !s.archived {
                     // the overview of what the scene is made of (it was the tree of the left list): a click on a node opens the matching tab on that element, and a resource dropped here goes to the scene
                     DisclosureGroup("Overview", isExpanded: $overviewOpen) { SceneTreeView(scene: id).padding(.top, 2) }

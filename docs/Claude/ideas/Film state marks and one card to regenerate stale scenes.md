@@ -10,7 +10,7 @@ id: IDEA-019
 aliases:
   - "IDEA-019"
 since: 2026-11-09
-phase: 
+phase: ""
 tags:
   - idea
   - app

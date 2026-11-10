@@ -240,8 +240,8 @@ final class ReelTests: XCTestCase {
         XCTAssertEqual(check("reel.transition-text")?.level, .tight, "the words of both scenes are on screen all the time, without in/out times")
         // words with their own times, outside the transition: fine
         var f = file
-        f.scenes[0].content[0].unknown["in"] = .number(0); f.scenes[0].content[0].unknown["out"] = .number(3)
-        f.scenes[1].content[0].unknown["in"] = .number(1); f.scenes[1].content[0].unknown["out"] = .number(4)
+        f.scenes[0].content[0].timeIn = 0; f.scenes[0].content[0].timeOut = 3          // W4: the timing is a field of the item, no longer an unknown key
+        f.scenes[1].content[0].timeIn = 1; f.scenes[1].content[0].timeOut = 4
         try store.save(f)
         XCTAssertEqual(check("reel.transition-text")?.level, .ok, "S01's words leave at 3 s, S02's come in at 1 s: the 0.5 s of the transition is clear")
         try store.apply(.transition(from: "S01", TransitionEdit(duration: 5)))

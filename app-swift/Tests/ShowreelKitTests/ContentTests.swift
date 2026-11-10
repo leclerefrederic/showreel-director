@@ -40,7 +40,7 @@ final class ContentTests: XCTestCase {
         let f = try ShowreelFile.decode(json)
         let i = f.scenes[0].content[0]
         XCTAssertEqual(i.color.role, "accent"); XCTAssertEqual(i.animation.effect, "Pop"); XCTAssertEqual(i.instruction, "big")
-        XCTAssertEqual(i.unknown["in"], .number(0.5), "timing inside the scene (later phase) survives")
+        XCTAssertEqual(i.timeIn, 0.5, "W4: the timing inside the scene, which this test kept as an unknown key before, is now read"); XCTAssertNil(i.unknown["in"])
         XCTAssertEqual(f.scenes[0].content[1].unknown["shape"], .string("rect"), "a type this version does not know is kept")
         XCTAssertEqual(f.parameters.controlLevel, "guided"); XCTAssertEqual(f.scenes[0].controlLevel, "precise")
         let back = try ShowreelFile.decode(try f.encoded())
@@ -245,7 +245,7 @@ final class ContentTests: XCTestCase {
         let a = try XCTUnwrap(p.range(of: "1. text \u{201C}Second\u{201D}")), b = try XCTUnwrap(p.range(of: "2. text \u{201C}Hello\u{201D}"))
         XCTAssertLessThan(a.lowerBound, b.lowerBound, "priority order")
         XCTAssertTrue(p.contains("colour: FIXED Text (#FFFFFF); animation: FIXED Pop (speed=2)"), "guided: a new item has its colour fixed by default")
-        XCTAssertTrue(p.contains("colour: FIXED Accent (#F2AA4C); animation: AUTO; instruction: \u{201C}land on the beat\u{201D}"))
+        XCTAssertTrue(p.contains("colour: FIXED Accent (#F2AA4C); animation: AUTO; timing in the scene: AUTO; instruction: \u{201C}land on the beat\u{201D}"))
         for needle in ["FIXED", "AUTO", "honoured exactly", "processing priority"] { XCTAssertTrue(p.contains(needle), needle) }
     }
 

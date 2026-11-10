@@ -10,7 +10,7 @@ id: IDEA-002
 aliases:
   - "IDEA-002"
 since: 2026-11-10
-phase: 
+phase: ""
 outcome: merged
 merged_into:
   - "[[ideas/A selected highlight that slides]]"

@@ -11,9 +11,11 @@ Usage: python3 tools/check_docs.py [--root DIR] [--selftest]   (one line per pro
 7. docs/Index.md and the generated blocks are up to date (tools/docs_index.py --check), so none was edited by hand;
 8. file names carry no parenthesis, date, revision or version; a note whose name differs from its heading in a hub has that heading in its aliases (so an old title still resolves);
    no phase folder holds only a summary; no note is isolated outside archive/ and early/ (links in properties count); the headings that code and agents quote still exist;
+10. the dashboards (.base) and the embeds of Home.md: the YAML parses, every view has a name, every property, formula and folder they name exists, every embed names an existing base and view
+   (`--dashboards` prints the number of rows each view should show, evaluated from the notes, so the owner can compare it with Obsidian);
 9. the root of docs/ holds only Home.md, Dashboards/ and Claude/; every idea, question and decision has a well-formed, unique ID (also in its aliases) and the owner-facing properties,
    docs/Claude/ids.json allocates no ID whose note is gone; no comment of app-swift names the old path docs/studio-spec.md."""
-import json, os, re, sys, tempfile
+import json, os, re, sys, tempfile, collections
 
 TYPES = {"spec", "ux", "phase-prompt", "phase-report", "decision", "idea", "question", "reference"}
 STATUSES = {"draft", "current", "superseded"}
@@ -212,6 +214,14 @@ def check(root):
             for n in range(1, last + 1):
                 if f"{pre}-{n:03d}" not in seen: problems.append(f"docs/Claude/ids.json: {pre}-{n:03d} was allocated but its note is gone (IDs are never reused: restore it, or settle the note as dropped)")
 
+    # 10. dashboards and type placement
+    problems += check_bases(root)
+    where = {"idea": "ideas/", "question": "questions/", "decision": "decisions/"}
+    for r, f in sorted(rel.items()):
+        ty = (properties(rd(f)) or {}).get("type")
+        if ty in where and not r.startswith(where[ty]): problems.append(f"{show(r)}: type {ty} belongs in {where[ty]} (a dashboard filters on the type: a hub or another note must carry reference)")
+        if ty in ("phase-prompt", "phase-report") and not r.startswith(("phases" + os.sep, "archive" + os.sep)): problems.append(f"{show(r)}: type {ty} belongs in phases/ or archive/")
+
     # 5. the questions the owner's assistant reads before every prompt
     ideas = os.path.join(claude, "ideas.md")
     if not os.path.exists(ideas) or "## Questions to settle with the owner" not in rd(ideas): problems.append('docs/Claude/ideas.md: the section "Questions to settle with the owner" is missing')
@@ -226,6 +236,175 @@ def check(root):
         problems += docs_index.problems(root)
     except (ImportError, OSError, KeyError, ValueError) as e: problems.append(f"docs_index could not run: {e}")
     return problems
+
+# ---- the dashboards: a small YAML reader (the subset the .base files and the properties use), static checks, expected row counts ----------------------------------------------
+
+def yaml_load(text):
+    """Maps, lists, flow lists, quoted and plain scalars: what a .base file and the properties of a note use. Raises ValueError otherwise."""
+    lines = []
+    for raw in text.split("\n"):
+        s = raw.strip()
+        if s and not s.startswith("#"): lines.append([len(raw) - len(raw.lstrip(" ")), s])
+    def scalar(v):
+        v = v.strip()
+        if v in ("", "~", "null"): return None
+        if v[0] in "\"'":
+            if len(v) < 2 or v[-1] != v[0]: raise ValueError(f"unterminated quote: {v}")
+            return json.loads(v) if v[0] == '"' else v[1:-1].replace("''", "'")
+        if v.startswith("[") and v.endswith("]"):
+            inner = v[1:-1].strip(); return [scalar(x) for x in inner.split(",")] if inner else []
+        return {"true": True, "false": False}.get(v, v)
+    def parse(i, indent):
+        if lines[i][1].startswith("- ") or lines[i][1] == "-":
+            out = []
+            while i < len(lines) and lines[i][0] == indent and (lines[i][1].startswith("- ") or lines[i][1] == "-"):
+                c = lines[i][1][2:].strip() if lines[i][1] != "-" else ""
+                if c == "":
+                    if i + 1 < len(lines) and lines[i + 1][0] > indent: v, i = parse(i + 1, lines[i + 1][0]); out.append(v)
+                    else: out.append(None); i += 1
+                elif re.match(r"""^[^'"\[\s][^:]*:(\s|$)""", c): lines[i] = [indent + 2, c]; v, i = parse(i, indent + 2); out.append(v)
+                else: out.append(scalar(c)); i += 1
+            return out, i
+        out = {}
+        while i < len(lines) and lines[i][0] == indent and not lines[i][1].startswith("- "):
+            m = re.match(r"""^("[^"]*"|'[^']*'|[^:]+?):(?:\s+(.*))?$""", lines[i][1])
+            if not m: raise ValueError(f"cannot read: {lines[i][1]}")
+            key, v = m.group(1).strip("\"'"), m.group(2)
+            if v is None or v == "":
+                nxt = lines[i + 1] if i + 1 < len(lines) else None
+                if nxt and (nxt[0] > indent or (nxt[0] == indent and nxt[1].startswith("- "))): out[key], i = parse(i + 1, nxt[0])
+                else: out[key] = None; i += 1
+            else: out[key] = scalar(v); i += 1
+        return out, i
+    if not lines: return {}
+    val, i = parse(0, lines[0][0])
+    if i != len(lines): raise ValueError(f"unexpected line: {lines[i][1]}")
+    return val
+
+FILE_PROPS = {"file.name", "file.basename", "file.path", "file.folder", "file.ext", "file.size", "file.ctime", "file.mtime", "file.tags", "file.links", "file.backlinks", "file.embeds", "file.properties"}
+KEYWORDS = {"and", "or", "not", "true", "false", "null"}
+
+def expr_names(expr):
+    s = re.sub(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'', '""', expr)
+    out = set()
+    for m in re.finditer(r"(?<![\w.])([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)(\s*\()?", s):
+        if not m.group(2) and m.group(1) not in KEYWORDS: out.add(m.group(1))
+    return out
+
+def filter_exprs(f):
+    """Every expression string of a filter (a string, or and/or/not lists, nested)."""
+    if f is None: return []
+    if isinstance(f, str): return [f]
+    if isinstance(f, dict): return [e for v in f.values() for e in filter_exprs(v)]
+    if isinstance(f, list): return [e for v in f for e in filter_exprs(v)]
+    return []
+
+def vault_notes(root):
+    """(path relative to docs, frontmatter dict or None) of every note under docs."""
+    docs = os.path.join(root, "docs"); out = []
+    for f in notes(docs):
+        m = re.match(r"---\n(.*?)\n---\n", rd(f), re.S)
+        try: fm = yaml_load(m.group(1)) if m else None
+        except ValueError: fm = None
+        out.append((os.path.relpath(f, docs), fm, f))
+    return out
+
+def bases(root):
+    d = os.path.join(root, "docs", "Dashboards")
+    return sorted(f for f in os.listdir(d) if f.endswith(".base")) if os.path.isdir(d) else []
+
+def check_bases(root):
+    problems = []; docs = os.path.join(root, "docs"); vn = vault_notes(root); loaded = {}
+    for rel, fm, f in vn:
+        m = re.match(r"---\n(.*?)\n---\n", rd(f), re.S)
+        if m and fm is None: problems.append(f"docs/{rel}: the properties do not parse as YAML")
+    for rel, fm, f in vn:
+        if fm and fm.get("type") == "idea" and rel.startswith("Claude" + os.sep + "ideas" + os.sep) and "phase" in fm and fm["phase"] is None:
+            problems.append(f"docs/{rel}: the phase of an idea must be an empty text, not null (write phase: \"\"): the dashboards compare it with an empty text")
+    for b in bases(root):
+        path = os.path.join(docs, "Dashboards", b); name = f"docs/Dashboards/{b}"
+        try: y = yaml_load(rd(path)); loaded[b] = y
+        except ValueError as e: problems.append(f"{name}: the YAML does not parse ({e})"); continue
+        if not isinstance(y, dict) or not isinstance(y.get("views"), list) or not y["views"]: problems.append(f"{name}: no views"); continue
+        typ = next(iter(re.findall(r'type\s*==\s*"([\w-]+)"', " ".join(filter_exprs(y.get("filters"))))), None)
+        have = set()
+        for rel, fm, f in vn:
+            if fm and (typ is None or fm.get("type") == typ): have |= set(fm)
+        formulas = set((y.get("formulas") or {}))
+        def known(n, where):
+            if n.startswith("formula."):
+                if n[8:] not in formulas: problems.append(f"{name}: {where} uses the formula {n}, which is not defined")
+            elif n in FILE_PROPS: return
+            elif n.startswith("file."): problems.append(f"{name}: {where} names {n}, which is not a documented file property")
+            else:
+                p = n[5:] if n.startswith("note.") else n
+                if p not in have: problems.append(f"{name}: {where} names the property {p}, which no note{' of type ' + typ if typ else ''} has")
+        def flt(f, where):
+            for e in filter_exprs(f):
+                for n in expr_names(e): known(n, where)
+                for m in re.finditer(r'file\.inFolder\(\s*"([^"]+)"\s*\)|file\.folder\s*==\s*"([^"]+)"', e):
+                    fo = m.group(1) or m.group(2)
+                    if not os.path.isdir(os.path.join(docs, fo)): problems.append(f"{name}: {where} names the folder {fo}, which does not exist")
+        flt(y.get("filters"), "a filter")
+        for n in (y.get("properties") or {}): known(n, "the properties")
+        for fo, ex in (y.get("formulas") or {}).items():
+            for n in expr_names(str(ex)): known(n, f"the formula {fo}")
+        names_seen = set()
+        for v in y["views"]:
+            vname = (v or {}).get("name") if isinstance(v, dict) else None
+            if not vname: problems.append(f"{name}: a view has no name"); vname = "(unnamed)"
+            elif vname in names_seen: problems.append(f"{name}: two views are named {vname}")
+            names_seen.add(vname)
+            if not isinstance(v, dict): continue
+            flt(v.get("filters"), f"the view {vname} (filter)")
+            for n in v.get("order") or []: known(str(n), f"the view {vname} (order)")
+            for s in v.get("sort") or []:
+                if isinstance(s, dict) and s.get("property"): known(str(s["property"]), f"the view {vname} (sort)")
+            g = v.get("groupBy")
+            if isinstance(g, dict) and g.get("property"): known(str(g["property"]), f"the view {vname} (groupBy)")
+    home = os.path.join(docs, "Home.md")
+    if os.path.exists(home):
+        for m in re.finditer(r"!\[\[([^\]#|]+\.base)(?:#([^\]|]+))?\]\]", rd(home)):
+            b, v = m.group(1), m.group(2)
+            if b not in loaded: problems.append(f"docs/Home.md: embeds {b}, which is not a base of docs/Dashboards/"); continue
+            vs = [x.get("name") for x in loaded[b].get("views", []) if isinstance(x, dict)]
+            if v and v not in vs: problems.append(f"docs/Home.md: embeds the view {v} of {b}, which has only: {', '.join(str(x) for x in vs if x)}")
+    return problems
+
+class Unsupported(Exception): pass
+
+def eval_filter(f, props, folder):
+    """True when a note passes a filter made of and-lists of `name == "text"` and `name != "text"`; anything else is refused."""
+    if f is None: return True
+    if isinstance(f, dict):
+        if set(f) != {"and"}: raise Unsupported(f"only 'and' lists are evaluated, not {sorted(f)}")
+        return all(eval_filter(x, props, folder) for x in f["and"])
+    if isinstance(f, list): return all(eval_filter(x, props, folder) for x in f)
+    m = re.fullmatch(r'\s*([\w.]+)\s*(==|!=)\s*"([^"]*)"\s*', f)
+    if not m: raise Unsupported(f"cannot evaluate the expression {f}")
+    name, op, lit = m.groups()
+    val = folder if name == "file.folder" else props.get(name[5:] if name.startswith("note.") else name) if not name.startswith(("file.", "formula.")) else (_ for _ in ()).throw(Unsupported(f"cannot evaluate {name}"))
+    return (val == lit) if op == "==" else (val != lit)
+
+def dashboard_counts(root):
+    docs = os.path.join(root, "docs"); vn = vault_notes(root); rows = []
+    for b in bases(root):
+        y = yaml_load(rd(os.path.join(docs, "Dashboards", b)))
+        for v in y.get("views", []):
+            n = 0
+            for rel, fm, f in vn:
+                if fm is None: continue
+                folder = os.path.dirname(rel).replace(os.sep, "/")
+                if eval_filter(y.get("filters"), fm, folder) and eval_filter(v.get("filters"), fm, folder): n += 1
+            rows.append((b[:-5], v.get("name"), n))
+    return rows
+
+def print_dashboards(root):
+    try: rows = dashboard_counts(root)
+    except (Unsupported, ValueError) as e: print(f"check_docs --dashboards: refused: {e}"); return 1
+    print("Expected rows per view (evaluated from the notes' properties):")
+    for b, v, n in rows: print(f"  {b} / {v}: {n}")
+    return 0
 
 def selftest():
     with tempfile.TemporaryDirectory() as r:
@@ -263,10 +442,30 @@ def selftest():
             assert needle not in p, f"unexpected problem containing {needle!r}:\n{p}"
         w("docs/Claude/ideas.md", fm + "## Ideas\n\n## Questions to settle with the owner (remind)\n")
         assert "must come first" in "\n".join(check(r)), "the questions section must come first"
+    with tempfile.TemporaryDirectory() as r:
+        def w(p, t): os.makedirs(os.path.dirname(os.path.join(r, p)), exist_ok=True); open(os.path.join(r, p), "w", encoding="utf-8").write(t)
+        def idea(n, status, phase): return f'---\ntype: idea\nstatus: {status}\nphase: {phase}\ndate: 2026-01-01\nsummary: "S."\nid: IDEA-00{n}\ntags:\n  - idea\n---\n\nbody\n'
+        w("docs/Claude/ideas/A.md", idea(1, "draft", '""')); w("docs/Claude/ideas/B.md", idea(2, "superseded", "X1")); w("docs/Claude/ideas/C.md", idea(3, "draft", "X2")); w("docs/Claude/ideas/D.md", idea(4, "draft", "")) 
+        w("docs/Home.md", "![[T.base#One]] ![[T.base#Nope]] ![[Z.base#One]]\n")
+        w("docs/Dashboards/T.base", 'filters:\n  and:\n    - type == "idea"\nformulas:\n  s: if(a, 1, 2)\nviews:\n  - type: table\n    name: One\n    filters:\n      and:\n        - status == "draft"\n        - phase == ""\n        - file.folder == "Claude/ideas"\n    order:\n      - id\n      - formula.s\n      - formula.nope\n      - nothere\n  - type: table\n    name: Two\n    filters:\n      and:\n        - status != "superseded"\n        - phase != ""\n  - type: table\n    filters:\n      and:\n        - file.folder == "Claude/missing"\n')
+        w("docs/Dashboards/Bad.base", "views:\n  - name: x\n   bad: [\n")
+        pr = "\n".join(check_bases(r))
+        for needle in ("formula.nope, which is not defined", "names the property nothere, which no note of type idea has", "a view has no name", "names the folder Claude/missing", "embeds the view Nope of T.base, which has only: One, Two",
+                       "embeds Z.base, which is not a base", "Bad.base: the YAML does not parse", "ideas/D.md: the phase of an idea must be an empty text, not null"):
+            assert needle in pr, f"expected a problem containing {needle!r}, got:\n{pr}"
+        assert "the formula s names the property a, which no note" in pr and "Claude/ideas, which does not exist" not in pr
+        os.remove(os.path.join(r, "docs", "Dashboards", "Bad.base")); open(os.path.join(r, "docs", "Dashboards", "T.base"), "w").write('filters:\n  and:\n    - type == "idea"\nviews:\n  - type: table\n    name: One\n    filters:\n      and:\n        - status == "draft"\n        - phase == ""\n  - type: table\n    name: Two\n    filters:\n      and:\n        - status != "superseded"\n        - phase != ""\n')
+        assert dashboard_counts(r) == [("T", "One", 1), ("T", "Two", 2)], dashboard_counts(r)          # a null phase is not an empty text: D (phase left null) is not in One and wrongly counts as planned in Two
+        open(os.path.join(r, "docs", "Dashboards", "T.base"), "w").write('views:\n  - type: table\n    name: One\n    filters:\n      and:\n        - contains(status, "a")\n')
+        try: dashboard_counts(r); raise AssertionError("an expression outside the simple constructs must be refused")
+        except Unsupported: pass
     print("check_docs selftest ok")
 
 def main():
     if "--selftest" in sys.argv: return selftest()
+    if "--dashboards" in sys.argv:
+        root = sys.argv[sys.argv.index("--root") + 1] if "--root" in sys.argv else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sys.exit(print_dashboards(root))
     root = sys.argv[sys.argv.index("--root") + 1] if "--root" in sys.argv else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     problems = check(root)
     for p in problems: print("FAIL " + p)

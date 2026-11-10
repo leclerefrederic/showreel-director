@@ -63,6 +63,7 @@ extension ProjectStore {
         guard old != d else { throw AgentError.msg("no change: \(id) already lasts \(ProjectDocs.seconds(d)) s") }
         g.scenes[si].duration = d
         var lines = [Change("\(id) duration", old.map { ProjectDocs.seconds($0) + " s" } ?? "(none)", ProjectDocs.seconds(d) + " s")]
+        lines += ContentTiming.follow(&g.scenes[si], from: f.scenes[si].duration, to: d)          // an item timed past the new end is pulled back to it
         if !ripple, i + 1 < tl.count, let k = g.storyboards[0].items.firstIndex(where: { $0.scene == tl[i + 1].scene.id }), let at = tl[i + 1].start {
             g.storyboards[0].items[k].start = at
             lines.append(Change("\(tl[i + 1].scene.id) start", "follows \(id)", "stays at \(ProjectDocs.seconds(at)) s"))
@@ -82,9 +83,11 @@ extension ProjectStore {
         guard newA >= 0.1, newB >= 0.1 else { throw AgentError.msg("a scene lasts at least 0.1 s: the cut cannot go there") }
         guard newA != a else { throw AgentError.msg("no change: the cut already is there") }
         let ia = g.scenes.firstIndex { $0.id == before }!, ib = g.scenes.firstIndex { $0.id == after }!
+        let timingA = ContentTiming.follow(&g.scenes[ia], from: g.scenes[ia].duration, to: newA), timingB = ContentTiming.follow(&g.scenes[ib], from: g.scenes[ib].duration, to: newB)
         g.scenes[ia].duration = newA; g.scenes[ib].duration = newB
         if let k = g.storyboards[0].items.firstIndex(where: { $0.scene == after }), g.storyboards[0].items[k].start != nil { g.storyboards[0].items[k].start = t }
         var lines = [Change("\(before) duration", ProjectDocs.seconds(a) + " s", ProjectDocs.seconds(newA) + " s"), Change("\(after) duration", ProjectDocs.seconds(b) + " s", ProjectDocs.seconds(newB) + " s")]
+        lines += timingA + timingB
         for k in [ia, ib] where g.scenes[k].state == .validated { g.scenes[k].status = SceneState.wip.rawValue; lines.append(Change("\(g.scenes[k].id) state", SceneState.validated.title, SceneState.wip.title)) }
         return try finish(title: "Move the cut between \(before) and \(after)", changes: lines, from: f, to: g)
     }
@@ -195,11 +198,8 @@ extension Checks {
         return Int(s.feeling[m].first.map(String.init) ?? "")
     }
 
-    /// When an item is on screen inside its scene: its `in` and `out` (set by the layers of a later phase) or the whole scene.
-    static func visible(_ i: ShowreelFile.ContentItem, length: Double) -> (Double, Double) {
-        func num(_ k: String) -> Double? { if case .number(let n)? = i.unknown[k] { return n }; return nil }
-        return (num("in") ?? 0, num("out") ?? length)
-    }
+    /// When an item is on screen inside its scene: its `in` and `out` (W4) or the whole scene.
+    static func visible(_ i: ShowreelFile.ContentItem, length: Double) -> (Double, Double) { (i.timeIn ?? 0, i.timeOut ?? length) }
 
     static func reelRules(_ f: ShowreelFile?, _ store: ProjectStore) -> [CheckResult] {
         func r(_ id: String, _ title: String, _ level: CheckLevel, _ detail: String) -> CheckResult { CheckResult(id: "reel." + id, block: "storyboard", title: title, level: level, detail: detail) }
