@@ -21,10 +21,10 @@ properties:
     displayName: Report
 views:
   - type: table
-    name: "Reports and summaries, newest first"
+    name: Reports and summaries, newest first
     filters:
       and:
-        - 'type == "phase-report"'
+        - type == "phase-report"
     order:
       - phase
       - date
@@ -39,10 +39,10 @@ views:
       - property: date
         direction: DESC
   - type: table
-    name: "Prompts, newest first"
+    name: Prompts, newest first
     filters:
       and:
-        - 'type == "phase-prompt"'
+        - type == "phase-prompt"
     order:
       - phase
       - date
@@ -53,10 +53,10 @@ views:
       - property: date
         direction: DESC
   - type: table
-    name: "Early phases"
+    name: Early phases
     filters:
       and:
-        - 'file.folder == "phases/early"'
+        - file.folder == "phases/early"
     order:
       - file.name
       - phases

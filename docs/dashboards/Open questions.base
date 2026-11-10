@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'type == "question"'
+    - type == "question"
 properties:
   summary:
     displayName: Summary
@@ -12,10 +12,10 @@ properties:
     displayName: Status
 views:
   - type: table
-    name: "Open questions"
+    name: Open questions
     filters:
       and:
-        - 'status == "current"'
+        - status == "current"
     order:
       - file.name
       - phase
@@ -25,10 +25,10 @@ views:
       - property: date
         direction: DESC
   - type: table
-    name: "Settled"
+    name: Settled
     filters:
       and:
-        - 'status == "superseded"'
+        - status == "superseded"
     order:
       - file.name
       - phase

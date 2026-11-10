@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'type == "decision"'
+    - type == "decision"
 properties:
   summary:
     displayName: Summary
@@ -12,7 +12,7 @@ properties:
     displayName: Status
 views:
   - type: table
-    name: "Decisions, newest first"
+    name: Decisions, newest first
     order:
       - file.name
       - date
@@ -23,10 +23,10 @@ views:
       - property: date
         direction: DESC
   - type: table
-    name: "Superseded"
+    name: Superseded
     filters:
       and:
-        - 'status == "superseded"'
+        - status == "superseded"
     order:
       - file.name
       - date
