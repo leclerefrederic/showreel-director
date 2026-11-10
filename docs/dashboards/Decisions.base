@@ -1,0 +1,34 @@
+filters:
+  and:
+    - 'type == "decision"'
+properties:
+  summary:
+    displayName: Summary
+  phase:
+    displayName: Phase
+  date:
+    displayName: Date
+  status:
+    displayName: Status
+views:
+  - type: table
+    name: "Decisions, newest first"
+    order:
+      - file.name
+      - date
+      - phase
+      - status
+      - summary
+    sort:
+      - property: date
+        direction: DESC
+  - type: table
+    name: "Superseded"
+    filters:
+      and:
+        - 'status == "superseded"'
+    order:
+      - file.name
+      - date
+      - phase
+      - summary

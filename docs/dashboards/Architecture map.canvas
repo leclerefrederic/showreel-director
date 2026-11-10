@@ -1,0 +1,243 @@
+{
+  "nodes": [
+    {
+      "id": "000000a0b0c0d001",
+      "type": "file",
+      "x": 0,
+      "y": 0,
+      "width": 320,
+      "height": 120,
+      "file": "Home.md",
+      "color": "6"
+    },
+    {
+      "id": "000000a0b0c0d002",
+      "type": "file",
+      "x": -400,
+      "y": -180,
+      "width": 280,
+      "height": 100,
+      "file": "Workflow.md"
+    },
+    {
+      "id": "000000a0b0c0d003",
+      "type": "file",
+      "x": -400,
+      "y": -40,
+      "width": 280,
+      "height": 100,
+      "file": "Conventions.md"
+    },
+    {
+      "id": "000000a0b0c0d004",
+      "type": "file",
+      "x": -400,
+      "y": 140,
+      "width": 280,
+      "height": 100,
+      "file": "studio-spec.md",
+      "color": "4"
+    },
+    {
+      "id": "000000a0b0c0d005",
+      "type": "file",
+      "x": -400,
+      "y": 280,
+      "width": 280,
+      "height": 100,
+      "file": "ux-notes.md",
+      "color": "4"
+    },
+    {
+      "id": "000000a0b0c0d006",
+      "type": "file",
+      "x": 400,
+      "y": -180,
+      "width": 280,
+      "height": 100,
+      "file": "phases-done.md",
+      "color": "3"
+    },
+    {
+      "id": "000000a0b0c0d007",
+      "type": "file",
+      "x": 400,
+      "y": -40,
+      "width": 280,
+      "height": 100,
+      "file": "ideas.md",
+      "color": "3"
+    },
+    {
+      "id": "000000a0b0c0d008",
+      "type": "file",
+      "x": 400,
+      "y": 140,
+      "width": 280,
+      "height": 100,
+      "file": "dashboards/Decisions.base",
+      "color": "5"
+    },
+    {
+      "id": "000000a0b0c0d009",
+      "type": "file",
+      "x": 400,
+      "y": 280,
+      "width": 280,
+      "height": 100,
+      "file": "dashboards/Open questions.base",
+      "color": "5"
+    },
+    {
+      "id": "000000a0b0c0d00a",
+      "type": "file",
+      "x": 760,
+      "y": -180,
+      "width": 260,
+      "height": 100,
+      "file": "dashboards/Phases.base",
+      "color": "5"
+    },
+    {
+      "id": "000000a0b0c0d014",
+      "type": "text",
+      "x": 0,
+      "y": 560,
+      "width": 320,
+      "height": 120,
+      "text": "## Repository\n\n`CLAUDE.md` rules, `ROADMAP.md`, `tools/`, `docs/` (this vault)",
+      "color": "2"
+    },
+    {
+      "id": "000000a0b0c0d015",
+      "type": "text",
+      "x": -420,
+      "y": 760,
+      "width": 300,
+      "height": 140,
+      "text": "## Skill\n\n`showreel-director/`: `SKILL.md` router, `references/`, `engine/`, `scripts/`, `evals/`. Shipped as `showreel-director.skill`.",
+      "color": "1"
+    },
+    {
+      "id": "000000a0b0c0d016",
+      "type": "text",
+      "x": -60,
+      "y": 760,
+      "width": 300,
+      "height": 140,
+      "text": "## ShowreelKit\n\nLibrary: agent loop, tools, project model, rules. No window.",
+      "color": "6"
+    },
+    {
+      "id": "000000a0b0c0d017",
+      "type": "text",
+      "x": 300,
+      "y": 760,
+      "width": 300,
+      "height": 140,
+      "text": "## ShowreelStudio\n\nSwiftUI executable: windows, views, theme.",
+      "color": "6"
+    },
+    {
+      "id": "000000a0b0c0d018",
+      "type": "text",
+      "x": 660,
+      "y": 760,
+      "width": 300,
+      "height": 140,
+      "text": "## Tests\n\n`swift test`, `tools/verify.sh`, `tools/check.py`.",
+      "color": "6"
+    }
+  ],
+  "edges": [
+    {
+      "id": "000000e0f000000b",
+      "fromNode": "000000a0b0c0d001",
+      "toNode": "000000a0b0c0d002"
+    },
+    {
+      "id": "000000e0f000000c",
+      "fromNode": "000000a0b0c0d001",
+      "toNode": "000000a0b0c0d003"
+    },
+    {
+      "id": "000000e0f000000d",
+      "fromNode": "000000a0b0c0d001",
+      "toNode": "000000a0b0c0d004"
+    },
+    {
+      "id": "000000e0f000000e",
+      "fromNode": "000000a0b0c0d001",
+      "toNode": "000000a0b0c0d005"
+    },
+    {
+      "id": "000000e0f000000f",
+      "fromNode": "000000a0b0c0d001",
+      "toNode": "000000a0b0c0d006"
+    },
+    {
+      "id": "000000e0f0000010",
+      "fromNode": "000000a0b0c0d001",
+      "toNode": "000000a0b0c0d007"
+    },
+    {
+      "id": "000000e0f0000011",
+      "fromNode": "000000a0b0c0d001",
+      "toNode": "000000a0b0c0d008"
+    },
+    {
+      "id": "000000e0f0000012",
+      "fromNode": "000000a0b0c0d001",
+      "toNode": "000000a0b0c0d009"
+    },
+    {
+      "id": "000000e0f0000013",
+      "fromNode": "000000a0b0c0d006",
+      "toNode": "000000a0b0c0d00a"
+    },
+    {
+      "id": "000000e0f0000019",
+      "fromNode": "000000a0b0c0d014",
+      "toNode": "000000a0b0c0d015"
+    },
+    {
+      "id": "000000e0f000001a",
+      "fromNode": "000000a0b0c0d014",
+      "toNode": "000000a0b0c0d016"
+    },
+    {
+      "id": "000000e0f000001b",
+      "fromNode": "000000a0b0c0d014",
+      "toNode": "000000a0b0c0d017"
+    },
+    {
+      "id": "000000e0f000001c",
+      "fromNode": "000000a0b0c0d014",
+      "toNode": "000000a0b0c0d018"
+    },
+    {
+      "id": "000000e0f000001d",
+      "fromNode": "000000a0b0c0d017",
+      "toNode": "000000a0b0c0d016",
+      "label": "calls"
+    },
+    {
+      "id": "000000e0f000001e",
+      "fromNode": "000000a0b0c0d016",
+      "toNode": "000000a0b0c0d015",
+      "label": "capabilities.json must match the skill"
+    },
+    {
+      "id": "000000e0f000001f",
+      "fromNode": "000000a0b0c0d004",
+      "toNode": "000000a0b0c0d014",
+      "label": "specifies"
+    },
+    {
+      "id": "000000e0f0000020",
+      "fromNode": "000000a0b0c0d001",
+      "toNode": "000000a0b0c0d014",
+      "label": "rules in CLAUDE.md"
+    }
+  ]
+}

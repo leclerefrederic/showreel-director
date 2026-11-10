@@ -1,0 +1,36 @@
+filters:
+  and:
+    - 'type == "question"'
+properties:
+  summary:
+    displayName: Summary
+  phase:
+    displayName: Phase
+  date:
+    displayName: Date
+  status:
+    displayName: Status
+views:
+  - type: table
+    name: "Open questions"
+    filters:
+      and:
+        - 'status == "current"'
+    order:
+      - file.name
+      - phase
+      - date
+      - summary
+    sort:
+      - property: date
+        direction: DESC
+  - type: table
+    name: "Settled"
+    filters:
+      and:
+        - 'status == "superseded"'
+    order:
+      - file.name
+      - phase
+      - date
+      - summary

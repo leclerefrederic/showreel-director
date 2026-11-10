@@ -486,6 +486,9 @@ def main():
         want = open(os.path.join(fx, "showreel.json"), encoding="utf-8").read()
         ok("export_studio.py output equals the committed fixture the app tests decode") if r.returncode == 0 and r.stdout == want \
             else bad("export_studio.py output differs from Tests/ShowreelKitTests/Fixtures/studio-export/showreel.json: regenerate the fixture and run swift test")
+    # the documentation vault keeps its mechanics: paths, links, properties, quoted sections, the owner's questions, no secrets (tools/check_docs.py)
+    r = run([sys.executable, "-B", os.path.join(ROOT, "tools", "check_docs.py")])
+    ok("docs/ vault: " + r.stdout.strip().splitlines()[-1]) if r.returncode == 0 else bad("docs/ vault:\n    " + "\n    ".join(r.stdout.strip().splitlines()))
     print("\n" + ("all checks passed" if not fails else f"{len(fails)} check(s) failed"))
     sys.exit(1 if fails else 0)
 

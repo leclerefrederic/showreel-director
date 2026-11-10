@@ -1,0 +1,52 @@
+filters:
+  and:
+    - 'type == "idea"'
+    - 'file.folder == "ideas"'
+properties:
+  summary:
+    displayName: Summary
+  area:
+    displayName: Area
+  source:
+    displayName: Source
+  status:
+    displayName: Status
+  date:
+    displayName: Date
+  origin:
+    displayName: Origin
+views:
+  - type: table
+    name: "All ideas, newest first"
+    order:
+      - file.name
+      - area
+      - source
+      - status
+      - date
+      - summary
+    sort:
+      - property: date
+        direction: DESC
+  - type: table
+    name: "By area"
+    groupBy:
+      property: area
+      direction: ASC
+    order:
+      - file.name
+      - source
+      - status
+      - date
+      - summary
+  - type: table
+    name: "Wanted soon"
+    filters:
+      and:
+        - 'status == "current"'
+    order:
+      - file.name
+      - area
+      - source
+      - date
+      - summary

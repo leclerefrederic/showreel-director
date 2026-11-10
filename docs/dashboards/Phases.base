@@ -1,0 +1,67 @@
+properties:
+  summary:
+    displayName: Summary
+  phase:
+    displayName: Phase
+  date:
+    displayName: Date
+  app_version:
+    displayName: App
+  skill_version:
+    displayName: Skill
+  status:
+    displayName: Status
+  file.folder:
+    displayName: Folder
+  phases:
+    displayName: Phases
+  prompt:
+    displayName: Prompt
+  report:
+    displayName: Report
+views:
+  - type: table
+    name: "Reports and summaries, newest first"
+    filters:
+      and:
+        - 'type == "phase-report"'
+    order:
+      - phase
+      - date
+      - app_version
+      - skill_version
+      - status
+      - file.folder
+      - file.name
+      - prompt
+      - summary
+    sort:
+      - property: date
+        direction: DESC
+  - type: table
+    name: "Prompts, newest first"
+    filters:
+      and:
+        - 'type == "phase-prompt"'
+    order:
+      - phase
+      - date
+      - status
+      - file.folder
+      - summary
+    sort:
+      - property: date
+        direction: DESC
+  - type: table
+    name: "Early phases"
+    filters:
+      and:
+        - 'file.folder == "phases/early"'
+    order:
+      - file.name
+      - phases
+      - date
+      - summary
+    sort:
+      - property: date
+        direction: DESC

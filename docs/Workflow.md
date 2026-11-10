@@ -3,6 +3,7 @@ type: reference
 status: current
 phase: OBS1
 date: 2026-11-10
+summary: "How the owner and the agents work: the Cowork and Claude Code sides, the phase cycle, the owner's hand test and where things go."
 tags:
   - vault
   - workflow
@@ -19,9 +20,9 @@ Two readers work on this repository: the owner, and agents. This note is the two
 
 ## A phase
 
-1. **A prompt file.** A phase is a file in `docs/prompts/`, written for Claude Code, named by the phase ID exactly as in `CLAUDE.md` (for example RB1).
+1. **A prompt file.** A phase is the file `docs/phases/<ID>/prompt.md`, written for Claude Code; the folder is named by the phase ID exactly as in `CLAUDE.md` (for example RB1).
 2. **Audit first.** Claude Code reads `CLAUDE.md`, the notes the prompt names and the code. When the prompt says so, it starts with a read-only step 0 that records what is there before changing anything.
-3. **Build only that phase.** A good idea outside the phase goes in one line in [[ideas]], not in the code. A taste choice that the owner has not made becomes a question in the report, not a decision.
+3. **Build only that phase.** A good idea outside the phase goes in a note in `docs/ideas/`, not in the code. A taste choice that the owner has not made becomes a question in the report, not a decision.
 4. **Check while working, fully at the end.** During the work: `tools/verify.sh --fast`. At the end of the phase: the complete `tools/verify.sh`, then `tools/rebuild-app.sh`. A fast pass does not verify a phase.
 5. **Release notes before the version.** The notes for the new version are written first, then `tools/bump_app.py` or `tools/bump.py` publishes it. A version is never edited by hand.
 6. **A report.** Claude Code writes the phase report: what it found, what it built, the questions left for the owner, what is verified and what is not, and the list "To check by hand".
@@ -38,10 +39,12 @@ The owner tests by hand the list "To check by hand" of the report, on a real scr
 
 | What | Where |
 |---|---|
-| A good idea outside the phase | one line in [[ideas]] |
-| A question the owner must settle | the section "Questions to settle with the owner" of [[ideas]] |
+| A good idea outside the phase | a note in `docs/ideas/` (copy the properties of an existing one), listed in [[ideas]] after `python3 tools/docs_index.py --write` |
+| A question the owner must settle | a note in `docs/questions/` (`status: current` is open); the section "Questions to settle with the owner" of [[ideas]] is generated from the notes. To settle it: `status: superseded`, a link to the decision, then the script |
 | A UX remark or a decision about the interface | [[ux-notes]] |
 | The design and its numbered sections | [[studio-spec]] |
-| A phase prompt | `docs/prompts/` |
-| A phase report | `docs/<phase>-report.md` (until the move described in [[Conventions]]) |
+| A phase prompt | `docs/phases/<ID>/prompt.md` |
+| A phase report | `docs/phases/<ID>/report.md` (a batch: `docs/archive/<BATCH-ID>/`) |
+| A decision the owner took | a note in `docs/decisions/` |
+| What the vault holds, for an agent | `docs/Index.md`, generated from the properties: read it first and open only the note it points to |
 | A test run of the skill | `showreel-director/evals/RESULTS.md`, never `ROADMAP.md` |
