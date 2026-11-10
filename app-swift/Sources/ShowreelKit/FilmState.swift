@@ -120,7 +120,7 @@ public extension Availability {
     }
 
     /// Whether one scene can be generated (again): a locked scene never, whatever changed; when its inherited look changed it is stale and says so.
-    public static func regenerate(_ id: String, _ s: FilmBuild.Status, file: ShowreelFile?) -> Availability {
+    static func regenerate(_ id: String, _ s: FilmBuild.Status, file: ShowreelFile?) -> Availability {
         guard file?.scenes.first(where: { $0.id == id })?.isLocked == true else { return .available }
         let stale = s.scenes[id]?.state == .stale
         return .unavailable(Unavailable(.locked, reason: stale ? "\(id) is locked and its look changed" : "\(id) is locked", way: stale ? "Unlock it to generate it again" : "Unlock it first", link: .scene(id)))

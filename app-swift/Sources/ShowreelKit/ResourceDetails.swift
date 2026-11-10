@@ -150,7 +150,7 @@ public enum ResourceDetailsReader {
         var file: AudioFileID?
         guard AudioFileOpenURL(u as CFURL, .readPermission, 0, &file) == noErr, let f = file else { media.append(DetailRow("Audio", "unreadable")); return }
         defer { AudioFileClose(f) }
-        func prop<T>(_ id: AudioFilePropertyID, _ zero: T) -> T? { var v = zero; var sz = UInt32(MemoryLayout<T>.size); return AudioFileGetProperty(f, id, &sz, &v) == noErr ? v : nil }
+        func prop<T>(_ id: AudioFilePropertyID, _ zero: T) -> T? { var v = zero; var sz = UInt32(MemoryLayout<T>.size); return withUnsafeMutablePointer(to: &v) { AudioFileGetProperty(f, id, &sz, $0) } == noErr ? v : nil }
         let fmt = prop(kAudioFilePropertyDataFormat, AudioStreamBasicDescription())
         let kind = prop(kAudioFilePropertyFileFormat, UInt32(0))
         let dur = prop(kAudioFilePropertyEstimatedDuration, Double(0)), rate = prop(kAudioFilePropertyBitRate, UInt32(0))

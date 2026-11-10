@@ -128,7 +128,7 @@ public enum FontEmbedding {
             let fx = FontUse.facts(hit)
             let weight = fx.range.map { "\($0.lowerBound) \($0.upperBound)" } ?? "\(fx.weight)"
             let bytes = (try? FileManager.default.attributesOfItem(atPath: store.root.appendingPathComponent("assets/" + hit.row.file).path)[.size] as? Int) ?? 0
-            let e = FontEntry(family: family, weight: weight, style: "normal", path: "../assets/" + hit.row.file, bytes: bytes ?? 0)
+            let e = FontEntry(family: family, weight: weight, style: "normal", path: "../assets/" + hit.row.file, bytes: bytes)
             if !entries.contains(where: { $0.family == e.family && $0.weight == e.weight && $0.path == e.path }) { entries.append(e) }
         }
         return (entries, missing, chosen)

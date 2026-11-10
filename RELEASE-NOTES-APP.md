@@ -2,6 +2,17 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.21.2 - 2026-11-10
+
+**Changed**
+- Internal clean-up only: the compiler warnings of the app went from 21 to 4. Nothing you see or use changes.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged. The skill is unchanged.
+
 ## 0.21.1 - 2026-11-10
 
 **Fixed**

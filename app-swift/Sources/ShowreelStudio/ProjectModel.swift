@@ -1230,7 +1230,7 @@ final class ProjectModel: ObservableObject {
 
     func addAssets(_ urls: [URL]) {
         // adding files is one undo step too (the copies in assets/ and the manifest rows go back together)
-        do { try store.transaction(urls.count == 1 ? "Add \(urls[0].lastPathComponent)" : "Add \(urls.count) files") { try Assets.add(urls, to: store) }; refresh(); reloadTree() } catch { self.error = error.localizedDescription }
+        do { _ = try store.transaction(urls.count == 1 ? "Add \(urls[0].lastPathComponent)" : "Add \(urls.count) files") { try Assets.add(urls, to: store) }; refresh(); reloadTree() } catch { self.error = error.localizedDescription }
     }
 
     func status(_ zone: String) -> BlockStatus {

@@ -26,7 +26,7 @@ public struct ShowreelFile: Codable, Equatable {
         }
     }
 
-    public struct Background: Codable, Equatable {
+    public struct Background: Codable, Equatable, Sendable {
         public var id: String?
         public var mood: String?
         public var unknown: [String: JSONValue] = [:]
@@ -42,7 +42,7 @@ public struct ShowreelFile: Codable, Equatable {
         }
     }
 
-    public struct Track: Codable, Equatable {
+    public struct Track: Codable, Equatable, Sendable {
         public var file: String?
         public var bpm: Double?
         /// Time of a real first beat in seconds, set by the user (the analysis's --first-beat).
@@ -88,7 +88,7 @@ public struct ShowreelFile: Codable, Equatable {
         }
     }
 
-    public struct Decisions: Codable, Equatable {
+    public struct Decisions: Codable, Equatable, Sendable {
         public var palette: [String]?
         public var fonts: Fonts?
         public var background: Background?
@@ -120,7 +120,7 @@ public struct ShowreelFile: Codable, Equatable {
 
     /// One scene of the library. The ID is stable: never reused, never renumbered. Where it plays, and when, belongs to a montage.
     /// `archived` is the tombstone: the scene leaves the lists, its ID stays reserved. DITCH archives it.
-    public struct Scene: Codable, Equatable, Identifiable {
+    public struct Scene: Codable, Equatable, Identifiable, Sendable {
         public var id: String
         /// A label the user chose, shown next to the ID. Never an identity: the ID is what everything refers to.
         public var name: String?

@@ -447,9 +447,9 @@ final class ChatModel: ObservableObject, AgentUI, @unchecked Sendable {
         }
     }
 
-    private func onMain<T>(_ f: @escaping () -> T) async -> T {
+    private func onMain<T: Sendable>(_ f: @escaping @MainActor @Sendable () -> T) async -> T {
         await withCheckedContinuation { (c: CheckedContinuation<T, Never>) in
-            DispatchQueue.main.async { c.resume(returning: f()) }
+            DispatchQueue.main.async { c.resume(returning: MainActor.assumeIsolated { f() }) }
         }
     }
 

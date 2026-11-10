@@ -72,7 +72,7 @@ final class EngineService: ObservableObject {
         return frames.compactMap { NSImage(data: $0) }
     }
 
-    static let frameSize = CGSize(width: 320, height: 180)
+    nonisolated static let frameSize = CGSize(width: 320, height: 180)
 
     static let viewerSize = CGSize(width: 640, height: 360)
 

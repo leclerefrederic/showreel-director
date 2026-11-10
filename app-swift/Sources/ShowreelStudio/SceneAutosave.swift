@@ -7,7 +7,7 @@ import SwiftUI
 final class SceneAutosave: ObservableObject {
     enum Mark { case saved, updated }
 
-    @Published private(set) var session = EditSession(validate: SceneFields.invalid)
+    @Published private(set) var session = EditSession(validate: { SceneFields.invalid($0, $1) })
     @Published private(set) var marks: [String: Mark] = [:]
     private(set) var sceneID: String?
     weak var project: ProjectModel?

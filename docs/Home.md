@@ -16,7 +16,7 @@ Your cockpit: what to answer, what is moving, what was decided. Answer in the ch
 ## Where we are
 
 <!-- generated:where-we-are -->
-- App version: **0.21.1**. Skill version: **0.18.2**.
+- App version: **0.21.2**. Skill version: **0.18.2**.
 - Last built phase: **W4b**, report in [[phases/W4b/report]].
 - Next, in the order of `CLAUDE.md`: PK2 (apply a package to an existing project), N (activity and notifications, in the spec).
 <!-- /generated:where-we-are -->

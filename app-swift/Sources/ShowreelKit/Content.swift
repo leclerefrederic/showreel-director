@@ -24,7 +24,7 @@ public enum PaletteRole: String, CaseIterable, Sendable {
 
 extension ShowreelFile {
     /// How an item is coloured: `auto` (the AI decides), a palette `role`, or a `custom` hex. Anything but auto is fixed.
-    public struct ContentColor: Codable, Equatable {
+    public struct ContentColor: Codable, Equatable, Sendable {
         public var mode: String
         public var role: String?
         public var hex: String?
@@ -43,7 +43,7 @@ extension ShowreelFile {
     }
 
     /// How an item moves: `auto` (the AI decides) or a named `effect` of the library with its parameters. An effect is fixed.
-    public struct ContentAnimation: Codable, Equatable {
+    public struct ContentAnimation: Codable, Equatable, Sendable {
         public var mode: String
         public var effect: String?
         public var params: JSONValue?
@@ -68,7 +68,7 @@ extension ShowreelFile {
     }
 
     /// One thing a scene contains: words, an image or logo, a sound or voice. Its place in the list is its processing priority.
-    public struct ContentItem: Codable, Equatable, Identifiable {
+    public struct ContentItem: Codable, Equatable, Identifiable, Sendable {
         public var id: String
         public var type: String              // text, image, audio (shape comes later)
         public var text: String?             // the words (text)

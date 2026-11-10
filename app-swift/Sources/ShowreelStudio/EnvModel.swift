@@ -41,6 +41,7 @@ enum ShellRunner {
 }
 
 /// What the app needs to run the skill's full mode, checked at launch.
+@MainActor
 final class EnvModel: ObservableObject {
     @Published var items: [EnvItem] = [
         EnvItem(id: "python3", label: "Python 3", detail: "Audio analysis and asset tools (comes with the Command Line Tools)", ok: nil),
@@ -68,7 +69,7 @@ final class EnvModel: ObservableObject {
         checking = true
         Task { [weak self] in
             let out = await ShellRunner.run(args: ["--check"])
-            DispatchQueue.main.async { self?.apply(Self.parse(out), found: ShellRunner.scriptURL() != nil) }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.apply(Self.parse(out), found: ShellRunner.scriptURL() != nil) } }
         }
     }
 
@@ -77,11 +78,13 @@ final class EnvModel: ObservableObject {
         log = ""
         Task { [weak self] in
             _ = await ShellRunner.run(args: ["--install"]) { chunk in
-                DispatchQueue.main.async { self?.log += chunk }
+                DispatchQueue.main.async { MainActor.assumeIsolated { self?.log += chunk } }
             }
             DispatchQueue.main.async {
-                self?.installing = false
-                self?.check()
+                MainActor.assumeIsolated {
+                    self?.installing = false
+                    self?.check()
+                }
             }
         }
     }

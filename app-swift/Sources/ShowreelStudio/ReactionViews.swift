@@ -277,7 +277,6 @@ struct BuildProgressPanel: View {
                 let testingID = b.phase == .generating ? b.order.first { b.runs[$0]?.state == .testing } : nil          // a scene (or the frame) is being tested: no request is in flight
                 let active = b.order.filter { [.writing, .repairing].contains(b.runs[$0]?.state) }          // the requests in flight: several when scenes are written at the same time
                 let step = b.phase == .generating ? (active.isEmpty ? testingID.map { "Testing " + ($0 == BuildJob.frameStep ? "the frame" : $0) } : nil) ?? (active.count > 1 ? "Clap is writing \(active.count) scenes at once" : "Clap is writing the film") : b.phase == .testing ? "Assembling and testing" : "Stopping the build\u{2026}"
-                let current = b.current ?? ""
                 let scene = b.phase == .generating ? (hasRuns ? (b.width > 1 ? "\(b.done) of \(scenes.count) scenes done" : BuildProgress.sceneLine(done: b.done, total: scenes.count)) : BuildProgress.sceneLine(done: p.done, total: p.total)) : nil
                 let phase = b.phase == .generating && active.count == 1 ? b.runs[active[0]]?.clapPhase?.word : nil
                 let writing = scenes.compactMap { b.runs[$0] }.filter { !$0.kept && $0.started != nil }.reduce(0) { $0 + $1.elapsed(now: ctx.date) }          // the time the scenes took, added up

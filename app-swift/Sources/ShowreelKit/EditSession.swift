@@ -131,7 +131,7 @@ public struct EditSession {
 }
 
 /// The fields of a scene's form: how each is read, checked and turned into the one typed operation. The rules the store holds (a locked scene, a Build) stay with `plan()`.
-public enum SceneFields {
+public enum SceneFields: Sendable {
     public static let duration = "duration", text = "text", visual = "visual", feeling = "feeling", handoff = "handoff", assets = "assets"
 
     public static func kind(_ key: String) -> EditSession.Kind {

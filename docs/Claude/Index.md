@@ -18,8 +18,8 @@ tags:
 
 ## Status
 
-- App 0.21.1, skill 0.18.2. Last built phase: W4b. Next: PK2 (apply a package to an existing project), N (activity and notifications, in the spec).
-- 236 notes. Ideas: 50 (36 parked, 2 wanted soon, 12 built or promoted).
+- App 0.21.2, skill 0.18.2. Last built phase: W4b. Next: PK2 (apply a package to an existing project), N (activity and notifications, in the spec).
+- 237 notes. Ideas: 50 (36 parked, 2 wanted soon, 12 built or promoted).
 - Open questions (18): Which instant of a scene should its thumbnail show; What form should the timing control of an item take; Should timing be in seconds or in beats; Should the viewer play an item's timing live; Should the viewer keep its content drawing before a build; Should the strip mark every frame as fresh or only the stale ones; Should the Inspector mark show when the side is closed; Should locked scenes from before UI2 take a copy of their look when the project opens; Should an item's timing snap to the music grid; Should a lock also freeze the transitions beside a locked scene; Should Look light a centre entry; Shortcuts for the other right panels; Rework of the Wizard and Manual creation experience; May a click on the active Build leave the Build; Keep three scenes written at once as the default; Is the phase order of the spec still the one we follow; Confirm the two-thirds split of the left panel; Confirm the Checks badge after use.
 
 ## Entry notes and hubs
@@ -239,7 +239,7 @@ One line per phase folder `phases/<ID>/`: its files, the versions of its report 
 | `phases/Q5/` | report, summary |  |  | 2026-11-09 | Report of Q5: action/reaction, with what the code did before and what Q5 changed. |
 | `phases/RB1/` | prompt, report | 0.19.2 |  | 2026-11-10 | Report of RB1: the audit of the rail's buttons, one tested rule, the fixes and four questions for the owner. |
 | `phases/RF0/` | prompt, report | 0.21.0 | 0.18.2 | 2026-11-10 | Read-only health audit of the code: measured size, ProjectModel clusters, fragile glue, warnings, tests, dead code, and eight ranked refactorings. |
-| `phases/RF1/` | prompt |  |  | 2026-11-10 | Cleans the compiler warnings of the app (about 17 distinct sites, the two CLAUDE.md ones included) without changing behaviour. |
+| `phases/RF1/` | prompt, report | 0.21.2 | 0.18.2 | 2026-11-10 | Report of RF1: compiler warnings of the app cleaned from 21 distinct sites to 4 that need an ownership or isolation change; no behaviour change; app 0.21.2. |
 | `phases/RF2/` | prompt |  |  | 2026-11-10 | Hardens four fragile spots of the app glue (capture load timeout, stepper repeat timer, shared font registry, thumbnail tasks) with tests first. |
 | `phases/RL1/` | prompt, report, summary | 0.16.0 |  | 2026-11-09 | Report of RL1: the two-group rail with Clap, the full-height shell, the Film placement toggle and the reset icon. |
 | `phases/UI1/` | prompt, report | 0.12.0 |  | 2026-11-09 | Report of UI1: the left panel as the Storyboard with the Resources below, and the decisions the owner can reverse. |
