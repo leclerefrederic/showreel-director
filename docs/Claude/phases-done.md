@@ -76,7 +76,7 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | R | 2026-11-10 | current |  |  |  |  | [[phases/early/Release notes for the skill and the app\|summary]] |
 | R1 | 2026-11-10 | current |  |  |  |  | [[phases/early/Resources grouped by type and state\|summary]] |
 | RB1 | 2026-11-10 | current | 0.19.2 |  | [[phases/RB1/prompt\|prompt]] | [[phases/RB1/report\|report]] |  |
-| RF0 | 2026-11-10 | current |  |  | [[phases/RF0/prompt\|prompt]] |  |  |
+| RF0 | 2026-11-10 | current | 0.21.0 | 0.18.2 | [[phases/RF0/prompt\|prompt]] | [[phases/RF0/report\|report]] |  |
 | S | 2026-11-10 | current |  |  |  |  | [[phases/early/Storyboard strip as an editing timeline\|summary]] |
 | T | 2026-11-10 | current |  |  |  |  | [[phases/early/Library, project model, wizard and first storyboard\|summary]] |
 | T2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Music grid on the strip\|summary]] |
