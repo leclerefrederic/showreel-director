@@ -80,7 +80,7 @@ struct StepperField: View {
     var width: CGFloat = 120
     @EnvironmentObject var theme: Theme
     @State private var message: String?
-    @State private var repeatTimer: Timer?
+    @StateObject private var hold = HoldRepeat()
     @FocusState private var focused: Bool
 
     private var value: Double { rule.typed(text).result?.value ?? rule.minimum }
@@ -96,6 +96,7 @@ struct StepperField: View {
             .overlay(RoundedRectangle(cornerRadius: FormLayout.fieldRadius, style: .continuous).stroke(message != nil ? theme.warning : focused ? theme.accent : theme.hairline, lineWidth: focused || message != nil ? 2 : 1))
             .onChange(of: focused) { f in if !f { settle() } }
             .background(StepperKeys(active: focused) { up, m in step(up: up, modifier: m) })
+            .onDisappear { hold.stop() }
             if let m = message { Text(m).fontSmall().foregroundStyle(theme.warning) }
         }
     }
@@ -104,15 +105,9 @@ struct StepperField: View {
         let can = rule.typed(text).result.map { rule.canStep($0.value, up: up) } ?? true
         return Image(systemName: symbol).font(.system(size: 11, weight: .bold)).frame(width: 18, height: FormLayout.fieldHeight / 2)
             .foregroundStyle(can ? theme.textSecondary : theme.textFaint).contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0).onChanged { _ in if repeatTimer == nil { step(up: up); begin(up: up) } }.onEnded { _ in repeatTimer?.invalidate(); repeatTimer = nil })
+            .gesture(DragGesture(minimumDistance: 0).onChanged { _ in if !hold.isRunning { step(up: up); hold.start { step(up: up) } } }.onEnded { _ in hold.stop() })
             .help(up ? "Longer. Hold to repeat. Option: 0.1 s, Shift: 5 s." : "Shorter. Hold to repeat. Option: 0.1 s, Shift: 5 s.")
             .accessibilityLabel(up ? "Increase" : "Decrease")
-    }
-
-    private func begin(up: Bool) {
-        repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in
-            repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { _ in step(up: up) }
-        }
     }
 
     private func step(up: Bool, modifier: NumericField.Modifier? = nil) {

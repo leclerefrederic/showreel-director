@@ -11,7 +11,8 @@ final class SceneCapture: NSObject, WKNavigationDelegate {
     private let web: WKWebView
     private let host: NSWindow
     private var loaded: URL?
-    private var navigation: CheckedContinuation<Bool, Never>?
+    private var navigation: CheckedContinuation<LoadOutcome, Never>?
+    private var gate = LoadGate()
 
     override init() {
         let c = WKWebViewConfiguration()
@@ -30,28 +31,35 @@ final class SceneCapture: NSObject, WKNavigationDelegate {
         host.orderFrontRegardless()
     }
 
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { finishLoading(true) }
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { finishLoading(false) }
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { finishLoading(false) }
-    private func finishLoading(_ ok: Bool) { navigation?.resume(returning: ok); navigation = nil }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { finishLoading(.loaded) }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { finishLoading(.failed) }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { finishLoading(.failed) }
+    /// Ends the load that owns `token` (the current one for the web view's own callbacks); a timeout of an earlier load finds its token stale and does nothing (RF2).
+    private func finishLoading(_ outcome: LoadOutcome, token: Int? = nil) {
+        guard gate.finish(token ?? gate.current) else { return }
+        navigation?.resume(returning: outcome); navigation = nil
+    }
 
-    private func load(_ url: URL) async -> Bool {
-        if loaded == url { return true }
+    private func load(_ url: URL) async -> LoadOutcome {
+        if loaded == url { return .loaded }
         loaded = nil
-        let ok: Bool = await withCheckedContinuation { c in
+        if gate.isPending { navigation?.resume(returning: .superseded); navigation = nil }
+        let token = gate.begin()
+        let outcome: LoadOutcome = await withCheckedContinuation { c in
             navigation = c
             web.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-            Task { @MainActor [weak self] in try? await Task.sleep(nanoseconds: 20_000_000_000); self?.finishLoading(false) }          // a page that never ends loading is a failure, not a hang
+            Task { @MainActor [weak self] in try? await Task.sleep(nanoseconds: 20_000_000_000); self?.finishLoading(.timedOut, token: token) }          // a page that never ends loading is a failure, not a hang
         }
-        if ok { loaded = url }
-        return ok
+        if outcome == .loaded { loaded = url }
+        return outcome
     }
 
     /// The PNG of the scene at the job's instant, or the reason it could not be made.
     func capture(_ job: SceneThumbs.Job, store: ProjectStore) async -> Result<Data, CaptureError> {
         let page = Versions.distURL(store, job.version)
         guard FileManager.default.fileExists(atPath: page.path) else { return .failure(CaptureError("The built page of \(job.version) is missing.")) }
-        guard await load(page) else { return .failure(CaptureError("The film page did not load.")) }
+        let loading = await load(page)
+        guard loading == .loaded else { return .failure(CaptureError("The film page did not load.", transient: loading.isTransient)) }
         let js = "(function(){var s=document.getElementById('seek');if(!s)return false;s.value=Math.round(\(job.time) * 10);s.dispatchEvent(new Event('input'));return true;})()"
         guard let ok = try? await web.evaluateJavaScript(js) as? Bool, ok else { return .failure(CaptureError("The film page has no seek control.")) }
         // the page draws on its own clock: wait until that clock shows the instant, so that what is snapshotted is the scene and not the page before its first frame
@@ -71,5 +79,6 @@ final class SceneCapture: NSObject, WKNavigationDelegate {
         return .success(png)
     }
 
-    struct CaptureError: Error { let message: String; init(_ m: String) { message = m } }
+    /// `transient`: a timeout or a cancelled load says nothing about the scene, so it is not remembered as the scene's failure and the capture is tried again.
+    struct CaptureError: Error { let message: String; let transient: Bool; init(_ m: String, transient: Bool = false) { message = m; self.transient = transient } }
 }

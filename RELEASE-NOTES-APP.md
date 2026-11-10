@@ -2,6 +2,20 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.21.3 - 2026-11-10
+
+**Fixed**
+- A thumbnail capture that is slow to start no longer fails because of an older capture's timer, and a timeout is no longer remembered as the scene's failure: the frame is tried again.
+- Holding a stepper arrow stops when its field disappears (the scene changes, the tab closes).
+- Two projects that use a font of the same name over different files each get their own font in previews.
+- Closing a project stops its pending thumbnail captures; one still running is dropped instead of being written into the closed project.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged. The skill is unchanged.
+
 ## 0.21.2 - 2026-11-10
 
 **Changed**

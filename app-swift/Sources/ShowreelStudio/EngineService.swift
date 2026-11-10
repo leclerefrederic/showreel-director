@@ -40,16 +40,18 @@ final class EngineService: ObservableObject {
     /// Makes a font usable in engine renders, by the name chosen in the project. Returns the CSS family to draw with.
     func family(for name: String, store: ProjectStore) async -> String {
         guard !name.isEmpty else { return "sans-serif" }
-        if registeredFonts.contains(name) { return name }
-        var data: Data?, mime = "font/woff2"
-        if let f = Look.freeFonts().first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }), let u = Look.previewURL(for: f) { data = try? Data(contentsOf: u) }
+        var data: Data?, mime = "font/woff2", file: URL?
+        if let f = Look.freeFonts().first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }), let u = Look.previewURL(for: f) { file = u; data = try? Data(contentsOf: u) }
         else if let a = Assets.load(store).first(where: { $0.type == "font" && ($0.original + $0.file).lowercased().contains(name.lowercased().filter { $0.isLetter || $0.isNumber }) }) {
             let u = store.root.appendingPathComponent("assets/" + (a.file.isEmpty ? "source/" + a.original : a.file))
-            data = try? Data(contentsOf: u)
+            file = u; data = try? Data(contentsOf: u)
             mime = ["ttf": "font/ttf", "otf": "font/otf", "woff": "font/woff"][u.pathExtension.lowercased()] ?? "font/woff2"
         }
-        guard let d = data else { return "sans-serif" }
-        do { try await renderer.registerFont(family: name, dataURL: "data:\(mime);base64," + d.base64EncodedString()); registeredFonts.insert(name); return name }
+        guard let d = data, let u = file else { return "sans-serif" }
+        // keyed by the file too: the same name over another project's file is registered again, not served from the first (RF2)
+        let key = FontIdentity.key(name: name, file: u)
+        if registeredFonts.contains(key) { return name }
+        do { try await renderer.registerFont(family: name, dataURL: "data:\(mime);base64," + d.base64EncodedString()); registeredFonts.insert(key); return name }
         catch { return "sans-serif" }
     }
 

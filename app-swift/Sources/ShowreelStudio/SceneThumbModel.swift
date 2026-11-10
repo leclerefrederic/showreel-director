@@ -40,21 +40,38 @@ extension ProjectModel {
         }
     }
 
+    /// The next scene that has a job, or nil when the queue is empty, a build runs or the model is cancelled. Scenes that no longer exist are skipped.
+    private func nextThumbJob() -> (SceneThumbs.Job, ProjectStore)? {
+        while !Task.isCancelled, activity.build == nil, let id = thumbQueue.next() {
+            if let f = showreel, let v = playableVersion, let job = SceneThumbs.job(for: id, in: f, version: v, store: store) { return (job, store) }
+            thumbQueue.finish()
+        }
+        return nil
+    }
+
+    private func finishThumb(_ job: SceneThumbs.Job, _ result: Result<Data, SceneCapture.CaptureError>) {
+        switch result {
+        case .success(let png): do { try SceneThumbs.record(job, png: png, store: store) } catch { SceneThumbs.recordFailure(job, reason: error.localizedDescription, store: store) }
+        case .failure(let e): if !e.transient { SceneThumbs.recordFailure(job, reason: e.message, store: store) }
+        }
+        thumbQueue.finish()
+        if let f = showreel { sceneThumbs = SceneThumbs.states(in: f, version: playableVersion, store: store) }
+    }
+
+    /// The loop holds the model weakly across the capture: a project closed meanwhile is released, its task is cancelled (`stopThumbs`) and the late result is dropped, not written into its folder (RF2).
     private func runThumbs(force: Bool) {
         guard thumbTask == nil else { return }
         thumbTask = Task { @MainActor [weak self] in
-            while let self = self, !Task.isCancelled, self.activity.build == nil, let id = self.thumbQueue.next() {
-                if let f = self.showreel, let v = self.playableVersion, let job = SceneThumbs.job(for: id, in: f, version: v, store: self.store) {
-                    switch await SceneCapture.shared.capture(job, store: self.store) {
-                    case .success(let png): do { try SceneThumbs.record(job, png: png, store: self.store) } catch { SceneThumbs.recordFailure(job, reason: error.localizedDescription, store: self.store) }
-                    case .failure(let e): SceneThumbs.recordFailure(job, reason: e.message, store: self.store)
-                    }
-                }
-                self.thumbQueue.finish()
-                if let f = self.showreel { self.sceneThumbs = SceneThumbs.states(in: f, version: self.playableVersion, store: self.store) }
+            while let (job, store) = self?.nextThumbJob() {
+                let result = await SceneCapture.shared.capture(job, store: store)
+                guard let self = self, !Task.isCancelled else { return }
+                self.finishThumb(job, result)
             }
             self?.thumbQueue.finish()
             self?.thumbTask = nil
         }
     }
+
+    /// The project is closing: nothing waits, nothing starts, and a capture still running will drop its result.
+    func stopThumbs() { thumbDelay?.cancel(); thumbTask?.cancel(); thumbQueue.cancel() }
 }

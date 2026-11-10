@@ -78,7 +78,7 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | RB1 | 2026-11-10 | current | 0.19.2 |  | [[phases/RB1/prompt\|prompt]] | [[phases/RB1/report\|report]] |  |
 | RF0 | 2026-11-10 | current | 0.21.0 | 0.18.2 | [[phases/RF0/prompt\|prompt]] | [[phases/RF0/report\|report]] |  |
 | RF1 | 2026-11-10 | current | 0.21.2 | 0.18.2 | [[phases/RF1/prompt\|prompt]] | [[phases/RF1/report\|report]] |  |
-| RF2 | 2026-11-10 | current |  |  | [[phases/RF2/prompt\|prompt]] |  |  |
+| RF2 | 2026-11-10 | current | 0.21.3 | 0.18.2 | [[phases/RF2/prompt\|prompt]] | [[phases/RF2/report\|report]] |  |
 | S | 2026-11-10 | current |  |  |  |  | [[phases/early/Storyboard strip as an editing timeline\|summary]] |
 | T | 2026-11-10 | current |  |  |  |  | [[phases/early/Library, project model, wizard and first storyboard\|summary]] |
 | T2 | 2026-11-10 | current |  |  |  |  | [[phases/early/Music grid on the strip\|summary]] |

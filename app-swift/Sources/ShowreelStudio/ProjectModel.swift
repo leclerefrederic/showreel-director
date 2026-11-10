@@ -377,7 +377,7 @@ final class ProjectModel: ObservableObject {
     /// The pointer is over the Storyboard list: the arrow keys and Delete are for it (as they are for the strip when the pointer is over the strip).
     var listHovered = false
 
-    deinit { draftTimer?.invalidate(); let p = root.path; DispatchQueue.main.async { LibraryModel.shared.markClosed(p) } }
+    deinit { draftTimer?.invalidate(); stopThumbs(); let p = root.path; DispatchQueue.main.async { LibraryModel.shared.markClosed(p) } }
 
     var title: String { showreel.flatMap { $0.name.isEmpty ? nil : $0.name } ?? root.lastPathComponent }
 
