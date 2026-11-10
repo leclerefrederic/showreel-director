@@ -28,7 +28,7 @@
 
 ## Next
 - 3D layer, remaining: export of 3D scenes to MP4 through a headless browser (the Node exporter has no WebGL); a Three.js bundle with named imports (expected 250 to 350 KB, the current file is the full namespace, 0.77 MB); scrolling text block and evaporating text in Canvas 2D (`SRK`) so the text of a 3D film is exportable; a fallback frame for a device without WebGL; tested on phones and on WebGL 1 (the first version was checked in Node only: pixels not verified).
-- Showreel Studio v2 (the app as a workspace with a copilot: several projects, file editing, native pickers, process driven by the app): specification in `docs/studio-spec.md`, validated; phase A next.
+- Showreel Studio v2 (the app as a workspace with a copilot: several projects, file editing, native pickers, process driven by the app): specification in `docs/Claude/studio-spec.md`, validated; phase A next.
 - Showreel Studio (`app-swift/`): remaining: `--selftest` and a library split so the agent loop is tested without the UI; picks sent straight to the chat; progress and cost display; check which API format each gateway exposes; look and feel polish.
 - Bring Your Own Licensed Material, remaining: ask in the interview which use a supplied licence covers (web or app embedding, video only, unsure); deliver the MP4 only for video-only or unclear licences and keep the HTML private; the same question for supplied images, music and footage; optional glyph subsetting. Done: embedding flag (`fsType`) read in the audit and organiser, `--licence` note option.
 - Design system ingestion (a Claude Design export): needs a real export to build against.

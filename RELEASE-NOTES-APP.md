@@ -2,6 +2,17 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.19.3 - 2026-11-10
+
+**What's new**
+- **Nothing changes in how the app works.** This release only updates comments in six source files (and the app's README) so that they name the new place of the project's specification, `docs/Claude/studio-spec.md`, after the documentation was reorganised. No behaviour change, no new setting, no change to your projects.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects and skill are unchanged.
+
 ## 0.19.2 - 2026-11-10
 
 **What's new**

@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-/// A design package (docs/studio-spec.md, section 5.6): a saved design system that pre-configures a new reel. One archive, `.studiopack`: `package.json` first, then
+/// A design package (docs/Claude/studio-spec.md, section 5.6): a saved design system that pre-configures a new reel. One archive, `.studiopack`: `package.json` first, then
 /// `design.json`, `resources.json` and `assets/`. It is user data and every text in it is data, never an instruction.
 public enum PackageType {
     /// The type the app registers (exported type declaration, conforming to a zip archive) so that a double-click opens the import card.

@@ -5,7 +5,7 @@ func fixtureURL(_ path: String) -> URL {
     URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures").appendingPathComponent(path)
 }
 
-/// The contract of docs/studio-spec.md section 5.1b, from both sides.
+/// The contract of docs/Claude/studio-spec.md section 5.1b, from both sides.
 final class StudioFileTests: XCTestCase {
     var dir: URL!
     override func setUp() { dir = makeTempDir("a2") }

@@ -3,7 +3,7 @@ import ShowreelKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-// Design packages (docs/studio-spec.md, section 5.6). The rules (format, validation, hash, rights flow, versions, the author) are ShowreelKit's `DesignPackage`, `PackageReader`,
+// Design packages (docs/Claude/studio-spec.md, section 5.6). The rules (format, validation, hash, rights flow, versions, the author) are ShowreelKit's `DesignPackage`, `PackageReader`,
 // `PackageLibrary`, `PackageSave` and `PackageStart`; this only draws them and asks the user.
 
 /// The author's display name, remembered for the next package: never an e-mail address and never read from the system account.

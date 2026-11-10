@@ -24,7 +24,7 @@ struct Pixels {
     }
 }
 
-/// The engine bridge (docs/studio-spec.md, section 6): the skill's own JavaScript, run in a web view from the skill folder only.
+/// The engine bridge (docs/Claude/studio-spec.md, section 6): the skill's own JavaScript, run in a web view from the skill folder only.
 @MainActor
 final class EngineTests: XCTestCase {
     static var shared: EngineRenderer?

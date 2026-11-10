@@ -10,7 +10,9 @@ Usage: python3 tools/check_docs.py [--root DIR] [--selftest]   (one line per pro
 6. no note contains what looks like a key or a token;
 7. docs/Index.md and the generated blocks are up to date (tools/docs_index.py --check), so none was edited by hand;
 8. file names carry no parenthesis, date, revision or version; a note whose name differs from its heading in a hub has that heading in its aliases (so an old title still resolves);
-   no phase folder holds only a summary; no note is isolated outside archive/ and early/ (links in properties count); the headings that code and agents quote still exist."""
+   no phase folder holds only a summary; no note is isolated outside archive/ and early/ (links in properties count); the headings that code and agents quote still exist;
+9. the root of docs/ holds only Home.md, Dashboards/ and Claude/; every idea, question and decision has a well-formed, unique ID (also in its aliases) and the owner-facing properties,
+   docs/Claude/ids.json allocates no ID whose note is gone; no comment of app-swift names the old path docs/studio-spec.md."""
 import json, os, re, sys, tempfile
 
 TYPES = {"spec", "ux", "phase-prompt", "phase-report", "decision", "idea", "question", "reference"}
@@ -70,10 +72,12 @@ def aliases(t):
 def headings(t): return {re.sub(r"\s+", " ", m.group(1)).strip() for m in re.finditer(r"^#{1,6} (.*?)\s*$", t, re.M)}
 
 def check(root):
-    docs = os.path.join(root, "docs"); problems = []
-    files = notes(docs); rel = {os.path.relpath(f, docs): f for f in files}
+    docs = os.path.join(root, "docs"); claude = os.path.join(docs, "Claude"); problems = []
+    relof = lambda f: os.path.relpath(f, claude) if f.startswith(claude + os.sep) else os.path.relpath(f, docs)          # Claude's notes are named from docs/Claude; Home.md from docs
+    show = lambda r: "docs/Home.md" if r == "Home.md" else "docs/Claude/" + r
+    files = notes(docs); rel = {relof(f): f for f in files}
     others = [os.path.join(d, f) for d, ds, fs in os.walk(docs) for f in fs if f.endswith((".base", ".canvas")) and ".obsidian" not in d]
-    allrel = dict(rel); allrel.update({os.path.relpath(f, docs): f for f in others})
+    allrel = dict(rel); allrel.update({relof(f): f for f in others})
     byname = {}
     alias_of = {}
     for r, f in rel.items():
@@ -91,7 +95,7 @@ def check(root):
         return allrel[hits[0]] if len(set(hits)) == 1 else None
 
     # 1. the paths named by CLAUDE.md and Workflow.md
-    for src in (os.path.join(root, "CLAUDE.md"), os.path.join(docs, "Workflow.md")):
+    for src in (os.path.join(root, "CLAUDE.md"), os.path.join(claude, "Workflow.md")):
         if not os.path.exists(src): problems.append(f"{os.path.relpath(src, root)}: the file is missing"); continue
         for m in re.finditer(r"`([^`\n]+)`", rd(src)):
             p = m.group(1).strip().rstrip(".,;:")
@@ -123,7 +127,7 @@ def check(root):
             if not re.fullmatch(r"\d{4}-\d\d-\d\d", props.get("date", "")): problems.append(f"{name}: date '{props.get('date')}' is not YYYY-MM-DD")
             s = props.get("summary", "")
             if "summary" in props and not (0 < len(s) <= SUMMARY_MAX): problems.append(f"{name}: the summary has {len(s)} characters (1 to {SUMMARY_MAX})")
-            if props.get("type") == "idea" and os.path.relpath(f, docs).startswith("ideas" + os.sep):
+            if props.get("type") == "idea" and os.path.relpath(f, claude).startswith("ideas" + os.sep):
                 if props.get("area") not in AREAS: problems.append(f"{name}: idea area '{props.get('area')}' is not one of {', '.join(sorted(AREAS))}")
                 if props.get("source") not in SOURCES: problems.append(f"{name}: idea source '{props.get('source')}' is not owner or assistant")
                 if not props.get("origin"): problems.append(f"{name}: idea has no origin")
@@ -131,26 +135,30 @@ def check(root):
             if re.search(pat, t): problems.append(f"{name}: looks like a key or a token ({pat.split('[')[0]}...)")
 
     # 4. the sections of the spec that the app's comments quote
-    spec = os.path.join(docs, "studio-spec.md")
+    spec = os.path.join(claude, "studio-spec.md")
     if os.path.exists(spec):
         have = {m.group(1) for m in re.finditer(r"^#{2,3} (\d+(?:\.\d+[a-z]?)?)\.? ", rd(spec), re.M)}
+        spec_text = rd(spec) + "".join(rd(f) for r, f in rel.items() if r.startswith("spec" + os.sep))
         for d, ds, fs in os.walk(os.path.join(root, "app-swift")):
             ds[:] = [x for x in ds if x not in (".build", "build")]
             for fn in fs:
                 if not fn.endswith(".swift"): continue
                 for ln_no, ln in enumerate(rd(os.path.join(d, fn)).splitlines(), 1):
-                    m = re.search(r"docs/studio-spec\.md,? (?:sections?|section) ((?:\d+(?:\.\d+[a-z]?)?(?:,? and |, | and )?)+)", ln)
+                    nm = re.search(r'docs/Claude/studio-spec\.md,? "([^"]+)"', ln)
+                    if nm and nm.group(1) not in spec_text: problems.append(f"{os.path.relpath(os.path.join(d, fn), root)}:{ln_no}: quotes the name '{nm.group(1)}' of the spec, which is nowhere in it")
+                    if re.search(r"docs/studio-spec\.md", ln): problems.append(f"{os.path.relpath(os.path.join(d, fn), root)}:{ln_no}: names the old path docs/studio-spec.md (it is docs/Claude/studio-spec.md)")
+                    m = re.search(r"docs/Claude/studio-spec\.md,? (?:sections?|section) ((?:\d+(?:\.\d+[a-z]?)?(?:,? and |, | and )?)+)", ln)
                     if m:
                         for n in re.findall(r"\d+(?:\.\d+[a-z]?)?", m.group(1)):
-                            if n not in have: problems.append(f"{os.path.relpath(os.path.join(d, fn), root)}:{ln_no}: quotes section {n} of docs/studio-spec.md, which has no such heading")
-    else: problems.append("docs/studio-spec.md is missing")
+                            if n not in have: problems.append(f"{os.path.relpath(os.path.join(d, fn), root)}:{ln_no}: quotes section {n} of docs/Claude/studio-spec.md, which has no such heading")
+    else: problems.append("docs/Claude/studio-spec.md is missing")
 
     # 8. names, aliases, phase folders, isolated notes, quoted headings
     for r in sorted(rel):
-        if re.search(r"[()]|\d{4}-\d\d-\d\d|\b[Rr]evision\b|\b[Vv]ersions?\b", os.path.splitext(os.path.basename(r))[0]): problems.append(f"docs/{r}: the file name has a parenthesis, a date, a revision or a version (name it by what it says, put the rest in properties)")
+        if re.search(r"[()]|\d{4}-\d\d-\d\d|\b[Rr]evision\b|\b[Vv]ersions?\b", os.path.splitext(os.path.basename(r))[0]): problems.append(f"{show(r)}: the file name has a parenthesis, a date, a revision or a version (name it by what it says, put the rest in properties)")
     norm = lambda s: re.sub(r"[.:,()'\"/-]", "", s).strip()
     for hub in ("studio-spec.md", "ux-notes.md"):
-        hp = os.path.join(docs, hub)
+        hp = os.path.join(claude, hub)
         if not os.path.exists(hp): continue
         lines = rd(hp).split("\n")
         for i, ln in enumerate(lines):
@@ -160,28 +168,56 @@ def check(root):
             while j >= 0 and not lines[j].startswith("#"): j -= 1
             head = re.sub(r"^#+ ", "", lines[j]) if j >= 0 else ""
             if head and norm(head) != norm(os.path.basename(m.group(1))) and head not in aliases(rd(rel[m.group(1) + ".md"])):
-                problems.append(f"docs/{m.group(1)}.md: its title differs from the heading '{head}' of {hub}, which must be one of its aliases")
-    pdir = os.path.join(docs, "phases")
+                problems.append(f"docs/Claude/{m.group(1)}.md: its title differs from the heading '{head}' of {hub}, which must be one of its aliases")
+    pdir = os.path.join(claude, "phases")
     if os.path.isdir(pdir):
         for d in sorted(os.listdir(pdir)):
             if d != "early" and os.path.isdir(os.path.join(pdir, d)) and not any(os.path.exists(os.path.join(pdir, d, f)) for f in ("prompt.md", "report.md")):
-                problems.append(f"docs/phases/{d}/: a phase folder needs a prompt or a report (a summary alone is a flat note in docs/phases/early/)")
+                problems.append(f"docs/Claude/phases/{d}/: a phase folder needs a prompt or a report (a summary alone is a flat note in docs/Claude/phases/early/)")
     out_links, in_links = {}, {}
     for r, f in rel.items():
         for m in re.finditer(r"\[\[([^\]|#]+)", strip_code(rd(f))):
             tgt = resolve(m.group(1).rstrip("\\"))
-            if tgt and tgt != f: out_links.setdefault(r, set()).add(tgt); in_links.setdefault(os.path.relpath(tgt, docs), set()).add(r)
+            if tgt and tgt != f: out_links.setdefault(r, set()).add(tgt); in_links.setdefault(relof(tgt), set()).add(r)
     for r in sorted(rel):
-        if not r.startswith(("archive" + os.sep, "phases" + os.sep + "early" + os.sep)) and r not in out_links and r not in in_links: problems.append(f"docs/{r}: isolated note (no link in or out, properties included)")
-    ux = os.path.join(docs, "ux-notes.md")
-    if os.path.exists(ux) and "## Scene content" not in rd(ux): problems.append('docs/ux-notes.md: the heading "Scene content" (quoted by a code comment) is missing')
+        if not r.startswith(("archive" + os.sep, "phases" + os.sep + "early" + os.sep)) and r not in out_links and r not in in_links: problems.append(f"{show(r)}: isolated note (no link in or out, properties included)")
+    ux = os.path.join(claude, "ux-notes.md")
+    if os.path.exists(ux) and "## Scene content" not in rd(ux): problems.append('docs/Claude/ux-notes.md: the heading "Scene content" (quoted by a code comment) is missing')
+
+    # 9. layout, IDs, the owner-facing properties
+    for e in sorted(set(os.listdir(docs)) - {"Home.md", "Dashboards", "Claude", ".obsidian", ".DS_Store"}): problems.append(f"docs/{e}: the root of docs/ holds only Home.md, Dashboards/ and Claude/")
+    KIND = {"ideas": ("idea", "IDEA", ("area", "source", "since")), "questions": ("question", "QUESTION", ("since", "blocks", "recommendation")), "decisions": ("decision", "DECISION", ("since", "affects"))}
+    seen = {}
+    for r, f in sorted(rel.items()):
+        folder = r.split(os.sep)[0]
+        if folder not in KIND or os.sep not in r: continue
+        kind, pre, req = KIND[folder]; pr = properties(rd(f)) or {}; i = pr.get("id", "")
+        if not re.fullmatch(pre + r"-\d{3}", i): problems.append(f"{show(r)}: id '{i}' is missing or is not {pre}-NNN"); continue
+        seen.setdefault(i, []).append(r)
+        if i not in aliases(rd(f)): problems.append(f"{show(r)}: the id {i} must be one of its aliases (Cmd+O finds it)")
+        miss = [k for k in req if k not in pr]
+        if miss: problems.append(f"{show(r)}: missing the owner-facing properties {', '.join(miss)}")
+        if kind == "question" and pr.get("status") == "superseded" and not ("decision" in pr and "answer" in pr): problems.append(f"{show(r)}: a settled question needs a decision and an answer")
+        if kind == "idea" and pr.get("status") == "superseded" and "outcome" not in pr: problems.append(f"{show(r)}: a settled idea needs an outcome (built, promoted, merged or dropped)")
+    for i, rs in seen.items():
+        if len(rs) > 1: problems.append(f"the id {i} is used by {len(rs)} notes: {', '.join(rs)}")
+    regp = os.path.join(claude, "ids.json")
+    if not os.path.exists(regp): problems.append("docs/Claude/ids.json is missing")
+    else:
+        try: reg = json.loads(rd(regp))
+        except ValueError: reg = {}; problems.append("docs/Claude/ids.json is not valid JSON")
+        for kind, pre, _ in KIND.values():
+            last = int(reg.get(kind, 0)); nums = sorted(int(i.split("-")[1]) for i in seen if i.startswith(pre + "-"))
+            if nums and nums[-1] > last: problems.append(f"docs/Claude/ids.json: {pre}-{nums[-1]:03d} exists but the registry stops at {last}")
+            for n in range(1, last + 1):
+                if f"{pre}-{n:03d}" not in seen: problems.append(f"docs/Claude/ids.json: {pre}-{n:03d} was allocated but its note is gone (IDs are never reused: restore it, or settle the note as dropped)")
 
     # 5. the questions the owner's assistant reads before every prompt
-    ideas = os.path.join(docs, "ideas.md")
-    if not os.path.exists(ideas) or "## Questions to settle with the owner" not in rd(ideas): problems.append('docs/ideas.md: the section "Questions to settle with the owner" is missing')
+    ideas = os.path.join(claude, "ideas.md")
+    if not os.path.exists(ideas) or "## Questions to settle with the owner" not in rd(ideas): problems.append('docs/Claude/ideas.md: the section "Questions to settle with the owner" is missing')
     else:
         first = re.findall(r"^## (.*)$", rd(ideas), re.M)[:1]
-        if not first or not first[0].startswith("Questions to settle with the owner"): problems.append('docs/ideas.md: the section "Questions to settle with the owner" must come first')
+        if not first or not first[0].startswith("Questions to settle with the owner"): problems.append('docs/Claude/ideas.md: the section "Questions to settle with the owner" must come first')
 
     # 7. the agent view and the generated blocks are what the script would write
     try:
@@ -195,30 +231,37 @@ def selftest():
     with tempfile.TemporaryDirectory() as r:
         def w(p, t): os.makedirs(os.path.dirname(os.path.join(r, p)), exist_ok=True); open(os.path.join(r, p), "w", encoding="utf-8").write(t)
         fm = '---\ntype: reference\nstatus: current\nphase: \ndate: 2026-01-01\nsummary: "A note."\ntags:\n  - t\n---\n'
-        w("CLAUDE.md", "`docs/Workflow.md` and `docs/nope.md` and `docs/<x>.md`\n"); w("docs/Workflow.md", fm + "`tools/missing.py`\n")
-        w("docs/studio-spec.md", fm + "## 5. Screens\n\n### 5.6 Design packages\n"); w("docs/ideas.md", fm + "## Questions to settle with the owner (remind)\n")
-        w("docs/a.md", fm + "[[b]] [[b#Gone]] [[missing]] `[[in code]]` [x](nowhere.md) sk-" + "A" * 40 + "\n"); w("docs/b.md", "no properties\n")
-        w("docs/c.md", fm.replace("type: reference", "type: weird")); w("docs/long.md", fm.replace('"A note."', json.dumps("x" * 161)))
-        w("docs/nosummary.md", fm.replace('summary: "A note."\n', "")); w("docs/ideas/bad.md", fm.replace("type: reference", "type: idea") + "text\n")
-        w("app-swift/Sources/X.swift", "/// docs/studio-spec.md, sections 5.6 and 9.9\n")
-        w("docs/studio-spec.md", fm + "## 5. Screens\n\n### 5.6 Design packages\n\n## 5.4 Hierarchy: libraries (revision 3)\n\n[[spec/5.4 Hierarchy of libraries|5.4 Hierarchy of libraries]]\n\n## 6. Embedded engine (x)\n\n[[spec/6 Engine|6 Engine]]\n")
-        w("docs/spec/5.4 Hierarchy of libraries.md", fm + "text\n"); w("docs/spec/6 Engine.md", fm.replace("tags:", 'aliases:\n  - "6. Embedded engine (x)"\n  - "Old title"\ntags:') + "text\n")
-        w("docs/spec/7 Thing (revision 2).md", fm + "text\n"); w("docs/phases/OnlySummary/summary.md", fm + "text\n"); w("docs/phases/Fine/report.md", fm + "text\n")
-        w("docs/iso.md", fm + "alone\n"); w("docs/archive/iso2.md", fm + "alone\n"); w("docs/phases/early/iso3.md", fm + "alone\n"); w("docs/ux-notes.md", fm + "## Other block\n")
-        w("docs/old.md", fm + "[[Old title]] [[spec/6 Engine]]\n")
+        w("CLAUDE.md", "`docs/Claude/Workflow.md` and `docs/nope.md` and `docs/<x>.md`\n"); w("docs/Claude/Workflow.md", fm + "`tools/missing.py`\n")
+        w("docs/Claude/studio-spec.md", fm + "## 5. Screens\n\n### 5.6 Design packages\n"); w("docs/Claude/ideas.md", fm + "## Questions to settle with the owner (remind)\n")
+        w("docs/Claude/a.md", fm + "[[b]] [[b#Gone]] [[missing]] `[[in code]]` [x](nowhere.md) sk-" + "A" * 40 + "\n"); w("docs/Claude/b.md", "no properties\n")
+        w("docs/Claude/c.md", fm.replace("type: reference", "type: weird")); w("docs/Claude/long.md", fm.replace('"A note."', json.dumps("x" * 161)))
+        w("docs/Claude/nosummary.md", fm.replace('summary: "A note."\n', "")); w("docs/Claude/ideas/bad.md", fm.replace("type: reference", "type: idea") + "text\n")
+        w("app-swift/Sources/X.swift", "/// docs/Claude/studio-spec.md, sections 5.6 and 9.9\n")
+        w("docs/Claude/studio-spec.md", fm + "## 5. Screens\n\n### 5.6 Design packages\n\n## 5.4 Hierarchy: libraries (revision 3)\n\n[[spec/5.4 Hierarchy of libraries|5.4 Hierarchy of libraries]]\n\n## 6. Embedded engine (x)\n\n[[spec/6 Engine|6 Engine]]\n")
+        w("docs/Claude/spec/5.4 Hierarchy of libraries.md", fm + "text\n"); w("docs/Claude/spec/6 Engine.md", fm.replace("tags:", 'aliases:\n  - "6. Embedded engine (x)"\n  - "Old title"\ntags:') + "text\n")
+        w("docs/Claude/spec/7 Thing (revision 2).md", fm + "text\n"); w("docs/Claude/phases/OnlySummary/summary.md", fm + "text\n"); w("docs/Claude/phases/Fine/report.md", fm + "text\n")
+        w("docs/Claude/iso.md", fm + "alone\n"); w("docs/Claude/archive/iso2.md", fm + "alone\n"); w("docs/Claude/phases/early/iso3.md", fm + "alone\n"); w("docs/Claude/ux-notes.md", fm + "## Other block\n")
+        w("docs/Claude/old.md", fm + "[[Old title]] [[spec/6 Engine]]\n"); w("docs/stray.md", fm + "x\n")
+        w("app-swift/Sources/Y.swift", '/// docs/studio-spec.md, section 5.6\n/// docs/Claude/studio-spec.md, "Nowhere name"\n')
+        w("docs/Claude/ideas/A.md", fm.replace("tags:", 'id: IDEA-001\naliases:\n  - "IDEA-001"\narea: app\nsource: owner\nsince: 2026-01-01\norigin: x\ntags:').replace("type: reference", "type: idea") + "x\n")
+        w("docs/Claude/ideas/B.md", fm.replace("tags:", 'id: IDEA-001\naliases:\n  - "IDEA-001"\narea: app\nsource: owner\nsince: 2026-01-01\norigin: x\ntags:').replace("type: reference", "type: idea") + "x\n")
+        w("docs/Claude/questions/Q.md", fm.replace("type: reference", "type: question").replace("tags:", 'id: QUESTION-001\ntags:') + "x\n")
+        w("docs/Claude/ids.json", '{"idea": 3, "question": 1, "decision": 0}')
         p = "\n".join(check(r))
-        for needle in ("5.4 Hierarchy of libraries.md: its title differs from the heading '5.4 Hierarchy: libraries (revision 3)'", "7 Thing (revision 2).md: the file name has a parenthesis", "docs/phases/OnlySummary/: a phase folder needs a prompt",
-                       "docs/iso.md: isolated note", 'the heading "Scene content"'):
+        for needle in ("5.4 Hierarchy of libraries.md: its title differs from the heading '5.4 Hierarchy: libraries (revision 3)'", "7 Thing (revision 2).md: the file name has a parenthesis", "docs/Claude/phases/OnlySummary/: a phase folder needs a prompt",
+                       "docs/Claude/iso.md: isolated note", 'the heading "Scene content"'):
             assert needle in p, f"expected a problem containing {needle!r}, got:\n{p}"
-        for needle in ("6 Engine.md: its title", "[[Old title]]", "docs/archive/iso2.md: isolated", "docs/phases/early/iso3.md: isolated", "docs/phases/Fine/: a phase folder"):
+        for needle in ("6 Engine.md: its title", "[[Old title]]", "docs/Claude/archive/iso2.md: isolated", "docs/Claude/phases/early/iso3.md: isolated", "docs/Claude/phases/Fine/: a phase folder"):
             assert needle not in p, f"unexpected problem containing {needle!r}:\n{p}"
         p = "\n".join(check(r))
         for needle in ("names docs/nope.md", "names tools/missing.py", "[[b#Gone]]", "[[missing]]", "(nowhere.md)", "looks like a key", "b.md: no properties", "type 'weird'", "section 9.9",
-                       "long.md: the summary has 161", "nosummary.md: missing properties summary", "idea area 'None'", "idea source 'None'", "idea has no origin", "docs_index could not run"):
+                       "long.md: the summary has 161", "nosummary.md: missing properties summary", "idea area 'None'", "idea source 'None'", "idea has no origin", "docs_index could not run",
+                       "docs/stray.md: the root of docs/", "names the old path docs/studio-spec.md", "quotes the name 'Nowhere name'", "the id IDEA-001 is used by 2 notes", "IDEA-002 was allocated but its note is gone", "questions/Q.md: the id QUESTION-001 must be one of its aliases",
+                       "questions/Q.md: missing the owner-facing properties since, blocks, recommendation"):
             assert needle in p, f"expected a problem containing {needle!r}, got:\n{p}"
         for needle in ("docs/<x>.md", "in code", "section 5.6", "must come first"):
             assert needle not in p, f"unexpected problem containing {needle!r}:\n{p}"
-        w("docs/ideas.md", fm + "## Ideas\n\n## Questions to settle with the owner (remind)\n")
+        w("docs/Claude/ideas.md", fm + "## Ideas\n\n## Questions to settle with the owner (remind)\n")
         assert "must come first" in "\n".join(check(r)), "the questions section must come first"
     print("check_docs selftest ok")
 

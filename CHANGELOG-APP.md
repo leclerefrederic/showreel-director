@@ -2,6 +2,10 @@
 
 Version of the Showreel Studio app (`app-swift/shared/app-version.json`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The skill and the project file format have their own numbers. Ship with `python3 tools/bump_app.py`, after writing the section of the new version in `RELEASE-NOTES-APP.md`.
 
+## 0.19.3 - 2026-11-10
+
+OBS5: comments and docs paths only (the spec moved to docs/Claude/studio-spec.md), no behaviour change
+
 ## 0.19.2 - 2026-11-10
 
 RB1: one rule for the rail's buttons (centre views never toggle off, Clap always opens when asked, same states and tooltips, arrows inside a group)

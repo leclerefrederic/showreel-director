@@ -1,0 +1,52 @@
+filters:
+  and:
+    - 'type == "question"'
+properties:
+  id:
+    displayName: ID
+  file.name:
+    displayName: Question
+  summary:
+    displayName: The question
+  blocks:
+    displayName: Blocks
+  recommendation:
+    displayName: Recommendation
+  since:
+    displayName: Since
+  answer:
+    displayName: Answer
+  decision:
+    displayName: Decision
+views:
+  - type: table
+    name: "To answer"
+    filters:
+      and:
+        - 'status == "current"'
+    order:
+      - id
+      - file.name
+      - summary
+      - blocks
+      - recommendation
+      - since
+    sort:
+      - property: blocks
+        direction: DESC
+      - property: since
+        direction: ASC
+  - type: table
+    name: "Answered"
+    filters:
+      and:
+        - 'status == "superseded"'
+    order:
+      - id
+      - file.name
+      - answer
+      - decision
+      - since
+    sort:
+      - property: since
+        direction: DESC

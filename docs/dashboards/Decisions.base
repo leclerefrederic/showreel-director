@@ -1,34 +1,42 @@
 filters:
   and:
-    - type == "decision"
+    - 'type == "decision"'
 properties:
+  id:
+    displayName: ID
+  file.name:
+    displayName: Decision
   summary:
     displayName: Summary
-  phase:
-    displayName: Phase
-  date:
-    displayName: Date
+  since:
+    displayName: Since
+  affects:
+    displayName: Affects
   status:
     displayName: Status
 views:
   - type: table
-    name: Decisions, newest first
-    order:
-      - file.name
-      - date
-      - phase
-      - status
-      - summary
-    sort:
-      - property: date
-        direction: DESC
-  - type: table
-    name: Superseded
+    name: "Current"
     filters:
       and:
-        - status == "superseded"
+        - 'status == "current"'
     order:
+      - id
       - file.name
-      - date
-      - phase
+      - since
+      - affects
+      - summary
+    sort:
+      - property: since
+        direction: DESC
+  - type: table
+    name: "Superseded"
+    filters:
+      and:
+        - 'status == "superseded"'
+    order:
+      - id
+      - file.name
+      - since
+      - affects
       - summary

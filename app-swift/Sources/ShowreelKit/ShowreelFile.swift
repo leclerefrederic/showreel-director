@@ -1,6 +1,6 @@
 import Foundation
 
-/// `showreel.json`, schema version 1 (docs/studio-spec.md, sections 3.1 and 5.1b).
+/// `showreel.json`, schema version 1 (docs/Claude/studio-spec.md, sections 3.1 and 5.1b).
 /// Keys this version does not know are kept in `unknown` at every level, so a newer skill never loses data.
 public struct ShowreelFile: Codable, Equatable {
     public static let fileName = "showreel.json"
@@ -137,7 +137,7 @@ public struct ShowreelFile: Codable, Equatable {
         public var archived: Bool
         /// What this scene does differently from the project's look: background (id, mood), palette, fonts. Absent: everything is inherited.
         public var overrides: Decisions?
-        /// What the scene contains, in processing priority (docs/studio-spec.md, "Scene content"). The first text item holds `text`.
+        /// What the scene contains, in processing priority (docs/Claude/studio-spec.md, "Scene content"). The first text item holds `text`.
         public var content: [ContentItem]
         /// auto, guided or precise; absent: the project's.
         public var controlLevel: String?

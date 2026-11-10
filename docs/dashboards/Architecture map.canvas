@@ -8,7 +8,7 @@
 		{"id":"000000a0b0c0d006","type":"file","x":400,"y":-180,"width":280,"height":100,"file":"phases-done.md","color":"3"},
 		{"id":"000000a0b0c0d007","type":"file","x":400,"y":-40,"width":280,"height":100,"file":"ideas.md","color":"3"},
 		{"id":"000000a0b0c0d008","type":"file","x":400,"y":140,"width":280,"height":100,"file":"dashboards/Decisions.base","color":"5"},
-		{"id":"000000a0b0c0d009","type":"file","x":400,"y":280,"width":280,"height":100,"file":"dashboards/Open questions.base","color":"5"},
+		{"id":"000000a0b0c0d009","type":"file","x":400,"y":280,"width":280,"height":100,"file":"dashboards/Questions.base","color":"5"},
 		{"id":"000000a0b0c0d00a","type":"file","x":760,"y":-180,"width":260,"height":100,"file":"dashboards/Phases.base","color":"5"},
 		{"id":"000000a0b0c0d014","type":"text","x":0,"y":560,"width":320,"height":120,"text":"## Repository\n\n`CLAUDE.md` rules, `ROADMAP.md`, `tools/`, `docs/` (this vault)","color":"2"},
 		{"id":"000000a0b0c0d015","type":"text","x":-420,"y":760,"width":300,"height":140,"text":"## Skill\n\n`showreel-director/`: `SKILL.md` router, `references/`, `engine/`, `scripts/`, `evals/`. Shipped as `showreel-director.skill`.","color":"1"},
