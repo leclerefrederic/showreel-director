@@ -2,7 +2,7 @@
 type: reference
 status: current
 phase: 
-date: 2026-11-10
+date: 2026-11-11
 summary: "The agent view of the vault: one line per note, generated from the properties of the notes. Never edited by hand."
 tags:
   - index
@@ -18,9 +18,9 @@ tags:
 
 ## Status
 
-- App 0.23.1, skill 0.18.2. Last built phase: Batch. Next: PK2 (apply a package to an existing project), N (activity and notifications, in the spec).
-- 257 notes. Ideas: 51 (37 parked, 2 wanted soon, 12 built or promoted).
-- Open questions (18): Which instant of a scene should its thumbnail show; What form should the timing control of an item take; Should timing be in seconds or in beats; Should the viewer play an item's timing live; Should the viewer keep its content drawing before a build; Should the strip mark every frame as fresh or only the stale ones; Should the Inspector mark show when the side is closed; Should locked scenes from before UI2 take a copy of their look when the project opens; Should an item's timing snap to the music grid; Should a lock also freeze the transitions beside a locked scene; Should Look light a centre entry; Shortcuts for the other right panels; Rework of the Wizard and Manual creation experience; May a click on the active Build leave the Build; Keep three scenes written at once as the default; Is the phase order of the spec still the one we follow; Confirm the two-thirds split of the left panel; Confirm the Checks badge after use.
+- App 0.24.0, skill 0.18.2. Last built phase: Batch. Next: PK2 (apply a package to an existing project), N (activity and notifications, in the spec).
+- 281 notes. Ideas: 52 (37 parked, 2 wanted soon, 13 built or promoted).
+- Open questions: none.
 
 ## Entry notes and hubs
 
@@ -98,7 +98,7 @@ Cite a decision by its ID and title: DECISION-001.
 | DECISION-008 | `decisions/No limits on the agent during the prototype.md` | current | BF2 | 2026-11-09 | No budget or limit on the agent during the prototype: one cap, the model's maximum output, and a loop guard. |
 | DECISION-009 | `decisions/The conversation language comes from the Mac.md` | current | CL1 | 2026-11-09 | A new project's conversation language is read from the Mac and stored once with its origin, not asked as a question. |
 | DECISION-010 | `decisions/The instruction field is the scene note and does not switch Ready.md` | superseded | UI2 | 2026-11-09 | The instruction field is the scene's note and writing it does not switch Ready; superseded when the field was removed in DS3. |
-| DECISION-011 | `decisions/The left panel splits two thirds Storyboard and one third Resources.md` | current | UI1 | 2026-11-09 | The left panel splits two thirds Storyboard and one third Resources by default, with a divider range of 25 to 85 percent. |
+| DECISION-011 | `decisions/The left panel splits two thirds Storyboard and one third Resources.md` | superseded | UI1 | 2026-11-09 | The left panel splits two thirds Storyboard and one third Resources by default, with a divider range of 25 to 85 percent. |
 | DECISION-012 | `decisions/A package can be handed to the skill.md` | current | PK1 | 2026-11-10 | A package can also be handed to the skill, to feed its style sheet. |
 | DECISION-013 | `decisions/A package is one archive file with its own extension.md` | current | PK1 | 2026-11-10 | A package is exported as one archive file with an extension of its own, different from the hidden .studio folder. |
 | DECISION-014 | `decisions/Clap is an entry of the rail.md` | current | RL1 | 2026-11-10 | Ask Clap is an entry of the left rail, next to Project and Build, instead of a tab of the right panel. |
@@ -110,6 +110,19 @@ Cite a decision by its ID and title: DECISION-001.
 | DECISION-020 | `decisions/A scene enters and leaves the storyboard by the eye and by drag and drop.md` | current |  | 2026-11-10 | A scene enters and leaves the storyboard by the eye and by drag and drop. |
 | DECISION-021 | `decisions/Parked scenes and thrown-away items are two different places.md` | current |  | 2026-11-10 | A scene parked outside the film and an item thrown away are two different places: the group Not in the storyboard, and a trash. |
 | DECISION-022 | `decisions/Scene thumbnails are a PNG capture of the real scene.md` | current | W4b | 2026-11-10 | A scene's thumbnail is a PNG captured from the real rendering of the scene, not the schematic drawing of W4; owner choice of 2026-11-10. |
+| DECISION-023 | `decisions/The Resources section takes the height of the Film strip by default.md` | current |  | 2026-11-11 | The Resources section takes the height of the Film strip by default. |
+| DECISION-024 | `decisions/The phases follow the owner's choice, not a fixed order.md` | current |  | 2026-11-11 | The phases follow the owner's choice, not a fixed order. |
+| DECISION-025 | `decisions/Scenes are written three at once by default.md` | current |  | 2026-11-11 | Scenes are written three at once by default. |
+| DECISION-026 | `decisions/A click on the active centre view does nothing.md` | current |  | 2026-11-11 | A click on the active centre view does nothing. |
+| DECISION-027 | `decisions/The Inspector, Look and Project panels get keyboard shortcuts.md` | current |  | 2026-11-11 | The Inspector, Look and Project panels get keyboard shortcuts. |
+| DECISION-028 | `decisions/Locked scenes from before UI2 take a copy of their look when the project opens.md` | current |  | 2026-11-11 | Locked scenes from before UI2 take a copy of their look when the project opens. |
+| DECISION-029 | `decisions/The Inspector mark shows only while another right panel is open.md` | current |  | 2026-11-11 | The Inspector mark shows only while another right panel is open. |
+| DECISION-030 | `decisions/An item's timing stays free to a tenth of a second.md` | current |  | 2026-11-11 | An item's timing stays free to a tenth of a second. |
+| DECISION-031 | `decisions/An item's timing is written in seconds.md` | current |  | 2026-11-11 | An item's timing is written in seconds. |
+| DECISION-032 | `decisions/The viewer shows a still of the scene at a chosen time.md` | current |  | 2026-11-11 | The viewer shows a still of the scene at a chosen time. |
+| DECISION-033 | `decisions/A scene thumbnail shows the still time of three quarters.md` | current |  | 2026-11-11 | A scene thumbnail shows the still time of three quarters. |
+| DECISION-034 | `decisions/The viewer keeps its content drawing before a build.md` | current |  | 2026-11-11 | The viewer keeps its content drawing before a build. |
+| DECISION-035 | `decisions/The strip marks only the stale frames.md` | current |  | 2026-11-11 | The strip marks only the stale frames. |
 
 ## Questions
 
@@ -117,25 +130,25 @@ Cite a decision by its ID and title: DECISION-001.
 
 | id | path | status | phase | date | summary |
 |---|---|---|---|---|---|
-| QUESTION-001 | `questions/Confirm the Checks badge after use.md` | current | UI1 | 2026-11-10 | Confirm the Checks badge in the top bar after using it, or switch to a thin status row under the left panel. |
-| QUESTION-002 | `questions/Confirm the two-thirds split of the left panel.md` | current | UI1 | 2026-11-10 | Confirm the two-thirds and one-third split of the left panel, never judged on a laptop screen, and the default state of Resources. |
-| QUESTION-003 | `questions/Is the phase order of the spec still the one we follow.md` | current |  | 2026-11-10 | Spec section 11 point 5, the order of the phases, has no recorded decision, and the project has gone far beyond phases A to D. |
-| QUESTION-004 | `questions/Keep three scenes written at once as the default.md` | current | BG2 | 2026-11-10 | Whether to keep three scenes written at once as the default, to decide after measuring one against three. |
-| QUESTION-005 | `questions/May a click on the active Build leave the Build.md` | current | RB1 | 2026-11-10 | RB1 made Build not toggle off, so a second click does nothing and Film is the way back; should Build toggle off? |
-| QUESTION-006 | `questions/Rework of the Wizard and Manual creation experience.md` | current | P5 | 2026-11-10 | Rework the Wizard and Manual creation experience, asking the owner first what bothers them in each. |
-| QUESTION-007 | `questions/Shortcuts for the other right panels.md` | current | RB1 | 2026-11-10 | No shortcut opens the Inspector, Look or Project, next to Shift-Command-A for Clap; add one? |
-| QUESTION-008 | `questions/Should Look light a centre entry.md` | current | RB1 | 2026-11-10 | While the Look panel is open the centre shows the design board but the Film entry stays lit; light Look in the centre group too? |
-| QUESTION-009 | `questions/Should a lock also freeze the transitions beside a locked scene.md` | current | UI2 | 2026-11-10 | Whether a lock should also freeze the transitions on both sides of a locked scene, which stay editable today. |
-| QUESTION-010 | `questions/Should locked scenes from before UI2 take a copy of their look when the project opens.md` | current | UI2 | 2026-11-10 | Whether to give locked scenes from before UI2 a copy of their look automatically when the project opens. |
-| QUESTION-011 | `questions/Should the Inspector mark show when the side is closed.md` | current | RB1 | 2026-11-10 | A selection with the right side closed opens the Inspector, so the mark shows only while another panel is open; show it when closed? |
+| QUESTION-001 | `questions/Confirm the Checks badge after use.md` | superseded | UI1 | 2026-11-11 | Confirm the Checks badge in the top bar after using it, or switch to a thin status row under the left panel. |
+| QUESTION-002 | `questions/Confirm the two-thirds split of the left panel.md` | superseded | UI1 | 2026-11-11 | Confirm the two-thirds and one-third split of the left panel, never judged on a laptop screen, and the default state of Resources. |
+| QUESTION-003 | `questions/Is the phase order of the spec still the one we follow.md` | superseded |  | 2026-11-11 | Spec section 11 point 5, the order of the phases, has no recorded decision, and the project has gone far beyond phases A to D. |
+| QUESTION-004 | `questions/Keep three scenes written at once as the default.md` | superseded | BG2 | 2026-11-11 | Whether to keep three scenes written at once as the default, to decide after measuring one against three. |
+| QUESTION-005 | `questions/May a click on the active Build leave the Build.md` | superseded | RB1 | 2026-11-11 | RB1 made Build not toggle off, so a second click does nothing and Film is the way back; should Build toggle off? |
+| QUESTION-006 | `questions/Rework of the Wizard and Manual creation experience.md` | superseded | P5 | 2026-11-11 | Rework the Wizard and Manual creation experience, asking the owner first what bothers them in each. |
+| QUESTION-007 | `questions/Shortcuts for the other right panels.md` | superseded | RB1 | 2026-11-11 | No shortcut opens the Inspector, Look or Project, next to Shift-Command-A for Clap; add one? |
+| QUESTION-008 | `questions/Should Look light a centre entry.md` | superseded | RB1 | 2026-11-11 | While the Look panel is open the centre shows the design board but the Film entry stays lit; light Look in the centre group too? |
+| QUESTION-009 | `questions/Should a lock also freeze the transitions beside a locked scene.md` | superseded | UI2 | 2026-11-11 | Whether a lock should also freeze the transitions on both sides of a locked scene, which stay editable today. |
+| QUESTION-010 | `questions/Should locked scenes from before UI2 take a copy of their look when the project opens.md` | superseded | UI2 | 2026-11-11 | Whether to give locked scenes from before UI2 a copy of their look automatically when the project opens. |
+| QUESTION-011 | `questions/Should the Inspector mark show when the side is closed.md` | superseded | RB1 | 2026-11-11 | A selection with the right side closed opens the Inspector, so the mark shows only while another panel is open; show it when closed? |
 | QUESTION-012 | `questions/Should the instruction switch Ready off.md` | superseded | UI2 | 2026-11-10 | Settled: the owner removed the Instruction field, so nothing offers to switch Ready off any more. |
-| QUESTION-013 | `questions/What form should the timing control of an item take.md` | current | W4 | 2026-11-10 | What form should the in and out of an item take in the inspector: two steppers behind an Auto or Fixed switch, as built, or a strip under the rows? |
-| QUESTION-014 | `questions/Should an item's timing snap to the music grid.md` | current | W4 | 2026-11-10 | When a track is analysed, should the in and out of an item snap to the beats and bars of the music grid, or stay free to the tenth of a second? |
-| QUESTION-015 | `questions/Should timing be in seconds or in beats.md` | current | W4 | 2026-11-10 | Should the in and out of an item be written in seconds from the start of the scene, as built, or in beats when the music has a tempo? |
-| QUESTION-016 | `questions/Should the viewer play an item's timing live.md` | current | W4 | 2026-11-10 | Should the viewer play a scene with its items coming and going in time, or keep showing a still at a chosen time, as built? |
-| QUESTION-017 | `questions/Which instant of a scene should its thumbnail show.md` | current | W4b | 2026-11-10 | Which instant represents a scene in its PNG thumbnail: the W4 still time, the middle, the busiest moment or the last moment before the exit. |
-| QUESTION-018 | `questions/Should the viewer keep its content drawing before a build.md` | current | W4b | 2026-11-10 | Before a build has a film to play, should the viewer keep drawing the scene from its content (W4), or show a plain placeholder like the strip. |
-| QUESTION-019 | `questions/Should the strip mark every frame as fresh or only the stale ones.md` | current | W4b | 2026-11-10 | Whether each strip frame shows a freshness mark all the time, or only the out-of-date frames, which carry a clock mark. |
+| QUESTION-013 | `questions/What form should the timing control of an item take.md` | superseded | W4 | 2026-11-11 | What form should the in and out of an item take in the inspector: two steppers behind an Auto or Fixed switch, as built, or a strip under the rows? |
+| QUESTION-014 | `questions/Should an item's timing snap to the music grid.md` | superseded | W4 | 2026-11-11 | When a track is analysed, should the in and out of an item snap to the beats and bars of the music grid, or stay free to the tenth of a second? |
+| QUESTION-015 | `questions/Should timing be in seconds or in beats.md` | superseded | W4 | 2026-11-11 | Should the in and out of an item be written in seconds from the start of the scene, as built, or in beats when the music has a tempo? |
+| QUESTION-016 | `questions/Should the viewer play an item's timing live.md` | superseded | W4 | 2026-11-11 | Should the viewer play a scene with its items coming and going in time, or keep showing a still at a chosen time, as built? |
+| QUESTION-017 | `questions/Which instant of a scene should its thumbnail show.md` | superseded | W4b | 2026-11-11 | Which instant represents a scene in its PNG thumbnail: the W4 still time, the middle, the busiest moment or the last moment before the exit. |
+| QUESTION-018 | `questions/Should the viewer keep its content drawing before a build.md` | superseded | W4b | 2026-11-11 | Before a build has a film to play, should the viewer keep drawing the scene from its content (W4), or show a plain placeholder like the strip. |
+| QUESTION-019 | `questions/Should the strip mark every frame as fresh or only the stale ones.md` | superseded | W4b | 2026-11-11 | Whether each strip frame shows a freshness mark all the time, or only the out-of-date frames, which carry a clock mark. |
 
 ## Ideas
 
@@ -194,6 +207,7 @@ Cite a decision by its ID and title: DECISION-001.
 | IDEA-049 | `ideas/A short looping GIF as the thumbnail of a scene.md` | draft |  | 2026-11-10 | A short looping GIF as the thumbnail of a scene. |
 | IDEA-050 | `ideas/Each transition gets its own icon in the strip.md` | draft |  | 2026-11-10 | Each transition gets its own icon in the strip. |
 | IDEA-051 | `ideas/Mouse tracker for HTML reels.md` | draft |  | 2026-11-10 | Optional project setting: the pointer gently moves backgrounds, 3D camera and layers in the HTML player; off by default, ignored by MP4 export. |
+| IDEA-052 | `ideas/Undo and Redo buttons in the rail with a history menu.md` | superseded | UR1 | 2026-11-11 | Undo and Redo buttons in the rail, and a menu on long press or right click that lists the last actions so the owner can go back several steps. |
 
 ## Archive (reports that span several phases)
 
@@ -209,6 +223,8 @@ Cite a decision by its ID and title: DECISION-001.
 | `archive/BATCH-C/report.md` | phase-report | current | BATCH-C | 2026-11-10 | Report of Batch C, which ran FL1, FT1, MT1 and PF1 in a row: all four done, app 0.21.4 to 0.21.7, skill unchanged. |
 | `archive/BATCH-D/prompt.md` | phase-prompt | current | BATCH-D | 2026-11-10 | Runs SM1, PT1 and PL1 (fewer controls, project settings in tabs, palette checks), overriding the stop-after-each-phase rule. |
 | `archive/BATCH-D/report.md` | phase-report | current | BATCH-D | 2026-11-10 | Report of Batch D, which ran SM1, PT1 and PL1 in a row: all three done, app 0.22.0 to 0.23.1, skill unchanged. |
+| `archive/BATCH-E/prompt.md` | phase-prompt | current | BATCH-E | 2026-11-11 | Runs RS1, SC1, LK1 and UR1 (Resources height, panel shortcuts, locked-scene look copy, Undo and Redo in the rail), overriding the stop-after-each-phase rule. |
+| `archive/BATCH-E/report.md` | phase-report | current | BATCH-E | 2026-11-11 | Report of Batch E, which ran RS1, SC1, LK1 and UR1 in a row: all four done, app 0.23.2 to 0.24.0, skill unchanged. |
 
 ## Phases
 
@@ -237,6 +253,7 @@ One line per phase folder `phases/<ID>/`: its files, the versions of its report 
 | `phases/FIX3/` | prompt |  |  | 2026-11-09 | Shelved prompt to turn the layout toggle into two icons with a sliding highlight; the owner kept the single button. |
 | `phases/FL1/` | prompt, report | 0.21.4 | 0.18.2 | 2026-11-10 | Report of FL1: Film strip frames drawn as film (grid under frames, centred thumbnail on translucent black, reel perforations and caps); app 0.21.4. |
 | `phases/FT1/` | prompt, report | 0.21.5 | 0.18.2 | 2026-11-10 | Report of FT1: Film toolbar without Ripple or Add scene, zoom group at the far right; resize always moves the following scenes; app 0.21.5. |
+| `phases/LK1/` | prompt, report | 0.23.4 | 0.18.2 | 2026-11-11 | Report of LK1: opening a project gives each scene locked before UI2 a copy of its look, once, with a journal line and a quiet note; app 0.23.4. |
 | `phases/MT1/` | prompt, report | 0.21.6 | 0.18.2 | 2026-11-10 | Report of MT1: a music lane toolbar (Beat, Bars, Sections, Drop, Analyse, track name and BPM); the Beat menu leaves the Film toolbar; app 0.21.6. |
 | `phases/OBS1/` | prompt, report |  |  | 2026-11-10 | Report of OBS1: the audit of every path read under docs/, three lists, the entry notes and a proposed tree. |
 | `phases/OBS2/` | prompt, report |  |  | 2026-11-10 | Report of OBS2: docs/ migrated into phase folders and atomic notes, with decisions, dashboards, a check script and a snapshot proof. |
@@ -253,9 +270,12 @@ One line per phase folder `phases/<ID>/`: its files, the versions of its report 
 | `phases/RF1/` | prompt, report | 0.21.2 | 0.18.2 | 2026-11-10 | Report of RF1: compiler warnings of the app cleaned from 21 distinct sites to 4 that need an ownership or isolation change; no behaviour change; app 0.21.2. |
 | `phases/RF2/` | prompt, report | 0.21.3 | 0.18.2 | 2026-11-10 | Report of RF2: four fragile glue spots hardened (capture load timeout, stepper repeat timer, font registry key, thumbnail tasks at close); tests; app 0.21.3. |
 | `phases/RL1/` | prompt, report, summary | 0.16.0 |  | 2026-11-09 | Report of RL1: the two-group rail with Clap, the full-height shell, the Film placement toggle and the reset icon. |
+| `phases/RS1/` | prompt, report | 0.23.2 | 0.18.2 | 2026-11-11 | Report of RS1: a left panel whose divider was never dragged gives the Resources the height of the Film strip, from a pure function in Kit; app 0.23.2. |
+| `phases/SC1/` | prompt, report | 0.23.3 | 0.18.2 | 2026-11-11 | Report of SC1: Shift-Command-I, J and Y open the Inspector, Project and its Look tab, listed in the View menu and the rail tooltips; app 0.23.3. |
 | `phases/SM1/` | prompt, report | 0.22.0 | 0.18.2 | 2026-11-10 | Report of SM1: implicit Go, Look leaves the rail for the Project panel's tab, empty inspector without its Project button; Catalogue kept; app 0.22.0. |
 | `phases/UI1/` | prompt, report | 0.12.0 |  | 2026-11-09 | Report of UI1: the left panel as the Storyboard with the Resources below, and the decisions the owner can reverse. |
 | `phases/UI2/` | prompt, report | 0.13.0 |  | 2026-11-09 | Report of UI2: clear scene rows, three switches, Delete scene and a real lock, with the decisions taken. |
+| `phases/UR1/` | prompt, report | 0.24.0 | 0.18.2 | 2026-11-11 | Report of UR1: Undo and Redo buttons in the rail with a press-and-hold or right-click history menu of 20 steps, going back several steps at once; app 0.24.0. |
 | `phases/V2/` | report, summary |  |  | 2026-11-09 | Report of V2: the state of the build and of the reader. |
 | `phases/W4/` | prompt, report | 0.20.0 | 0.18.2 | 2026-11-10 | Report of W4: timing of each item inside its scene, pictures and viewer drawn from the content, one thumbnail per scene; app 0.20.0, skill unchanged. |
 | `phases/W4b/` | prompt, report | 0.21.0 | 0.18.2 | 2026-11-10 | Report of W4b: scene thumbnails are a PNG captured from the real built scene, with placeholder, stale mark and refresh; app 0.21.0, skill unchanged. |

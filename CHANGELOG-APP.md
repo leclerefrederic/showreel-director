@@ -2,6 +2,22 @@
 
 Version of the Showreel Studio app (`app-swift/shared/app-version.json`). Semantic versioning while below 1.0: a minor number for new capabilities or changed behaviour, a patch number for fixes. The skill and the project file format have their own numbers. Ship with `python3 tools/bump_app.py`, after writing the section of the new version in `RELEASE-NOTES-APP.md`.
 
+## 0.24.0 - 2026-11-11
+
+UR1: Undo and Redo in the rail, with a history menu
+
+## 0.23.4 - 2026-11-11
+
+LK1: locked scenes from before UI2 take a copy of their look when the project opens
+
+## 0.23.3 - 2026-11-11
+
+SC1: shortcuts for the Inspector, Project and its Look tab
+
+## 0.23.2 - 2026-11-11
+
+RS1: the Resources take the height of the Film strip by default
+
 ## 0.23.1 - 2026-11-10
 
 Palette contrast checks under their swatches

@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: RB1
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[A click on the active centre view does nothing]]"
+answer: "No: a second click on the active Build does nothing and Film is the way back (2026-11-11)."
 summary: "RB1 made Build not toggle off, so a second click does nothing and Film is the way back; should Build toggle off?"
 id: QUESTION-005
 aliases:

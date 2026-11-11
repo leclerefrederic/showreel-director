@@ -47,3 +47,11 @@ The Film toolbar lost the Ripple switch and the Add scene menu; the zoom group (
 ## Built in MT1 (2026-11-10)
 
 The music lane has a toolbar (Beat, Bars, Sections, Drop, Analyse, track name and BPM), pinned under the lane. Snapping follows the finest mark shown. Remains: the toolbar sits under the lane, not on a header inside it; Clap's `get_state` still reports the project's stored snap level.
+
+## Built in RS1 (2026-11-11)
+
+A left panel whose divider was never dragged gives the Resources the height of the Film strip (`LibrarySplit.defaultFraction`); a dragged divider is kept, and at full-width Film placement the old two thirds stay. Remains: the divider follows the strip while the strip is dragged; everything drawn is to be judged on screen.
+
+## Built in LK1 (2026-11-11)
+
+A project opened by the app gives each scene locked before UI2 a copy of its look (`LockedLookMigration`), once, with a journal line and a quiet note; the lock then holds when the global look changes. Not an undo step. Remains: an older-revision project waits for Update project; the note is a toast, seen only at opening.

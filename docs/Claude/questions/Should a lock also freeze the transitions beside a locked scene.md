@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: UI2
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[A locked scene's own transition stays editable]]"
+answer: "No: the transitions beside a locked scene stay editable; DECISION-005 stands (2026-11-11)."
 summary: "Whether a lock should also freeze the transitions on both sides of a locked scene, which stay editable today."
 id: QUESTION-009
 aliases:

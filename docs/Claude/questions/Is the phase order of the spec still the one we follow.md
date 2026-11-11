@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: 
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[The phases follow the owner's choice, not a fixed order]]"
+answer: "No fixed order any more: the owner chooses the next phase; the spec's table stays as history (2026-11-11)."
 summary: "Spec section 11 point 5, the order of the phases, has no recorded decision, and the project has gone far beyond phases A to D."
 id: QUESTION-003
 aliases:

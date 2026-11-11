@@ -48,7 +48,14 @@ public enum RailEntry: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// The shortcut of an entry that has one (shown in its tooltip).
-    public var shortcut: String? { self == .clap ? AppShortcuts.clapDisplay : nil }
+    public var shortcut: String? {
+        switch self {
+        case .clap: return AppShortcuts.clapDisplay
+        case .inspector: return AppShortcuts.inspectorDisplay
+        case .project: return AppShortcuts.projectDisplay + ", its Look tab: " + AppShortcuts.lookDisplay
+        default: return nil
+        }
+    }
 
     /// The accessibility label (VoiceOver reads it before the selected state): the name, plus what the entry carries (Clap's state, the Inspector's waiting selection).
     public func label(clap: ClapIndicator = ClapIndicator(working: false, proposals: 0), marked: Bool = false) -> String {
@@ -178,11 +185,20 @@ public enum AppShortcuts {
         .init(keys: "cmd+0", action: "Fit the whole film"), .init(keys: "space", action: "Play and pause (over the strip)"), .init(keys: "cmd+,", action: "Settings"),
         .init(keys: "cmd+q", action: "Quit"), .init(keys: "cmd+w", action: "Close the window"), .init(keys: "cmd+h", action: "Hide"), .init(keys: "cmd+m", action: "Minimise"),
         .init(keys: "cmd+c", action: "Copy"), .init(keys: "cmd+v", action: "Paste"), .init(keys: "cmd+x", action: "Cut"), .init(keys: "cmd+a", action: "Select all"),
-        .init(keys: clap.keys, action: clap.action),
+        .init(keys: clap.keys, action: clap.action), inspector, project, look,
     ]
     /// Opens Clap and puts the cursor in its input, from anywhere in the project window.
     public static let clap = Shortcut(keys: "cmd+shift+a", action: "Ask Clap")
     public static var clapDisplay: String { "Shift-Command-A" }
+    /// The right panels, in Clap's family (Shift-Command and a letter). Shift-Command-L is the Project Library and Shift-Command-P is the system's Page Setup, so Project takes J and Look takes Y.
+    /// A shortcut opens its panel and never closes it (a second press does nothing); from a closed side it opens the side on that panel.
+    public static let inspector = Shortcut(keys: "cmd+shift+i", action: "Inspector")
+    public static let project = Shortcut(keys: "cmd+shift+j", action: "Project")
+    /// Look is the Look tab of the Project panel: the shortcut opens Project on that tab.
+    public static let look = Shortcut(keys: "cmd+shift+y", action: "Project, Look tab")
+    public static var inspectorDisplay: String { "Shift-Command-I" }
+    public static var projectDisplay: String { "Shift-Command-J" }
+    public static var lookDisplay: String { "Shift-Command-Y" }
 }
 
 /// The geometry of the workspace under the top bar, for a window size: the rail, the left panels and the right panel, the preview and the Film strip, in both placements. Pure,

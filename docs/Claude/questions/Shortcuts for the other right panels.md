@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: RB1
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[The Inspector, Look and Project panels get keyboard shortcuts]]"
+answer: "Yes, a shortcut for the Inspector, Look and Project, to build in a phase (2026-11-11)."
 summary: "No shortcut opens the Inspector, Look or Project, next to Shift-Command-A for Clap; add one?"
 id: QUESTION-007
 aliases:

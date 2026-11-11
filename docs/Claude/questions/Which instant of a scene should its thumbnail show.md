@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: W4b
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[A scene thumbnail shows the still time of three quarters]]"
+answer: "The W4 still time: three quarters through the scene, or the middle of the busiest state (2026-11-11)."
 summary: "Which instant represents a scene in its PNG thumbnail: the W4 still time, the middle, the busiest moment or the last moment before the exit."
 id: QUESTION-017
 aliases:

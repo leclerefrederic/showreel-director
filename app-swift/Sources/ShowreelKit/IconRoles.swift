@@ -9,6 +9,7 @@ public enum IconRole: String, CaseIterable, Sendable {
     case visibleOn = "visible.on", visibleOff = "visible.off"
     case railFilm = "rail.film", railBuild = "rail.build", railProject = "rail.project"
     case railInspector = "rail.inspector", railClap = "rail.clap"
+    case railUndo = "rail.undo", railRedo = "rail.redo"
     /// The two pictograms of the Film placement and the reset of the proportions: drawn by the theme (a small window with its regions), not SF Symbols; a skin can replace them.
     case layoutUnderPreview = "layout.underPreview", layoutFullWidth = "layout.fullWidth", resetLayout = "layout.reset"
     /// The run state of a scene during a Build.
@@ -26,7 +27,7 @@ public enum IconRole: String, CaseIterable, Sendable {
         .lockClosed: "lock.fill", .lockOpen: "lock.open",
         .visibleOn: "eye", .visibleOff: "eye.slash",
         .railFilm: "film", .railBuild: "hammer", .railProject: "slider.horizontal.3",
-        .railInspector: "sidebar.right", .railClap: "sparkles",
+        .railInspector: "sidebar.right", .railClap: "sparkles", .railUndo: "arrow.uturn.backward", .railRedo: "arrow.uturn.forward",
         .layoutUnderPreview: "pictogram.filmUnderPreview", .layoutFullWidth: "pictogram.filmFullWidth", .resetLayout: "arrow.counterclockwise",
         .runWaiting: "circle.fill", .runWriting: "pencil", .runTesting: "checkmark.shield", .runRepairing: "wrench.and.screwdriver", .runDone: "checkmark", .runFailed: "xmark.octagon",
         .checks: "checkmark.seal", .checksAttention: "exclamationmark.triangle.fill",

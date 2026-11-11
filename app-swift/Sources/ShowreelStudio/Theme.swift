@@ -350,6 +350,7 @@ struct ViewRailView: View {
             Rectangle().fill(theme.hairline).frame(width: 36, height: 1).padding(.vertical, theme.space(0))
             ForEach(RailEntry.entries(in: .right)) { e in entry(e, state) }
             Spacer(minLength: 0)
+            RailHistoryButtons()
         }
         .padding(.vertical, theme.space(1)).padding(.horizontal, 4)
         .frame(width: CGFloat(ShellLayout.rail)).frame(maxHeight: .infinity)

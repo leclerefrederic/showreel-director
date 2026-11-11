@@ -7,6 +7,8 @@ import SwiftUI
 
 struct LibraryPane: View {
     @EnvironmentObject var project: ProjectModel
+    /// The Film strip's drawn height, for the divider's default place (`LibrarySplit.defaultFraction`).
+    let stripHeight: Double
     @State private var live: Double?
     @State private var dragStart: Double?
     private static let handle = 6.0
@@ -20,7 +22,7 @@ struct LibraryPane: View {
                 GeometryReader { geo in
                     let total = Double(geo.size.height) - Self.handle
                     let state = project.layout.resourcesState
-                    let fraction = live ?? project.layout.splitFraction
+                    let fraction = live ?? project.layout.split ?? LibrarySplit.defaultFraction(total: total, stripHeight: stripHeight, placement: project.filmPlacement)
                     let h = LibrarySplit.heights(total: total, fraction: fraction, state: state)
                     VStack(spacing: 0) {
                         StoryboardSection().frame(height: h.storyboard)

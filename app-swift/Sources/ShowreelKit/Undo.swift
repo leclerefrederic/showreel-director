@@ -170,9 +170,11 @@ extension ProjectStore {
         if dropUndoIfStale() { throw AgentError.msg("undo is not available: the project's data was changed outside the app") }
         var e = undoLog.popUndo()
         let fm = FileManager.default
-        for rel in e.created { if let u = try? resolve(rel) { if let d = try? Data(contentsOf: u) { e.kept[rel] = d }; try? fm.removeItem(at: u); Self.removeEmptyParents(of: u, below: root, fm) } }
-        for (rel, data) in e.removed { let u = try resolve(rel); try fm.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true); try data.write(to: u) }
-        try writeTexts(e.before)
+        do {
+            for rel in e.created { if let u = try? resolve(rel) { if let d = try? Data(contentsOf: u) { e.kept[rel] = d }; try? fm.removeItem(at: u); Self.removeEmptyParents(of: u, below: root, fm) } }
+            for (rel, data) in e.removed { let u = try resolve(rel); try fm.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true); try data.write(to: u) }
+            try writeTexts(e.before)
+        } catch { undoLog.pushUndo(e); throw error }          // the step that failed stays where it was: the stacks only ever move whole steps
         undoLog.pushRedo(e)
         for j in e.journal { journal.append(j.derived("undone", author: "user", session: sessionID, swap: true)) }
         return e.title
@@ -187,9 +189,11 @@ extension ProjectStore {
         if dropUndoIfStale() { throw AgentError.msg("redo is not available: the project's data was changed outside the app") }
         let e = undoLog.popRedo()
         let fm = FileManager.default
-        for (rel, data) in e.kept { let u = try resolve(rel); try fm.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true); try data.write(to: u) }
-        for rel in e.removed.keys { if let u = try? resolve(rel) { try? fm.removeItem(at: u) } }
-        try writeTexts(e.after)
+        do {
+            for (rel, data) in e.kept { let u = try resolve(rel); try fm.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true); try data.write(to: u) }
+            for rel in e.removed.keys { if let u = try? resolve(rel) { try? fm.removeItem(at: u) } }
+            try writeTexts(e.after)
+        } catch { undoLog.pushRedo(e); throw error }
         undoLog.pushUndo(e)
         for j in e.journal { journal.append(j.derived("redone", author: "user", session: sessionID, swap: false)) }
         return e.title
@@ -208,5 +212,34 @@ extension ProjectStore {
             if parent.lastPathComponent == "assets" { break }
             dir = parent
         }
+    }
+}
+
+extension ProjectStore {
+    /// Takes back the last `n` steps, one after the other, as one operation (the lock is held from the first to the last). Returns the titles, newest first. Not all or nothing in the
+    /// sense of a rollback: if a step fails, the steps already taken stay taken and are named in the error, the failing step stays where it was on the stack, so the stacks are always
+    /// whole steps and the next Undo or Redo carries on from there.
+    @discardableResult
+    public func undo(steps n: Int) throws -> [String] { try run(steps: n, redo: false) }
+
+    /// Does again the last `n` undone steps; the same rules as `undo(steps:)`. Returns the titles, the nearest first.
+    @discardableResult
+    public func redo(steps n: Int) throws -> [String] { try run(steps: n, redo: true) }
+
+    private func run(steps n: Int, redo: Bool) throws -> [String] {
+        if let e = buildRefusal() { throw e }
+        undoLog.lock.lock(); defer { undoLog.lock.unlock() }
+        let have = redo ? undoLog.redos.count : undoLog.undos.count
+        guard n >= 1 else { throw AgentError.msg("no step to \(redo ? "redo" : "undo")") }
+        guard n <= have else { throw AgentError.msg(have == 0 ? "nothing to \(redo ? "redo" : "undo")" : "only \(have) step\(have == 1 ? "" : "s") to \(redo ? "redo" : "undo"), not \(n)") }
+        var done: [String] = []
+        for _ in 0..<n {
+            do { done.append(redo ? try self.redo() : try self.undo()) }
+            catch {
+                guard !done.isEmpty else { throw error }
+                throw AgentError.msg("\(UndoHistory.line(redo: redo, done)) Then it stopped: \(error.localizedDescription). The \(n - done.count) remaining step\(n - done.count == 1 ? " is" : "s are") still in the list.")
+            }
+        }
+        return done
     }
 }

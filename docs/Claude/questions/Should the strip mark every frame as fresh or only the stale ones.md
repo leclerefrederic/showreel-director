@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: W4b
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[The strip marks only the stale frames]]"
+answer: "Only the stale frames carry a mark (2026-11-11)."
 summary: "Whether each strip frame shows a freshness mark all the time, or only the out-of-date frames, which carry a clock mark."
 id: QUESTION-019
 aliases:

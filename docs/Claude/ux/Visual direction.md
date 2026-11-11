@@ -30,3 +30,7 @@ Phases named in this note: [[phases/RB1/report|RB1]], [[phases/UI2/report|UI2]]
 **Built in PT1 (2026-11-10).** The project settings panel has three tabs (Brief, Format, Look) under the project name and a compact base configuration whose items go to their tab; no conversation language control anywhere. The second tab is called "Format" (kept: it names what the tab sets best in one word). Remains: the Wizard's wording is unchanged.
 
 **Built in PL1 (2026-11-10).** The design board's contrast checks sit under their swatches (`DesignBoard.columns`, `spanning`). Remains: the palette editor's list of checks and the palette preview of the Catalogue keep their own layouts (they are not swatch columns).
+
+**Built in SC1 (2026-11-11).** Shift-Command-I (Inspector), -J (Project) and -Y (Project on its Look tab), next to -A for Clap; in the View menu and the rail tooltips; a second press of an open panel's key does nothing. Remains: the keys are not pressed here (no keyboard); J and Y are chosen because -L (Project Library) and -P (Page Setup) are taken.
+
+**Built in UR1 (2026-11-11).** Undo and Redo sit at the foot of the rail, icon only, with the Edit menu's availability and reasons; pressed and held, or right-clicked, each lists the last 20 steps (`UndoHistory`) and goes back or forward through several as one operation (`ProjectStore.undo(steps:)`, `redo(steps:)`). Remains: the long press is SwiftUI's `Menu` with a primary action (not seen on screen); typed text keeps its own undo.

@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: UI2
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[Locked scenes from before UI2 take a copy of their look when the project opens]]"
+answer: "Yes, automatically at project open; to build in a small phase (2026-11-11)."
 summary: "Whether to give locked scenes from before UI2 a copy of their look automatically when the project opens."
 id: QUESTION-010
 aliases:

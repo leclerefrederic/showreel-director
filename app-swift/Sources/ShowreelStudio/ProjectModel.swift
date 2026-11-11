@@ -267,6 +267,7 @@ final class ProjectModel: ObservableObject {
     init(path: String) {
         root = URL(fileURLWithPath: path)
         store = ProjectStore(root: root)
+        let migrated = LockedLookMigration.run(store)          // before the first draw: the copy equals the look in use, so nothing is drawn differently
         let s = store.settings
         applyDirectly = s.applyDirectly
         mode = s.mode
@@ -292,6 +293,7 @@ final class ProjectModel: ObservableObject {
         }
         restoringShell = false
         OpenProjects.shared.register(self)
+        if !migrated.isEmpty { showToast(LockedLookMigration.summary(migrated.count) + ". They keep the look they have now if the project's look changes.") }
     }
 
     /// The user dragged a divider: the new sizes are kept for this project (floors applied, no ceiling).
@@ -346,6 +348,15 @@ final class ProjectModel: ObservableObject {
 
     /// Something asks for Clap (a draft, a Build, a card to answer, the interview): its panel opens whatever covers it or whether the right side is closed.
     func showClap() { var s = railState; s.open(.clap); applyRail(s) }
+
+    /// The shortcuts of the Inspector and of Project: the panel opens from any state and a second press leaves it open (`RailState.open`, never a toggle).
+    func showInspector() { var s = railState; s.open(.inspector); applyRail(s) }
+    func showProject() { var s = railState; s.open(.project); applyRail(s) }
+    /// The Look shortcut: the Project panel on its Look tab (already there: nothing changes).
+    func showLook() {
+        showProject()
+        if settingsTab != .look { settingsTab = .look }
+    }
 
     /// The shortcut: opens Clap and puts the cursor in its input.
     func openClap() {
@@ -1122,10 +1133,14 @@ final class ProjectModel: ObservableObject {
     var undoTitle: String? { store.undoLog.undoTitle }
     var redoTitle: String? { store.undoLog.redoTitle }
 
-    func undo() { stepHistory { try store.undo() } label: { "Undid: \($0)" } }
-    func redo() { stepHistory { try store.redo() } label: { "Redid: \($0)" } }
+    /// What the rail's buttons list when pressed and held.
+    var undoHistory: UndoHistory { store.undoLog.history() }
 
-    private func stepHistory(_ step: () throws -> String, label: (String) -> String) {
+    /// The Edit menu, the rail's buttons and their history menu are doors to these two: `steps` goes back (or forward) through that many steps as one operation.
+    func undo(steps n: Int = 1) { stepHistory { try store.undo(steps: n) } label: { UndoHistory.line(redo: false, $0) } }
+    func redo(steps n: Int = 1) { stepHistory { try store.redo(steps: n) } label: { UndoHistory.line(redo: true, $0) } }
+
+    private func stepHistory(_ step: () throws -> [String], label: ([String]) -> String) {
         let track = showreel?.decisions.track?.file
         do {
             let t = try step()

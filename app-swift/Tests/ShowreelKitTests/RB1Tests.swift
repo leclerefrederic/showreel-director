@@ -74,7 +74,7 @@ final class RB1Tests: XCTestCase {
             XCTAssertTrue(e.tooltip().contains(e.help))
             XCTAssertEqual(e.tooltip().hasSuffix(")") && e.tooltip().contains("(Shift-"), e.shortcut != nil, "a shortcut shows exactly when the entry has one")
         }
-        XCTAssertEqual(RailEntry.allCases.compactMap { $0.shortcut }, ["Shift-Command-A"])
+        XCTAssertEqual(RailEntry.allCases.compactMap { $0.shortcut }, ["Shift-Command-I", "Shift-Command-J, its Look tab: Shift-Command-Y", "Shift-Command-A"], "SC1 gave the Inspector and Project theirs")
         XCTAssertTrue(RailEntry.clap.tooltip(clap: ClapIndicator(working: true, proposals: 2)).hasPrefix("Clap, working, 2 proposals waiting. "))
     }
 

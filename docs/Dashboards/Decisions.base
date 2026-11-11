@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'type == "decision"'
+    - type == "decision"
 properties:
   id:
     displayName: ID
@@ -16,10 +16,10 @@ properties:
     displayName: Status
 views:
   - type: table
-    name: "Current"
+    name: Current
     filters:
       and:
-        - 'status == "current"'
+        - status == "current"
     order:
       - id
       - file.name
@@ -30,10 +30,10 @@ views:
       - property: since
         direction: DESC
   - type: table
-    name: "Superseded"
+    name: Superseded
     filters:
       and:
-        - 'status == "superseded"'
+        - status == "superseded"
     order:
       - id
       - file.name

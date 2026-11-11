@@ -62,3 +62,33 @@ extension LockedLook {
         return "it follows the project's look again: " + differing.map { $0.title.lowercased() }.joined(separator: ", ") + " will change"
     }
 }
+
+/// DECISION-028: a scene locked before UI2 has no copy of its look and would follow the project's look when it changes. When a project opens, each such scene takes a copy equal to
+/// the look it follows now, so nothing changes on screen and the lock holds from then on. The field is the one the lock writes (`lockedLook`); older apps keep what they do not know.
+public enum LockedLookMigration {
+    /// The locked scenes with no copy, in library order.
+    public static func pending(in f: ShowreelFile) -> [String] { f.scenes.filter { $0.isLocked && $0.lockedLook == nil }.map { $0.id } }
+
+    /// The file with each of those scenes holding its copy, and their ids. Nothing else is touched; a second call changes nothing.
+    public static func apply(_ f: ShowreelFile) -> (file: ShowreelFile, scenes: [String]) {
+        var g = f
+        let ids = pending(in: f)
+        for i in g.scenes.indices where ids.contains(g.scenes[i].id) { g.scenes[i].lockedLook = LockedLook.copy(of: g.scenes[i], in: f) }
+        return (g, ids)
+    }
+
+    /// The journal line and the note the owner sees.
+    public static func summary(_ n: Int) -> String { "Locked scenes took a copy of their look: \(n) scene\(n == 1 ? "" : "s")" }
+
+    /// On opening: writes the copies and one journal line, and returns the scenes; writes nothing when there are none. A project of an older revision is left alone (nothing is written
+    /// before "Update project"; the next opening does it), as is a file that cannot be read. The journal line is not an undo step: undoing it would put back the unprotected state.
+    @discardableResult
+    public static func run(_ store: ProjectStore) -> [String] {
+        guard let f = store.loadShowreel(), !f.isOutdated else { return [] }
+        let r = apply(f)
+        guard !r.scenes.isEmpty, (try? store.save(r.file)) != nil else { return [] }
+        store.noteEvent(author: "app", op: "lockedLook", target: r.scenes.joined(separator: ", "), title: summary(r.scenes.count),
+                        before: "the locked scenes followed the project's look", after: "each keeps a copy of its look", note: "DECISION-028")
+        return r.scenes
+    }
+}

@@ -54,15 +54,15 @@
     "semantic_hash": "67a9e97c6da6f0b26bf99914236738ef"
   },
   "app-swift/Sources/ShowreelKit/Availability.swift": {
-    "mtime": 1794290151.796587,
-    "seen": 1794294493.148263,
-    "ast_hash": "03ccc3b138c4081cfbc9e13244349a77",
-    "semantic_hash": "03ccc3b138c4081cfbc9e13244349a77"
+    "mtime": 1794333088.5037918,
+    "seen": 1794411660.2815099,
+    "ast_hash": "4841d7c539a968cb97c65a46430a8848",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/Build.swift": {
-    "mtime": 1794310796.2322037,
-    "seen": 1794318414.0322702,
-    "ast_hash": "ae3a81113ba6e8b67157df46e537c8eb",
+    "mtime": 1794333088.5030355,
+    "seen": 1794411660.2815108,
+    "ast_hash": "e8ad0c68afc4dc7d4c788016574b02ed",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/BuildJob.swift": {
@@ -138,10 +138,10 @@
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/DesignTokens.swift": {
-    "mtime": 1794263657.8506641,
-    "seen": 1794294493.148269,
-    "ast_hash": "eaa18f845629ab90a7a9acb88607d9c4",
-    "semantic_hash": "eaa18f845629ab90a7a9acb88607d9c4"
+    "mtime": 1794330735.5832443,
+    "seen": 1794411660.2815208,
+    "ast_hash": "b79a9edd14b31588b01c95f0e5148d58",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/DragLog.swift": {
     "mtime": 1794227280.9172275,
@@ -204,16 +204,16 @@
     "semantic_hash": "84e4f8847c008d5a2eebb48db59d37da"
   },
   "app-swift/Sources/ShowreelKit/FormSystem.swift": {
-    "mtime": 1794291864.853472,
-    "seen": 1794294493.148274,
-    "ast_hash": "8521c7f210dc822fbb4b94aaa83a0bbe",
-    "semantic_hash": "8521c7f210dc822fbb4b94aaa83a0bbe"
+    "mtime": 1794333716.901415,
+    "seen": 1794411660.2815292,
+    "ast_hash": "ebe0bdebd91952cec87fefeb0edc2fa0",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/IconRoles.swift": {
-    "mtime": 1794263632.3769033,
-    "seen": 1794294493.148274,
-    "ast_hash": "d27f298643f02eb11fa653d4d9c87230",
-    "semantic_hash": "d27f298643f02eb11fa653d4d9c87230"
+    "mtime": 1794412222.8313549,
+    "seen": 1794412640.582745,
+    "ast_hash": "1d6c4a436b01b57b36fcdd49d78ffe36",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/JSONValue.swift": {
     "mtime": 1794170939.6867414,
@@ -222,16 +222,16 @@
     "semantic_hash": "6c3c043304818e19d1fb705e43ac8aaa"
   },
   "app-swift/Sources/ShowreelKit/Journal.swift": {
-    "mtime": 1794258239.9022336,
-    "seen": 1794294493.148275,
-    "ast_hash": "1117f2f761233650bb6c75f39f7374a2",
-    "semantic_hash": "1117f2f761233650bb6c75f39f7374a2"
+    "mtime": 1794330374.7869344,
+    "seen": 1794411660.2815318,
+    "ast_hash": "49af9ce8b60f3d97647fbdecf25e81d4",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/LibraryPanel.swift": {
-    "mtime": 1794256230.7248669,
-    "seen": 1794294493.1482759,
-    "ast_hash": "dccdfa047914ca97e818c633fcfc6c43",
-    "semantic_hash": "dccdfa047914ca97e818c633fcfc6c43"
+    "mtime": 1794411463.2083786,
+    "seen": 1794411660.281533,
+    "ast_hash": "bef6d87c3ba8f308be0bf957c6879f4c",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/LineDiff.swift": {
     "mtime": 1794151359.3530524,
@@ -240,10 +240,10 @@
     "semantic_hash": "3dfdd00e27913f94ef3f69863e2b969e"
   },
   "app-swift/Sources/ShowreelKit/LockedLook.swift": {
-    "mtime": 1794258184.5742023,
-    "seen": 1794294493.148277,
-    "ast_hash": "28d43f1689b0fd3f99e6dbfa8457b3f5",
-    "semantic_hash": "28d43f1689b0fd3f99e6dbfa8457b3f5"
+    "mtime": 1794411968.2841322,
+    "seen": 1794412141.090316,
+    "ast_hash": "9d80f2ee1b3c5af6f74e0f113cd9b078",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/Look.swift": {
     "mtime": 1794230690.0738947,
@@ -252,10 +252,10 @@
     "semantic_hash": "ad1b551420adb06de45b41754ad7275e"
   },
   "app-swift/Sources/ShowreelKit/LookRules.swift": {
-    "mtime": 1794176189.5878468,
-    "seen": 1794294493.148277,
-    "ast_hash": "015f88d0aa0e037e053bafe9409295f2",
-    "semantic_hash": "015f88d0aa0e037e053bafe9409295f2"
+    "mtime": 1794334132.5360665,
+    "seen": 1794411660.281535,
+    "ast_hash": "8d50146f4be01b23eca30fba4935176d",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/LookSections.swift": {
     "mtime": 1794178236.401134,
@@ -294,22 +294,22 @@
     "semantic_hash": "e678e602711740d853a0e471a69921f2"
   },
   "app-swift/Sources/ShowreelKit/Music.swift": {
-    "mtime": 1794168873.2014363,
-    "seen": 1794294493.148281,
-    "ast_hash": "e78356838ca2ec7f1cc6fdc8669bfaa5",
-    "semantic_hash": "e78356838ca2ec7f1cc6fdc8669bfaa5"
+    "mtime": 1794330306.2779882,
+    "seen": 1794411660.281539,
+    "ast_hash": "775f7ee7cc38410b4dacc505b4fdb600",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/MusicMarks.swift": {
-    "mtime": 1794231391.8151512,
-    "seen": 1794294493.148281,
-    "ast_hash": "ad5efd95380a3295f24d548f860346c6",
-    "semantic_hash": "ad5efd95380a3295f24d548f860346c6"
+    "mtime": 1794330724.6839883,
+    "seen": 1794411660.2815402,
+    "ast_hash": "2471a9ff91190f907432f31851885530",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/Operations.swift": {
-    "mtime": 1794262018.744711,
-    "seen": 1794294493.148282,
-    "ast_hash": "b603cb26c73b7a35387e09cd51785707",
-    "semantic_hash": "b603cb26c73b7a35387e09cd51785707"
+    "mtime": 1794330306.2798827,
+    "seen": 1794411660.281541,
+    "ast_hash": "5c9d5c62394c2f928eb66ecde42a80d0",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/PackageLibrary.swift": {
     "mtime": 1794220501.4643676,
@@ -360,10 +360,10 @@
     "semantic_hash": "136f72e237bbcb650aa0727bf808ab38"
   },
   "app-swift/Sources/ShowreelKit/ProjectStore.swift": {
-    "mtime": 1794290579.165891,
-    "seen": 1794294493.1482859,
-    "ast_hash": "3fd01c7b3145760d7a618d53314024e7",
-    "semantic_hash": "3fd01c7b3145760d7a618d53314024e7"
+    "mtime": 1794333125.2003868,
+    "seen": 1794411660.2815459,
+    "ast_hash": "33db7841c2b7e7dd3b44411a713c27aa",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/ProjectTree.swift": {
     "mtime": 1794151279.7363904,
@@ -372,15 +372,15 @@
     "semantic_hash": "f9e36252c68488e45f81c75dcb6f2e60"
   },
   "app-swift/Sources/ShowreelKit/RailShell.swift": {
-    "mtime": 1794295295.189311,
-    "seen": 1794295498.452039,
-    "ast_hash": "c6bc26f22b157dc55b1a245cb7279f40",
+    "mtime": 1794411711.4680042,
+    "seen": 1794412141.0903308,
+    "ast_hash": "53c308eef2fc327e09b64f6fc42f2e4f",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/Reel.swift": {
-    "mtime": 1794311138.394729,
-    "seen": 1794318414.032303,
-    "ast_hash": "8051a01af2fb4bd05580426b0ead113c",
+    "mtime": 1794330306.2786753,
+    "seen": 1794411660.281549,
+    "ast_hash": "f124c45e6486c954b0a9ead33453ef04",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/ResourceChecks.swift": {
@@ -432,10 +432,10 @@
     "semantic_hash": "fec43881e51bd661472f663e6291e1b0"
   },
   "app-swift/Sources/ShowreelKit/SceneStates.swift": {
-    "mtime": 1794258162.327201,
-    "seen": 1794294493.148291,
-    "ast_hash": "b7cd00e10a7625b853df6924eccc0c9c",
-    "semantic_hash": "b7cd00e10a7625b853df6924eccc0c9c"
+    "mtime": 1794330360.9554875,
+    "seen": 1794411660.281554,
+    "ast_hash": "c0ba8880eb17b3206156956b268fec4c",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/SceneStatus.swift": {
     "mtime": 1794290643.1071482,
@@ -474,9 +474,9 @@
     "semantic_hash": "b72d516eb7768d3ba06ff28a8bfccbe6"
   },
   "app-swift/Sources/ShowreelKit/ShowreelFile.swift": {
-    "mtime": 1794327586.3045685,
-    "seen": 1794328021.8652642,
-    "ast_hash": "aff1ec61982962ca3002b1a9bd10d75e",
+    "mtime": 1794330315.2048962,
+    "seen": 1794411660.281559,
+    "ast_hash": "411a221ab10334faf796ac07871fec2b",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/Skill.swift": {
@@ -486,10 +486,10 @@
     "semantic_hash": "593d564b7c953dfab0ebd3f6cd0ee5f6"
   },
   "app-swift/Sources/ShowreelKit/Storyboard.swift": {
-    "mtime": 1794258508.2299302,
-    "seen": 1794294493.148295,
-    "ast_hash": "99d51831ca133e9ae4a7ba5b9536634a",
-    "semantic_hash": "99d51831ca133e9ae4a7ba5b9536634a"
+    "mtime": 1794333088.5027406,
+    "seen": 1794411660.2815611,
+    "ast_hash": "ca647b180f217ae4eb1a9b1d9dccd1e5",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/StoryboardList.swift": {
     "mtime": 1794258327.7837741,
@@ -504,10 +504,10 @@
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/Tools.swift": {
-    "mtime": 1794258380.850322,
-    "seen": 1794294493.1482959,
-    "ast_hash": "ab5ebae65b0079e25689084cb3845b0e",
-    "semantic_hash": "ab5ebae65b0079e25689084cb3845b0e"
+    "mtime": 1794333088.5033033,
+    "seen": 1794411660.281562,
+    "ast_hash": "78b50f0a93b747510faf4e89f551d57e",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/TransitionList.swift": {
     "mtime": 1794231391.8337195,
@@ -516,10 +516,10 @@
     "semantic_hash": "2a9c16bea9990bed8c7fa1c551d0d109"
   },
   "app-swift/Sources/ShowreelKit/Undo.swift": {
-    "mtime": 1794290054.158238,
-    "seen": 1794294493.148297,
-    "ast_hash": "e6c0402f4bcc696c8ca80e397215fc78",
-    "semantic_hash": "e6c0402f4bcc696c8ca80e397215fc78"
+    "mtime": 1794412222.7579498,
+    "seen": 1794412640.582779,
+    "ast_hash": "efcd5734bf4202c23bfd65c24ae178d4",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/Util.swift": {
     "mtime": 1794151167.686795,
@@ -534,10 +534,10 @@
     "semantic_hash": "029d0eb836821bb0a2092047561d0d0d"
   },
   "app-swift/Sources/ShowreelStudio/App.swift": {
-    "mtime": 1794291864.8734431,
-    "seen": 1794294493.148298,
-    "ast_hash": "801cd63f3e45e5994e9fbc4633a1bd0d",
-    "semantic_hash": "801cd63f3e45e5994e9fbc4633a1bd0d"
+    "mtime": 1794411711.4688287,
+    "seen": 1794412141.090352,
+    "ast_hash": "374ee796923b3da8606749bbdc171eae",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/AppSettings.swift": {
     "mtime": 1794291864.874186,
@@ -552,10 +552,10 @@
     "semantic_hash": "23d3e633bdc22b733834bfbb934dd9f6"
   },
   "app-swift/Sources/ShowreelStudio/BuildViews.swift": {
-    "mtime": 1794291909.027332,
-    "seen": 1794294493.1483,
-    "ast_hash": "aec822693ebb6a8de2e55cec53a16807",
-    "semantic_hash": "aec822693ebb6a8de2e55cec53a16807"
+    "mtime": 1794333088.5049837,
+    "seen": 1794411660.281568,
+    "ast_hash": "685b6b39a69bbdd2351988901758b6ae",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/ChatModel.swift": {
     "mtime": 1794327586.3047423,
@@ -582,10 +582,10 @@
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/DesignBoardView.swift": {
-    "mtime": 1794291864.878671,
-    "seen": 1794294493.148302,
-    "ast_hash": "4b7ada0c489428c91bc1102ef1932aa7",
-    "semantic_hash": "4b7ada0c489428c91bc1102ef1932aa7"
+    "mtime": 1794334132.5364633,
+    "seen": 1794411660.2815711,
+    "ast_hash": "776723c2423f284331315c6416c682fd",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/DragDropViews.swift": {
     "mtime": 1794291864.8793595,
@@ -612,10 +612,10 @@
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/FilmStateViews.swift": {
-    "mtime": 1794291909.0278544,
-    "seen": 1794294493.148304,
-    "ast_hash": "a4b85c2364cc1f38ae8fc6bc6f284654",
-    "semantic_hash": "a4b85c2364cc1f38ae8fc6bc6f284654"
+    "mtime": 1794333088.5061977,
+    "seen": 1794411660.2815738,
+    "ast_hash": "3473fc43a00db6efbc0803f102bdb99d",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/FontStateViews.swift": {
     "mtime": 1794291864.882633,
@@ -636,9 +636,9 @@
     "semantic_hash": "57ed56001acca77202ab1a1d688022ca"
   },
   "app-swift/Sources/ShowreelStudio/InspectorViews.swift": {
-    "mtime": 1794318020.273119,
-    "seen": 1794318414.032331,
-    "ast_hash": "cdbc7b40b3866df04edad0b6e500d493",
+    "mtime": 1794333146.1580255,
+    "seen": 1794411660.281576,
+    "ast_hash": "951f6a1ccdee43c6a1bc3089bd39b441",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/Keychain.swift": {
@@ -696,10 +696,10 @@
     "semantic_hash": "e9ec848167241b60f3c8d0f82d1a253e"
   },
   "app-swift/Sources/ShowreelStudio/ProjectFormViews.swift": {
-    "mtime": 1794291864.8906486,
-    "seen": 1794294493.14831,
-    "ast_hash": "36470e7485905ba7abe0e90a8f404195",
-    "semantic_hash": "36470e7485905ba7abe0e90a8f404195"
+    "mtime": 1794333716.9016144,
+    "seen": 1794411660.281582,
+    "ast_hash": "5f553d57fa32b13fe0d43eefc9635f4a",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/ProjectLifecycleViews.swift": {
     "mtime": 1794291909.0293546,
@@ -708,16 +708,16 @@
     "semantic_hash": "dcc2aac678db48844f5993c466219028"
   },
   "app-swift/Sources/ShowreelStudio/ProjectModel.swift": {
-    "mtime": 1794327720.845306,
-    "seen": 1794328021.865289,
-    "ast_hash": "e02800445dda2dd7d2cf6de30e3b8826",
+    "mtime": 1794412230.6488655,
+    "seen": 1794412640.5828,
+    "ast_hash": "31bd2d88f4605d72d87aff3fa5fcc739",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/ProjectSettingsPanel.swift": {
-    "mtime": 1794291864.8930151,
-    "seen": 1794294493.1483111,
-    "ast_hash": "ac9e9a73c083d1123d82f09a81157f3b",
-    "semantic_hash": "ac9e9a73c083d1123d82f09a81157f3b"
+    "mtime": 1794333716.9023688,
+    "seen": 1794411660.281584,
+    "ast_hash": "684528430677a2e0802956f103ef4891",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/ProjectView.swift": {
     "mtime": 1794291864.8935719,
@@ -756,10 +756,10 @@
     "semantic_hash": "217835bbee3c464bae30cccfd14492f1"
   },
   "app-swift/Sources/ShowreelStudio/SelfCheck.swift": {
-    "mtime": 1794291864.8976696,
-    "seen": 1794294493.148315,
-    "ast_hash": "a47cb8a5efe745607f8a729aa366bb5b",
-    "semantic_hash": "a47cb8a5efe745607f8a729aa366bb5b"
+    "mtime": 1794333088.5052629,
+    "seen": 1794411660.28159,
+    "ast_hash": "f794a38c68deac3967cb79a0ce2fae89",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/SettingsView.swift": {
     "mtime": 1794291864.8982258,
@@ -780,27 +780,27 @@
     "semantic_hash": "fb2eb54e53b9eddb49ac4c828f26d1cb"
   },
   "app-swift/Sources/ShowreelStudio/StoryboardListViews.swift": {
-    "mtime": 1794295314.3608425,
-    "seen": 1794295498.452074,
-    "ast_hash": "61d86117313fb95e3a9cee5be80081e9",
+    "mtime": 1794411466.412136,
+    "seen": 1794411660.281593,
+    "ast_hash": "442b407a2b861ff26e6cb2e7c90d51b5",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/StoryboardViews.swift": {
-    "mtime": 1794291893.164023,
-    "seen": 1794294493.1483169,
-    "ast_hash": "33a6145b9ef6101c571a08cda5071e0e",
-    "semantic_hash": "33a6145b9ef6101c571a08cda5071e0e"
+    "mtime": 1794333088.5058486,
+    "seen": 1794411660.281594,
+    "ast_hash": "98417bddd3c95177aa5a727b0894883f",
+    "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/Theme.swift": {
-    "mtime": 1794295330.9175258,
-    "seen": 1794295498.452075,
-    "ast_hash": "115c08d0cdb568ba794ae1ff8983918e",
+    "mtime": 1794412241.6734352,
+    "seen": 1794412640.582813,
+    "ast_hash": "01ef3e273733d74a7d02cc32295ae1c6",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/TimelineViews.swift": {
-    "mtime": 1794322247.7839963,
-    "seen": 1794322500.059579,
-    "ast_hash": "ae997c8635c9b5954df7117ddcb77454",
+    "mtime": 1794333088.5056076,
+    "seen": 1794411660.281595,
+    "ast_hash": "ee5fa9682b6acc026689400f95e4a5e1",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/WizardStartViews.swift": {
@@ -810,9 +810,9 @@
     "semantic_hash": "890e904a8c2bef7be59b0a803b1ed773"
   },
   "app-swift/Sources/ShowreelStudio/WorkspaceViews.swift": {
-    "mtime": 1794318036.0835474,
-    "seen": 1794318414.032352,
-    "ast_hash": "758910d097460e9fc931e3a1d9b4667c",
+    "mtime": 1794411467.9980953,
+    "seen": 1794411660.281596,
+    "ast_hash": "aabf029fe784dca61bc0b50ec032be53",
     "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/AS1Tests.swift": {
@@ -834,10 +834,10 @@
     "semantic_hash": "9c41213afcca8ff4a7140a47285cd49a"
   },
   "app-swift/Tests/ShowreelKitTests/AvailabilityTests.swift": {
-    "mtime": 1794258560.545969,
-    "seen": 1794294493.14832,
-    "ast_hash": "f6f9d1ca61757847142b92f52842b77b",
-    "semantic_hash": "f6f9d1ca61757847142b92f52842b77b"
+    "mtime": 1794333272.2535605,
+    "seen": 1794411660.2815979,
+    "ast_hash": "17c57ca446494acaba4b399e4b355a64",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/BA2Tests.swift": {
     "mtime": 1794254226.6252031,
@@ -894,10 +894,10 @@
     "semantic_hash": "824095f8757556a129f2b258322510d3"
   },
   "app-swift/Tests/ShowreelKitTests/CL1Tests.swift": {
-    "mtime": 1794262233.246489,
-    "seen": 1794294493.148324,
-    "ast_hash": "750c3228769d55c23e70225e1c6a34d4",
-    "semantic_hash": "750c3228769d55c23e70225e1c6a34d4"
+    "mtime": 1794333799.905035,
+    "seen": 1794411660.281604,
+    "ast_hash": "053a0561bb26a1781ba623dcf609c6c8",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/ChecksTests.swift": {
     "mtime": 1794216985.0344367,
@@ -912,10 +912,10 @@
     "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/DS1Tests.swift": {
-    "mtime": 1794290870.9297812,
-    "seen": 1794294493.148326,
-    "ast_hash": "4950537011945af19fe5ccce54aa56f9",
-    "semantic_hash": "4950537011945af19fe5ccce54aa56f9"
+    "mtime": 1794333272.2540421,
+    "seen": 1794411660.281606,
+    "ast_hash": "90456796307479592ff0e6751fdca286",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/DS2Tests.swift": {
     "mtime": 1794263988.9738925,
@@ -924,10 +924,10 @@
     "semantic_hash": "7c123bff5fd383b3c0cfff45446a9946"
   },
   "app-swift/Tests/ShowreelKitTests/DS3Tests.swift": {
-    "mtime": 1794290893.786957,
-    "seen": 1794294493.1483269,
-    "ast_hash": "18ae5259c0a6d4954f68a1835332d84c",
-    "semantic_hash": "18ae5259c0a6d4954f68a1835332d84c"
+    "mtime": 1794333191.4833546,
+    "seen": 1794411660.281607,
+    "ast_hash": "f481ff22a86b551bbfe3b8e65f0154d8",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/DS3bTests.swift": {
     "mtime": 1794291926.630779,
@@ -966,16 +966,16 @@
     "semantic_hash": "c0afa7b5e004335c419fd7611ce35a91"
   },
   "app-swift/Tests/ShowreelKitTests/FilmStateTests.swift": {
-    "mtime": 1794258687.2250175,
-    "seen": 1794294493.14833,
-    "ast_hash": "7adb96de5953b174a41495a45faafe4f",
-    "semantic_hash": "7adb96de5953b174a41495a45faafe4f"
+    "mtime": 1794330315.208209,
+    "seen": 1794411660.281613,
+    "ast_hash": "1c76f4db2b513893683926a23a2d9316",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/FilmTests.swift": {
-    "mtime": 1794253943.63119,
-    "seen": 1794294493.14833,
-    "ast_hash": "e810820f30767490b115d2fdb17795c1",
-    "semantic_hash": "e810820f30767490b115d2fdb17795c1"
+    "mtime": 1794330315.2127316,
+    "seen": 1794411660.281614,
+    "ast_hash": "10555966dde9fcbe07bd1c73f7d5bbb9",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/Fixtures/studio-export/facts.json": {
     "mtime": 1794152887.980286,
@@ -996,10 +996,10 @@
     "semantic_hash": "1764ec0c3a1b2e02eae09013f497cc9e"
   },
   "app-swift/Tests/ShowreelKitTests/InteractionTests.swift": {
-    "mtime": 1794217123.46575,
-    "seen": 1794294493.148332,
-    "ast_hash": "2988149bbe561b646afd2c65cd5efb42",
-    "semantic_hash": "2988149bbe561b646afd2c65cd5efb42"
+    "mtime": 1794330315.209004,
+    "seen": 1794411660.281616,
+    "ast_hash": "140dc44c0e9826f0442a473a5a4b8a32",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/LayoutTests.swift": {
     "mtime": 1794215503.5796883,
@@ -1020,10 +1020,10 @@
     "semantic_hash": "e0c1687ca2b890e296a7b10bad947278"
   },
   "app-swift/Tests/ShowreelKitTests/LookSettingsTests.swift": {
-    "mtime": 1794256348.4513013,
-    "seen": 1794294493.148334,
-    "ast_hash": "923dbbfe8f6d310498dc66e309f7cd8e",
-    "semantic_hash": "923dbbfe8f6d310498dc66e309f7cd8e"
+    "mtime": 1794333799.9057992,
+    "seen": 1794411660.2816179,
+    "ast_hash": "cc73d6815b2e0a50a603bcf9f946d431",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/LookTests.swift": {
     "mtime": 1794217220.240071,
@@ -1044,10 +1044,10 @@
     "semantic_hash": "2bccb1e803ebc12b7806f754bfbf1676"
   },
   "app-swift/Tests/ShowreelKitTests/MemoryTests.swift": {
-    "mtime": 1794262799.9122348,
-    "seen": 1794294493.1483362,
-    "ast_hash": "77c401e546efd8910e09cecc61b415bc",
-    "semantic_hash": "77c401e546efd8910e09cecc61b415bc"
+    "mtime": 1794333799.906481,
+    "seen": 1794411660.281621,
+    "ast_hash": "8d7ad5f305319ed0b8559c0a418d266c",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/PackageTests.swift": {
     "mtime": 1794262168.6514387,
@@ -1062,15 +1062,15 @@
     "semantic_hash": "3949312956739fd75f6de0e54bbf5007"
   },
   "app-swift/Tests/ShowreelKitTests/RL1Tests.swift": {
-    "mtime": 1794295382.627286,
-    "seen": 1794295498.452099,
-    "ast_hash": "d7ff03302834c01cfb52c296d19dd7db",
+    "mtime": 1794333272.2546663,
+    "seen": 1794411660.2816262,
+    "ast_hash": "6f8e7d82730c0b88a560ada33aea79be",
     "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/ReelTests.swift": {
-    "mtime": 1794311138.3951938,
-    "seen": 1794318414.032379,
-    "ast_hash": "27da13644e5a298363a8e1c8b52349f5",
+    "mtime": 1794330335.5364482,
+    "seen": 1794411660.281627,
+    "ast_hash": "b7bc3f366e475a851f3398176f40605d",
     "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/ReleaseTests.swift": {
@@ -1092,22 +1092,22 @@
     "semantic_hash": "5a0b5285a8e798a1e4e606b78d2979e8"
   },
   "app-swift/Tests/ShowreelKitTests/SceneModuleTests.swift": {
-    "mtime": 1794254070.7910755,
-    "seen": 1794294493.14834,
-    "ast_hash": "d1e7e3201cd94e8df302c5b794ff8ac1",
-    "semantic_hash": "d1e7e3201cd94e8df302c5b794ff8ac1"
+    "mtime": 1794330315.2068396,
+    "seen": 1794411660.28163,
+    "ast_hash": "3243831fdb7c6378c789f022fde4d7d9",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/SceneStateTests.swift": {
-    "mtime": 1794258687.152731,
-    "seen": 1794294493.14834,
-    "ast_hash": "1b3a024114fc0b785702c4929d54a979",
-    "semantic_hash": "1b3a024114fc0b785702c4929d54a979"
+    "mtime": 1794330315.2105434,
+    "seen": 1794411660.28163,
+    "ast_hash": "b012b897a613f49bb28ef990f40f8ff3",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/SceneTests.swift": {
-    "mtime": 1794258687.1490753,
-    "seen": 1794294493.148341,
-    "ast_hash": "2edc08d364e3cf6e8ddc46c349b5063f",
-    "semantic_hash": "2edc08d364e3cf6e8ddc46c349b5063f"
+    "mtime": 1794333324.9078498,
+    "seen": 1794411660.281631,
+    "ast_hash": "956eb6100eb68c326c58e3344f10456c",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/SceneTreeTests.swift": {
     "mtime": 1794253943.6294265,
@@ -1134,10 +1134,10 @@
     "semantic_hash": "b92404c9bc6dece3fe892cc423ebf5f9"
   },
   "app-swift/Tests/ShowreelKitTests/TimelineTests.swift": {
-    "mtime": 1794264036.3576117,
-    "seen": 1794294493.1483479,
-    "ast_hash": "76df4e594c57816c9f2a01c7e3771f5c",
-    "semantic_hash": "76df4e594c57816c9f2a01c7e3771f5c"
+    "mtime": 1794333324.9086833,
+    "seen": 1794411660.281634,
+    "ast_hash": "c4823a437706d0d33039e3f36b48596e",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/UI1Tests.swift": {
     "mtime": 1794265886.9342978,
@@ -1152,10 +1152,10 @@
     "semantic_hash": "5c9e8d2f6bfa65b0beea82044f95474f"
   },
   "app-swift/Tests/ShowreelKitTests/UI2Tests.swift": {
-    "mtime": 1794260620.79158,
-    "seen": 1794294493.148349,
-    "ast_hash": "dfd29c2fcc22b4bcf461b29d5f90bfac",
-    "semantic_hash": "dfd29c2fcc22b4bcf461b29d5f90bfac"
+    "mtime": 1794333324.9083622,
+    "seen": 1794411660.281635,
+    "ast_hash": "e574359b6372b0c4c54ceb0e8cb0546e",
+    "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/WizardTests.swift": {
     "mtime": 1794262168.6521266,
@@ -1176,16 +1176,16 @@
     "semantic_hash": "4a306ee12c1b041e732021253154ce93"
   },
   "app-swift/shared/app-version.json": {
-    "mtime": 1794327850.071424,
-    "seen": 1794328021.865342,
-    "ast_hash": "547bd00f025c0cafc8893b3264691dd3",
+    "mtime": 1794412350.1414044,
+    "seen": 1794412640.58286,
+    "ast_hash": "a268b5d741b34d2f58f785cd6ca4b3fe",
     "semantic_hash": ""
   },
   "app-swift/shared/capabilities.json": {
-    "mtime": 1794290643.1064687,
-    "seen": 1794294493.148352,
-    "ast_hash": "4477e61203fd4a92b29960f3e4aca46f",
-    "semantic_hash": "4477e61203fd4a92b29960f3e4aca46f"
+    "mtime": 1794333936.5715349,
+    "seen": 1794411660.2816389,
+    "ast_hash": "eb965956fc61e20a7e75ac31467d4156",
+    "semantic_hash": ""
   },
   "app-swift/shared/engine-host.js": {
     "mtime": 1794170991.1211693,
@@ -1206,10 +1206,10 @@
     "semantic_hash": "4744bb302a61e7eec2ed9c3d6d6c902f"
   },
   "app-swift/shared/tools.json": {
-    "mtime": 1794262048.3274844,
-    "seen": 1794294493.1483579,
-    "ast_hash": "a006117b050c84e01b1306fde67d2da0",
-    "semantic_hash": "a006117b050c84e01b1306fde67d2da0"
+    "mtime": 1794330315.212965,
+    "seen": 1794411660.281641,
+    "ast_hash": "a2ab1a09313400b531cb30c9b64b1f1f",
+    "semantic_hash": ""
   },
   "showreel-director/engine/backgrounds.js": {
     "mtime": 1794138169.1083484,
@@ -1800,9 +1800,9 @@
     "semantic_hash": "071eeb209985b24d04b3fd2f89067939"
   },
   "tools/released-app.json": {
-    "mtime": 1794327850.0919995,
-    "seen": 1794328021.8654149,
-    "ast_hash": "755f54686c95e59f7b42a9fd6af6d08b",
+    "mtime": 1794412350.1486564,
+    "seen": 1794412640.582926,
+    "ast_hash": "74b7f41d07cf978312ced4ec4e08428d",
     "semantic_hash": ""
   },
   "tools/released.json": {
@@ -1866,9 +1866,9 @@
     "semantic_hash": "9c7377b95093cb654f403881bea61c58"
   },
   "CHANGELOG-APP.md": {
-    "mtime": 1794327850.071566,
-    "seen": 1794328021.865422,
-    "ast_hash": "2f503f46293e1ad2533cb3f713422be4",
+    "mtime": 1794412350.1415107,
+    "seen": 1794412640.582932,
+    "ast_hash": "558a00d6b04641cf9a8cf82f37f33041",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
@@ -1878,9 +1878,9 @@
     "semantic_hash": "a745c08b103fb0b6f2b4ac1ea3ed110f"
   },
   "CLAUDE.md": {
-    "mtime": 1794327586.303156,
-    "seen": 1794328021.8654232,
-    "ast_hash": "51c833494accf1a31f401490384ce75a",
+    "mtime": 1794412411.2873695,
+    "seen": 1794412640.582934,
+    "ast_hash": "423af66098c269c8412af77e860167d2",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1890,9 +1890,9 @@
     "semantic_hash": "07dabff2f07a7a5db58f75887f203d77"
   },
   "RELEASE-NOTES-APP.md": {
-    "mtime": 1794327849.9699626,
-    "seen": 1794328021.865424,
-    "ast_hash": "e3423a1c42e1bc5d083ed6c302007df5",
+    "mtime": 1794412350.066229,
+    "seen": 1794412640.582935,
+    "ast_hash": "f42b2f5700c0539bddf8a9e0d3d93425",
     "semantic_hash": ""
   },
   "RELEASE-NOTES-SKILL.md": {
@@ -2574,8 +2574,8 @@
     "semantic_hash": "f2fd86b0abbbe73fcb02520da6e1c667"
   },
   "showreel-director/references/effects-index.md": {
-    "mtime": 1794327913.7567284,
-    "seen": 1794328021.865651,
+    "mtime": 1794412632.922974,
+    "seen": 1794412640.583185,
     "ast_hash": "f6da18724da0f023b1e4b9b0b3c996f9",
     "semantic_hash": "f6da18724da0f023b1e4b9b0b3c996f9"
   },
@@ -2748,9 +2748,9 @@
     "semantic_hash": "129da1b1ebdccaf639bc39c096f64984"
   },
   "app-swift/Tests/ShowreelKitTests/RB1Tests.swift": {
-    "mtime": 1794295413.3036447,
-    "seen": 1794295498.452099,
-    "ast_hash": "bd1782e37200f8c12c034ea86bcd4ccc",
+    "mtime": 1794411787.997286,
+    "seen": 1794412141.0904121,
+    "ast_hash": "734f5917fa3420d5024cff907a37c4a0",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelKit/ContentTiming.swift": {
@@ -2784,9 +2784,9 @@
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/SceneFrameViews.swift": {
-    "mtime": 1794318020.272704,
-    "seen": 1794318414.0323431,
-    "ast_hash": "bd289025c4c8a6424ae9e7bbbd3cc49f",
+    "mtime": 1794330094.8744388,
+    "seen": 1794411660.281589,
+    "ast_hash": "1ecefe22d292ec098a104e95d5ae2157",
     "semantic_hash": ""
   },
   "app-swift/Sources/ShowreelStudio/SceneThumbModel.swift": {
@@ -2808,9 +2808,9 @@
     "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/W4Tests.swift": {
-    "mtime": 1794318073.5070486,
-    "seen": 1794318414.032387,
-    "ast_hash": "809f5c55eacab5b687c493d9cc542c8e",
+    "mtime": 1794330315.2077916,
+    "seen": 1794411660.281636,
+    "ast_hash": "2b2873c13005333e00bad27134c535f6",
     "semantic_hash": ""
   },
   "app-swift/Tests/ShowreelKitTests/W4bTests.swift": {
@@ -2820,9 +2820,9 @@
     "semantic_hash": ""
   },
   "docs/Claude/ids.json": {
-    "mtime": 1794320734.5632095,
-    "seen": 1794322500.059626,
-    "ast_hash": "a959496faf34d5c90bc0568576c57ed0",
+    "mtime": 1794411145.8221045,
+    "seen": 1794411660.281642,
+    "ast_hash": "01607148845eb11521b510c5909c0b20",
     "semantic_hash": ""
   },
   "tools/check_docs.py": {
@@ -2850,9 +2850,9 @@
     "semantic_hash": ""
   },
   "docs/Claude/Index.md": {
-    "mtime": 1794327862.0251038,
-    "seen": 1794328021.865433,
-    "ast_hash": "18813112b40bd11dd874fd276cf5b819",
+    "mtime": 1794412613.2577066,
+    "seen": 1794412640.582945,
+    "ast_hash": "e116cff137eec33ee1426abc1b4f7406",
     "semantic_hash": ""
   },
   "docs/Claude/Workflow.md": {
@@ -3006,9 +3006,9 @@
     "semantic_hash": ""
   },
   "docs/Claude/decisions/The left panel splits two thirds Storyboard and one third Resources.md": {
-    "mtime": 1794304785.2941341,
-    "seen": 1794318414.032489,
-    "ast_hash": "b4d018c761533b6e6801fa8c6192642b",
+    "mtime": 1794411573.6269183,
+    "seen": 1794411660.281746,
+    "ast_hash": "8b09e8a83123c8b4a80024497c2b8368",
     "semantic_hash": ""
   },
   "docs/Claude/decisions/The open questions are waived during the redesign.md": {
@@ -3030,9 +3030,9 @@
     "semantic_hash": ""
   },
   "docs/Claude/ideas.md": {
-    "mtime": 1794320734.6462002,
-    "seen": 1794322500.059733,
-    "ast_hash": "a5556bf65e26f25c0321c5ce54009ce0",
+    "mtime": 1794412351.390518,
+    "seen": 1794412640.582977,
+    "ast_hash": "1c6f8960d3e189346a7457493be01de2",
     "semantic_hash": ""
   },
   "docs/Claude/ideas/A 2D or 3D icon on each scene.md": {
@@ -3324,9 +3324,9 @@
     "semantic_hash": ""
   },
   "docs/Claude/phases-done.md": {
-    "mtime": 1794327851.8364358,
-    "seen": 1794328021.865487,
-    "ast_hash": "a428c35cdad214959712503fc54fd1ab",
+    "mtime": 1794412613.257931,
+    "seen": 1794412640.58301,
+    "ast_hash": "a63e9fcd848c73e1bd9be33836004226",
     "semantic_hash": ""
   },
   "docs/Claude/phases/3D1/report.md": {
@@ -3876,75 +3876,75 @@
     "semantic_hash": ""
   },
   "docs/Claude/questions/Confirm the Checks badge after use.md": {
-    "mtime": 1794304785.2886534,
-    "seen": 1794318414.032563,
-    "ast_hash": "976f369d9b9a9f661bef8a162dfaa24e",
+    "mtime": 1794408605.6419806,
+    "seen": 1794411660.281846,
+    "ast_hash": "7cfe6463b447ddeb1ebe596cdea51afc",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Confirm the two-thirds split of the left panel.md": {
-    "mtime": 1794304785.288953,
-    "seen": 1794318414.032563,
-    "ast_hash": "5f2d10b5cfcc2258c257030a4e65fc46",
+    "mtime": 1794408685.942058,
+    "seen": 1794411660.281847,
+    "ast_hash": "cdfec1c206383d6ae840e62fc729f17d",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Is the phase order of the spec still the one we follow.md": {
-    "mtime": 1794304785.2891161,
-    "seen": 1794318414.032564,
-    "ast_hash": "9d42be667bd49d4fd09d378974417f56",
+    "mtime": 1794408715.8257263,
+    "seen": 1794411660.281848,
+    "ast_hash": "fb94a96aa3576be6d41d276210ff516c",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Keep three scenes written at once as the default.md": {
-    "mtime": 1794304785.2892923,
-    "seen": 1794318414.032564,
-    "ast_hash": "5d4b01404157221b0fd7ae897756bbc9",
+    "mtime": 1794408890.6255536,
+    "seen": 1794411660.281848,
+    "ast_hash": "ff970ae1659faf7222968568de043573",
     "semantic_hash": ""
   },
   "docs/Claude/questions/May a click on the active Build leave the Build.md": {
-    "mtime": 1794304785.2894623,
-    "seen": 1794318414.0325649,
-    "ast_hash": "280f165e2971a7bc5edeca4d5ac06b15",
+    "mtime": 1794408910.7155163,
+    "seen": 1794411660.2818491,
+    "ast_hash": "2d297adcd352f83d0690d06f528a3654",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Rework of the Wizard and Manual creation experience.md": {
-    "mtime": 1794304785.2896173,
-    "seen": 1794318414.032566,
-    "ast_hash": "2b4c7d08b847ccf6a486a312908f238b",
+    "mtime": 1794410998.454598,
+    "seen": 1794411660.2818491,
+    "ast_hash": "63f74ade8cd8f86f5f68ffba56d0463d",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Shortcuts for the other right panels.md": {
-    "mtime": 1794304785.2897851,
-    "seen": 1794318414.032566,
-    "ast_hash": "dff25a039faf339f07970cb63aa3cdbb",
+    "mtime": 1794409264.4812305,
+    "seen": 1794411660.28185,
+    "ast_hash": "0e2223961b6dd17d198576bf124f5a7f",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should Look light a centre entry.md": {
-    "mtime": 1794304785.2899573,
-    "seen": 1794318414.032566,
-    "ast_hash": "4639a6832cf8b063eea9c840d4091a88",
+    "mtime": 1794409293.3119304,
+    "seen": 1794411660.28185,
+    "ast_hash": "3ac1c70c4f1ee57379c18ac7a7616027",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should a lock also freeze the transitions beside a locked scene.md": {
-    "mtime": 1794304785.2901292,
-    "seen": 1794318414.032567,
-    "ast_hash": "01213b7c695f693bfdc2afcc86732cac",
+    "mtime": 1794409317.2060874,
+    "seen": 1794411660.2818508,
+    "ast_hash": "dcd41ae93a163da70707081247676fde",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should an item's timing snap to the music grid.md": {
-    "mtime": 1794311206.925274,
-    "seen": 1794318414.032567,
-    "ast_hash": "abd99a9bad054a37fea68269e23b72fd",
+    "mtime": 1794410690.67975,
+    "seen": 1794411660.2818508,
+    "ast_hash": "57e98ae23c5be9d7d1a5ce235027af90",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should locked scenes from before UI2 take a copy of their look when the project opens.md": {
-    "mtime": 1794304785.2902846,
-    "seen": 1794318414.032568,
-    "ast_hash": "6c29cdb7ef27912a778efa49a34d74ee",
+    "mtime": 1794409472.5034895,
+    "seen": 1794411660.281852,
+    "ast_hash": "29e204ef99ca83917dc8b3cec6bb4d1a",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should the Inspector mark show when the side is closed.md": {
-    "mtime": 1794304785.2904484,
-    "seen": 1794318414.032568,
-    "ast_hash": "5e1bdbbd9c26d5a9792787db4eac26d6",
+    "mtime": 1794409546.7029371,
+    "seen": 1794411660.281853,
+    "ast_hash": "6861bfd707edbc45d628404c88221c79",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should the instruction switch Ready off.md": {
@@ -3954,39 +3954,39 @@
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should the strip mark every frame as fresh or only the stale ones.md": {
-    "mtime": 1794318154.9897842,
-    "seen": 1794318414.0325692,
-    "ast_hash": "24fbb68184900feb10021c3e5b59aeb1",
+    "mtime": 1794410953.382269,
+    "seen": 1794411660.281854,
+    "ast_hash": "22f0e1d32305f8dff86e5aff9f8d1939",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should the viewer keep its content drawing before a build.md": {
-    "mtime": 1794318154.9896684,
-    "seen": 1794318414.0325701,
-    "ast_hash": "20d27eb744192866838b9e33752daad7",
+    "mtime": 1794410891.6257823,
+    "seen": 1794411660.281854,
+    "ast_hash": "d76fcb3539edd69c45b254292d91d9be",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should the viewer play an item's timing live.md": {
-    "mtime": 1794311206.9254665,
-    "seen": 1794318414.0325701,
-    "ast_hash": "741396978d50bb0f1f80b31c66d9a97f",
+    "mtime": 1794410852.1918619,
+    "seen": 1794411660.2818549,
+    "ast_hash": "62b1b820e7dd74ec749aaf0d0adc0d63",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Should timing be in seconds or in beats.md": {
-    "mtime": 1794311206.9253716,
-    "seen": 1794318414.0325708,
-    "ast_hash": "e50e8c354a99329b936f6b7e3e655036",
+    "mtime": 1794410819.6890836,
+    "seen": 1794411660.2818549,
+    "ast_hash": "5c0a3d707bdfb0efc4793146a1e30ae5",
     "semantic_hash": ""
   },
   "docs/Claude/questions/What form should the timing control of an item take.md": {
-    "mtime": 1794311206.9251087,
-    "seen": 1794318414.0325708,
-    "ast_hash": "6ab83f485282f01a79afac4fc89adf95",
+    "mtime": 1794410663.4561825,
+    "seen": 1794411660.281856,
+    "ast_hash": "2c9437675793d869e4cd31af39d016f5",
     "semantic_hash": ""
   },
   "docs/Claude/questions/Which instant of a scene should its thumbnail show.md": {
-    "mtime": 1794318154.9895103,
-    "seen": 1794318414.0325718,
-    "ast_hash": "7e911b1543aeea2ff5608e17939ac330",
+    "mtime": 1794410872.5576427,
+    "seen": 1794411660.281857,
+    "ast_hash": "ef6ead8c625bb4134cb4218a63f13b0f",
     "semantic_hash": ""
   },
   "docs/Claude/spec/1 Idea.md": {
@@ -4200,9 +4200,9 @@
     "semantic_hash": ""
   },
   "docs/Claude/ux/Storyboard and music.md": {
-    "mtime": 1794318194.0621905,
-    "seen": 1794318414.032594,
-    "ast_hash": "16a20ca33b9562b9fa6b6e3a83724151",
+    "mtime": 1794412079.7689998,
+    "seen": 1794412141.090692,
+    "ast_hash": "ee4276462977752f29e5d570089bff2c",
     "semantic_hash": ""
   },
   "docs/Claude/ux/Storyboard and scene editor.md": {
@@ -4212,15 +4212,15 @@
     "semantic_hash": ""
   },
   "docs/Claude/ux/Visual direction.md": {
-    "mtime": 1794304704.1339252,
-    "seen": 1794318414.032595,
-    "ast_hash": "5c38905cbc4ec5472321e9ec3161fffa",
+    "mtime": 1794412350.0663958,
+    "seen": 1794412640.583122,
+    "ast_hash": "aef6cb11cc5f3f0c1338ccf4d0e6b29c",
     "semantic_hash": ""
   },
   "docs/Home.md": {
-    "mtime": 1794327851.8363013,
-    "seen": 1794328021.865588,
-    "ast_hash": "4a1024cbc9c32d7b07f5fadd1d504d8f",
+    "mtime": 1794412351.3904161,
+    "seen": 1794412640.583122,
+    "ast_hash": "bf6c22654c733184c1a797aca3859081",
     "semantic_hash": ""
   },
   "docs/Claude/ideas/A short looping GIF as the thumbnail of a scene.md": {
@@ -4287,6 +4287,378 @@
     "mtime": 1794327856.6562424,
     "seen": 1794328021.865524,
     "ast_hash": "8966062d6bdf25159323db65638a59ad",
+    "semantic_hash": ""
+  },
+  "app-swift/Sources/ShowreelKit/DebugProbe.swift": {
+    "mtime": 1794331034.7292924,
+    "seen": 1794411660.2815201,
+    "ast_hash": "514eba5a379c5992a6149135555d6e64",
+    "semantic_hash": ""
+  },
+  "app-swift/Sources/ShowreelKit/FilmReel.swift": {
+    "mtime": 1794330086.281393,
+    "seen": 1794411660.281527,
+    "ast_hash": "cd3477b08d6f80396ae809be1592513f",
+    "semantic_hash": ""
+  },
+  "app-swift/Sources/ShowreelKit/MusicToolbar.swift": {
+    "mtime": 1794330724.6224341,
+    "seen": 1794411660.2815402,
+    "ast_hash": "fa861c4eb23a6a912aba66e683a92728",
+    "semantic_hash": ""
+  },
+  "app-swift/Sources/ShowreelKit/ProjectTabs.swift": {
+    "mtime": 1794333687.5157394,
+    "seen": 1794411660.281547,
+    "ast_hash": "c5a478ac69999fb22b36ea46ee3d3d27",
+    "semantic_hash": ""
+  },
+  "app-swift/Sources/ShowreelStudio/MusicToolbarViews.swift": {
+    "mtime": 1794330760.7878735,
+    "seen": 1794411660.281579,
+    "ast_hash": "42032fbeb35d0d475f3ce6e8332916c5",
+    "semantic_hash": ""
+  },
+  "app-swift/Sources/ShowreelStudio/ReelFrameViews.swift": {
+    "mtime": 1794330086.3557618,
+    "seen": 1794411660.281586,
+    "ast_hash": "67b5acba3be87519edbfe0bcb02e9d55",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/FL1Tests.swift": {
+    "mtime": 1794330117.9260206,
+    "seen": 1794411660.281612,
+    "ast_hash": "a74f44bf0e734a4ba1903d32791fc69c",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/FT1Tests.swift": {
+    "mtime": 1794333272.2544718,
+    "seen": 1794411660.281612,
+    "ast_hash": "4e8d4528ebbe3e2d21b1f2f74ae7151b",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/MT1Tests.swift": {
+    "mtime": 1794330803.3603752,
+    "seen": 1794411660.2816188,
+    "ast_hash": "ceb9d5fa04988645a15f734b98394f0d",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/PF1Tests.swift": {
+    "mtime": 1794331034.7453613,
+    "seen": 1794411660.281622,
+    "ast_hash": "42c324cc2463bea7c8059697fbd65645",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/PL1Tests.swift": {
+    "mtime": 1794334153.9198058,
+    "seen": 1794411660.281622,
+    "ast_hash": "4f45b596d09256405a478fd955944a90",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/PT1Tests.swift": {
+    "mtime": 1794333862.345519,
+    "seen": 1794411660.2816231,
+    "ast_hash": "1a838d5a8b4c55a1cabf3582ff80a443",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/RS1Tests.swift": {
+    "mtime": 1794411493.544783,
+    "seen": 1794411660.2816262,
+    "ast_hash": "a2ab593b5c4ed7e689100bbe5a4676e2",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/SM1Tests.swift": {
+    "mtime": 1794333862.3264825,
+    "seen": 1794411660.2816288,
+    "ast_hash": "da532bb716ff023d1d0471724ee4df8b",
+    "semantic_hash": ""
+  },
+  "docs/Claude/archive/BATCH-C/prompt.md": {
+    "mtime": 1794331283.4384952,
+    "seen": 1794411660.2817228,
+    "ast_hash": "4e0a369fe33b60d6a089e7099d84f504",
+    "semantic_hash": ""
+  },
+  "docs/Claude/archive/BATCH-C/report.md": {
+    "mtime": 1794331283.378042,
+    "seen": 1794411660.281724,
+    "ast_hash": "697bbb27636b18bd709a0a3fd07e4893",
+    "semantic_hash": ""
+  },
+  "docs/Claude/archive/BATCH-D/prompt.md": {
+    "mtime": 1794334376.6891,
+    "seen": 1794411660.281724,
+    "ast_hash": "0c5fa97f8dcffe032f3a92a7e44e803c",
+    "semantic_hash": ""
+  },
+  "docs/Claude/archive/BATCH-D/report.md": {
+    "mtime": 1794334408.5909052,
+    "seen": 1794411660.281725,
+    "ast_hash": "db290ca169edbf687da25aa4ef96c63f",
+    "semantic_hash": ""
+  },
+  "docs/Claude/archive/BATCH-E/prompt.md": {
+    "mtime": 1794412613.1639624,
+    "seen": 1794412640.5829508,
+    "ast_hash": "1e7cb06e78122bc3c1f284aced4c57b1",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/A click on the active centre view does nothing.md": {
+    "mtime": 1794408909.5578897,
+    "seen": 1794411660.281729,
+    "ast_hash": "66d18ca27b66646a780a6b0f4b105147",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/A scene thumbnail shows the still time of three quarters.md": {
+    "mtime": 1794410871.3738744,
+    "seen": 1794411660.281732,
+    "ast_hash": "89195452339ab477bf9cedf0f73bf4a8",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/An item's timing is written in seconds.md": {
+    "mtime": 1794410818.710353,
+    "seen": 1794411660.281733,
+    "ast_hash": "fba43f3113e616f7e339f275220c2ad9",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/An item's timing stays free to a tenth of a second.md": {
+    "mtime": 1794410689.414919,
+    "seen": 1794411660.281733,
+    "ast_hash": "e6684ec74ba2cf4d4c02b4aad0aae620",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/Locked scenes from before UI2 take a copy of their look when the project opens.md": {
+    "mtime": 1794409471.1331596,
+    "seen": 1794411660.2817369,
+    "ast_hash": "23177d2aaaf08fcbb3c860d9cf5c3468",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/Scenes are written three at once by default.md": {
+    "mtime": 1794408889.4586544,
+    "seen": 1794411660.2817411,
+    "ast_hash": "213a157f01ba2615969fd6cca6693882",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/The Inspector mark shows only while another right panel is open.md": {
+    "mtime": 1794409545.477478,
+    "seen": 1794411660.281742,
+    "ast_hash": "b2d43043080ec271251d27a6578c2c79",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/The Inspector, Look and Project panels get keyboard shortcuts.md": {
+    "mtime": 1794409263.266783,
+    "seen": 1794411660.281742,
+    "ast_hash": "ff76ba3bda90a3dd49c0496f63f7a7fc",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/The Resources section takes the height of the Film strip by default.md": {
+    "mtime": 1794408684.5542333,
+    "seen": 1794411660.281743,
+    "ast_hash": "b5176b197008a7bdc575f8cdb373cad3",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/The phases follow the owner's choice, not a fixed order.md": {
+    "mtime": 1794408714.636754,
+    "seen": 1794411660.2817469,
+    "ast_hash": "b5072acf7ca99b845fd9d7d6a293fc66",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/The strip marks only the stale frames.md": {
+    "mtime": 1794410952.2875538,
+    "seen": 1794411660.281748,
+    "ast_hash": "4abe96f2fe3cbf32dcfe51a93abd5709",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/The viewer keeps its content drawing before a build.md": {
+    "mtime": 1794410890.5951216,
+    "seen": 1794411660.281749,
+    "ast_hash": "911932f9e670ea7869537617ee9947a0",
+    "semantic_hash": ""
+  },
+  "docs/Claude/decisions/The viewer shows a still of the scene at a chosen time.md": {
+    "mtime": 1794410851.023875,
+    "seen": 1794411660.28175,
+    "ast_hash": "4c49845d80b55f6979fce20b5f6ba05a",
+    "semantic_hash": ""
+  },
+  "docs/Claude/ideas/Mouse tracker for HTML reels.md": {
+    "mtime": 1794330519.387368,
+    "seen": 1794411660.2817721,
+    "ast_hash": "b73967ef9019e407bf8151e554d4b103",
+    "semantic_hash": ""
+  },
+  "docs/Claude/ideas/Undo and Redo buttons in the rail with a history menu.md": {
+    "mtime": 1794412350.0659652,
+    "seen": 1794412640.583008,
+    "ast_hash": "33be00652f7b46c1cdce9c6aba8df6f4",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/FL1/prompt.md": {
+    "mtime": 1794329897.0558655,
+    "seen": 1794411660.2818,
+    "ast_hash": "f14c72e019bd7d4143c5053d61e21eee",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/FL1/report.md": {
+    "mtime": 1794330183.7653615,
+    "seen": 1794411660.2818,
+    "ast_hash": "8928f1dbe0a90f27ff3845fe360ed994",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/FT1/prompt.md": {
+    "mtime": 1794329897.0571477,
+    "seen": 1794411660.281801,
+    "ast_hash": "09b61dc8e00ffc7edbee16fca4da0120",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/FT1/report.md": {
+    "mtime": 1794330498.7579207,
+    "seen": 1794411660.281802,
+    "ast_hash": "332325769bd96fe5da225a34e14fc3ff",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/LK1/prompt.md": {
+    "mtime": 1794411375.3818502,
+    "seen": 1794411660.281802,
+    "ast_hash": "fa7f681ee2e26c86b4a686f6f7415333",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/MT1/prompt.md": {
+    "mtime": 1794329897.0582108,
+    "seen": 1794411660.281803,
+    "ast_hash": "e6ea81d701137fb6ffd3e3b93fb98a91",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/MT1/report.md": {
+    "mtime": 1794330921.1787133,
+    "seen": 1794411660.281803,
+    "ast_hash": "8aa5641e9a75b40a8f9a6b8150740d0f",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/PF1/prompt.md": {
+    "mtime": 1794329961.3402395,
+    "seen": 1794411660.2818098,
+    "ast_hash": "7b1232a7c0b666430eec43958a9641a7",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/PF1/report.md": {
+    "mtime": 1794331101.5249846,
+    "seen": 1794411660.281811,
+    "ast_hash": "3fc8d10240f09ca8437d5108c064e6fb",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/PL1/prompt.md": {
+    "mtime": 1794332238.8605657,
+    "seen": 1794411660.281811,
+    "ast_hash": "a0d0fce4d6fa5ac7b2b6ecf875d88d59",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/PL1/report.md": {
+    "mtime": 1794334204.432527,
+    "seen": 1794411660.281812,
+    "ast_hash": "0513950cca95997e3a20ba6867ed206f",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/PT1/prompt.md": {
+    "mtime": 1794332891.9595766,
+    "seen": 1794411660.281812,
+    "ast_hash": "7c5ae14bbd6b50a84ed29d066255bb34",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/PT1/report.md": {
+    "mtime": 1794334021.9792125,
+    "seen": 1794411660.281813,
+    "ast_hash": "cf58b038e643d267fc93801adc7716c2",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/RS1/prompt.md": {
+    "mtime": 1794411355.6468592,
+    "seen": 1794411660.2818198,
+    "ast_hash": "1b597d1b793bb1fba0e2a4daaaa8b66f",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/RS1/report.md": {
+    "mtime": 1794411573.627207,
+    "seen": 1794411660.281821,
+    "ast_hash": "fd162553002b2ccf7f7343b51aa48d35",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/SC1/prompt.md": {
+    "mtime": 1794411365.0191212,
+    "seen": 1794411660.281821,
+    "ast_hash": "23aebdd98e921fd16bf56e0c8a4951bf",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/SM1/prompt.md": {
+    "mtime": 1794332119.4001615,
+    "seen": 1794411660.281822,
+    "ast_hash": "2ac85b53a046db1c33cdde72b81a8737",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/SM1/report.md": {
+    "mtime": 1794333561.0332372,
+    "seen": 1794411660.281822,
+    "ast_hash": "634b2e5707ceccd333467e723519ff96",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/UR1/prompt.md": {
+    "mtime": 1794411387.2677064,
+    "seen": 1794411660.281825,
+    "ast_hash": "af228aa1e0c1bf9f9c0b793c7fb11f70",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/LK1Tests.swift": {
+    "mtime": 1794412007.7026553,
+    "seen": 1794412141.090403,
+    "ast_hash": "b30fdb6805637eb172c989a488ed8a29",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/SC1Tests.swift": {
+    "mtime": 1794411731.160909,
+    "seen": 1794412141.090417,
+    "ast_hash": "6f8ed1dd9df3ca04aeaaaa78f84a35c1",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/LK1/report.md": {
+    "mtime": 1794412079.7691586,
+    "seen": 1794412141.090606,
+    "ast_hash": "35fa90233c7b203658c5a5d4c8d9ab11",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/SC1/report.md": {
+    "mtime": 1794411843.314054,
+    "seen": 1794412141.0906281,
+    "ast_hash": "b7377e3f412904fcdedd358043ffc12c",
+    "semantic_hash": ""
+  },
+  "app-swift/Sources/ShowreelKit/UndoHistory.swift": {
+    "mtime": 1794412222.7737877,
+    "seen": 1794412640.58278,
+    "ast_hash": "8ee61d9253932a8c13e01b1efd8c31a1",
+    "semantic_hash": ""
+  },
+  "app-swift/Sources/ShowreelStudio/RailHistoryViews.swift": {
+    "mtime": 1794412241.5979726,
+    "seen": 1794412640.5828018,
+    "ast_hash": "68249e588590cfdfcb3e0ecd28100c58",
+    "semantic_hash": ""
+  },
+  "app-swift/Tests/ShowreelKitTests/UR1Tests.swift": {
+    "mtime": 1794412273.5761766,
+    "seen": 1794412640.582857,
+    "ast_hash": "8c0fa556f22bb7cf88490ecc7318d7d1",
+    "semantic_hash": ""
+  },
+  "docs/Claude/archive/BATCH-E/report.md": {
+    "mtime": 1794412613.163788,
+    "seen": 1794412640.582952,
+    "ast_hash": "357e6a485c80d98e9a232b17881e354d",
+    "semantic_hash": ""
+  },
+  "docs/Claude/phases/UR1/report.md": {
+    "mtime": 1794412350.0665553,
+    "seen": 1794412640.58306,
+    "ast_hash": "02d4d26f67fb43ff94b4c7f50b21f0d7",
     "semantic_hash": ""
   }
 }

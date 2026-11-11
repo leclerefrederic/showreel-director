@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: W4b
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[The viewer keeps its content drawing before a build]]"
+answer: "Yes: keep the W4 content drawing before a build; the strip keeps its placeholder (2026-11-11)."
 summary: "Before a build has a film to play, should the viewer keep drawing the scene from its content (W4), or show a plain placeholder like the strip."
 id: QUESTION-018
 aliases:

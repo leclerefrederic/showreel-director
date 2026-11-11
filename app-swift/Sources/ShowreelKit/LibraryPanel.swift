@@ -28,6 +28,14 @@ public enum LibrarySplit {
         }
     }
 
+    /// The Storyboard's share of a panel that never had its divider dragged (DECISION-023): the Resources are as tall as the Film strip, so the divider sits on the line of the strip's
+    /// top. Only when the strip is beside the panel (under the preview, where the panel spans the full height); at full width the strip is below the panel and the old standard stays.
+    /// The result is inside the range, so a tall strip in a small window is drawn at the range's end (the stored value, none, is not touched).
+    public static func defaultFraction(total: Double, stripHeight: Double, placement: FilmPlacement) -> Double {
+        guard placement == .underPreview, total > 0, stripHeight.isFinite else { return standard }
+        return clamp((total - stripHeight) / total)
+    }
+
     /// The fraction a drag of the divider leaves: from the Storyboard's height at the start of the drag and the move, never out of the range.
     public static func fraction(total: Double, storyboardHeight: Double, moved: Double) -> Double {
         guard total > 0 else { return standard }

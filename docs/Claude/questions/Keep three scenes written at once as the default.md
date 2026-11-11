@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: BG2
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[Scenes are written three at once by default]]"
+answer: "Keep three scenes written at once as the default; compare with one at a time on a real film when convenient (2026-11-11)."
 summary: "Whether to keep three scenes written at once as the default, to decide after measuring one against three."
 id: QUESTION-004
 aliases:

@@ -65,6 +65,14 @@ struct StudioCommands: Commands {
         return tv.undoManager
     }
 
+    @ViewBuilder private func panelItem(_ title: String, _ entry: RailEntry, _ key: AppShortcuts.Shortcut, _ act: @escaping (ProjectModel) -> Void) -> some View {
+        let why = project.flatMap { p in entry.unavailable(workspaceOpen: p.workspaceOpen, progressLine: p.showreel.map { ProjectSetup.progress($0).line } ?? "") }
+        let letter = String(key.keys.last ?? "i")
+        Button(why == nil ? title : "\(title) (\(why?.reason.lowercased() ?? ""))") { if let p = project { act(p) } }
+            .keyboardShortcut(KeyEquivalent(Character(letter)), modifiers: [.command, .shift])
+            .disabled(project == nil || why != nil)
+    }
+
     var body: some Commands {
         // About: the app's version and the skill it carries
         CommandGroup(replacing: .appInfo) {
@@ -76,6 +84,12 @@ struct StudioCommands: Commands {
         // A project window always belongs to a folder: there is no blank "New Window".
         CommandGroup(replacing: .newItem) {
             Button("Project Library") { openWindow(id: "library") }.keyboardShortcut("l", modifiers: [.command, .shift])
+        }
+        // The right panels, with their shortcuts (Clap's is declared by the workspace). An entry that cannot act says why in its title, as Undo does.
+        CommandGroup(after: .sidebar) {
+            panelItem("Inspector", .inspector, AppShortcuts.inspector) { $0.showInspector() }
+            panelItem("Project", .project, AppShortcuts.project) { $0.showProject() }
+            panelItem("Project, Look tab", .project, AppShortcuts.look) { $0.showLook() }
         }
         // Undo and redo of every typed operation of the project in front (a text field being edited keeps its own).
         CommandGroup(replacing: .undoRedo) {

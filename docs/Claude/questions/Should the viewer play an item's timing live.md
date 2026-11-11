@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: W4
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[The viewer shows a still of the scene at a chosen time]]"
+answer: "Not for now: the viewer keeps the still at a chosen time (2026-11-11)."
 summary: "Should the viewer play a scene with its items coming and going in time, or keep showing a still at a chosen time, as built?"
 id: QUESTION-016
 aliases:

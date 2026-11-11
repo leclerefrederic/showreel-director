@@ -2,6 +2,56 @@
 
 What each version of the Showreel Studio app changes for you, newest first. The short register that the repository checks is `CHANGELOG-APP.md`. The skill built into the app has its own notes in `RELEASE-NOTES-SKILL.md`. The version of the app and of its skill are shown in About Showreel Studio (the app menu).
 
+## 0.24.0 - 2026-11-11
+
+**What's new**
+- **Undo and Redo buttons at the foot of the rail.** A click does what Command-Z and Shift-Command-Z do (the Edit menu still works). The tooltip names the next action ("Undo: Lock S02"). When a button cannot act it says why and how to get it back: nothing to undo or redo yet, or the film is building.
+- **A history menu.** Press and hold a button, or right-click it, to see the last 20 actions, newest first. Choose one to go back (or forward) through all the steps up to it in one go; the message says what was undone ("Undid 3 actions: ..."). The other side's steps are listed apart and dimmed.
+- If a step cannot be undone half way, the steps already taken stay taken, the message names them, and the step that failed stays in the list; nothing is lost from the stacks.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Minor version: a new area of the rail. Projects open unchanged. The text you are typing in a field keeps its own undo (it is not in the list). The skill is unchanged.
+
+## 0.23.4 - 2026-11-11
+
+**Changed**
+- **A scene locked before the lock kept a copy of its look now takes that copy when the project opens.** Until now such a scene still followed the project's look, so changing the palette, fonts or background could change a scene you had locked. At that moment the copy equals the look in use, so nothing changes on screen; from then on the lock holds if the project's look changes.
+- You see one quiet note when it happens ("Locked scenes took a copy of their look: n scenes") and a line in the journal. It happens once per project: the next time you open it, nothing is written. A project that is not yet at the current revision is left alone until you choose Update project.
+- The copy cannot be undone as a step (that would put the scene back in the unprotected state); unlock the scene to drop its copy, as before.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- The copy is stored in the field the lock already uses; older versions of the app keep it and ignore it. The skill is unchanged.
+
+## 0.23.3 - 2026-11-11
+
+**What's new**
+- **Keyboard shortcuts for the right panels**, in the family of Shift-Command-A for Clap: **Shift-Command-I** opens the Inspector, **Shift-Command-J** opens Project, and **Shift-Command-Y** opens Project on its Look tab. They work from a closed right side and from another open panel. Pressing the one of the panel that is already open does nothing (it never closes it; the rail button does that).
+- The shortcuts are in the View menu and in the tooltips of the rail's Inspector and Project buttons. When the workspace is not open yet (the base configuration is incomplete), the menu entries are greyed out and say why.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged. Shift-Command-L still opens the Project Library, Shift-Command-K the Catalogue and Shift-Command-A Clap. The skill is unchanged.
+
+## 0.23.2 - 2026-11-11
+
+**Changed**
+- In the left panel, the Resources section is now as tall as the Film strip by default, so the divider between the Storyboard and the Resources sits on the same line as the top of the strip. The Storyboard takes the rest. If you change the height of the strip, the divider follows it, as long as you have not dragged the divider yourself.
+- A divider you dragged stays where you left it. With the Film at full width the strip is below the left panel, so the old split (two thirds and one third) stays there.
+
+**What you need to do**
+- Nothing.
+
+**Compatibility**
+- Projects open unchanged; a project whose divider was never dragged gets the new default. The skill is unchanged.
+
 ## 0.23.1 - 2026-11-10
 
 **Changed**

@@ -21,7 +21,7 @@ struct WorkspaceView: View {
             let g = CGFloat(ShellLayout.gap)
             ZStack(alignment: .topLeading) {
                 ViewRailView().frame(width: f.rail.width, height: f.rail.height)
-                region(f.left) { LibraryPane().panelContainer() }
+                region(f.left) { LibraryPane(stripHeight: f.filmHeight).panelContainer() }
                 region(f.preview) { CenterPane().panelContainer() }
                 region(f.film) { FilmStrip().clipShape(RoundedRectangle(cornerRadius: theme.rLarge, style: .continuous)) }
                 if let r = f.right {

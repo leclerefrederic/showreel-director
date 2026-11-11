@@ -103,4 +103,9 @@ One row per phase, generated from the properties of the phase notes (phase, date
 | W4c | 2026-11-10 | current | 0.21.1 | 0.18.2 | [[phases/W4c/prompt\|prompt]] | [[phases/W4c/report\|report]] |  |
 | W5 | 2026-11-10 | current |  |  |  |  | [[phases/early/Direct manipulation with one drag and drop system\|summary]] |
 | X | 2026-11-10 | current |  |  |  |  | [[phases/early/Verification tools with one command and two modes\|summary]] |
+| BATCH-E | 2026-11-11 | current |  |  | [[archive/BATCH-E/prompt\|prompt]] | [[archive/BATCH-E/report\|report]] |  |
+| LK1 | 2026-11-11 | current | 0.23.4 | 0.18.2 | [[phases/LK1/prompt\|prompt]] | [[phases/LK1/report\|report]] |  |
+| RS1 | 2026-11-11 | current | 0.23.2 | 0.18.2 | [[phases/RS1/prompt\|prompt]] | [[phases/RS1/report\|report]] |  |
+| SC1 | 2026-11-11 | current | 0.23.3 | 0.18.2 | [[phases/SC1/prompt\|prompt]] | [[phases/SC1/report\|report]] |  |
+| UR1 | 2026-11-11 | current | 0.24.0 | 0.18.2 | [[phases/UR1/prompt\|prompt]] | [[phases/UR1/report\|report]] |  |
 <!-- /generated:phases -->

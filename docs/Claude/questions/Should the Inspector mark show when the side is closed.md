@@ -1,8 +1,10 @@
 ---
 type: question
-status: current
+status: superseded
 phase: RB1
-date: 2026-11-10
+date: 2026-11-11
+decision: "[[The Inspector mark shows only while another right panel is open]]"
+answer: "No: keep the RB1 behaviour, the mark shows only while another right panel is open (2026-11-11)."
 summary: "A selection with the right side closed opens the Inspector, so the mark shows only while another panel is open; show it when closed?"
 id: QUESTION-011
 aliases:
